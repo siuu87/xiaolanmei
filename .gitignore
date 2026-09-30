@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-ssr/
+.env
+*.local
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.DS_Store
+npm-debug.log*
+*.zip
+
+# 运行时数据：SQLite 数据库 + 上传的图片（不进入版本控制）
+data/
+

@@ -1,0 +1,958 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import {
+  Send,
+  Square,
+  Trash2,
+  Pencil,
+  RefreshCw,
+  Undo2,
+  Reply,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  MoreHorizontal,
+  Copy,
+  Mic,
+  PanelLeft,
+  Globe,
+  ImagePlus,
+  Smile,
+  Phone,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { matchLocalIntent } from './assistant';
+import { streamChat, type ChatPayloadMessage } from '@/lib/api/chatStream';
+import { uploadImage, urlToDataUrl } from '@/lib/api/attachments';
+import { getSettings } from '@/lib/api/settings';
+import { describeImage } from '@/lib/api/vision';
+import { extractMemories, generateSummary } from '@/lib/api/memories';
+import { confirmAgent } from '@/lib/api/agent';
+import {
+  useChatStore,
+  activePath,
+  childrenOf,
+  leafOf,
+  pathTo,
+  uid,
+  type ChatMessage,
+  type ChatImage,
+} from './chatStore';
+import { Markdown } from '@/components/Markdown';
+import { SearchOverlay } from './SearchOverlay';
+import { ChatDrawer } from './ChatDrawer';
+import { ModelPicker } from './ModelPicker';
+import { StickerPanel } from './StickerPanel';
+import { CallOverlay } from './CallOverlay';
+import { resolveSticker } from './stickers';
+import { useTimetableStore } from '@/features/schedule/timetableStore';
+
+const WELCOME_TEXT =
+  '我是小蓝莓 🫐 可以陪你聊天，也能帮你管理待办、经期和日记。\n\n试试：\n· 「添加待办：买牛奶」\n· 「来了」记经期\n· 「记日记：今天……」写进日记本\n· 或者随便聊聊';
+
+function toPayload(m: ChatMessage): ChatPayloadMessage {
+  // 只把内存里的 base64 data URL 发给模型（重载后的消息没有 dataUrl，退化纯文本）
+  const images = m.images?.map((i) => i.dataUrl).filter((x): x is string => !!x);
+  return { role: m.role, content: m.content, ...(images && images.length ? { images } : {}) };
+}
+
+/** 记忆提取节流：每 3 次模型回复才触发一次，避免每轮都调一次小模型。 */
+let extractCounter = 0;
+
+/** 回复完成后的后台消化：模型提取记忆 + 到阈值时滚动摘要（fire-and-forget，失败静默）。 */
+function autoDigest(): void {
+  const conv = useChatStore.getState().conversation;
+  if (!conv) return;
+  const path = activePath(conv);
+
+  extractCounter += 1;
+  if (extractCounter % 3 === 0) {
+    const recent = path.slice(-4);
+    if (recent.length) {
+      const text = recent
+        .map((m) => `${m.role === 'user' ? '用户' : '小蓝莓'}：${m.content}`)
+        .join('\n');
+      void extractMemories(text).catch(() => {});
+    }
+  }
+
+  if (path.length >= 16 && path.length % 8 === 0) {
+    const endIdx = path.length - 9; // 保留最近 8 条不摘要
+    if (endIdx > 0) void generateSummary(conv.id, path[0].id, path[endIdx].id).catch(() => {});
+  }
+}
+
+function MenuAction({
+  icon,
+  label,
+  onClick,
+  danger,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 rounded-lg bg-muted/80 px-2.5 py-1.5 text-xs text-foreground/90 transition hover:bg-muted',
+        danger && 'text-destructive',
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+/** 贴图气泡：显示大贴图，未知贴图回退为 emoji 字符 */
+function StickerBubble({ emoji }: { emoji: string }) {
+  const img = resolveSticker(emoji);
+  return img ? (
+    <img src={img} alt="表情" draggable={false} className="h-24 w-24 select-none object-contain" />
+  ) : (
+    <span className="text-6xl leading-none">{emoji}</span>
+  );
+}
+
+export function ChatPage() {
+  const conversation = useChatStore((s) => s.conversation);
+  const loaded = useChatStore((s) => s.loaded);
+  const load = useChatStore((s) => s.load);
+  const setActiveMessage = useChatStore((s) => s.setActiveMessage);
+  const appendMessage = useChatStore((s) => s.appendMessage);
+  const updateMessage = useChatStore((s) => s.updateMessage);
+  const finalizeMessage = useChatStore((s) => s.finalizeMessage);
+  const removeSubtree = useChatStore((s) => s.removeSubtree);
+
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [menuForId, setMenuForId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [confirming, setConfirming] = useState<{ confirmId: string; toolName: string; summary: string } | null>(
+    null,
+  );
+  const [listening, setListening] = useState(false);
+  const [web, setWeb] = useState(true);
+  const [stationId, setStationId] = useState<string | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+  const [vision, setVision] = useState<{ model: string | null } | null>(null);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
+  const [stickerOpen, setStickerOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const streamMsgRef = useRef<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pressTimerRef = useRef<number | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    getSettings()
+      .then((s) => setVision({ model: s.visionModel ?? null }))
+      .catch(() => {});
+  }, []);
+
+  const path = useMemo(() => (conversation ? activePath(conversation) : []), [conversation]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [path]);
+
+  // 点菜单外任意处关闭
+  useEffect(() => {
+    if (!menuForId) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement;
+      if (!el.closest('[data-menu]')) setMenuForId(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [menuForId]);
+
+  // 长按弹出菜单
+  const startPress = (id: string) => {
+    pressTimerRef.current = window.setTimeout(() => setMenuForId(id), 450);
+  };
+  const cancelPress = () => {
+    if (pressTimerRef.current != null) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+  const toggleMenu = (id: string) => setMenuForId((cur) => (cur === id ? null : id));
+  const closeMenu = () => setMenuForId(null);
+
+  const copyText = async (m: ChatMessage) => {
+    try {
+      await navigator.clipboard.writeText(m.content);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // 生成回复：本地意图优先 → 模型流式。context 为模型所见线性历史（以 user 结尾）。
+  const produceReply = async (
+    userText: string,
+    parentId: string,
+    context: ChatPayloadMessage[],
+  ) => {
+    const local = matchLocalIntent(userText);
+    if (local !== null) {
+      await appendMessage({
+        id: uid(),
+        role: 'assistant',
+        content: local,
+        parentId,
+        status: 'done',
+      });
+      return;
+    }
+
+    const assistantId = uid();
+    await appendMessage({
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      parentId,
+      status: 'streaming',
+    });
+    setBusy(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    streamMsgRef.current = assistantId;
+    setToolStatus(null);
+
+    const convId = useChatStore.getState().conversation?.id;
+    const trimmed = context.length > 16 ? context.slice(-16) : context;
+    let didSaveCourses = false;
+    await streamChat(trimmed, {
+      signal: controller.signal,
+      conversationId: convId,
+      model: model ?? undefined,
+      stationId: stationId ?? undefined,
+      web,
+      onDelta: (delta) => {
+        updateMessage(assistantId, (prev) => ({ content: prev.content + delta }));
+      },
+      onToolCall: (name) => {
+        if (name === 'save_courses') didSaveCourses = true;
+        setToolStatus(
+          name === 'web_search'
+            ? '正在联网搜索…'
+            : name === 'save_courses'
+              ? '正在识别课表…'
+              : `正在调用 ${name}…`,
+        );
+      },
+      onNeedsConfirm: (confirmId, toolName, summary) => {
+        setToolStatus(null);
+        setConfirming({ confirmId, toolName, summary });
+      },
+      onDone: () => {
+        setToolStatus(null);
+        void finalizeMessage(assistantId, { status: 'done' });
+      },
+      onError: (msg) => {
+        setToolStatus(null);
+        const cur = useChatStore.getState().conversation?.messages.find((m) => m.id === assistantId);
+        const content = (cur?.content ? cur.content + '\n\n' : '') + `⚠️ ${msg}`;
+        void finalizeMessage(assistantId, { content, status: 'error' });
+      },
+    });
+
+    // 图片识别已写入课程 → 同步课表
+    if (didSaveCourses) void useTimetableStore.getState().reload();
+
+    const cur = useChatStore.getState().conversation?.messages.find((m) => m.id === assistantId);
+    if (cur?.status === 'streaming') {
+      await finalizeMessage(assistantId, { status: 'done' });
+    }
+
+    abortRef.current = null;
+    streamMsgRef.current = null;
+    setBusy(false);
+
+    // 阶段 6：回复完成后后台消化（提取记忆 + 到阈值滚动摘要）
+    autoDigest();
+  };
+
+  // 选择图片 → 上传（读 base64 供模型/展示 + 落盘后端拿 URL）
+  const pickImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    for (const f of Array.from(files).slice(0, 4)) {
+      try {
+        const img = await uploadImage(f);
+        setPendingImages((prev) => [...prev, img]);
+      } catch (e) {
+        setToolStatus(`图片上传失败：${(e as Error).message}`);
+        setTimeout(() => setToolStatus(null), 3000);
+      }
+    }
+  };
+
+  // 发图分流（仿 Operit）：配置了识图模型且当前模型不是它时，先用视觉模型把图转文字；否则直发图
+  const describeIfNeeded = async (
+    dataUrls: string[],
+  ): Promise<{ text: string; direct: boolean }> => {
+    const useVision = !!vision?.model && vision.model !== model;
+    if (!useVision) return { text: '', direct: true };
+    const parts = await Promise.all(
+      dataUrls.map(async (d) => {
+        try {
+          return (await describeImage(d)).text.trim();
+        } catch (e) {
+          return `识图失败：${(e as Error).message}`;
+        }
+      }),
+    );
+    const valid = parts.filter(Boolean);
+    return { text: valid.length ? `\n\n[图片内容]：${valid.join('；')}` : '', direct: false };
+  };
+
+  const send = async () => {
+    const text = input.trim();
+    if ((!text && pendingImages.length === 0) || busy) return;
+    setInput('');
+
+    const conv = useChatStore.getState().conversation;
+    if (!conv) return;
+
+    // 若正在「回复某条」，就从那条分支；否则接在当前叶子后
+    const parentId =
+      replyToId && conv.messages.some((m) => m.id === replyToId)
+        ? replyToId
+        : conv.activeMessageId;
+    // 识图分流：direct=true 直发图；否则图转文字、消息里只留 url 展示（不把 base64 给主模型）
+    const dataUrls = pendingImages
+      .map((i) => i.dataUrl ?? i.url)
+      .filter((x): x is string => !!x);
+    const { text: imgText, direct } = dataUrls.length
+      ? await describeIfNeeded(dataUrls)
+      : { text: '', direct: true };
+
+    const userMsg: ChatMessage = {
+      id: uid(),
+      role: 'user',
+      content: text + imgText,
+      parentId,
+      status: 'done',
+      images: pendingImages.length
+        ? pendingImages.map((i) => (direct ? i : { ...i, dataUrl: undefined }))
+        : undefined,
+    };
+    setPendingImages([]);
+    await appendMessage(userMsg);
+    setReplyToId(null);
+
+    const base = parentId ? pathTo(conv, parentId).map(toPayload) : [];
+    await produceReply(text, userMsg.id, [...base, toPayload(userMsg)]);
+  };
+
+  // 发送表情包：内置贴图只展示不触发回复；自定义图片贴图拉回 base64 发给模型，让模型看图接话
+  const sendSticker = async (key: string) => {
+    if (busy) return;
+    const conv = useChatStore.getState().conversation;
+    if (!conv) return;
+    const isImageUrl = key.startsWith('/') || key.startsWith('http');
+
+    // 内置 emoji：content 存 emoji，模型按文字理解，不主动回复
+    if (!isImageUrl) {
+      await appendMessage({
+        id: uid(),
+        role: 'user',
+        content: key,
+        parentId: conv.activeMessageId,
+        status: 'done',
+        sticker: key,
+      });
+      return;
+    }
+
+    // 自定义图片贴图：拉回 base64，再按识图分流（直发图 or 转文字）
+    let dataUrl: string | undefined;
+    try {
+      dataUrl = await urlToDataUrl(key);
+    } catch (e) {
+      setToolStatus(`表情包读取失败：${(e as Error).message}`);
+      setTimeout(() => setToolStatus(null), 3000);
+    }
+
+    const { text: imgText, direct } = dataUrl
+      ? await describeIfNeeded([dataUrl])
+      : { text: '', direct: true };
+
+    const userMsg: ChatMessage = {
+      id: uid(),
+      role: 'user',
+      content: '[表情包]' + imgText,
+      parentId: conv.activeMessageId,
+      status: 'done',
+      sticker: key,
+      images: dataUrl ? [{ url: key, ...(direct ? { dataUrl } : {}) }] : undefined,
+    };
+    await appendMessage(userMsg);
+
+    const base = conv.activeMessageId ? pathTo(conv, conv.activeMessageId).map(toPayload) : [];
+    await produceReply('[表情包]', userMsg.id, [...base, toPayload(userMsg)]);
+  };
+
+  // 重新生成：为该 assistant 建 sibling（同 parentId），旧回复保留。
+  const regenerate = async (assistantMsg: ChatMessage) => {
+    if (busy || !conversation) return;
+    const parentId = assistantMsg.parentId;
+    if (!parentId) return;
+    const parentMsg = conversation.messages.find((m) => m.id === parentId);
+    if (!parentMsg) return;
+    await produceReply(
+      parentMsg.content,
+      parentId,
+      pathTo(conversation, parentId).map(toPayload),
+    );
+  };
+
+  // 回滚到此处：从这条 user 消息重新生成回复（新分支，旧分支保留）。
+  const rollback = async (userMsg: ChatMessage) => {
+    if (busy || !conversation) return;
+    await produceReply(
+      userMsg.content,
+      userMsg.id,
+      pathTo(conversation, userMsg.id).map(toPayload),
+    );
+  };
+
+  // 回复：从这条 assistant 消息往下开新分支，聚焦输入框。
+  const startReply = (assistantMsg: ChatMessage) => {
+    setReplyToId(assistantMsg.id);
+    inputRef.current?.focus();
+  };
+
+  const cancelReply = () => setReplyToId(null);
+
+  const startEdit = (msg: ChatMessage) => {
+    setEditingId(msg.id);
+    setEditText(msg.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  // 编辑：user 消息 = 就地改写 + 重新生成（编辑并重发）；assistant 消息 = 只改内容。
+  const saveEdit = async (msg: ChatMessage) => {
+    const text = editText.trim();
+    if (!text || !conversation) return;
+    setEditingId(null);
+    setEditText('');
+
+    await finalizeMessage(msg.id, { content: text });
+
+    if (msg.role === 'assistant') return;
+
+    const base = msg.parentId ? pathTo(conversation, msg.parentId).map(toPayload) : [];
+    await produceReply(text, msg.id, [...base, { role: 'user', content: text }]);
+  };
+
+  // 分支切换：把 activeMessageId 指到相邻兄弟分支的叶子。
+  const switchBranch = (msg: ChatMessage, direction: 1 | -1) => {
+    if (!conversation) return;
+    const siblings = msg.parentId
+      ? childrenOf(conversation, msg.parentId)
+      : conversation.messages.filter((x) => x.parentId === null);
+    if (siblings.length <= 1) return;
+    const curIdx = siblings.findIndex((s) => s.id === msg.id);
+    if (curIdx < 0) return;
+    const nextIdx = (curIdx + direction + siblings.length) % siblings.length;
+    void setActiveMessage(leafOf(conversation, siblings[nextIdx].id));
+  };
+
+  const stop = () => {
+    abortRef.current?.abort();
+    if (streamMsgRef.current) {
+      void finalizeMessage(streamMsgRef.current, { status: 'done' });
+    }
+    setToolStatus(null);
+    setBusy(false);
+  };
+
+  const answerConfirm = async (decision: 'allow' | 'deny') => {
+    if (!confirming) return;
+    const id = confirming.confirmId;
+    setConfirming(null);
+    try {
+      await confirmAgent(id, decision);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // 语音输入：浏览器语音识别 → 填入输入框
+  const toggleListen = () => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setToolStatus('当前浏览器不支持语音识别（建议用 Chrome）');
+      setTimeout(() => setToolStatus(null), 2500);
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.interimResults = false;
+    rec.onresult = (e: any) => {
+      const t = e.results?.[0]?.[0]?.transcript ?? '';
+      if (t) setInput((prev) => (prev ? prev + t : t));
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setListening(true);
+  };
+
+  const showWelcome = !conversation || conversation.messages.length === 0;
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* 顶栏：抽屉入口 + 标题 + 模型/联网/搜索/编程 */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="工具箱"
+          title="插件 / 角色 / 世界书 / 工作区"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {conversation?.title ?? '小蓝莓'}
+        </span>
+        <ModelPicker
+          stationId={stationId}
+          model={model}
+          onChange={(sid, m) => {
+            setStationId(sid);
+            setModel(m);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setWeb((v) => !v)}
+          aria-label="联网"
+          title="联网搜索"
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition',
+            web ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <Globe className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          aria-label="搜索记录"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setCallOpen(true)}
+          aria-label="语音通话"
+          title="语音通话"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
+        >
+          <Phone className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* 消息列表 */}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        {!loaded ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            加载中…
+          </div>
+        ) : showWelcome ? (
+          <div className="flex justify-start">
+            <div className="glass max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-6 text-foreground/90">
+              <Markdown>{WELCOME_TEXT}</Markdown>
+            </div>
+          </div>
+        ) : (
+          path.map((m) => {
+            const siblings = m.parentId
+              ? childrenOf(conversation!, m.parentId)
+              : conversation!.messages.filter((x) => x.parentId === null);
+            const showSwitch = siblings.length > 1;
+            const myIdx = siblings.findIndex((s) => s.id === m.id);
+            const isEditing = editingId === m.id;
+            const menuOpen = menuForId === m.id;
+
+            return (
+              <div key={m.id} className="flex flex-col">
+                {/* 气泡（长按弹出菜单） */}
+                <div
+                  className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+                  {...(!isEditing
+                    ? {
+                        onPointerDown: () => startPress(m.id),
+                        onPointerUp: cancelPress,
+                        onPointerMove: cancelPress,
+                        onPointerLeave: cancelPress,
+                        onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+                      }
+                    : {})}
+                >
+                  <div
+                    className={cn(
+                      'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-6',
+                      !isEditing && 'select-none',
+                      m.role === 'user'
+                        ? 'whitespace-pre-wrap bg-primary text-primary-foreground'
+                        : 'glass text-foreground/90',
+                      m.sticker && 'bg-transparent p-0',
+                    )}
+                  >
+                    {isEditing ? (
+                      <div className="flex flex-col gap-2">
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          autoFocus
+                          rows={3}
+                          className="w-full resize-none select-text rounded-lg bg-background/20 px-2 py-1 text-sm text-foreground outline-none"
+                        />
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            aria-label="取消编辑"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-foreground/70 hover:bg-background/20"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void saveEdit(m)}
+                            aria-label="保存编辑"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-foreground/70 hover:bg-background/20"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : m.role === 'assistant' ? (
+                      m.status === 'streaming' && !m.content ? (
+                        <span className="text-muted-foreground">思考中…</span>
+                      ) : (
+                        <Markdown>{m.content}</Markdown>
+                      )
+                    ) : m.sticker ? (
+                      <StickerBubble emoji={m.sticker} />
+                    ) : (
+                      <>
+                        {m.images && m.images.length > 0 && (
+                          <div className="mb-1.5 flex flex-wrap gap-1.5">
+                            {m.images.map((img, i) => (
+                              <img
+                                key={i}
+                                src={img.dataUrl ?? img.url}
+                                alt={img.name ?? '图片'}
+                                className="max-h-44 max-w-full rounded-lg object-cover"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {m.content}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 气泡下方：分支切换 + ⋯ */}
+                <div
+                  className={cn(
+                    'mt-1 flex items-center gap-1.5',
+                    m.role === 'user' ? 'justify-end' : 'justify-start',
+                  )}
+                >
+                  {showSwitch && (
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                      <button
+                        type="button"
+                        onClick={() => switchBranch(m, -1)}
+                        aria-label="上一个分支"
+                        className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </button>
+                      <span className="min-w-7 text-center">
+                        {myIdx + 1}/{siblings.length}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => switchBranch(m, 1)}
+                        aria-label="下一个分支"
+                        className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    data-menu
+                    onClick={() => toggleMenu(m.id)}
+                    aria-label="更多操作"
+                    className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 transition hover:bg-muted hover:text-foreground"
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* 长按 / ⋯ 弹出的操作菜单 */}
+                {menuOpen && (
+                  <div
+                    data-menu
+                    className={cn(
+                      'mt-1 flex flex-wrap gap-1.5',
+                      m.role === 'user' ? 'justify-end' : 'justify-start',
+                    )}
+                  >
+                    <MenuAction
+                      icon={<Copy className="h-3.5 w-3.5" />}
+                      label="复制"
+                      onClick={() => {
+                        closeMenu();
+                        void copyText(m);
+                      }}
+                    />
+                    {m.role === 'user' ? (
+                      <>
+                        <MenuAction
+                          icon={<Pencil className="h-3.5 w-3.5" />}
+                          label="编辑并重发"
+                          onClick={() => {
+                            closeMenu();
+                            startEdit(m);
+                          }}
+                        />
+                        <MenuAction
+                          icon={<Undo2 className="h-3.5 w-3.5" />}
+                          label="回滚到此处"
+                          onClick={() => {
+                            closeMenu();
+                            void rollback(m);
+                          }}
+                        />
+                      </>
+                    ) : m.status !== 'streaming' ? (
+                      <>
+                        <MenuAction
+                          icon={<Reply className="h-3.5 w-3.5" />}
+                          label="回复"
+                          onClick={() => {
+                            closeMenu();
+                            startReply(m);
+                          }}
+                        />
+                        <MenuAction
+                          icon={<Pencil className="h-3.5 w-3.5" />}
+                          label="编辑"
+                          onClick={() => {
+                            closeMenu();
+                            startEdit(m);
+                          }}
+                        />
+                        <MenuAction
+                          icon={<RefreshCw className="h-3.5 w-3.5" />}
+                          label="重新生成"
+                          onClick={() => {
+                            closeMenu();
+                            void regenerate(m);
+                          }}
+                        />
+                      </>
+                    ) : null}
+                    <MenuAction
+                      danger
+                      icon={<Trash2 className="h-3.5 w-3.5" />}
+                      label="删除"
+                      onClick={() => {
+                        closeMenu();
+                        void removeSubtree(m.id);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* 输入框 */}
+      <div className="shrink-0 border-t border-border/60 p-3">
+        {toolStatus && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+            <Globe className="h-3.5 w-3.5 animate-pulse" />
+            <span>{toolStatus}</span>
+          </div>
+        )}
+        {replyToId && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+            <span className="flex-1 truncate">正在回复这条消息…</span>
+            <button
+              type="button"
+              onClick={cancelReply}
+              aria-label="取消回复"
+              className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        {pendingImages.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {pendingImages.map((img, i) => (
+              <div key={i} className="relative">
+                <img src={img.dataUrl} alt={img.name ?? '待发图片'} className="h-16 w-16 rounded-lg object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPendingImages((prev) => prev.filter((_, j) => j !== i))}
+                  aria-label="移除图片"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {confirming && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground/90">
+            <span className="min-w-0 flex-1 truncate">⏸ 需要确认：{confirming.summary}</span>
+            <button
+              type="button"
+              onClick={() => void answerConfirm('allow')}
+              className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground"
+            >
+              <Check className="h-3 w-3" /> 允许
+            </button>
+            <button
+              type="button"
+              onClick={() => void answerConfirm('deny')}
+              className="flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground/80"
+            >
+              <X className="h-3 w-3" /> 拒绝
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            multiple
+            hidden
+            onChange={(e) => {
+              void pickImages(e.target.files);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setStickerOpen((v) => !v)}
+            aria-label="表情包"
+            title="表情包"
+            className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition',
+              stickerOpen
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            <Smile className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            aria-label="发图"
+            title="发图"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleListen}
+            aria-label="语音输入"
+            title="语音输入"
+            className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition',
+              listening ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            <Mic className={cn('h-5 w-5', listening && 'animate-pulse')} />
+          </button>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
+            placeholder={replyToId ? '回复这条消息…' : '想和哥哥说…'}
+            className="h-10 flex-1 rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-muted/80"
+          />
+          <button
+            type="button"
+            onClick={busy ? stop : send}
+            aria-label={busy ? '停止' : '发送'}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90"
+          >
+            {busy ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* 微信式全屏搜索 */}
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ChatDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      {/* 表情包面板 */}
+      {stickerOpen && (
+        <StickerPanel
+          onPick={(emoji) => {
+            setStickerOpen(false);
+            void sendSticker(emoji);
+          }}
+          onClose={() => setStickerOpen(false)}
+        />
+      )}
+
+      {/* 语音通话（占位界面，后续接 WebRTC） */}
+      {callOpen && <CallOverlay name="哥哥" onClose={() => setCallOpen(false)} />}
+    </div>
+  );
+}

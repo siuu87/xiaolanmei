@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 数字专用：所有 0-9 用飘逸的 Playfair Display 衬线数字（复用 Google 已加载的同一份字体文件） */
+@font-face {
+  font-family: 'Playfair Digits';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/playfairdisplay/v40/nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgA.woff2) format('woff2');
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: 'Playfair Digits';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/playfairdisplay/v40/nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgA.woff2) format('woff2');
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: 'Playfair Digits';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/playfairdisplay/v40/nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgA.woff2) format('woff2');
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: 'Playfair Digits';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/playfairdisplay/v40/nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgA.woff2) format('woff2');
+  unicode-range: U+0030-0039;
+}
+
+@layer base {
+  :root {
+    --background: 40 33% 96%;
+    --foreground: 30 12% 20%;
+    --card: 40 45% 98%;
+    --card-foreground: 30 12% 20%;
+    --popover: 40 50% 99%;
+    --popover-foreground: 30 12% 20%;
+    --primary: 350 60% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 28% 92%;
+    --secondary-foreground: 30 12% 22%;
+    --muted: 40 25% 92%;
+    --muted-foreground: 30 8% 47%;
+    --accent: 40 28% 92%;
+    --accent-foreground: 30 12% 22%;
+    --destructive: 0 70% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 38 20% 86%;
+    --input: 38 20% 86%;
+    --ring: 350 60% 62%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 30 18% 9%;
+    --foreground: 35 24% 88%;
+    --card: 30 16% 12%;
+    --card-foreground: 35 24% 88%;
+    --popover: 30 16% 14%;
+    --popover-foreground: 35 24% 88%;
+    --primary: 214 70% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 30 14% 17%;
+    --secondary-foreground: 35 24% 88%;
+    --muted: 30 14% 17%;
+    --muted-foreground: 35 11% 60%;
+    --accent: 30 14% 17%;
+    --accent-foreground: 35 24% 88%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 30 12% 22%;
+    --input: 30 12% 22%;
+    --ring: 214 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  :root {
+    /* 数字字体栈（默认：飘逸衬线）—— 设置里可切换 */
+    --font-sans-stack:
+      'Playfair Digits', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+      'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  :root[data-num-font='sans'] {
+    --font-sans-stack:
+      'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC',
+      'Microsoft YaHei', sans-serif;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans-stack);
+    /* 所有数字统一等宽，避免切换时跳动 */
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* 毛玻璃卡片（iOS Widget 质感，ins 风暖调） */
+  .glass {
+    @apply rounded-3xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-[0_10px_40px_rgba(90,64,40,0.08)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_10px_40px_rgba(0,0,0,0.45)];
+  }
+}
+
+/* 灵感便签「微光入场」：极淡蓝色光晕，一闪而过 */
+@keyframes note-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+  }
+  35% {
+    box-shadow: 0 0 22px 2px rgba(96, 165, 250, 0.16);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+  }
+}
+.animate-note-glow {
+  animation: note-glow 1.6s ease-out;
+}
+
+/* 覆盖 Tailwind 的 .font-sans，让数字字体跟随设置（无层叠规则优先级高于 @layer） */
+.font-sans {
+  font-family: var(--font-sans-stack);
+}
