@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "solarlunar": ["./node_modules/solarlunar/solarlunar.d.ts"]
     }
   },
   "include": ["src"]

@@ -16,6 +16,7 @@ import { useStationStore } from '@/stores/stationStore';
 import type { Station } from '@/lib/api/stations';
 import { MemoryPanel } from '@/features/memory/MemoryPage';
 import { SyncPanel } from '@/features/sync/SyncPage';
+import { SkillsPanel } from '@/features/skills/SkillsPanel';
 import { ProfileCard } from './ProfileCard';
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StickerSettings } from './StickerSettings';
@@ -439,6 +440,17 @@ export function SettingsPage() {
           <p className="mt-0.5 text-sm text-muted-foreground">小蓝莓记下的关于你们的事，会在聊天中引用。</p>
         </div>
         <MemoryPanel />
+      </section>
+
+      {/* 技能 */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">技能</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            管理小蓝莓的技能：内置技能 + 你新增/外部导入的技能，聊天时按条件触发。
+          </p>
+        </div>
+        <SkillsPanel />
       </section>
 
       {/* 云同步 */}

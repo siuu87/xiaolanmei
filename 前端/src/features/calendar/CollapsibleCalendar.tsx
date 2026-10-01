@@ -19,13 +19,29 @@ function weekdayInitialOf(y: number, m: number, d: number): string {
   return WEEKDAYS[(new Date(y, m - 1, d).getDay() + 6) % 7][0];
 }
 
-/** 某天在日历上的标注（心情 / 经期 / 纪念日 / 节假日 / 日程） */
+/** 某天在日历上的标注（心情 / 经期 / 纪念日 / 节假日 / 节日节气 / 日程） */
 export interface CalendarDayDecoration {
   moodColors?: string[]; // 心情圆点颜色（我、TA）
   period?: 'solid' | 'predicted'; // 经期实心 / 预测虚环
   memorial?: boolean; // 纪念日金线
-  holiday?: boolean; // 节假日绿线
+  holiday?: boolean; // 放假日绿线
+  label?: string; // 节日/节气名称（标注文本）
+  labelKind?: 'holiday' | 'term' | 'festival'; // 标注配色
   scheduleColors?: string[]; // 当日日程颜色（小方块，最多 3 个）
+}
+
+/** 节日/节气标注文本的配色：放假绿、节气琥珀、普通节日天蓝 */
+function labelTextClass(kind?: 'holiday' | 'term' | 'festival'): string {
+  switch (kind) {
+    case 'holiday':
+      return 'text-emerald-400';
+    case 'term':
+      return 'text-amber-300';
+    case 'festival':
+      return 'text-sky-300';
+    default:
+      return '';
+  }
 }
 
 /** 展开态网格里的标注：金/绿线 + 心情圆点 + 日程小方块（固定三行，保证行对齐；经期已挪到数字上） */
@@ -60,7 +76,7 @@ function CompactDots({ dec }: { dec?: CalendarDayDecoration }) {
         <span key={`m${i}`} className="h-1 w-1 rounded-full" style={{ backgroundColor: c }} />
       ))}
       {dec?.memorial && <span className="h-1 w-1 rounded-full bg-amber-400" />}
-      {dec?.holiday && <span className="h-1 w-1 rounded-full bg-emerald-400" />}
+      {dec?.holiday && <span className="h-0.5 w-4 rounded-full bg-emerald-400" />}
       {(dec?.scheduleColors ?? []).slice(0, 3).map((c, i) => (
         <span key={`s${i}`} className="h-1 w-1 rounded-[1px]" style={{ backgroundColor: c }} />
       ))}
@@ -82,7 +98,7 @@ export function CollapsibleCalendar({
   onCollapsedChange,
 }: {
   value: string | null; // yyyy-mm-dd（选中日期）
-  onChange: (date: string) => void;
+  onChange: (date: string | null) => void;
   dayDecoration?: (date: string) => CalendarDayDecoration | undefined;
   onCollapsedChange?: (collapsed: boolean) => void;
 }) {
@@ -130,10 +146,10 @@ export function CollapsibleCalendar({
   const goNextMonth = () =>
     setView((v) => (v.month === 12 ? { year: v.year + 1, month: 1 } : { year: v.year, month: v.month + 1 }));
 
-  // 回到今天并选中
+  // 回到今天：只把视图切回当月并滚动到今天，不选中日期（不弹出详情）
   const goToday = () => {
     setView({ year: today.getFullYear(), month: today.getMonth() + 1 });
-    onChange(todayKey);
+    onChange(null);
     setTimeout(() => {
       document.getElementById(`cal-pill-${todayKey}`)?.scrollIntoView({ inline: 'center', block: 'nearest' });
     }, 0);
@@ -307,6 +323,18 @@ export function CollapsibleCalendar({
                     )}
                   >
                     {d}
+                  </span>
+                  <span className="flex h-2.5 items-center justify-center">
+                    {dec?.label && (
+                      <span
+                        className={cn(
+                          'max-w-7 truncate text-[8px] leading-none',
+                          labelTextClass(dec.labelKind),
+                        )}
+                      >
+                        {dec.label}
+                      </span>
+                    )}
                   </span>
                   <DayMarkers dec={dec} />
                 </button>

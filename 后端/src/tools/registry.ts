@@ -1,8 +1,9 @@
 import type { ToolDef } from '../adapters/types.js';
-import { isNull } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { courses } from '../db/schema.js';
+import { courses, ragDocuments, ragChunks, ragDocumentCollections } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { indexDocument, updateDocument } from '../services/ragService.js';
 
 /**
  * 内置工具（阶段 9 自主联网）：读网页 / 联网搜索 / 保存课程表。
@@ -208,7 +209,100 @@ const saveCourses: BuiltinTool = {
   },
 };
 
-const BUILTIN_TOOLS: BuiltinTool[] = [webFetch, webSearch, saveCourses];
+const RAG_CATEGORIES = ['preference', 'agreement', 'experience', 'info', 'inspiration', 'plan', 'general'] as const;
+
+const ragImport: BuiltinTool = {
+  name: 'rag_import',
+  description:
+    '把一条值得长期记住的内容写入双向记忆（RAG）。当用户透露了偏好、约定、经历、计划、灵感等重要信息，或需要你记住某件事时调用。默认归档到系统默认知识库。',
+  parameters: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: '记忆标题，简短概括（如「TA 喜欢喝美式」）' },
+      content: { type: 'string', description: '要记住的完整内容（一句话到一段）' },
+      category: {
+        type: 'string',
+        enum: ['preference', 'agreement', 'experience', 'info', 'inspiration', 'plan'],
+        description: '记忆分类：preference 喜好/忌口、agreement 约定/承诺、experience 共同经历、info 事实信息、inspiration 灵感、plan 计划',
+      },
+      tags: { type: 'array', items: { type: 'string' }, description: '标签（可选）' },
+      importance: { type: 'integer', description: '重要程度 1-5，默认 3' },
+    },
+    required: ['title', 'content'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const content = String(args.content ?? '').trim();
+    if (!content) return '错误：content 不能为空';
+    const category = String(args.category ?? 'info');
+    const cat = RAG_CATEGORIES.includes(category as never) ? category : 'info';
+    const importance = Math.min(5, Math.max(1, Math.round(Number(args.importance) || 3)));
+    const tags = Array.isArray(args.tags) ? args.tags.map((t) => String(t)).filter(Boolean) : [];
+    const result = await indexDocument({
+      title: String(args.title ?? '').trim() || '(无标题)',
+      content,
+      source: 'agent',
+      category: cat,
+      tags: tags.length ? tags : undefined,
+      importance,
+    });
+    return `已记住：${String(args.title ?? '').trim() || '(无标题)'}（${cat}，${result.chunkCount} 块）。`;
+  },
+};
+
+const ragUpdate: BuiltinTool = {
+  name: 'rag_update',
+  description:
+    '更新一条已存在的长期记忆。当用户纠正、补充或推翻之前记下的信息时调用（如「其实我不吃香菜」）。需要用户确认。',
+  parameters: {
+    type: 'object',
+    properties: {
+      documentId: { type: 'string', description: '要更新的记忆文档 id' },
+      newContent: { type: 'string', description: '更新后的完整内容' },
+      reason: { type: 'string', description: '更新原因（可选）' },
+    },
+    required: ['documentId', 'newContent'],
+  },
+  requiresConfirm: true,
+  async execute(args) {
+    const documentId = String(args.documentId ?? '').trim();
+    const newContent = String(args.newContent ?? '').trim();
+    if (!documentId || !newContent) return '错误：documentId 与 newContent 不能为空';
+    const reason = args.reason ? String(args.reason).trim() : undefined;
+    try {
+      const result = await updateDocument(documentId, newContent, reason);
+      return `已更新记忆 ${documentId}（${result.chunkCount} 块）。`;
+    } catch (err) {
+      return `更新失败：${(err as Error).message}`;
+    }
+  },
+};
+
+const ragDelete: BuiltinTool = {
+  name: 'rag_delete',
+  description: '删除一条长期记忆（软删除）。当用户明确表示某条记忆不再适用、或记错了要求删除时调用。需要用户确认。',
+  parameters: {
+    type: 'object',
+    properties: {
+      documentId: { type: 'string', description: '要删除的记忆文档 id' },
+      reason: { type: 'string', description: '删除原因（可选）' },
+    },
+    required: ['documentId'],
+  },
+  requiresConfirm: true,
+  async execute(args) {
+    const documentId = String(args.documentId ?? '').trim();
+    if (!documentId) return '错误：documentId 不能为空';
+    const ts = now();
+    const result = db.update(ragDocuments).set({ deletedAt: ts, updatedAt: ts }).where(eq(ragDocuments.id, documentId)).run();
+    if (result.changes === 0) return '删除失败：文档不存在';
+    db.update(ragChunks).set({ deletedAt: ts, updatedAt: ts }).where(eq(ragChunks.documentId, documentId)).run();
+    db.delete(ragDocumentCollections).where(eq(ragDocumentCollections.documentId, documentId)).run();
+    return `已删除记忆 ${documentId}。`;
+  },
+};
+
+const BUILTIN_TOOLS: BuiltinTool[] = [webFetch, webSearch, saveCourses, ragImport, ragUpdate, ragDelete];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));
 
 export function listBuiltinTools(): BuiltinTool[] {

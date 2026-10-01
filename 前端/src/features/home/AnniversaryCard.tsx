@@ -1,7 +1,6 @@
 import { useState } from 'react';
-
-// 相恋起始日（月份从 0 开始，9 = 10 月）
-const START_DATE = new Date(2018, 9, 13);
+import { Pencil } from 'lucide-react';
+import type { MemorialDay } from './memorialStore';
 
 // 四种展示形式，点击数字循环切换
 const UNITS = [
@@ -76,39 +75,105 @@ function formatStartDate(d: Date): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** 在一起天数卡片（首页顶端）：无背景，点数字切换 天/年/月/周 */
-export function AnniversaryCard() {
+/** 解析 ISO 日期 YYYY-MM-DD 为本地 Date（避免 new Date(string) 按 UTC 解析产生时区偏移） */
+function parseISO(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** 名字片段：首字母加粗，其余正常 */
+function NamePart({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <>
+      <span className="font-bold">{text.charAt(0)}</span>
+      <span>{text.slice(1)}</span>
+    </>
+  );
+}
+
+/**
+ * 在一起天数卡片（首页顶端）：
+ * - 左侧：两人的名字（点击进入编辑，回车保存、Esc 取消）+ since 起始日期；
+ * - 右侧：至今多少天（点数字切换 天/年/月/周）。
+ * 起始日期来自置顶纪念日 memorial.date；名字为组件内本地状态（未持久化）。
+ */
+export function AnniversaryCard({ memorial }: { memorial: MemorialDay }) {
   const [unitIndex, setUnitIndex] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('Gavin & U');
+  const [draft, setDraft] = useState('');
+
   const unit = UNITS[unitIndex];
+  const startDate = parseISO(memorial.date);
 
   const now = new Date();
-  const totalDays = daysBetween(START_DATE, now);
-  const ymd = diffYMD(START_DATE, now);
+  const totalDays = daysBetween(startDate, now);
+  const ymd = diffYMD(startDate, now);
   const segments = toSegments(totalDays, ymd, unit.key);
-  const startDateText = formatStartDate(START_DATE);
+  const startDateText = formatStartDate(startDate);
   const pageText = `${unitIndex + 1}/${UNITS.length}`;
 
+  const startEdit = () => {
+    setDraft(name);
+    setEditing(true);
+  };
+  const confirmEdit = () => {
+    if (draft.trim()) setName(draft.trim());
+    setEditing(false);
+  };
+  const cancelEdit = () => setEditing(false);
+
+  // 按 & 拆分双方名字（兼容全角 ＆），便于首字母加粗、中间 & 用无衬线
+  const nameParts = name.split(/&|＆/);
+  const leftName = (nameParts[0] ?? '').trim();
+  const rightName = nameParts.slice(1).join('&').trim();
+
   return (
-    <div className="w-full py-3">
-      {/* 顶部：TOGETHER（左）+ 分页（右） */}
-      <div className="flex items-start justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-[0.35em] text-[#8f8776]">
-          TOGETHER
-        </span>
-        <span className="text-[11px] tabular-nums text-[#8f8776]">{pageText}</span>
+    <div className="flex w-full items-center justify-between gap-4 py-3">
+      {/* 左：名字（可编辑）+ since */}
+      <div className="flex min-w-0 flex-col items-start gap-1.5">
+        {editing ? (
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={confirmEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirmEdit();
+              if (e.key === 'Escape') cancelEdit();
+            }}
+            autoFocus
+            maxLength={30}
+            placeholder="xxx & xxx"
+            className="w-full border-b-2 border-[#c8835f] bg-transparent font-serif text-[28px] leading-tight tracking-[0.08em] text-[#e8e0cf] outline-none"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startEdit}
+            title="点击编辑名字"
+            className="group flex max-w-full items-baseline gap-1.5 text-left"
+          >
+            <span className="truncate font-serif text-[28px] leading-tight tracking-[0.08em] text-[#e8e0cf] transition group-hover:opacity-80">
+              <NamePart text={leftName} />
+              {nameParts.length > 1 && <span className="mx-0.5 font-sans text-[#c8835f]">&</span>}
+              <NamePart text={rightName} />
+            </span>
+            <Pencil className="h-3.5 w-3.5 shrink-0 text-[#8f8776] opacity-0 transition group-hover:opacity-100" />
+          </button>
+        )}
+        <span className="text-xs text-[#8f8776]">since {startDateText}</span>
       </div>
 
-      {/* 中间主行：Gavin & U + 数字（点击切换单位） */}
-      <div className="mt-6 flex items-end justify-between gap-4">
-        <div className="font-serif text-[26px] leading-none tracking-wide text-[#e8e0cf]">
-          Gavin <span className="font-sans text-[#c8835f]">&</span> U
-        </div>
-        <button
-          type="button"
-          onClick={() => setUnitIndex((i) => (i + 1) % UNITS.length)}
-          title="点击切换 天 / 年 / 月 / 周"
-          className="flex shrink-0 items-baseline gap-1.5"
-        >
+      {/* 右：天数（点击切换单位）+ 分页 */}
+      <button
+        type="button"
+        onClick={() => setUnitIndex((i) => (i + 1) % UNITS.length)}
+        title="点击切换 天 / 年 / 月 / 周"
+        className="flex shrink-0 select-none flex-col items-end"
+      >
+        <span className="flex items-baseline gap-1.5">
           {segments.map((seg, i) => (
             <span key={i} className="flex items-baseline gap-1">
               <span className="font-sans text-5xl font-bold leading-none tabular-nums tracking-tight text-[#e8e0cf]">
@@ -117,11 +182,9 @@ export function AnniversaryCard() {
               <span className="text-xs text-[#8f8776]">{seg.label}</span>
             </span>
           ))}
-        </button>
-      </div>
-
-      {/* 左下角 since */}
-      <div className="mt-5 text-xs text-[#8f8776]">since {startDateText}</div>
+        </span>
+        <span className="mt-2 text-[11px] tabular-nums text-[#8f8776]">{pageText}</span>
+      </button>
     </div>
   );
 }

@@ -29,10 +29,15 @@ import { courseRoutes } from './routes/courses.js';
 import { timetableConfigRoutes } from './routes/timetableConfig.js';
 import { stickerRoutes } from './routes/stickers.js';
 import { visionRoutes } from './routes/vision.js';
+import { ragRoutes } from './routes/rag.js';
+import { skillRoutes } from './routes/skills.js';
+import { seedBuiltinSkills } from './services/skillEngine.js';
 
 async function main(): Promise<void> {
   // 初始化数据库（建表，幂等）
   initDatabase();
+  // 幂等初始化内置技能（阶段 11）
+  await seedBuiltinSkills();
 
   const app = Fastify({ logger: true });
 
@@ -67,6 +72,8 @@ async function main(): Promise<void> {
   await app.register(timetableConfigRoutes, { prefix: '/api' });
   await app.register(stickerRoutes, { prefix: '/api' });
   await app.register(visionRoutes, { prefix: '/api' });
+  await app.register(ragRoutes, { prefix: '/api' });
+  await app.register(skillRoutes, { prefix: '/api' });
 
   await app.listen({ port: env.port, host: '0.0.0.0' });
   console.log(`✅ 小蓝莓后端已启动: http://localhost:${env.port}/api/health`);

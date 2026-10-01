@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { diaryDayKey, AUTHOR_LABEL } from '@/features/diary/diaryData';
 import { useDiaryStore } from '@/features/diary/diaryStore';
 import { CollapsibleCalendar, type CalendarDayDecoration } from '@/features/calendar/CollapsibleCalendar';
+import { daySpecial } from '@/features/calendar/chineseCalendar';
 import {
   usePeriodStore,
   periodDayIndexOf,
@@ -50,23 +51,6 @@ interface DayMood {
   partner?: Mood; // 对方的心情（手动填写；AI 每日抓取尚未接入）
 }
 
-// 节假日（绿色标记，days = 连续放假天数，每年重复；农历节日后续单独处理）
-const HOLIDAYS: { m: number; d: number; days: number; label: string }[] = [
-  { m: 1, d: 1, days: 1, label: '元旦' },
-  { m: 5, d: 1, days: 5, label: '劳动节' },
-  { m: 10, d: 1, days: 7, label: '国庆节' },
-];
-
-/** 判断某天是否节假日（含连续放假范围，返回匹配项） */
-function matchHoliday(viewYear: number, viewMonth: number, day: number) {
-  const cell = new Date(viewYear, viewMonth, day);
-  return HOLIDAYS.find((h) => {
-    const start = new Date(viewYear, h.m - 1, h.d);
-    const diff = Math.round((cell.getTime() - start.getTime()) / 86_400_000);
-    return diff >= 0 && diff < h.days;
-  });
-}
-
 export function CalendarCard() {
   const navigate = useNavigate();
   const entries = useDiaryStore((s) => s.entries);
@@ -100,18 +84,18 @@ export function CalendarCard() {
     ? (entries.find((d) => diaryDayKey(d) === selectedKey) ?? null)
     : null;
 
-  // 选中日期的纪念日/假日
+  // 选中日期的纪念日/节日/节气
   const selectedSpecial: {
     label: string;
-    kind: 'anniversary' | 'holiday';
+    kind: 'anniversary' | 'holiday' | 'festival';
     memorial?: MemorialDay;
   } | null =
     selectedDate != null
       ? (() => {
           const memorial = memorialOnDate(memorialDays, sy, sm, sd);
           if (memorial) return { label: memorial.title, kind: 'anniversary', memorial };
-          const hol = matchHoliday(sy, sm - 1, sd);
-          if (hol) return { label: hol.label, kind: 'holiday' };
+          const sp = daySpecial(sy, sm, sd);
+          if (sp) return { label: sp.label, kind: sp.off ? 'holiday' : 'festival' };
           return null;
         })()
       : null;
@@ -146,11 +130,11 @@ export function CalendarCard() {
   };
 
   // 选中日期：再点一次同一天 = 收回详情
-  const handleSelectDate = (date: string) => {
+  const handleSelectDate = (date: string | null) => {
     setSelectedDate((prev) => (prev === date ? null : date));
   };
 
-  // 日历每天的标注：心情圆点 + 经期圆点 + 纪念日金线 + 节假日绿线
+  // 日历每天的标注：心情圆点 + 经期圆点 + 纪念日金线 + 放假日绿线 + 节日/节气名称
   const next = predictNextStart(records, settings);
   const dayDecoration = (iso: string): CalendarDayDecoration | undefined => {
     const [y, m, d] = iso.split('-').map(Number);
@@ -160,7 +144,8 @@ export function CalendarCard() {
       (c): c is string => !!c,
     );
     const memorial = !!memorialOnDate(memorialDays, y, m, d);
-    const holiday = !!matchHoliday(y, m - 1, d);
+    const sp = daySpecial(y, m, d);
+    const holiday = !!sp?.off;
     const periodIdx = periodDayIndexOf(iso, records);
     const period =
       periodIdx !== null
@@ -168,12 +153,14 @@ export function CalendarCard() {
         : isPredictedDay(iso, next, settings.periodDays)
           ? ('predicted' as const)
           : undefined;
-    if (!moodColors.length && !period && !memorial && !holiday) return undefined;
+    if (!moodColors.length && !period && !memorial && !holiday && !sp?.label) return undefined;
     return {
       moodColors,
       period,
       memorial,
       holiday,
+      label: sp?.label,
+      labelKind: sp?.kind,
     };
   };
 
@@ -433,16 +420,23 @@ export function CalendarCard() {
               </div>
               <div
                 className="font-serif text-sm font-medium"
-                style={{ color: selectedSpecial.kind === 'anniversary' ? '#f59e0b' : '#10b981' }}
+                style={{
+                  color:
+                    selectedSpecial.kind === 'anniversary'
+                      ? '#f59e0b'
+                      : selectedSpecial.kind === 'holiday'
+                        ? '#10b981'
+                        : '#38bdf8',
+                }}
               >
                 {selectedCount}
               </div>
             </div>
           )}
 
-          {/* 日记：当天有则跳转到日记页对应位置（记日记入口在右上角） */}
-          <div className="mt-3 border-t border-[#22304a] pt-3">
-            {diaryOfDay ? (
+          {/* 日记：当天有则展示（跳转到日记页对应位置），无则不提示（记日记入口在右上角） */}
+          {diaryOfDay && (
+            <div className="mt-3 border-t border-[#22304a] pt-3">
               <button
                 type="button"
                 onClick={() => selectedKey && navigate(`/diary?date=${selectedKey}`)}
@@ -461,10 +455,8 @@ export function CalendarCard() {
                   {diaryOfDay.content}
                 </p>
               </button>
-            ) : (
-              <div className="text-sm text-[#64748b]/70">当天还没有日记</div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

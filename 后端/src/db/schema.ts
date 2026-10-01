@@ -296,3 +296,90 @@ export const stickers = sqliteTable('stickers', {
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
 });
+
+/** RAG 知识库（阶段 11）：文档分组，向量存本地 SQLite（JSON 数组） */
+export const ragCollections = sqliteTable('rag_collections', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  color: text('color'),
+  embeddingModel: text('embedding_model'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** RAG 文档（阶段 11）：一条长期记忆 / 知识，正文 content，按 chunk 向量化 */
+export const ragDocuments = sqliteTable('rag_documents', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  chunkCount: integer('chunk_count').notNull().default(0),
+  source: text('source').notNull().default('manual'), // manual | agent | import | file
+  fileType: text('file_type'),
+  tags: text('tags'),
+  category: text('category').notNull().default('general'),
+  importance: integer('importance').notNull().default(3),
+  embeddingModel: text('embedding_model'),
+  meta: text('meta'), // JSON
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** RAG 分块（阶段 11）：文档切分后的片段，embedding 存 JSON 数组字符串 */
+export const ragChunks = sqliteTable('rag_chunks', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id').notNull(),
+  chunkIndex: integer('chunk_index').notNull(),
+  content: text('content').notNull(),
+  tokenCount: integer('token_count').notNull().default(0),
+  embedding: text('embedding'), // JSON 数组字符串
+  embeddingDim: integer('embedding_dim'),
+  hash: text('hash'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** RAG 文档↔知识库关联（阶段 11）：多对多，物理删除（随文档/知识库软删时清理） */
+export const ragDocumentCollections = sqliteTable('rag_document_collections', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id').notNull(),
+  collectionId: text('collection_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+/** Skill 技能（阶段 11）：条件触发的系统提示词片段 */
+export const skills = sqliteTable('skills', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  description: text('description').notNull(),
+  instruction: text('instruction').notNull(),
+  triggerKeywords: text('trigger_keywords'),
+  triggerMode: text('trigger_mode').notNull().default('keyword'), // keyword | always | manual
+  icon: text('icon'),
+  color: text('color'),
+  category: text('category').notNull().default('custom'), // builtin | custom
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  priority: integer('priority').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** Skill 触发记录（阶段 11）：审计/调试用，记录每次自动/手动触发的技能 */
+export const skillExecutions = sqliteTable('skill_executions', {
+  id: text('id').primaryKey(),
+  skillId: text('skill_id').notNull(),
+  skillName: text('skill_name').notNull(),
+  conversationId: text('conversation_id'),
+  triggerType: text('trigger_type').notNull(), // auto | manual
+  input: text('input'),
+  output: text('output'),
+  status: text('status').notNull().default('success'),
+  latencyMs: integer('latency_ms'),
+  createdAt: integer('created_at').notNull(),
+});

@@ -297,6 +297,93 @@ CREATE TABLE IF NOT EXISTS stickers (
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS rag_collections (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  color TEXT,
+  embedding_model TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS rag_documents (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  chunk_count INTEGER NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'manual',
+  file_type TEXT,
+  tags TEXT,
+  category TEXT NOT NULL DEFAULT 'general',
+  importance INTEGER NOT NULL DEFAULT 3,
+  embedding_model TEXT,
+  meta TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_rag_documents_updated ON rag_documents(updated_at);
+
+CREATE TABLE IF NOT EXISTS rag_chunks (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  token_count INTEGER NOT NULL DEFAULT 0,
+  embedding TEXT,
+  embedding_dim INTEGER,
+  hash TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_rag_chunks_document ON rag_chunks(document_id);
+
+CREATE TABLE IF NOT EXISTS rag_document_collections (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  collection_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_rag_doc_coll_collection ON rag_document_collections(collection_id);
+CREATE INDEX IF NOT EXISTS idx_rag_doc_coll_document ON rag_document_collections(document_id);
+
+CREATE TABLE IF NOT EXISTS skills (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  description TEXT NOT NULL,
+  instruction TEXT NOT NULL,
+  trigger_keywords TEXT,
+  trigger_mode TEXT NOT NULL DEFAULT 'keyword',
+  icon TEXT,
+  color TEXT,
+  category TEXT NOT NULL DEFAULT 'custom',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  priority INTEGER NOT NULL DEFAULT 0,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_skills_slug ON skills(slug);
+
+CREATE TABLE IF NOT EXISTS skill_executions (
+  id TEXT PRIMARY KEY,
+  skill_id TEXT NOT NULL,
+  skill_name TEXT NOT NULL,
+  conversation_id TEXT,
+  trigger_type TEXT NOT NULL,
+  input TEXT,
+  output TEXT,
+  status TEXT NOT NULL DEFAULT 'success',
+  latency_ms INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_skill_executions_created ON skill_executions(created_at);
 `;
 
 /**

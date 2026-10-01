@@ -14,6 +14,8 @@ import { listCodeTools, getCodeTool, codeToolDef } from '../agent/codeTools.js';
 import { listBuiltinTools, builtinToolDef } from '../tools/registry.js';
 import { runTool, isAllowed, logToolCall } from '../services/toolRunner.js';
 import { requestConfirmation } from '../services/confirmations.js';
+import { retrieveChunks } from '../services/ragService.js';
+import { buildSkillContext } from '../services/skillEngine.js';
 
 interface ChatStreamBody {
   messages?: ChatMessage[];
@@ -21,10 +23,23 @@ interface ChatStreamBody {
   stationId?: string;
   conversationId?: string | null;
   web?: boolean; // 阶段 9：开启后模型可联网搜索 / 读网页
+  rag?: boolean; // 阶段 11：开启后模型可检索长期记忆并写入（默认开启）
 }
 
 const WEB_NOTE =
   '如果用户的问题需要最新的信息、事实核查或读取某个链接，请使用 web_search 或 web_fetch 工具联网获取，再基于结果作答；否则直接回答，不要调用工具。';
+
+const RAG_NOTE =
+  '你拥有长期记忆能力。对话中出现重要信息（偏好、约定、计划、经历、重要个人信息等）时，主动调用 rag_import 工具归档。检索到相关知识时会自动注入到对话上下文中。';
+
+const RAG_IMPORT_RULES = `【知识归档规则】你是小蓝莓，一个细心的陪伴者。以下类型的信息值得长期记住，请用 rag_import 归档：
+1. preference: 对方表达喜欢/不喜欢什么
+2. agreement: 两人之间的约定、承诺
+3. experience: 共同经历的值得记住的瞬间
+4. info: 对方透露的重要个人信息
+5. inspiration: 对方提到的想法、创意
+6. plan: 未来要做的事情
+归档时机：信息明确且有存档价值时调用。不确定时倾向于归档。`;
 
 const CODE_NOTE =
   '你也能编程：可以读写工作区的文件、运行命令、查看 git。仅当用户明确要求查看或修改小蓝莓的代码时才调用这些工具（read_file/list_dir/search_files/git_status/git_diff 只读免确认；write_file/edit_file/run_command/git_commit 会请求用户确认）。';
@@ -51,6 +66,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const model = body.model?.trim() || firstModel(station) || defaultModel;
     const adapter = openaiCompatibleAdapter(getAdapterConfig(station?.id));
     const web = body.web === true;
+    const ragOn = body.rag !== false;
     const convId = body.conversationId ?? null;
 
     // 阶段 5/6：注入 system 提示词（全局 + 该模型）+ 世界书 + 长期记忆 + 最近摘要
@@ -77,10 +93,27 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         })()
       : '';
 
+    // 阶段 11：RAG 检索长期记忆 + Skill 上下文（rag !== false 时）
+    const ragResults = ragOn ? await retrieveChunks(query, { topK: 5, minScore: 0.3 }) : [];
+    const ragBlock = ragOn
+      ? (() => {
+          const parts: string[] = [];
+          if (ragResults.length) {
+            const lines = ragResults.map((r) => `- [${r.document.category}] ${r.chunk.content}`);
+            parts.push(`【长期记忆检索结果】以下是从你的知识库里检索到的相关内容（可直接引用，若与当前话题无关则忽略）：\n${lines.join('\n')}`);
+          }
+          const skills = buildSkillContext(query);
+          if (skills) parts.push(skills);
+          parts.push(RAG_NOTE, RAG_IMPORT_RULES);
+          return parts.join('\n\n');
+        })()
+      : '';
+
     const systemPrompt = [
       buildSystemPrompt(model),
       buildWorldContext(),
       buildMemoryContext(query),
+      ragBlock,
       buildSummaryContext(convId),
       CODE_NOTE,
       web ? WEB_NOTE : '',
@@ -129,8 +162,12 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     let usage: { input: number; output: number } | undefined;
 
     try {
-      // 编程工具常开（融合进日常对话）；联网工具按 web（默认开）；课表识别按是否带图
-      const builtin = listBuiltinTools().filter((t) => (t.name === 'save_courses' ? hasImage : web));
+      // 编程工具常开（融合进日常对话）；联网工具按 web（默认开）；课表识别按是否带图；RAG 工具按 rag（默认开）
+      const builtin = listBuiltinTools().filter((t) => {
+        if (t.name === 'save_courses') return hasImage;
+        if (t.name.startsWith('rag_')) return ragOn;
+        return web;
+      });
       const defs = [...listCodeTools().map(codeToolDef), ...builtin.map(builtinToolDef)];
       const resolveTool = async (name: string, args: Record<string, unknown>): Promise<string> => {
         const code = getCodeTool(name);

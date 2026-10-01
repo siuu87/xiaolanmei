@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Heart, BookOpen, type LucideIcon } from 'lucide-react';
+import { Heart, BookOpen, BookMarked, type LucideIcon } from 'lucide-react';
 
 interface Feature {
   label: string;
@@ -7,10 +7,11 @@ interface Feature {
   path?: string;
 }
 
-// 底部辅助功能入口（纪念日 / 日记本 → 详情页）
+// 底部辅助功能入口（纪念日 / 日记本 / 备忘录 → 详情页）
 const FEATURES: Feature[] = [
   { label: '纪念日', icon: Heart, path: '/memorial' },
   { label: '日记本', icon: BookOpen, path: '/diary' },
+  { label: '备忘录', icon: BookMarked, path: '/memo' },
 ];
 
 /** 图标项外观 */

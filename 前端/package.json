@@ -22,6 +22,7 @@
     "react-router-dom": "^6.26.2",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
+    "solarlunar": "^3.1.0",
     "tailwind-merge": "^2.5.2",
     "zustand": "^4.5.5"
   },
