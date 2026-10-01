@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Radio, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, Radio, SkipBack, SkipForward, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 
@@ -15,6 +15,9 @@ const STATIONS = [
   { name: 'SomaFM · Drone Zone', url: 'https://ice1.somafm.com/dronezone-256-mp3' },
   { name: 'Radio Paradise · 主混音', url: 'https://stream.radioparadise.com/mp3-192' },
 ];
+
+/** 心动触碰的预设话语（循环） */
+const HEART_NOTES = ['想你了', '这颗心给你 💗', '在听吗？', '今晚也一起听', '你是我最想分享的歌'];
 
 /** 生成一段噪声 AudioBuffer（白/粉/棕） */
 function makeNoise(ctx: AudioContext, kind: 'white' | 'pink' | 'brown', seconds = 4): AudioBuffer {
@@ -133,6 +136,19 @@ export function VinylPlayer() {
   const noiseSrcRef = useRef<AudioBufferSourceNode | null>(null);
   const radioRef = useRef<HTMLAudioElement>(null);
   const swipeStartX = useRef<number | null>(null);
+  const dingCtxRef = useRef<AudioContext | null>(null);
+
+  // 心动触碰状态
+  const [hearts, setHearts] = useState<{ id: number; left: number; delay: number; emoji: string }[]>([]);
+  const [shaking, setShaking] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [heartCount, setHeartCount] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem('blueberry.heartTouches')) || 0;
+    } catch {
+      return 0;
+    }
+  });
 
   const playing = mode === 'noise' ? noisePlaying : radioPlaying;
 
@@ -241,6 +257,60 @@ export function VinylPlayer() {
     setMode(m);
   };
 
+  // 心动触碰：一声轻响 + 唱片轻颤 + 飘起爱心 + 一句暖话 + 记入本地
+  const playDing = () => {
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!dingCtxRef.current) dingCtxRef.current = new Ctx();
+      const ctx = dingCtxRef.current;
+      if (ctx.state === 'suspended') void ctx.resume();
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t);
+      osc.frequency.exponentialRampToValueAtTime(1318, t + 0.07);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.28, t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.6);
+    } catch {
+      /* 无音频环境时静默 */
+    }
+  };
+
+  const touchHeart = () => {
+    playDing();
+    setShaking(true);
+    window.setTimeout(() => setShaking(false), 600);
+
+    const parts = Array.from({ length: 7 }, (_, i) => ({
+      id: Date.now() + i,
+      left: 30 + Math.random() * 40,
+      delay: Math.random() * 0.3,
+      emoji: Math.random() > 0.5 ? '💗' : '💕',
+    }));
+    setHearts((h) => [...h, ...parts]);
+    window.setTimeout(() => {
+      setHearts((h) => h.filter((p) => !parts.some((q) => q.id === p.id)));
+    }, 1700);
+
+    const d = new Date();
+    const msg = HEART_NOTES[heartCount % HEART_NOTES.length];
+    setNote(`💌 ${d.getMonth() + 1}月${d.getDate()}日 你说：${msg}`);
+    window.setTimeout(() => setNote(null), 2600);
+
+    const next = heartCount + 1;
+    setHeartCount(next);
+    try {
+      localStorage.setItem('blueberry.heartTouches', String(next));
+    } catch {
+      /* ignore */
+    }
+  };
+
   useEffect(() => {
     const el = radioRef.current;
     return () => {
@@ -274,7 +344,7 @@ export function VinylPlayer() {
         </button>
 
         <div
-          className="relative aspect-square w-full max-w-[180px] touch-pan-y select-none"
+          className={cn('relative aspect-square w-full max-w-[180px] touch-pan-y select-none', shaking && 'heart-shake')}
           onPointerDown={(e) => {
           swipeStartX.current = e.clientX;
         }}
@@ -395,6 +465,19 @@ export function VinylPlayer() {
         <div className="mt-1 text-[10px] text-slate-500">点击中心播放 · 两侧按键或左右滑动切歌</div>
       </div>
 
+      {/* 心动触碰 */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={touchHeart}
+          className="group flex items-center gap-2 rounded-full border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300 transition hover:bg-rose-500/20"
+        >
+          <Heart className="h-4 w-4 text-rose-400 transition-transform group-active:scale-125" />
+          心动触碰
+          {heartCount > 0 && <span className="text-xs text-rose-300/70">{heartCount}</span>}
+        </button>
+      </div>
+
       {/* 模式切换 */}
       <div className="flex gap-2">
         {(['noise', 'radio'] as const).map((m) => (
@@ -448,7 +531,30 @@ export function VinylPlayer() {
         </div>
       )}
 
-      <style>{`@keyframes vinyl-spin { to { transform: rotate(360deg); } } @keyframes twinkle { 0%,100% { opacity: 0.2; } 50% { opacity: 0.9; } }`}</style>
+      {/* 爱心粒子 + 心动便签 */}
+      {hearts.length > 0 && (
+        <div className="pointer-events-none fixed inset-0 z-50">
+          {hearts.map((h) => (
+            <span
+              key={h.id}
+              className="absolute text-xl"
+              style={{ left: `${h.left}%`, top: '58%', animation: `heart-rise 1.5s ease-out ${h.delay}s forwards` }}
+            >
+              {h.emoji}
+            </span>
+          ))}
+        </div>
+      )}
+      {note && (
+        <div
+          className="pointer-events-none fixed left-1/2 top-16 z-50 whitespace-nowrap rounded-full bg-black/70 px-4 py-2 text-sm text-white shadow-xl backdrop-blur"
+          style={{ animation: 'heart-note 2.6s ease forwards' }}
+        >
+          {note}
+        </div>
+      )}
+
+      <style>{`@keyframes vinyl-spin { to { transform: rotate(360deg); } } @keyframes twinkle { 0%,100% { opacity: 0.2; } 50% { opacity: 0.9; } } @keyframes heart-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-2deg); } 40% { transform: translateX(6px) rotate(2deg); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } } @keyframes heart-rise { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-120px) scale(1.2); opacity: 0; } } @keyframes heart-note { 0% { transform: translate(-50%, -12px); opacity: 0; } 15% { transform: translate(-50%, 0); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(-50%, -12px); opacity: 0; } }`}</style>
     </div>
   );
 }

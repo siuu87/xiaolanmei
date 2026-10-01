@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pencil, Trash2, Pin, PinOff, ChevronDown, Sparkles, User } from 'lucide-react';
+import { Pencil, Trash2, Pin, PinOff, ChevronDown, Sparkles, User, Bell, BellRing } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MemoDTO } from '@/lib/api/memo';
+import { MemoAvatar } from '@/components/MemoAvatar';
 
 export const CATEGORY_META: Record<string, { label: string; dot: string; cls: string }> = {
   preference: { label: '喜好', dot: '#fb7185', cls: 'bg-rose-400/15 text-rose-300' },
@@ -41,12 +42,13 @@ export interface MemoCardProps {
   onEdit: (memo: MemoDTO) => void;
   onDelete: (id: string) => void;
   onTogglePin: (id: string) => void;
+  onToggleNotify: (id: string) => void;
   highlight?: boolean;
   defaultOpen?: boolean;
 }
 
-/** 备忘录卡片：分类圆点 + 标题 + 摘要（两行截断）+ 重要性 + 来源 + 置顶。点击展开全文。 */
-export function MemoCard({ memo, onEdit, onDelete, onTogglePin, highlight, defaultOpen }: MemoCardProps) {
+/** 备忘录卡片：分类圆点 + 标题 + 摘要 + 重要性 + 归属徽章 + 提醒对方 + 置顶。点击展开全文。 */
+export function MemoCard({ memo, onEdit, onDelete, onTogglePin, onToggleNotify, highlight, defaultOpen }: MemoCardProps) {
   const [open, setOpen] = useState(!!defaultOpen);
   const meta = CATEGORY_META[memo.category] ?? CATEGORY_META.general;
   const summary = memo.content.replace(/\s+/g, ' ').slice(0, 50);
@@ -97,7 +99,28 @@ export function MemoCard({ memo, onEdit, onDelete, onTogglePin, highlight, defau
         </div>
       )}
 
-      {/* 底部：tags + 展开指示 + 操作 */}
+      {/* 归属：谁为谁记的（专属徽章） */}
+      {(memo.fromWho || memo.toWho) && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          {memo.fromWho && memo.fromWho !== memo.toWho ? (
+            <>
+              <span className="font-medium text-foreground/80">{memo.fromWho}</span>
+              <span>为</span>
+              <MemoAvatar seed={memo.avatarSeed} emoji={memo.emoji} nickname={memo.toWho} color={memo.avatarColor} size={20} />
+              <span className="font-medium text-foreground/80">{memo.toWho}</span>
+              <span>记的</span>
+            </>
+          ) : (
+            <>
+              <MemoAvatar seed={memo.avatarSeed} emoji={memo.emoji} nickname={memo.toWho} color={memo.avatarColor} size={20} />
+              <span className="font-medium text-foreground/80">{memo.toWho}</span>
+              <span>记的</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 底部：tags + 提醒 + 展开指示 + 操作 */}
       <div className="mt-2 flex items-center gap-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap gap-1">
           {memo.tags.map((t) => (
@@ -106,6 +129,21 @@ export function MemoCard({ memo, onEdit, onDelete, onTogglePin, highlight, defau
             </span>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => onToggleNotify(memo.id)}
+          aria-label={memo.needNotify ? '取消提醒' : '提醒对方'}
+          title={memo.needNotify ? '已开启提醒，点击取消' : '提醒对方'}
+          className={cn(
+            'flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition',
+            memo.needNotify
+              ? 'bg-rose-400/15 text-rose-300 ring-1 ring-rose-400/30'
+              : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          {memo.needNotify ? <BellRing className="h-3 w-3" /> : <Bell className="h-3 w-3" />}
+          {memo.needNotify ? '已提醒' : '提醒'}
+        </button>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

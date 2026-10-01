@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { periodSummary } from '@/lib/cycle';
 import { diaryDayKey, AUTHOR_LABEL } from '@/features/diary/diaryData';
 import { useDiaryStore } from '@/features/diary/diaryStore';
 import { CollapsibleCalendar, type CalendarDayDecoration } from '@/features/calendar/CollapsibleCalendar';
@@ -136,6 +137,7 @@ export function CalendarCard() {
 
   // 日历每天的标注：心情圆点 + 经期圆点 + 纪念日金线 + 放假日绿线 + 节日/节气名称
   const next = predictNextStart(records, settings);
+  const periodSummaryText = periodSummary(records, settings);
   const dayDecoration = (iso: string): CalendarDayDecoration | undefined => {
     const [y, m, d] = iso.split('-').map(Number);
     const key = `${y}-${m}-${d}`;
@@ -265,6 +267,11 @@ export function CalendarCard() {
                 设置
               </button>
             </div>
+
+            {/* 上次经期 / 平均周期摘要 */}
+            {periodSummaryText && (
+              <div className="mt-0.5 text-xs text-[#64748b]/80">{periodSummaryText}</div>
+            )}
 
             {/* 关怀语（按选中日计算） */}
             <div className="mt-1 text-sm leading-6 text-[#e2e8f0]/90">

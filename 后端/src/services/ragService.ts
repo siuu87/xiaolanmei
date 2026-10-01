@@ -281,6 +281,12 @@ export interface IndexDocumentInput {
   collectionId?: string | null;
   fileType?: string | null;
   authorType?: 'user' | 'agent'; // 备忘录作者（默认 user）
+  fromWho?: string | null; // 谁记的（昵称）
+  toWho?: string | null; // 为谁记的（昵称）
+  avatarSeed?: string | null; // 头像标识（专属徽章种子）
+  needNotify?: boolean; // 是否提醒对方
+  ownerSide?: 'me' | 'partner'; // 归属方：me 我记 TA / partner TA 记我
+  status?: 'unfiled' | 'archived'; // 备忘录状态（默认 unfiled）
   meta?: Record<string, unknown>;
 }
 
@@ -304,6 +310,12 @@ export async function indexDocument(input: IndexDocumentInput): Promise<{ id: st
       category: input.category ?? 'general',
       importance: input.importance ?? 3,
       authorType: input.authorType ?? 'user',
+      fromWho: input.fromWho ?? null,
+      toWho: input.toWho ?? null,
+      avatarSeed: input.avatarSeed ?? null,
+      needNotify: input.needNotify ?? false,
+      ownerSide: input.ownerSide ?? 'me',
+      status: input.status ?? 'unfiled',
       embeddingModel: null,
       meta: input.meta ? JSON.stringify(input.meta) : null,
       createdAt: ts,

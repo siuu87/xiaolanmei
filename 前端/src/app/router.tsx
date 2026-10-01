@@ -14,7 +14,7 @@ import { DiaryPage } from '@/features/diary/DiaryPage';
 import { MemorialPage } from '@/features/memorial/MemorialPage';
 import { NotesPage } from '@/features/notes/NotesPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
-import { MemoPage } from '@/features/memo/MemoPage';
+import { MemoHomePage } from '@/features/memo/MemoHomePage';
 
 /**
  * 路由表：底部 4 个 Tab = 首页 / 聊天 / 星空 / 我。
@@ -43,7 +43,7 @@ export const router = createBrowserRouter([
       { path: 'memorial', element: <MemorialPage /> },
       { path: 'notes', element: <NotesPage /> },
       { path: 'schedule', element: <SchedulePage /> },
-      { path: 'memo', element: <MemoPage /> },
+      { path: 'memo', element: <MemoHomePage /> },
       // 兜底：未知路径（含已移除的旧路由）回到首页，避免客户端 404
       { path: '*', element: <Navigate to="/" replace /> },
     ],

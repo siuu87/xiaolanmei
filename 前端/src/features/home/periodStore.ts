@@ -1,6 +1,26 @@
 import { create } from 'zustand';
 import { getPeriod, putPeriod } from '@/lib/api/home';
 import { newId } from '@/lib/id';
+import {
+  toISODate,
+  todayISODate,
+  addDays,
+  diffDays,
+  predictNextPeriod,
+  isPredictedDay,
+} from '@/lib/cycle';
+
+// 纯函数（日期 / 预测）迁到 lib/cycle.ts；这里重导出，保持既有 import 不变
+export {
+  toISODate,
+  todayISODate,
+  addDays,
+  diffDays,
+  predictNextPeriod,
+  isPredictedDay,
+};
+/** 兼容旧名：预测下一次经期开始日 */
+export const predictNextStart = predictNextPeriod;
 
 export type MoodKey = 'happy' | 'calm' | 'sad' | 'angry' | 'love';
 
@@ -27,37 +47,6 @@ export interface PeriodSettings {
   regular: boolean; // 规律 / 不规律
 }
 
-// ---------- 日期工具 ----------
-
-/** 组装 ISO 日期 YYYY-MM-DD（month 为 1-based） */
-export function toISODate(year: number, month: number, day: number): string {
-  const m = String(month).padStart(2, '0');
-  const d = String(day).padStart(2, '0');
-  return `${year}-${m}-${d}`;
-}
-
-/** 今天的 ISO 日期 YYYY-MM-DD */
-export function todayISODate(): string {
-  const n = new Date();
-  return toISODate(n.getFullYear(), n.getMonth() + 1, n.getDate());
-}
-
-/** ISO 日期 + n 天 */
-export function addDays(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const t = new Date(y, m - 1, d + n);
-  return toISODate(t.getFullYear(), t.getMonth() + 1, t.getDate());
-}
-
-/** b - a 的天数差 */
-export function diffDays(a: string, b: string): number {
-  const [ay, am, ad] = a.split('-').map(Number);
-  const [by, bm, bd] = b.split('-').map(Number);
-  return Math.round(
-    (new Date(by, bm - 1, bd).getTime() - new Date(ay, am - 1, ad).getTime()) / 86_400_000,
-  );
-}
-
 // ---------- 派生 ----------
 
 /** 某 ISO 日期是某条经期记录的第几天（1-based，相对第 1 天）；不在经期内返回 null */
@@ -74,39 +63,6 @@ export function recordFor(iso: string, records: PeriodRecord[]): PeriodRecord | 
     if (r.days.includes(iso)) return r;
   }
   return null;
-}
-
-/** 相邻记录第 1 天差值的均值；不足 2 条返回 null */
-function averageCycle(records: PeriodRecord[]): number | null {
-  if (records.length < 2) return null;
-  const gaps: number[] = [];
-  for (let i = 1; i < records.length; i++) {
-    gaps.push(diffDays(records[i - 1].days[0], records[i].days[0]));
-  }
-  return Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
-}
-
-/** 下一次经期预测开始日（ISO）；无记录返回 null */
-export function predictNextStart(
-  records: PeriodRecord[],
-  settings: PeriodSettings,
-): string | null {
-  if (!records.length) return null;
-  const last = records[records.length - 1].days[0];
-  const cycle = settings.regular
-    ? settings.cycleDays
-    : (averageCycle(records) ?? settings.cycleDays);
-  return addDays(last, cycle);
-}
-
-/** 某 ISO 日期是否落在预测经期内（含首日，不含首日 + periodDays） */
-export function isPredictedDay(
-  iso: string,
-  nextStart: string | null,
-  periodDays: number,
-): boolean {
-  if (!nextStart) return false;
-  return iso >= nextStart && iso < addDays(nextStart, periodDays);
 }
 
 // ---------- 关怀 ----------

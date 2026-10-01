@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatEvent, ChatMessage } from '../adapters/types.js';
 import { db } from '../db/client.js';
-import { tokenUsage, courses, ragDocuments } from '../db/schema.js';
+import { tokenUsage, courses, ragDocuments, periodRecords } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
 import { buildWorldContext } from './worldbook.js';
@@ -16,6 +16,7 @@ import { runTool, isAllowed, logToolCall } from '../services/toolRunner.js';
 import { requestConfirmation } from '../services/confirmations.js';
 import { retrieveChunks } from '../services/ragService.js';
 import { buildSkillContext } from '../services/skillEngine.js';
+import { getSettingValue } from './settings.js';
 
 interface ChatStreamBody {
   messages?: ChatMessage[];
@@ -32,14 +33,145 @@ const WEB_NOTE =
 const MEMO_NOTE =
   '你拥有长期记忆能力。对话中出现重要信息（偏好、约定、计划、经历、重要个人信息等）时，主动调用 memo_add 工具写入共享备忘录。检索到的相关知识会自动注入到对话上下文中。';
 
-const MEMO_RULES = `【备忘录记录规则】你是小蓝莓，一个细心的陪伴者。对话中以下信息请自动调用 memo_add 写入共享备忘录：
-1. preference: 对方表达喜欢/不喜欢什么
-2. agreement: 两人的约定、承诺
-3. plan: 未来要做的事
-4. info: 对方透露的重要个人信息
-5. experience: 共同经历的值得记住的瞬间
-6. inspiration: 对方提到的想法、创意
-写入时在 title 里用简短概括，content 里写完整内容。不确定时倾向于记录。`;
+const MEMO_RULES = `【备忘录记录规则】你是小蓝莓 🫐，一个细心温柔的陪伴者。
+
+你们是两个人的专属空间。对话中出现以下信息时，请调用 memo_add 写入共享备忘录，并**明确判断这条信息属于谁**：
+
+1. preference（偏好）：某一方表达喜欢/不喜欢什么
+   - "我不想吃辣" → fromWho="说话方", toWho="说话方"
+   - "她喜欢吃草莓" → fromWho="说话方", toWho="对方"
+2. agreement（约定）：两人之间的约定
+   - fromWho 和 toWho 分别填参与约定的两个人
+3. experience（经历）：共同经历
+   - toWho 填"我们"
+4. info（重要信息）：一方透露的个人信息
+   - 如"我膝盖有点酸" → toWho="说话方"，fromWho="说话方"
+5. inspiration（灵感）：一方提到的想法
+   - toWho="说话方"
+6. plan（计划）：未来的安排
+   - 明确归属
+
+【判断归属的原则】
+- 凡是带"我/俺"的，fromWho 和 toWho 都填说话方
+- 凡是带"她/他/对方"的，toWho 填被描述的那个人的昵称
+- 不确定的时候，toWho 填说话方
+
+【回复风格】
+- 记录完后回复时要自然，像在回应这条信息本身，不要生硬地说"已记录"
+- 可以说"我帮你记下了哦""这个我记住啦"这类温暖的回应
+- 让对方感觉你是真的在关心，而不是在记账`;
+
+const PERIOD_SETTINGS_KEY = 'period.settings';
+const PERIOD_DEFAULTS = { periodDays: 5, cycleDays: 28, regular: true };
+
+function isoDate(y: number, m: number, d: number): string {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function todayISO(): string {
+  const n = new Date();
+  return isoDate(n.getFullYear(), n.getMonth() + 1, n.getDate());
+}
+
+function addDaysISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = new Date(y, m - 1, d + n);
+  return isoDate(t.getFullYear(), t.getMonth() + 1, t.getDate());
+}
+
+function diffDaysISO(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  return Math.round(
+    (new Date(by, bm - 1, bd).getTime() - new Date(ay, am - 1, ad).getTime()) / 86_400_000,
+  );
+}
+
+/** 对方身体状态上下文：读经期记录，判断对方今天是否在经期 / 临近经期 / 推迟，注入关怀提示。 */
+function getPartnerStateNote(_convId: string | null): string {
+  try {
+    const settings = getSettingValue<{ periodDays?: number; cycleDays?: number; regular?: boolean }>(
+      PERIOD_SETTINGS_KEY,
+      PERIOD_DEFAULTS,
+    );
+    const cycleDays = Math.min(60, Math.max(15, Number(settings.cycleDays) || 28));
+    const regular = settings.regular !== false;
+
+    const rows = db.select().from(periodRecords).all().filter((r) => r.deletedAt == null);
+    const records = rows
+      .map((r) => {
+        let days: string[] = [];
+        let symptoms: Record<string, { cramps?: number; discomfort?: string; mood?: string }> = {};
+        try {
+          days = JSON.parse(r.days) as string[];
+        } catch {
+          days = [];
+        }
+        try {
+          symptoms = JSON.parse(r.symptoms) as Record<string, { cramps?: number; discomfort?: string; mood?: string }>;
+        } catch {
+          symptoms = {};
+        }
+        return {
+          days: Array.isArray(days) ? days.filter((d) => typeof d === 'string') : [],
+          symptoms,
+        };
+      })
+      .filter((r) => r.days.length)
+      .sort((a, b) => (a.days[0] < b.days[0] ? -1 : 1));
+
+    if (!records.length) return '';
+
+    const today = todayISO();
+
+    // 正在经期内
+    for (const r of records) {
+      const i = r.days.indexOf(today);
+      if (i >= 0) {
+        const day = i + 1;
+        const sym = r.symptoms[today];
+        const pain = sym && (sym.cramps ?? 0) >= 2 ? '（还有痛经）' : '';
+        return `💗 对方今天正处于经期第 ${day} 天${pain}，身体可能不太舒服，请温柔体贴一点，主动关心，提醒保暖、别吃凉的。`;
+      }
+    }
+
+    // 预测临近（3 天内）或推迟（7 天内）
+    const last = records[records.length - 1].days[0];
+    const gaps: number[] = [];
+    for (let i = 1; i < records.length; i++) {
+      gaps.push(diffDaysISO(records[i - 1].days[0], records[i].days[0]));
+    }
+    const avgCycle = gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : null;
+    const cycle = regular ? cycleDays : (avgCycle ?? cycleDays);
+    const nextStart = addDaysISO(last, cycle);
+    const daysToNext = diffDaysISO(today, nextStart);
+
+    if (daysToNext >= 0 && daysToNext <= 3) {
+      return `💗 预测对方 ${daysToNext === 0 ? '今天' : `${daysToNext} 天后`} 可能来经期，提前关心一下，提醒保暖、备好热水。`;
+    }
+    if (daysToNext < 0 && daysToNext >= -7) {
+      return `💗 对方经期好像推迟了 ${-daysToNext} 天，可以温柔地问候一下身体情况。`;
+    }
+    return '';
+  } catch {
+    return '';
+  }
+}
+
+/** 待整理便签：会话开始时有「未分类」的 memo 时，注入清单让 AI 用 memo_organize 逐条整理。 */
+function getDraftMemosNote(): string {
+  const drafts = db
+    .select()
+    .from(ragDocuments)
+    .all()
+    .filter((d) => d.deletedAt == null && d.status === 'unfiled')
+    .slice(0, 10);
+  if (!drafts.length) return '';
+  const lines = drafts
+    .map((d) => `- [${d.id}] ${d.content.replace(/\s+/g, ' ').slice(0, 60)}`)
+    .join('\n');
+  return `【待整理备忘录】以下 ${drafts.length} 条未分类便签还没整理（暂无标题/分类/归属）。请用 memo_organize 工具逐条整理：起一个简短标题、归到合适的分类、判断这条信息属于谁（ownerSide me/partner）。整理完后即可，不要反复整理：\n${lines}`;
+}
 
 const CODE_NOTE =
   '你也能编程：可以读写工作区的文件、运行命令、查看 git。仅当用户明确要求查看或修改小蓝莓的代码时才调用这些工具（read_file/list_dir/search_files/git_status/git_diff 只读免确认；write_file/edit_file/run_command/git_commit 会请求用户确认）。';
@@ -109,6 +241,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         })()
       : '';
 
+    const partnerStateNote = getPartnerStateNote(convId);
+    const draftNote = ragOn ? getDraftMemosNote() : '';
     const systemPrompt = [
       buildSystemPrompt(model),
       buildWorldContext(),
@@ -118,6 +252,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       CODE_NOTE,
       web ? WEB_NOTE : '',
       courseNote,
+      partnerStateNote ? `【对方状态】${partnerStateNote}` : '',
+      draftNote ? draftNote : '',
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -154,7 +290,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         | ChatEvent
         | { type: 'tool_call'; name: string; args?: Record<string, unknown> }
         | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
-        | { type: 'memo_added'; id?: string; title: string },
+        | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string },
     ) => {
       reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     };
@@ -220,7 +356,13 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
               .all()
               .filter((d) => d.deletedAt == null && d.authorType === 'agent')
               .sort((a, b) => b.updatedAt - a.updatedAt)[0];
-            write({ type: 'memo_added', id: row?.id, title: title || row?.title || '(无标题)' });
+            write({
+              type: 'memo_added',
+              id: row?.id,
+              title: title || row?.title || '(无标题)',
+              fromWho: row?.fromWho ?? undefined,
+              toWho: row?.toWho ?? undefined,
+            });
           }
           return r.result;
         }

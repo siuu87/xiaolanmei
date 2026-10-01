@@ -14,7 +14,7 @@ export interface StreamChatOptions {
   onDelta?: (text: string) => void;
   onToolCall?: (name: string) => void;
   onNeedsConfirm?: (confirmId: string, toolName: string, summary: string) => void;
-  onMemoAdded?: (id: string | undefined, title: string) => void;
+  onMemoAdded?: (id: string | undefined, title: string, fromWho?: string, toWho?: string) => void;
   onDone?: () => void;
   onError?: (message: string) => void;
 }
@@ -93,6 +93,8 @@ export async function streamChat(
           summary?: string;
           id?: string;
           title?: string;
+          fromWho?: string;
+          toWho?: string;
         };
         try {
           ev = JSON.parse(payload);
@@ -107,7 +109,7 @@ export async function streamChat(
         } else if (ev.type === 'needs_confirm' && ev.confirmId) {
           onNeedsConfirm?.(ev.confirmId, ev.toolName ?? '', ev.summary ?? '');
         } else if (ev.type === 'memo_added') {
-          onMemoAdded?.(ev.id, ev.title ?? '');
+          onMemoAdded?.(ev.id, ev.title ?? '', ev.fromWho, ev.toWho);
         } else if (ev.type === 'done') {
           done = true;
           onDone?.();

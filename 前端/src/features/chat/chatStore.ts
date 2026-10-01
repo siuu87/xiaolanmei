@@ -19,6 +19,7 @@ export interface ChatMessage {
   status?: MessageStatus;
   images?: ChatImage[];
   sticker?: string; // 表情包贴图（emoji key；content 同步存 emoji 供模型理解）
+  poke?: boolean; // 拍一拍 / 戳一戳（不触发 AI 回复，仅展示动画气泡）
 }
 
 export interface Conversation {
@@ -35,34 +36,40 @@ export function uid(): string {
 }
 
 /** 从消息 meta JSON 解析图片引用 + 贴图（持久化只存 url/name/mime，不存 base64） */
-function parseMeta(meta?: string | null): { images: ChatImage[]; sticker?: string } {
+function parseMeta(meta?: string | null): { images: ChatImage[]; sticker?: string; poke?: boolean } {
   if (!meta) return { images: [] };
   try {
     const obj = JSON.parse(meta) as {
       images?: { url: string; name?: string; mime?: string }[];
       sticker?: string;
+      poke?: boolean;
     };
     const images = Array.isArray(obj.images)
       ? obj.images
           .filter((i) => i && typeof i.url === 'string')
           .map((i) => ({ url: i.url, name: i.name, mime: i.mime }))
       : [];
-    return { images, sticker: typeof obj.sticker === 'string' ? obj.sticker : undefined };
+    return {
+      images,
+      sticker: typeof obj.sticker === 'string' ? obj.sticker : undefined,
+      poke: obj.poke === true,
+    };
   } catch {
     return { images: [] };
   }
 }
 
 /** 把图片引用 / 贴图序列化进消息 meta（丢弃 base64，只留后端 URL） */
-function serializeMeta(msg: { images?: ChatImage[]; sticker?: string }): string | null {
+function serializeMeta(msg: { images?: ChatImage[]; sticker?: string; poke?: boolean }): string | null {
   const images =
     msg.images && msg.images.length
       ? msg.images.map((i) => ({ url: i.url, name: i.name, mime: i.mime }))
       : undefined;
-  if (!images && !msg.sticker) return null;
+  if (!images && !msg.sticker && !msg.poke) return null;
   return JSON.stringify({
     ...(images ? { images } : {}),
     ...(msg.sticker ? { sticker: msg.sticker } : {}),
+    ...(msg.poke ? { poke: true } : {}),
   });
 }
 
@@ -173,6 +180,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               status: (m.status ?? 'done') as MessageStatus,
               images: meta.images,
               sticker: meta.sticker,
+              poke: meta.poke,
             };
           }),
         },

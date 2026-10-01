@@ -4,6 +4,7 @@ import { CourseCard } from './CourseCard';
 import { TodoCard } from './TodoCard';
 import { TokenCard } from './TokenCard';
 import { FeatureGrid } from './FeatureGrid';
+import { PeriodHint } from './PeriodHint';
 import { InspirationNoteCard } from '@/features/notes/InspirationNoteCard';
 import { useMemorialStore } from './memorialStore';
 
@@ -20,6 +21,7 @@ export function HomePage() {
         {/* 置顶区域：有置顶纪念日才显示，否则留空 */}
         {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
         <CalendarCard />
+        <PeriodHint />
         <CourseCard />
         <TodoCard />
         <div className="grid grid-cols-2 items-start gap-3">

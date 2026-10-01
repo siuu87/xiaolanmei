@@ -323,11 +323,29 @@ export const ragDocuments = sqliteTable('rag_documents', {
   pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false), // 置顶
   order: integer('order').notNull().default(0), // 手动排序权重
   authorType: text('author_type').notNull().default('user'), // user | agent（备忘录作者）
+  fromWho: text('from_who'), // 谁记的（昵称，如「白起」）
+  toWho: text('to_who'), // 为谁记的（昵称，如「肆佑」）
+  avatarSeed: text('avatar_seed'), // 头像标识（用于生成专属徽章，取自 toWho 的档案）
+  needNotify: integer('need_notify', { mode: 'boolean' }).notNull().default(false), // 是否提醒对方
+  ownerSide: text('owner_side').notNull().default('me'), // 归属方：me 我记 TA / partner TA 记我
+  status: text('status').notNull().default('unfiled'), // 备忘录状态：unfiled 未分类（小卡片便签）/ archived 已收录
   embeddingModel: text('embedding_model'),
   meta: text('meta'), // JSON
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
+});
+
+/** 双人档案（阶段 11）：两个人的昵称与头像配置，用于备忘录归属徽章。id 固定 'me' | 'partner'。 */
+export const profiles = sqliteTable('profiles', {
+  id: text('id').primaryKey(), // 'me' | 'partner'
+  nickname: text('nickname').notNull(), // 昵称
+  avatarSeed: text('avatar_seed').notNull(), // 头像种子（确定性徽章用）
+  avatarColor: text('avatar_color').notNull().default('#8b5cf6'),
+  emoji: text('emoji'), // 头像 emoji，如 "🐱"
+  isMe: integer('is_me', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
 });
 
 /** RAG 分块（阶段 11）：文档切分后的片段，embedding 存 JSON 数组字符串 */

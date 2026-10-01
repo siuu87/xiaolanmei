@@ -322,6 +322,12 @@ CREATE TABLE IF NOT EXISTS rag_documents (
   pinned INTEGER NOT NULL DEFAULT 0,
   "order" INTEGER NOT NULL DEFAULT 0,
   author_type TEXT NOT NULL DEFAULT 'user',
+  from_who TEXT,
+  to_who TEXT,
+  avatar_seed TEXT,
+  need_notify INTEGER NOT NULL DEFAULT 0,
+  owner_side TEXT NOT NULL DEFAULT 'me',
+  status TEXT NOT NULL DEFAULT 'unfiled',
   embedding_model TEXT,
   meta TEXT,
   created_at INTEGER NOT NULL,
@@ -329,6 +335,17 @@ CREATE TABLE IF NOT EXISTS rag_documents (
   deleted_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_rag_documents_updated ON rag_documents(updated_at);
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id TEXT PRIMARY KEY,
+  nickname TEXT NOT NULL,
+  avatar_seed TEXT NOT NULL,
+  avatar_color TEXT NOT NULL DEFAULT '#8b5cf6',
+  emoji TEXT,
+  is_me INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS rag_chunks (
   id TEXT PRIMARY KEY,
@@ -412,5 +429,29 @@ export function initDatabase(): void {
   if (!ragCols.some((c) => c.name === 'author_type')) {
     sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN author_type TEXT NOT NULL DEFAULT 'user'`);
     sqlite.exec(`UPDATE rag_documents SET author_type = 'agent' WHERE source = 'agent'`);
+  }
+  // 幂等迁移：老库的 rag_documents 补归属四列（from_who / to_who / avatar_seed / need_notify）
+  if (!ragCols.some((c) => c.name === 'from_who')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN from_who TEXT`);
+  }
+  if (!ragCols.some((c) => c.name === 'to_who')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN to_who TEXT`);
+  }
+  if (!ragCols.some((c) => c.name === 'avatar_seed')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN avatar_seed TEXT`);
+  }
+  if (!ragCols.some((c) => c.name === 'need_notify')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN need_notify INTEGER NOT NULL DEFAULT 0`);
+  }
+  // 幂等迁移：老库的 rag_documents 补 owner_side 列（归属方 me/partner）
+  if (!ragCols.some((c) => c.name === 'owner_side')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN owner_side TEXT NOT NULL DEFAULT 'me'`);
+  }
+  // 幂等迁移：老库的 rag_documents 补 status 列（unfiled 未分类 / archived 已收录），并把旧语义值转换过来
+  if (!ragCols.some((c) => c.name === 'status')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN status TEXT NOT NULL DEFAULT 'unfiled'`);
+  } else {
+    sqlite.exec(`UPDATE rag_documents SET status = 'archived' WHERE status = 'organized'`);
+    sqlite.exec(`UPDATE rag_documents SET status = 'unfiled' WHERE status = 'draft'`);
   }
 }

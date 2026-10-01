@@ -1,7 +1,7 @@
 import type { ToolDef } from '../adapters/types.js';
 import { eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { courses, ragDocuments, ragChunks, ragDocumentCollections } from '../db/schema.js';
+import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { indexDocument, updateDocument } from '../services/ragService.js';
 
@@ -214,19 +214,21 @@ const RAG_CATEGORIES = ['preference', 'agreement', 'experience', 'info', 'inspir
 const memoAdd: BuiltinTool = {
   name: 'memo_add',
   description:
-    '把一条值得长期记住的内容写入双人共享备忘录。当用户透露了偏好、约定、经历、计划、灵感等重要信息，或需要你记住某件事时调用。这份备忘录由 AI 和用户共同维护。',
+    '将对话中的重要信息写入双人共享备忘录。自动判断这条信息属于谁。当用户透露了偏好、约定、经历、计划、灵感等重要信息时调用。',
   parameters: {
     type: 'object',
     properties: {
-      title: { type: 'string', description: '备忘录标题，简短概括（如「TA 喜欢喝美式」）' },
-      content: { type: 'string', description: '要记住的完整内容（一句话到一段）' },
+      title: { type: 'string', description: '简短标题' },
+      content: { type: 'string', description: '完整内容' },
       category: {
         type: 'string',
         enum: ['preference', 'agreement', 'experience', 'info', 'inspiration', 'plan'],
         description: '分类：preference 喜好/忌口、agreement 约定/承诺、experience 共同经历、info 事实信息、inspiration 灵感、plan 计划',
       },
+      fromWho: { type: 'string', description: '说话方的昵称（如「白起」），即这条信息的来源' },
+      toWho: { type: 'string', description: '信息归属方（如「肆佑」），即这条信息描述的是谁' },
       tags: { type: 'array', items: { type: 'string' }, description: '标签（可选）' },
-      importance: { type: 'integer', description: '重要程度 1-5，默认 3' },
+      importance: { type: 'integer', minimum: 1, maximum: 5, description: '重要程度 1-5，默认 3' },
     },
     required: ['title', 'content'],
   },
@@ -238,16 +240,37 @@ const memoAdd: BuiltinTool = {
     const cat = RAG_CATEGORIES.includes(category as never) ? category : 'info';
     const importance = Math.min(5, Math.max(1, Math.round(Number(args.importance) || 3)));
     const tags = Array.isArray(args.tags) ? args.tags.map((t) => String(t)).filter(Boolean) : [];
-    const result = await indexDocument({
-      title: String(args.title ?? '').trim() || '(无标题)',
+
+    // 自动获取档案来填 fromWho/toWho 默认值
+    const allProfiles = db.select().from(profiles).all();
+    const me = allProfiles.find((p) => p.isMe);
+    const partner = allProfiles.find((p) => !p.isMe);
+    const rawFrom = typeof args.fromWho === 'string' ? args.fromWho.trim() : '';
+    const rawTo = typeof args.toWho === 'string' ? args.toWho.trim() : '';
+    const finalFromWho = rawFrom || me?.nickname || '我';
+    const finalToWho = rawTo || finalFromWho;
+    // avatarSeed 用 toWho 对应 profile 的 avatarSeed
+    const targetProfile = finalToWho === partner?.nickname ? partner : me;
+
+    const title = String(args.title ?? '').trim() || '(无标题)';
+    // 归属：关于对方（toWho=partner）→ 我记 TA（me）；关于我（toWho=me）→ TA 记我（partner）
+    const ownerSide = finalToWho === partner?.nickname ? 'me' : finalToWho === me?.nickname ? 'partner' : 'me';
+    await indexDocument({
+      title,
       content,
       source: 'agent',
       authorType: 'agent',
       category: cat,
       tags: tags.length ? tags : undefined,
       importance,
+      fromWho: finalFromWho,
+      toWho: finalToWho,
+      avatarSeed: targetProfile?.avatarSeed ?? null,
+      ownerSide,
+      status: 'archived', // AI 已给出标题/分类/归属 → 直接收录
     });
-    return `已记入备忘录：${String(args.title ?? '').trim() || '(无标题)'}（${cat}，${result.chunkCount} 块）。`;
+    // 有温度的结果说明：让 AI 据此自然地回应，而不是生硬地说「已记录」
+    return `已为 ${finalToWho} 记下：${title}。我帮你记下了，以后不会忘的 🫶（${cat}）`;
   },
 };
 
@@ -303,7 +326,81 @@ const memoDelete: BuiltinTool = {
   },
 };
 
-const BUILTIN_TOOLS: BuiltinTool[] = [webFetch, webSearch, saveCourses, memoAdd, memoUpdate, memoDelete];
+const memoOrganize: BuiltinTool = {
+  name: 'memo_organize',
+  description:
+    '整理一条未分类便签：给它起标题、分类、判断归属，把 status 从 unfiled 转为 archived。当系统提示词里出现「待整理备忘录」清单时，逐条调用本工具整理。',
+  parameters: {
+    type: 'object',
+    properties: {
+      documentId: { type: 'string', description: '草稿备忘录 id' },
+      title: { type: 'string', description: '整理后的简短标题' },
+      category: {
+        type: 'string',
+        enum: ['preference', 'agreement', 'experience', 'info', 'inspiration', 'plan', 'general'],
+        description: '分类',
+      },
+      fromWho: { type: 'string', description: '谁记的（昵称），默认「我」' },
+      toWho: { type: 'string', description: '为谁记的（昵称），即这条信息描述的是谁' },
+      ownerSide: {
+        type: 'string',
+        enum: ['me', 'partner'],
+        description: '归属方：me 我记 TA / partner TA 记我',
+      },
+      tags: { type: 'array', items: { type: 'string' }, description: '标签（可选）' },
+      importance: { type: 'integer', minimum: 1, maximum: 5, description: '重要程度 1-5，默认 3' },
+    },
+    required: ['documentId', 'title'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const documentId = String(args.documentId ?? '').trim();
+    if (!documentId) return '错误：documentId 不能为空';
+    const row = db
+      .select()
+      .from(ragDocuments)
+      .all()
+      .find((d) => d.id === documentId && d.deletedAt == null);
+    if (!row) return '整理失败：备忘录不存在';
+
+    const allProfiles = db.select().from(profiles).all();
+    const me = allProfiles.find((p) => p.isMe);
+    const partner = allProfiles.find((p) => !p.isMe);
+    const fromWho = (typeof args.fromWho === 'string' && args.fromWho.trim()) || me?.nickname || '我';
+    const toWho = (typeof args.toWho === 'string' && args.toWho.trim()) || fromWho;
+    const targetProfile = toWho === partner?.nickname ? partner : me;
+    const category = String(args.category ?? 'info');
+    const cat = RAG_CATEGORIES.includes(category as never) ? category : 'info';
+    const importance = Math.min(5, Math.max(1, Math.round(Number(args.importance) || 3)));
+    const tags = Array.isArray(args.tags) ? args.tags.map((t) => String(t)).filter(Boolean) : [];
+    const ownerSide =
+      args.ownerSide === 'partner' || args.ownerSide === 'me'
+        ? args.ownerSide
+        : toWho === partner?.nickname
+          ? 'me'
+          : toWho === me?.nickname
+            ? 'partner'
+            : 'me';
+
+    const set: Record<string, unknown> = {
+      title: String(args.title ?? '').trim() || row.title,
+      category: cat,
+      fromWho,
+      toWho,
+      avatarSeed: targetProfile?.avatarSeed ?? null,
+      ownerSide,
+      status: 'archived',
+      importance,
+      updatedAt: now(),
+    };
+    if (tags.length) set.tags = JSON.stringify(tags);
+
+    db.update(ragDocuments).set(set).where(eq(ragDocuments.id, documentId)).run();
+    return `已整理：${set.title}（${cat}，为 ${toWho} 记的）`;
+  },
+};
+
+const BUILTIN_TOOLS: BuiltinTool[] = [webFetch, webSearch, saveCourses, memoAdd, memoUpdate, memoDelete, memoOrganize];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));
 
 export function listBuiltinTools(): BuiltinTool[] {
