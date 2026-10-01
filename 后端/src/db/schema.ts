@@ -320,6 +320,9 @@ export const ragDocuments = sqliteTable('rag_documents', {
   tags: text('tags'),
   category: text('category').notNull().default('general'),
   importance: integer('importance').notNull().default(3),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false), // 置顶
+  order: integer('order').notNull().default(0), // 手动排序权重
+  authorType: text('author_type').notNull().default('user'), // user | agent（备忘录作者）
   embeddingModel: text('embedding_model'),
   meta: text('meta'), // JSON
   createdAt: integer('created_at').notNull(),

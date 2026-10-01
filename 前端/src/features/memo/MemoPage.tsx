@@ -1,39 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, Search, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  listRagDocuments,
-  createRagDocument,
-  patchRagDocument,
-  deleteRagDocument,
-  type RagDocumentDTO,
-} from '@/lib/api/rag';
-
-const CATEGORY_META: Record<string, { label: string; cls: string }> = {
-  preference: { label: '喜好', cls: 'bg-rose-400/15 text-rose-300' },
-  agreement: { label: '约定', cls: 'bg-amber-400/15 text-amber-300' },
-  experience: { label: '经历', cls: 'bg-sky-400/15 text-sky-300' },
-  info: { label: '信息', cls: 'bg-primary/15 text-primary' },
-  inspiration: { label: '灵感', cls: 'bg-violet-400/15 text-violet-300' },
-  plan: { label: '计划', cls: 'bg-emerald-400/15 text-emerald-300' },
-  general: { label: '其他', cls: 'bg-muted text-muted-foreground' },
-};
-const CATEGORIES = ['preference', 'agreement', 'experience', 'info', 'inspiration', 'plan', 'general'] as const;
-
-const SOURCE_LABEL: Record<string, string> = { manual: '手动', agent: '小蓝莓', import: '导入', file: '文件' };
+  listMemos,
+  listMemoCategories,
+  createMemo,
+  patchMemo,
+  deleteMemo,
+  toggleMemoPin,
+  type MemoDTO,
+  type MemoCategoryDTO,
+} from '@/lib/api/memo';
+import { MemoCard, CATEGORY_META, CATEGORIES } from './MemoCard';
 
 const inputCls =
   'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
-
-function fmtTime(ts: number): string {
-  return new Date(ts).toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 interface Form {
   title: string;
@@ -44,17 +27,27 @@ interface Form {
 }
 const EMPTY_FORM: Form = { title: '', content: '', category: 'info', tags: '', importance: '3' };
 
-/** 备忘录页：两人共享的长期记忆（RAG），双方都能查看、增删改。 */
+/** 备忘录页：双人共享备忘录（RAG 用户视角），双方都能查看、增删改、置顶。 */
 export function MemoPage() {
-  const [docs, setDocs] = useState<RagDocumentDTO[]>([]);
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+
+  const [memos, setMemos] = useState<MemoDTO[]>([]);
+  const [total, setTotal] = useState(0);
+  const [catCounts, setCatCounts] = useState<MemoCategoryDTO[]>([]);
   const [filter, setFilter] = useState<'all' | string>('all');
   const [search, setSearch] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null); // 'new' = 新建
+  const [tag, setTag] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id?: string } | null>(null);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const [deleting, setDeleting] = useState<MemoDTO | null>(null);
 
   const load = async () => {
     try {
-      setDocs(await listRagDocuments());
+      const [m, c] = await Promise.all([listMemos(), listMemoCategories()]);
+      setMemos(m);
+      setTotal(c.total);
+      setCatCounts(c.categories);
     } catch (e) {
       console.error(e);
     }
@@ -64,30 +57,43 @@ export function MemoPage() {
     void load();
   }, []);
 
+  // 从聊天页「已记入备忘录」跳转过来时，滚动并高亮对应条目
+  useEffect(() => {
+    if (highlightId) {
+      const el = document.getElementById(`memo-${highlightId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [highlightId, memos]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return docs.filter((d) => {
+    return memos.filter((d) => {
       if (filter !== 'all' && d.category !== filter) return false;
+      if (tag && !d.tags.some((t) => t === tag)) return false;
       if (!q) return true;
       return d.title.toLowerCase().includes(q) || d.content.toLowerCase().includes(q);
     });
-  }, [docs, filter, search]);
+  }, [memos, filter, search, tag]);
+
+  const countOf = (c: string) => catCounts.find((x) => x.category === c)?.count ?? 0;
 
   const startCreate = () => {
     setForm(EMPTY_FORM);
-    setEditingId('new');
+    setEditing({});
   };
-  const startEdit = (d: RagDocumentDTO) => {
+  const startEdit = (d: MemoDTO) => {
     setForm({
       title: d.title,
       content: d.content,
       category: d.category,
-      tags: (d.tags ?? []).join(', '),
+      tags: d.tags.join(', '),
       importance: String(d.importance),
     });
-    setEditingId(d.id);
+    setEditing({ id: d.id });
   };
-  const cancelEdit = () => setEditingId(null);
+  const cancelEdit = () => setEditing(null);
   const set = <K extends keyof Form>(key: K, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const save = async () => {
@@ -104,18 +110,30 @@ export function MemoPage() {
       importance: Math.min(5, Math.max(1, Number(form.importance) || 3)),
     };
     try {
-      if (editingId === 'new') await createRagDocument(payload);
-      else if (editingId) await patchRagDocument(editingId, payload);
-      setEditingId(null);
+      if (editing?.id) await patchMemo(editing.id, payload);
+      else await createMemo(payload);
+      setEditing(null);
+      await load();
+    } catch (e) {
+      console.error(e);
+      window.alert((e as Error).message);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await deleteMemo(deleting.id);
+      setDeleting(null);
       await load();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const remove = async (d: RagDocumentDTO) => {
+  const pin = async (id: string) => {
     try {
-      await deleteRagDocument(d.id);
+      await toggleMemoPin(id);
       await load();
     } catch (e) {
       console.error(e);
@@ -125,17 +143,34 @@ export function MemoPage() {
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-serif text-xs text-muted-foreground">MEMO · 备忘录</h1>
-        <button
-          type="button"
-          onClick={startCreate}
-          aria-label="记一条"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+        <div>
+          <h1 className="font-serif text-xs text-muted-foreground">MEMO · 备忘录</h1>
+          <p className="mt-1 text-xs text-muted-foreground/70">双人共享，小蓝莓和你一起记。</p>
+        </div>
+        <Button size="sm" onClick={startCreate}>
+          <Plus className="h-4 w-4" /> 记一条
+        </Button>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground/70">两人共享的备忘录，双方的记录都看得到、都能编辑。</p>
+
+      {/* 统计栏 */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-full bg-muted/60 px-3 py-1 text-xs text-foreground/80">共 {total} 条</span>
+        {CATEGORIES.filter((c) => c !== 'general' || countOf(c) > 0).map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setFilter((f) => (f === c ? 'all' : c))}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs transition',
+              filter === c
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted/60 text-foreground/80 hover:bg-muted',
+            )}
+          >
+            {CATEGORY_META[c].label} {countOf(c)}
+          </button>
+        ))}
+      </div>
 
       {/* 搜索 */}
       <div className="relative mt-3">
@@ -148,144 +183,122 @@ export function MemoPage() {
         />
       </div>
 
-      {/* 分类筛选 */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={cn(
-            'rounded-full px-3 py-1 text-xs transition',
-            filter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-foreground/80 hover:bg-muted',
-          )}
-        >
-          全部
-        </button>
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setFilter(c)}
-            className={cn(
-              'rounded-full px-3 py-1 text-xs transition',
-              filter === c ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-foreground/80 hover:bg-muted',
-            )}
-          >
-            {CATEGORY_META[c].label}
-          </button>
-        ))}
-      </div>
-
-      {/* 编辑表单 */}
-      {editingId && (
-        <div className="mt-3 space-y-3 rounded-2xl border p-4">
-          <input
-            value={form.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="标题（如：TA 的饮食忌口）"
-            className={cn(inputCls, 'font-medium')}
-          />
-          <textarea
-            value={form.content}
-            onChange={(e) => set('content', e.target.value)}
-            rows={4}
-            autoFocus
-            placeholder="记下要记住的内容…"
-            className={cn(inputCls, 'resize-y')}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputCls}>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_META[c].label}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={1}
-              max={5}
-              value={form.importance}
-              onChange={(e) => set('importance', e.target.value)}
-              title="重要程度 1-5"
-              className={inputCls}
-            />
-          </div>
-          <input
-            value={form.tags}
-            onChange={(e) => set('tags', e.target.value)}
-            placeholder="标签（逗号分隔，可选）"
-            className={inputCls}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={cancelEdit}>
-              取消
-            </Button>
-            <Button onClick={() => void save()} disabled={!form.content.trim()}>
-              保存
-            </Button>
-          </div>
+      {/* 标签筛选提示 */}
+      {tag && (
+        <div className="mt-2 flex items-center gap-1">
+          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+            #{tag}
+            <button type="button" onClick={() => setTag(null)} aria-label="清除标签筛选" className="hover:opacity-70">
+              <X className="h-3 w-3" />
+            </button>
+          </span>
         </div>
       )}
 
       {/* 列表 */}
       <div className="mt-4 space-y-3">
         {filtered.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            {docs.length === 0 ? '还没有备忘，点右上角「+」记一条吧。' : '没有匹配的备忘。'}
-          </p>
+          <div className="py-16 text-center">
+            <div className="text-4xl">🫐</div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {memos.length === 0 ? '还没有备忘录哦，开始记录你们的日常吧 ✨' : '没有匹配的备忘。'}
+            </p>
+          </div>
         ) : (
-          filtered.map((d) => {
-            const meta = CATEGORY_META[d.category] ?? CATEGORY_META.general;
-            return (
-              <div key={d.id} className="glass rounded-2xl p-4">
-                <div className="flex items-center gap-2">
-                  <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px]', meta.cls)}>{meta.label}</span>
-                  {d.source === 'agent' ? (
-                    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      <Sparkles className="mr-0.5 inline h-2.5 w-2.5" />
-                      {SOURCE_LABEL.agent}
-                    </span>
-                  ) : (
-                    d.source !== 'manual' && (
-                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                        {SOURCE_LABEL[d.source] ?? d.source}
-                      </span>
-                    )
-                  )}
-                  {d.tags?.map((t) => (
-                    <span key={t} className="shrink-0 rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-foreground/70">
-                      {t}
-                    </span>
-                  ))}
-                  <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/70">{fmtTime(d.updatedAt)}</span>
-                </div>
-
-                <div className="mt-2 text-sm font-medium text-foreground">{d.title}</div>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground/90">{d.content}</p>
-
-                <div className="mt-2 flex justify-end gap-1">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(d)}
-                    aria-label="编辑"
-                    className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(d)}
-                    aria-label="删除"
-                    className="rounded p-1 text-muted-foreground transition hover:bg-accent hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })
+          filtered.map((d) => (
+            <div key={d.id} id={`memo-${d.id}`}>
+              <MemoCard
+                memo={d}
+                highlight={d.id === highlightId}
+                defaultOpen={d.id === highlightId}
+                onEdit={startEdit}
+                onDelete={() => setDeleting(d)}
+                onTogglePin={pin}
+              />
+            </div>
+          ))
         )}
       </div>
+
+      {/* 新建/编辑弹窗 */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-background p-4 shadow-xl sm:rounded-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold">{editing.id ? '编辑备忘录' : '新建备忘录'}</h2>
+              <button type="button" onClick={cancelEdit} aria-label="关闭" className="rounded p-1 text-muted-foreground hover:bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input
+                value={form.title}
+                onChange={(e) => set('title', e.target.value)}
+                placeholder="标题（如：TA 的饮食忌口）"
+                className={cn(inputCls, 'font-medium')}
+              />
+              <textarea
+                value={form.content}
+                onChange={(e) => set('content', e.target.value)}
+                rows={4}
+                autoFocus
+                placeholder="记下要记住的内容…"
+                className={cn(inputCls, 'resize-y')}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputCls}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_META[c].label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={form.importance}
+                  onChange={(e) => set('importance', e.target.value)}
+                  title="重要程度 1-5"
+                  className={inputCls}
+                />
+              </div>
+              <input
+                value={form.tags}
+                onChange={(e) => set('tags', e.target.value)}
+                placeholder="标签（逗号分隔，可选）"
+                className={inputCls}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={cancelEdit}>
+                  取消
+                </Button>
+                <Button onClick={() => void save()} disabled={!form.content.trim()}>
+                  保存
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除确认弹窗 */}
+      {deleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-xs rounded-2xl bg-background p-4 shadow-xl">
+            <p className="text-sm font-medium">删除这条备忘录？</p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">{deleting.title}</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleting(null)}>
+                取消
+              </Button>
+              <Button variant="destructive" onClick={() => void confirmDelete()}>
+                删除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

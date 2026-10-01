@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatEvent, ChatMessage } from '../adapters/types.js';
 import { db } from '../db/client.js';
-import { tokenUsage, courses } from '../db/schema.js';
+import { tokenUsage, courses, ragDocuments } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
 import { buildWorldContext } from './worldbook.js';
@@ -29,17 +29,17 @@ interface ChatStreamBody {
 const WEB_NOTE =
   '如果用户的问题需要最新的信息、事实核查或读取某个链接，请使用 web_search 或 web_fetch 工具联网获取，再基于结果作答；否则直接回答，不要调用工具。';
 
-const RAG_NOTE =
-  '你拥有长期记忆能力。对话中出现重要信息（偏好、约定、计划、经历、重要个人信息等）时，主动调用 rag_import 工具归档。检索到相关知识时会自动注入到对话上下文中。';
+const MEMO_NOTE =
+  '你拥有长期记忆能力。对话中出现重要信息（偏好、约定、计划、经历、重要个人信息等）时，主动调用 memo_add 工具写入共享备忘录。检索到的相关知识会自动注入到对话上下文中。';
 
-const RAG_IMPORT_RULES = `【知识归档规则】你是小蓝莓，一个细心的陪伴者。以下类型的信息值得长期记住，请用 rag_import 归档：
+const MEMO_RULES = `【备忘录记录规则】你是小蓝莓，一个细心的陪伴者。对话中以下信息请自动调用 memo_add 写入共享备忘录：
 1. preference: 对方表达喜欢/不喜欢什么
-2. agreement: 两人之间的约定、承诺
-3. experience: 共同经历的值得记住的瞬间
+2. agreement: 两人的约定、承诺
+3. plan: 未来要做的事
 4. info: 对方透露的重要个人信息
-5. inspiration: 对方提到的想法、创意
-6. plan: 未来要做的事情
-归档时机：信息明确且有存档价值时调用。不确定时倾向于归档。`;
+5. experience: 共同经历的值得记住的瞬间
+6. inspiration: 对方提到的想法、创意
+写入时在 title 里用简短概括，content 里写完整内容。不确定时倾向于记录。`;
 
 const CODE_NOTE =
   '你也能编程：可以读写工作区的文件、运行命令、查看 git。仅当用户明确要求查看或修改小蓝莓的代码时才调用这些工具（read_file/list_dir/search_files/git_status/git_diff 只读免确认；write_file/edit_file/run_command/git_commit 会请求用户确认）。';
@@ -104,7 +104,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
           }
           const skills = buildSkillContext(query);
           if (skills) parts.push(skills);
-          parts.push(RAG_NOTE, RAG_IMPORT_RULES);
+          parts.push(MEMO_NOTE, MEMO_RULES);
           return parts.join('\n\n');
         })()
       : '';
@@ -152,8 +152,9 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const write = (
       ev:
         | ChatEvent
-        | { type: 'tool_call'; name: string }
-        | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string },
+        | { type: 'tool_call'; name: string; args?: Record<string, unknown> }
+        | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
+        | { type: 'memo_added'; id?: string; title: string },
     ) => {
       reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     };
@@ -165,7 +166,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       // 编程工具常开（融合进日常对话）；联网工具按 web（默认开）；课表识别按是否带图；RAG 工具按 rag（默认开）
       const builtin = listBuiltinTools().filter((t) => {
         if (t.name === 'save_courses') return hasImage;
-        if (t.name.startsWith('rag_')) return ragOn;
+        if (t.name.startsWith('memo_')) return ragOn;
         return web;
       });
       const defs = [...listCodeTools().map(codeToolDef), ...builtin.map(builtinToolDef)];
@@ -209,7 +210,20 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         const hit = listBuiltinTools().find((b) => b.name === name);
         if (!hit) return `未知工具：${name}`;
         const r = await runTool({ kind: 'builtin', name, arguments: args, conversationId: convId });
-        if (r.status === 'ok') return r.result;
+        if (r.status === 'ok') {
+          if (name === 'memo_add') {
+            // 通知前端「已记入备忘录」，带最新 agent 备忘录 id 供跳转高亮
+            const title = String(args.title ?? '').trim();
+            const row = db
+              .select()
+              .from(ragDocuments)
+              .all()
+              .filter((d) => d.deletedAt == null && d.authorType === 'agent')
+              .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+            write({ type: 'memo_added', id: row?.id, title: title || row?.title || '(无标题)' });
+          }
+          return r.result;
+        }
         if (r.status === 'needs_confirm') return `工具「${name}」需要用户确认，已跳过。`;
         return `工具执行失败：${r.message}`;
       };
@@ -224,7 +238,21 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         signal: controller.signal,
         handlers: {
           onDelta: (text) => write({ type: 'delta', content: text }),
-          onToolCall: (tc) => write({ type: 'tool_call', name: tc.function.name }),
+          onToolCall: (tc) => {
+            const name = tc.function?.name ?? '';
+            const rawArgs = (tc.function as { arguments?: unknown } | undefined)?.arguments;
+            let args: Record<string, unknown> | undefined;
+            if (typeof rawArgs === 'string') {
+              try {
+                args = JSON.parse(rawArgs);
+              } catch {
+                args = undefined;
+              }
+            } else if (rawArgs && typeof rawArgs === 'object') {
+              args = rawArgs as Record<string, unknown>;
+            }
+            write({ type: 'tool_call', name, args });
+          },
           onError: (message) => {
             status = 'error';
             write({ type: 'error', code: 'server_error', message });

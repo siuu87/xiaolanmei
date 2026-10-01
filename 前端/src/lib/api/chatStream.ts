@@ -14,6 +14,7 @@ export interface StreamChatOptions {
   onDelta?: (text: string) => void;
   onToolCall?: (name: string) => void;
   onNeedsConfirm?: (confirmId: string, toolName: string, summary: string) => void;
+  onMemoAdded?: (id: string | undefined, title: string) => void;
   onDone?: () => void;
   onError?: (message: string) => void;
 }
@@ -24,7 +25,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat(
   messages: ChatPayloadMessage[],
-  { signal, conversationId, model, stationId, web, onDelta, onToolCall, onNeedsConfirm, onDone, onError }: StreamChatOptions = {},
+  { signal, conversationId, model, stationId, web, onDelta, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
 ): Promise<void> {
   let res: Response;
   try {
@@ -90,6 +91,8 @@ export async function streamChat(
           confirmId?: string;
           toolName?: string;
           summary?: string;
+          id?: string;
+          title?: string;
         };
         try {
           ev = JSON.parse(payload);
@@ -103,6 +106,8 @@ export async function streamChat(
           onToolCall?.(ev.name);
         } else if (ev.type === 'needs_confirm' && ev.confirmId) {
           onNeedsConfirm?.(ev.confirmId, ev.toolName ?? '', ev.summary ?? '');
+        } else if (ev.type === 'memo_added') {
+          onMemoAdded?.(ev.id, ev.title ?? '');
         } else if (ev.type === 'done') {
           done = true;
           onDone?.();

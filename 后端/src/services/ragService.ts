@@ -280,6 +280,7 @@ export interface IndexDocumentInput {
   importance?: number;
   collectionId?: string | null;
   fileType?: string | null;
+  authorType?: 'user' | 'agent'; // 备忘录作者（默认 user）
   meta?: Record<string, unknown>;
 }
 
@@ -302,6 +303,7 @@ export async function indexDocument(input: IndexDocumentInput): Promise<{ id: st
       tags: input.tags?.length ? JSON.stringify(input.tags) : null,
       category: input.category ?? 'general',
       importance: input.importance ?? 3,
+      authorType: input.authorType ?? 'user',
       embeddingModel: null,
       meta: input.meta ? JSON.stringify(input.meta) : null,
       createdAt: ts,

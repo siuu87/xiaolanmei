@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, RefreshCw, FlaskConical, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   toggleSkill,
   deleteSkill,
   seedSkills,
+  matchSkills,
   type SkillDTO,
   type SkillTriggerMode,
 } from '@/lib/api/skills';
@@ -36,6 +37,7 @@ interface SkillForm {
   triggerMode: SkillTriggerMode;
   triggerKeywords: string;
   icon: string;
+  color: string;
   priority: string;
 }
 
@@ -46,15 +48,23 @@ const EMPTY_FORM: SkillForm = {
   triggerMode: 'keyword',
   triggerKeywords: '',
   icon: '',
+  color: '',
   priority: '0',
 };
 
-/** 技能面板：可视化查看/管理技能（内置 + 外部导入/自定义），内嵌在「我」页。 */
-export function SkillsPanel() {
+/** 技能面板：可视化查看/管理技能（内置 + 外部导入/自定义）。可折叠（默认收起），抽屉里用 collapsible={false} 常开。 */
+export function SkillsPanel({
+  collapsible = true,
+  defaultCollapsed = true,
+}: { collapsible?: boolean; defaultCollapsed?: boolean } = {}) {
+  const [open, setOpen] = useState(collapsible ? !defaultCollapsed : true);
   const [skills, setSkills] = useState<SkillDTO[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null); // 'new' = 新建
   const [form, setForm] = useState<SkillForm>(EMPTY_FORM);
   const [seedBusy, setSeedBusy] = useState(false);
+  const [testText, setTestText] = useState('');
+  const [testResult, setTestResult] = useState<{ id: string; name: string; slug: string; reason: string; confidence: number }[] | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
 
   const load = async () => {
     try {
@@ -83,6 +93,7 @@ export function SkillsPanel() {
       triggerMode: s.triggerMode,
       triggerKeywords: s.triggerKeywords.join(', '),
       icon: s.icon ?? '',
+      color: s.color ?? '',
       priority: String(s.priority),
     });
     setEditingId(s.id);
@@ -105,6 +116,7 @@ export function SkillsPanel() {
         .map((k) => k.trim())
         .filter(Boolean),
       icon: form.icon.trim() || null,
+      color: form.color.trim() || null,
       priority: Number(form.priority) || 0,
     };
     try {
@@ -144,6 +156,19 @@ export function SkillsPanel() {
       console.error(e);
     } finally {
       setSeedBusy(false);
+    }
+  };
+
+  const runTest = async () => {
+    const q = testText.trim();
+    if (!q) return;
+    setTestBusy(true);
+    try {
+      setTestResult((await matchSkills(q)).matches);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTestBusy(false);
     }
   };
 
@@ -199,7 +224,12 @@ export function SkillsPanel() {
         )}
       </div>
 
-      {s.description && <p className="mt-1 text-xs text-muted-foreground">{s.description}</p>}
+      <div className="mt-1 flex items-center gap-2">
+        {s.description && <p className="min-w-0 flex-1 text-xs text-muted-foreground">{s.description}</p>}
+        <span className="ml-auto shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground/80">
+          优先级 {s.priority}
+        </span>
+      </div>
 
       <div className="mt-2 flex flex-wrap gap-1">
         {s.triggerMode === 'keyword' &&
@@ -218,22 +248,42 @@ export function SkillsPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>技能</CardTitle>
-            <CardDescription>条件触发的提示词片段，聊天时按关键词/始终/手动激活</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => void seed()} disabled={seedBusy}>
-              <RefreshCw className={cn('h-4 w-4', seedBusy && 'animate-spin')} /> 恢复内置
-            </Button>
-            <Button size="sm" onClick={startCreate}>
-              <Plus className="h-4 w-4" /> 新技能
-            </Button>
-          </div>
+      <CardHeader className="p-4">
+        <div className="flex items-center gap-2">
+          {collapsible ? (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-label={open ? '收起技能' : '展开技能'}
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            >
+              <ChevronDown
+                className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+              />
+              <div className="min-w-0 flex-1">
+                <CardTitle>技能</CardTitle>
+                <CardDescription>条件触发的提示词片段，聊天时按关键词/始终/手动激活</CardDescription>
+              </div>
+            </button>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <CardTitle>技能</CardTitle>
+              <CardDescription>条件触发的提示词片段，聊天时按关键词/始终/手动激活</CardDescription>
+            </div>
+          )}
+          {open && (
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant="outline" onClick={() => void seed()} disabled={seedBusy}>
+                <RefreshCw className={cn('h-4 w-4', seedBusy && 'animate-spin')} /> 恢复内置
+              </Button>
+              <Button size="sm" onClick={startCreate}>
+                <Plus className="h-4 w-4" /> 新技能
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
+      {open && (
       <CardContent className="space-y-4">
         {skills.length === 0 && !editingId ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
@@ -267,6 +317,10 @@ export function SkillsPanel() {
                 <label className="mb-1 block text-xs text-muted-foreground">图标（emoji）</label>
                 <input value={form.icon} onChange={(e) => set('icon', e.target.value)} placeholder="🍔" className={inputCls} />
               </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">颜色（十六进制，可选）</label>
+              <input value={form.color} onChange={(e) => set('color', e.target.value)} placeholder="#f59e0b" className={inputCls} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">描述</label>
@@ -327,7 +381,49 @@ export function SkillsPanel() {
             </div>
           </div>
         )}
+
+        {/* 测试匹配 */}
+        <div className="space-y-2 rounded-lg border p-3">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <FlaskConical className="h-3.5 w-3.5" /> 测试匹配
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={testText}
+              onChange={(e) => setTestText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void runTest()}
+              placeholder="模拟输入一段话，看看会激活哪些技能"
+              className={inputCls}
+            />
+            <Button size="sm" variant="outline" onClick={() => void runTest()} disabled={testBusy || !testText.trim()}>
+              测试
+            </Button>
+          </div>
+          {testResult && (
+            <div className="space-y-2">
+              {testResult.length === 0 ? (
+                <p className="text-xs text-muted-foreground">没有技能被激活。</p>
+              ) : (
+                testResult.map((r) => (
+                  <div key={r.id} className="rounded-lg bg-muted/40 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-xs font-medium">{r.name}</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">{r.reason}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${Math.round(r.confidence * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
+      )}
     </Card>
   );
 }

@@ -16,15 +16,17 @@ import {
   MoreHorizontal,
   Copy,
   Mic,
-  PanelLeft,
+  Menu,
   Globe,
   ImagePlus,
   Smile,
   Phone,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { matchLocalIntent } from './assistant';
 import { streamChat, type ChatPayloadMessage } from '@/lib/api/chatStream';
+import { matchSkills } from '@/lib/api/skills';
 import { uploadImage, urlToDataUrl } from '@/lib/api/attachments';
 import { getSettings } from '@/lib/api/settings';
 import { describeImage } from '@/lib/api/vision';
@@ -121,6 +123,7 @@ function StickerBubble({ emoji }: { emoji: string }) {
 }
 
 export function ChatPage() {
+  const navigate = useNavigate();
   const conversation = useChatStore((s) => s.conversation);
   const loaded = useChatStore((s) => s.loaded);
   const load = useChatStore((s) => s.load);
@@ -150,6 +153,10 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [memoAdded, setMemoAdded] = useState<Record<string, { id?: string; title: string }[]>>({});
+  const [activeSkills, setActiveSkills] = useState<
+    { id: string; name: string; slug: string; reason: string; confidence: number }[]
+  >([]);
   const abortRef = useRef<AbortController | null>(null);
   const streamMsgRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -167,6 +174,21 @@ export function ChatPage() {
       .then((s) => setVision({ model: s.visionModel ?? null }))
       .catch(() => {});
   }, []);
+
+  // 输入变化时（防抖）预判当前会激活哪些技能，显示在输入框上方
+  useEffect(() => {
+    const q = input.trim();
+    if (!q) {
+      setActiveSkills([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      matchSkills(q)
+        .then((r) => setActiveSkills(r.matches))
+        .catch(() => setActiveSkills([]));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [input]);
 
   const path = useMemo(() => (conversation ? activePath(conversation) : []), [conversation]);
 
@@ -260,6 +282,12 @@ export function ChatPage() {
               ? '正在识别课表…'
               : `正在调用 ${name}…`,
         );
+      },
+      onMemoAdded: (id, title) => {
+        setMemoAdded((prev) => ({
+          ...prev,
+          [assistantId]: [...(prev[assistantId] ?? []), { id, title }],
+        }));
       },
       onNeedsConfirm: (confirmId, toolName, summary) => {
         setToolStatus(null);
@@ -540,10 +568,10 @@ export function ChatPage() {
           type="button"
           onClick={() => setDrawerOpen(true)}
           aria-label="工具箱"
-          title="插件 / 角色 / 世界书 / 工作区"
+          title="插件 / 角色 / 世界书 / 工作区 / 技能"
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
         >
-          <PanelLeft className="h-4 w-4" />
+          <Menu className="h-4 w-4" />
         </button>
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {conversation?.title ?? '小蓝莓'}
@@ -690,6 +718,23 @@ export function ChatPage() {
                   </div>
                 </div>
 
+                {/* 已记入备忘录提示 */}
+                {m.role === 'assistant' && (memoAdded[m.id]?.length ?? 0) > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {memoAdded[m.id].map((mm, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => navigate(mm.id ? `/memo?highlight=${mm.id}` : '/memo')}
+                        title="查看备忘录"
+                        className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary transition hover:bg-primary/20"
+                      >
+                        📝 已记入备忘录：{mm.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* 气泡下方：分支切换 + ⋯ */}
                 <div
                   className={cn(
@@ -815,6 +860,19 @@ export function ChatPage() {
 
       {/* 输入框 */}
       <div className="shrink-0 border-t border-border/60 p-3">
+        {activeSkills.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {activeSkills.map((s) => (
+              <span
+                key={s.id}
+                title={`触发：${s.reason}`}
+                className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
+              >
+                {s.name}
+              </span>
+            ))}
+          </div>
+        )}
         {toolStatus && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
             <Globe className="h-3.5 w-3.5 animate-pulse" />

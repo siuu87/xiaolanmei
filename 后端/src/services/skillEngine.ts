@@ -134,7 +134,7 @@ const BUILTIN_SKILLS: BuiltinSkillSeed[] = [
     priority: 10,
     description: '根据偏好与食材给出可执行的菜谱建议',
     instruction:
-      '当用户问吃什么、做菜、菜谱或食谱时，结合已知的饮食忌口与偏好给出具体、可操作的菜谱建议（含步骤与关键要点）。若对方透露了新的饮食偏好或忌口，用 rag_import 归档。',
+      '当用户问吃什么、做菜、菜谱或食谱时，结合已知的饮食忌口与偏好给出具体、可操作的菜谱建议（含步骤与关键要点）。若对方透露了新的饮食偏好或忌口，用 memo_add 记入备忘录。',
   },
   {
     slug: 'anniversary-keeper',
@@ -146,7 +146,7 @@ const BUILTIN_SKILLS: BuiltinSkillSeed[] = [
     priority: 10,
     description: '计算在一起的天数与纪念日倒数',
     instruction:
-      '当用户询问在一起多久、纪念日或多少天时，结合已知的纪念日与日期信息，温柔地算出并回应天数、倒数日等。日期信息不明确时先询问确认，确认后的纪念日用 rag_import 归档。',
+      '当用户询问在一起多久、纪念日或多少天时，结合已知的纪念日与日期信息，温柔地算出并回应天数、倒数日等。日期信息不明确时先询问确认，确认后的纪念日用 memo_add 记入备忘录。',
   },
   {
     slug: 'period-tracker',

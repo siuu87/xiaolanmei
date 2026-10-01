@@ -31,6 +31,7 @@ import { stickerRoutes } from './routes/stickers.js';
 import { visionRoutes } from './routes/vision.js';
 import { ragRoutes } from './routes/rag.js';
 import { skillRoutes } from './routes/skills.js';
+import { memoRoutes } from './routes/memo.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
 
 async function main(): Promise<void> {
@@ -74,6 +75,7 @@ async function main(): Promise<void> {
   await app.register(visionRoutes, { prefix: '/api' });
   await app.register(ragRoutes, { prefix: '/api' });
   await app.register(skillRoutes, { prefix: '/api' });
+  await app.register(memoRoutes, { prefix: '/api' });
 
   await app.listen({ port: env.port, host: '0.0.0.0' });
   console.log(`✅ 小蓝莓后端已启动: http://localhost:${env.port}/api/health`);

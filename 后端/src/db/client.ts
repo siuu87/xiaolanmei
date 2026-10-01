@@ -319,6 +319,9 @@ CREATE TABLE IF NOT EXISTS rag_documents (
   tags TEXT,
   category TEXT NOT NULL DEFAULT 'general',
   importance INTEGER NOT NULL DEFAULT 3,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  "order" INTEGER NOT NULL DEFAULT 0,
+  author_type TEXT NOT NULL DEFAULT 'user',
   embedding_model TEXT,
   meta TEXT,
   created_at INTEGER NOT NULL,
@@ -396,5 +399,18 @@ export function initDatabase(): void {
   const cols = sqlite.prepare(`PRAGMA table_info(token_usage)`).all() as { name: string }[];
   if (!cols.some((c) => c.name === 'station_id')) {
     sqlite.exec(`ALTER TABLE token_usage ADD COLUMN station_id TEXT`);
+  }
+
+  // 幂等迁移：老库的 rag_documents 补 memo 三列（pinned / order / author_type），并回填 AI 归档作者
+  const ragCols = sqlite.prepare(`PRAGMA table_info(rag_documents)`).all() as { name: string }[];
+  if (!ragCols.some((c) => c.name === 'pinned')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!ragCols.some((c) => c.name === 'order')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!ragCols.some((c) => c.name === 'author_type')) {
+    sqlite.exec(`ALTER TABLE rag_documents ADD COLUMN author_type TEXT NOT NULL DEFAULT 'user'`);
+    sqlite.exec(`UPDATE rag_documents SET author_type = 'agent' WHERE source = 'agent'`);
   }
 }
