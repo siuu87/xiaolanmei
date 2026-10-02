@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Plus, Repeat, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTodoStore, isTodoDone, type RepeatType } from './todoStore';
@@ -121,12 +122,13 @@ export function TodoCard() {
         })}
       </ul>
 
-      {/* 新建待办弹窗 */}
-      {creating && (
-        <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-2 sm:p-4"
-          onClick={() => setCreating(false)}
-        >
+      {/* 新建待办弹窗（portal 到 body，避免被毛玻璃卡片的层叠上下文盖住） */}
+      {creating &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4"
+            onClick={() => setCreating(false)}
+          >
           <div
             className="w-full max-w-md rounded-2xl bg-background/90 p-5 backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
@@ -240,8 +242,9 @@ export function TodoCard() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
