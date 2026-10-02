@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 
@@ -19,6 +19,8 @@ const SPARKLES = [
   { left: '58%', top: '4%', delay: 1.0 },
 ];
 
+const TRACKS = ['占位曲目 一', '占位曲目 二', '占位曲目 三'];
+
 /**
  * 一起听（占位）：黑胶唱片 + 两个贴靠的头像。
  * 点播放：唱片转动、两个头像碰一下、音符亮起；真实音频源后续再接。
@@ -30,13 +32,21 @@ export function VinylPlayer() {
 
   const [playing, setPlaying] = useState(false);
   const [bumping, setBumping] = useState(false);
+  const [track, setTrack] = useState(0);
+
+  const bump = () => {
+    setBumping(true);
+    window.setTimeout(() => setBumping(false), 700);
+  };
 
   const toggle = () => {
     setPlaying((p) => !p);
-    if (!playing) {
-      setBumping(true);
-      window.setTimeout(() => setBumping(false), 700);
-    }
+    if (!playing) bump();
+  };
+
+  const skip = (dir: number) => {
+    setTrack((t) => (t + dir + TRACKS.length) % TRACKS.length);
+    bump();
   };
 
   return (
@@ -97,30 +107,52 @@ export function VinylPlayer() {
           </div>
         </div>
 
-        {/* 黑胶唱片（旋转）+ 中心播放键 */}
-        <div className="relative mt-4 h-44 w-44">
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              animation: 'vinyl-spin 12s linear infinite',
-              animationPlayState: playing ? 'running' : 'paused',
-              background:
-                'repeating-radial-gradient(circle at 50% 50%, #1c1c20 0px, #1c1c20 1px, #26262b 1px, #26262b 2px)',
-              boxShadow: '0 14px 40px rgba(0,0,0,0.5), 0 0 0 5px rgba(255,255,255,0.18)',
-            }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#ff9fb0] to-[#e76b84] shadow-inner" />
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label={playing ? '暂停' : '播放'}
-              className="absolute flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-500 shadow-md transition hover:scale-105 active:scale-95"
-            >
-              {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
-            </button>
+        {/* 切歌 + 黑胶唱片（旋转）+ 中心播放键 */}
+        <div className="mt-4 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => skip(-1)}
+            aria-label="上一首"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-slate-200 ring-1 ring-white/15 transition hover:bg-white/20 active:scale-95"
+          >
+            <SkipBack className="h-4 w-4" />
+          </button>
+
+          <div className="relative h-44 w-44">
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                animation: 'vinyl-spin 12s linear infinite',
+                animationPlayState: playing ? 'running' : 'paused',
+                background:
+                  'repeating-radial-gradient(circle at 50% 50%, #1c1c20 0px, #1c1c20 1px, #26262b 1px, #26262b 2px)',
+                boxShadow: '0 14px 40px rgba(0,0,0,0.5), 0 0 0 5px rgba(255,255,255,0.18)',
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#ff9fb0] to-[#e76b84] shadow-inner" />
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={playing ? '暂停' : '播放'}
+                className="absolute flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-500 shadow-md transition hover:scale-105 active:scale-95"
+              >
+                {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+              </button>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => skip(1)}
+            aria-label="下一首"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-slate-200 ring-1 ring-white/15 transition hover:bg-white/20 active:scale-95"
+          >
+            <SkipForward className="h-4 w-4" />
+          </button>
         </div>
+
+        <div className="mt-3 text-center text-[11px] text-slate-400">{TRACKS[track]}</div>
       </div>
 
       <style>{`
