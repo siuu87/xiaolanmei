@@ -20,8 +20,7 @@ const SPARKLES = [
 ];
 
 /**
- * 一起听（网易云式暖色插画，占位）：黑胶唱片 + 两个贴靠共享耳机的头像。
- * 左头像戴左耳耳机（一根线向下连到唱片），右头像戴右耳耳机。
+ * 一起听（占位）：黑胶唱片 + 两个贴靠的头像。
  * 点播放：唱片转动、两个头像碰一下、音符亮起；真实音频源后续再接。
  */
 export function VinylPlayer() {
@@ -41,14 +40,14 @@ export function VinylPlayer() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-rose-200/60 bg-gradient-to-b from-[#fff8ee] via-[#ffe9ee] to-[#ffd9e6] p-5 shadow-[inset_0_0_60px_rgba(255,183,197,0.4)]">
+    <div className="relative">
       {/* 漂浮音符 */}
       {NOTES.map((n, i) => (
         <span
           key={i}
           aria-hidden
           className={cn(
-            'pointer-events-none absolute text-base text-rose-400/80 transition-opacity duration-700',
+            'pointer-events-none absolute text-base text-rose-300/80 transition-opacity duration-700',
             playing ? 'opacity-100' : 'opacity-40',
           )}
           style={{ left: n.left, top: n.top, animation: `note-float ${n.dur}s ease-in-out ${n.delay}s infinite` }}
@@ -66,26 +65,10 @@ export function VinylPlayer() {
         />
       ))}
 
-      {/* 耳机线：从左耳耳机向下连到唱片 */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <path
-          d="M 33 24 C 22 32, 18 44, 34 58 S 44 72, 50 74"
-          fill="none"
-          stroke="#f7a6bd"
-          strokeWidth="0.6"
-          strokeLinecap="round"
-        />
-      </svg>
-
       <div className="relative flex flex-col items-center">
-        {/* 两个头像 = 一副耳机 */}
+        {/* 两个头像 */}
         <div className="flex items-end justify-center">
-          {/* 左耳机 · TA */}
+          {/* TA */}
           <div
             className={cn(
               'flex flex-col items-center gap-1 transition-transform duration-500 ease-out',
@@ -93,15 +76,13 @@ export function VinylPlayer() {
               bumping && 'animate-[bump-left_0.5s_ease]',
             )}
           >
-            <div className="relative flex h-16 w-16 rotate-6 items-center justify-center rounded-full bg-white text-3xl shadow-md ring-2 ring-rose-200/70">
+            <div className="flex h-16 w-16 rotate-6 items-center justify-center rounded-full bg-white/10 text-3xl ring-1 ring-white/20">
               <span className="drop-shadow-sm">{taAvatar}</span>
-              {/* 左耳耳机罩 */}
-              <span className="absolute -left-2 -top-1 h-3.5 w-5 rounded-full bg-rose-400 shadow" />
             </div>
-            <span className="rounded-full bg-white/60 px-2 py-0.5 text-[10px] text-rose-500">左耳机 · TA</span>
+            <span className="text-[10px] text-slate-400">TA</span>
           </div>
 
-          {/* 右耳机 · 我 */}
+          {/* 我 */}
           <div
             className={cn(
               '-ml-1 flex flex-col items-center gap-1 transition-transform duration-500 ease-out',
@@ -109,17 +90,15 @@ export function VinylPlayer() {
               bumping && 'animate-[bump-right_0.5s_ease]',
             )}
           >
-            <div className="relative flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-white text-3xl shadow-md ring-2 ring-rose-200/70">
+            <div className="flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-white/10 text-3xl ring-1 ring-white/20">
               <span className="drop-shadow-sm">{meAvatar}</span>
-              {/* 右耳耳机罩 */}
-              <span className="absolute -right-2 -top-1 h-3.5 w-5 rounded-full bg-rose-400 shadow" />
             </div>
-            <span className="rounded-full bg-white/60 px-2 py-0.5 text-[10px] text-rose-500">右耳机 · {meName}</span>
+            <span className="text-[10px] text-slate-400">{meName}</span>
           </div>
         </div>
 
         {/* 黑胶唱片（旋转）+ 中心播放键 */}
-        <div className="relative mt-3 h-44 w-44">
+        <div className="relative mt-4 h-44 w-44">
           <div
             className="absolute inset-0 rounded-full"
             style={{
@@ -127,7 +106,7 @@ export function VinylPlayer() {
               animationPlayState: playing ? 'running' : 'paused',
               background:
                 'repeating-radial-gradient(circle at 50% 50%, #1c1c20 0px, #1c1c20 1px, #26262b 1px, #26262b 2px)',
-              boxShadow: '0 14px 40px rgba(190,80,110,0.35), 0 0 0 6px rgba(255,255,255,0.55)',
+              boxShadow: '0 14px 40px rgba(0,0,0,0.5), 0 0 0 5px rgba(255,255,255,0.18)',
             }}
           />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -141,10 +120,6 @@ export function VinylPlayer() {
               {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
             </button>
           </div>
-        </div>
-
-        <div className="mt-3 text-center text-[11px] text-rose-500/80">
-          {playing ? '正在一起听 · 占位中' : '点击播放，两个头像碰一下'}
         </div>
       </div>
 
