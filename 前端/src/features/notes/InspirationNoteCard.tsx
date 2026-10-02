@@ -55,7 +55,7 @@ export function InspirationNoteCard() {
   };
 
   return (
-    <div className="glass relative z-10 p-2.5">
+    <div className="glass relative z-10 flex flex-col p-2">
       {/* 头部：标题 + 全部入口（点击进全部便签页） */}
       <button
         type="button"
@@ -69,20 +69,20 @@ export function InspirationNoteCard() {
         </span>
       </button>
 
-      {/* 便签 + 两侧切换箭头（整体缩小，去掉背后堆叠） */}
-      <div className="relative mt-4 flex items-center gap-2">
+      {/* 便签 + 两侧切换箭头（与 Token 卡片底边齐平） */}
+      <div className="relative mt-4 flex flex-1 items-center gap-1.5">
         {count > 1 && (
           <button
             type="button"
             onClick={() => paginate(-1)}
             aria-label="上一张"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
 
-        <div className="relative flex-1">
+        <div className="relative flex-1 self-stretch">
           <AnimatePresence mode="wait" custom={direction} initial={false}>
             {note ? (
               <motion.button
@@ -102,7 +102,7 @@ export function InspirationNoteCard() {
                 dragElastic={1}
                 onDragEnd={onDragEnd}
                 onClick={() => setPreviewOpen(true)}
-                className="relative flex min-h-[200px] w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+                className="relative flex h-full w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
               >
                 <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
                 <div className="mt-2 flex items-baseline justify-end gap-2">
@@ -113,7 +113,7 @@ export function InspirationNoteCard() {
                 </div>
               </motion.button>
             ) : (
-              <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
+              <div className="flex h-full items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
                 生成中…
               </div>
             )}
@@ -125,7 +125,7 @@ export function InspirationNoteCard() {
             type="button"
             onClick={() => paginate(1)}
             aria-label="下一张"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
