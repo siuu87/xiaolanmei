@@ -102,7 +102,7 @@ export function InspirationNoteCard() {
                 dragElastic={1}
                 onDragEnd={onDragEnd}
                 onClick={() => setPreviewOpen(true)}
-                className="relative flex min-h-[130px] w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+                className="relative flex min-h-[200px] w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
               >
                 <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
                 <div className="mt-2 flex items-baseline justify-end gap-2">
@@ -113,7 +113,7 @@ export function InspirationNoteCard() {
                 </div>
               </motion.button>
             ) : (
-              <div className="flex h-[130px] items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
+              <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
                 生成中…
               </div>
             )}
