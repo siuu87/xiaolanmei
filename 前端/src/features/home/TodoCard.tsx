@@ -4,14 +4,6 @@ import { Check, Plus, Repeat, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTodoStore, isTodoDone, type RepeatType } from './todoStore';
 
-/** 今天的日期（YYYY-MM-DD，用于 input[type=date]） */
-function todayInput(): string {
-  const n = new Date();
-  const m = String(n.getMonth() + 1).padStart(2, '0');
-  const d = String(n.getDate()).padStart(2, '0');
-  return `${n.getFullYear()}-${m}-${d}`;
-}
-
 const REPEAT_LABEL: Record<RepeatType, string> = {
   none: '',
   daily: '每天',
@@ -28,14 +20,12 @@ export function TodoCard() {
   const [creating, setCreating] = useState(false);
   const [text, setText] = useState('');
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(todayInput());
   const [repeatOn, setRepeatOn] = useState(false);
   const [repeatType, setRepeatType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
   const openCreate = () => {
     setText('');
     setNote('');
-    setDate(todayInput());
     setRepeatOn(false);
     setRepeatType('daily');
     setCreating(true);
@@ -47,7 +37,6 @@ export function TodoCard() {
     addTodo({
       text: t,
       note: note.trim() || undefined,
-      date: date || undefined,
       repeat: repeatOn ? repeatType : 'none',
     });
     setCreating(false);
@@ -55,8 +44,9 @@ export function TodoCard() {
 
   return (
     <div className="glass p-4">
-      {/* 左上角：加号 + 标题 */}
-      <div className="flex items-center gap-2">
+      {/* 头部：标题 + 右侧加号 */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif text-xs text-muted-foreground">TO-DO list</h2>
         <button
           type="button"
           onClick={openCreate}
@@ -65,7 +55,6 @@ export function TodoCard() {
         >
           <Plus className="h-4 w-4" />
         </button>
-        <h2 className="font-serif text-xs text-muted-foreground">TO-DO list</h2>
       </div>
 
       <ul className="mt-2 space-y-1">
@@ -95,12 +84,8 @@ export function TodoCard() {
                 >
                   {t.text}
                 </span>
-                {(t.date || t.note) && (
-                  <div className="text-[10px] leading-4 text-muted-foreground/70">
-                    {t.date}
-                    {t.date && t.note ? ' · ' : ''}
-                    {t.note}
-                  </div>
+                {t.note && (
+                  <div className="text-[10px] leading-4 text-muted-foreground/70">{t.note}</div>
                 )}
               </div>
               {t.repeat !== 'none' && (
@@ -144,19 +129,8 @@ export function TodoCard() {
               </button>
             </div>
 
-            {/* 日期 */}
-            <div className="mt-4">
-              <label className="mb-1 block text-xs text-muted-foreground">日期</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-10 w-full rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none focus:bg-muted/80"
-              />
-            </div>
-
             {/* 是否重复 */}
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">是否重复</span>
               <button
                 type="button"

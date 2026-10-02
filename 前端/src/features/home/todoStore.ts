@@ -8,7 +8,6 @@ export interface Todo {
   id: string;
   text: string; // 具体内容
   note?: string; // 备注
-  date?: string; // 日期（YYYY-MM-DD）
   repeat: RepeatType; // 重复频率，none 为不重复
   done: boolean; // 一次性待办：是否完成
   doneOn?: string; // 重复待办：最近完成的日期 key
@@ -28,7 +27,6 @@ export function isTodoDone(t: Todo): boolean {
 export interface NewTodo {
   text: string;
   note?: string;
-  date?: string;
   repeat?: RepeatType;
 }
 
@@ -62,7 +60,6 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       id: newId(),
       text: input.text,
       note: input.note || undefined,
-      date: input.date || undefined,
       repeat: input.repeat ?? 'none',
       done: false,
       doneOn: undefined,

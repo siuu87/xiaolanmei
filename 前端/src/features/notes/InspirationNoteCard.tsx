@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotesStore } from './notesStore';
 import { NOTE_AUTHOR, formatNoteDate } from './notesData';
@@ -92,7 +92,7 @@ export function InspirationNoteCard() {
               }}
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.5}
+              dragElastic={1}
               onDragEnd={onDragEnd}
               onClick={() => setPreviewOpen(true)}
               className="relative flex min-h-[150px] w-full flex-col justify-between rounded-md bg-[#fef9c3] p-4 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
@@ -113,18 +113,36 @@ export function InspirationNoteCard() {
         </AnimatePresence>
       </div>
 
-      {/* 页码指示 */}
+      {/* 页码指示 + 左右切换箭头 */}
       {count > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-1">
-          {notes.map((n, i) => (
-            <span
-              key={n.id}
-              className={cn(
-                'h-1 rounded-full transition-all',
-                i === clamped ? 'w-3 bg-primary' : 'w-1 bg-muted-foreground/30',
-              )}
-            />
-          ))}
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => paginate(-1)}
+            aria-label="上一张"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-1">
+            {notes.map((n, i) => (
+              <span
+                key={n.id}
+                className={cn(
+                  'h-1 rounded-full transition-all',
+                  i === clamped ? 'w-3 bg-primary' : 'w-1 bg-muted-foreground/30',
+                )}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => paginate(1)}
+            aria-label="下一张"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       )}
 
