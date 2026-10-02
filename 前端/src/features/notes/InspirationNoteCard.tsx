@@ -37,9 +37,11 @@ export function InspirationNoteCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const count = notes.length;
+  // 只展示最近 5 条
+  const recentNotes = notes.slice(0, 5);
+  const count = recentNotes.length;
   const clamped = count ? Math.min(index, count - 1) : 0;
-  const note = count ? notes[clamped] : null;
+  const note = count ? recentNotes[clamped] : null;
 
   const paginate = (dir: 1 | -1) => {
     if (count <= 1) return;
@@ -100,7 +102,7 @@ export function InspirationNoteCard() {
                 dragElastic={1}
                 onDragEnd={onDragEnd}
                 onClick={() => setPreviewOpen(true)}
-                className="relative flex min-h-[110px] w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+                className="relative flex min-h-[130px] w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
               >
                 <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
                 <div className="mt-2 flex items-baseline justify-end gap-2">
@@ -111,7 +113,7 @@ export function InspirationNoteCard() {
                 </div>
               </motion.button>
             ) : (
-              <div className="flex h-[110px] items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
+              <div className="flex h-[130px] items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
                 生成中…
               </div>
             )}
@@ -133,7 +135,7 @@ export function InspirationNoteCard() {
       {/* 页码指示 */}
       {count > 1 && (
         <div className="mt-3 flex items-center justify-center gap-1">
-          {notes.map((n, i) => (
+          {recentNotes.map((n, i) => (
             <span
               key={n.id}
               className={cn(
