@@ -16,8 +16,4 @@ export const env = {
 
   // 智能编程工作区（阶段 10）：默认后端上一级 = 项目根 d:\小蓝莓
   workspacePath: process.env.WORKSPACE_PATH ?? path.resolve(process.cwd(), '..'),
-
-  // 心潮（xinchao-nian）本地状态服务：状态监视器的上游代理。XINCHAO_TOKEN 填心潮的 SERVICE_TOKEN
-  xinchaoBaseUrl: process.env.XINCHAO_API_BASE ?? 'http://127.0.0.1:18110',
-  xinchaoToken: process.env.XINCHAO_TOKEN ?? '',
 } as const;

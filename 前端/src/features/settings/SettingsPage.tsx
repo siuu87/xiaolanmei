@@ -9,10 +9,8 @@ import {
   FileText,
   Globe,
   Heart,
-  Info,
   KeyRound,
   Loader2,
-  Lock,
   MessageCircle,
   Moon,
   Palette,
@@ -44,7 +42,6 @@ import { SkillsPanel } from '@/features/skills/SkillsPanel';
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StickerSettings } from './StickerSettings';
 import { ProfilesSection } from './ProfilesSection';
-import { PrivateArchiveSection } from './PrivateArchiveSection';
 import { listMemos, type MemoDTO } from '@/lib/api/memo';
 import { CATEGORY_META } from '@/features/memo/MemoCard';
 import {
@@ -479,20 +476,6 @@ export function SettingsPage() {
         )}
 
         <IOSSettingItem
-          icon={<Lock className="h-4 w-4" />}
-          iconBg="bg-rose-500"
-          title="私密档案"
-          subtitle="偏好、边界与安全词"
-          showChevron
-          onClick={() => toggle('archive')}
-        />
-        {expanded === 'archive' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
-            <PrivateArchiveSection />
-          </div>
-        )}
-
-        <IOSSettingItem
           icon={<SlidersHorizontal className="h-4 w-4" />}
           iconBg="bg-gray-400"
           title="模型参数"
@@ -722,24 +705,6 @@ export function SettingsPage() {
             <SyncPanel />
           </div>
         )}
-      </IOSSettingGroup>
-
-      <div className="h-5" />
-
-      {/* 关于 */}
-      <IOSSettingGroup title="关于">
-        <IOSSettingItem
-          icon={<Info className="h-4 w-4" />}
-          iconBg="bg-gray-400"
-          title="版本"
-          value="1.0.0"
-        />
-        <IOSSettingItem
-          icon={<Heart className="h-4 w-4" />}
-          iconBg="bg-pink-400"
-          title="关于小蓝莓"
-          subtitle="网易云风格的情侣专属陪伴应用 🫐"
-        />
       </IOSSettingGroup>
     </div>
   );

@@ -33,8 +33,6 @@ import { ragRoutes } from './routes/rag.js';
 import { skillRoutes } from './routes/skills.js';
 import { memoRoutes } from './routes/memo.js';
 import { profileRoutes } from './routes/profiles.js';
-import { stateRoutes } from './routes/state.js';
-import { archiveRoutes } from './routes/archive.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
 
 async function main(): Promise<void> {
@@ -80,8 +78,6 @@ async function main(): Promise<void> {
   await app.register(skillRoutes, { prefix: '/api' });
   await app.register(memoRoutes, { prefix: '/api' });
   await app.register(profileRoutes, { prefix: '/api' });
-  await app.register(stateRoutes, { prefix: '/api' });
-  await app.register(archiveRoutes, { prefix: '/api' });
 
   await app.listen({ port: env.port, host: '0.0.0.0' });
   console.log(`✅ 小蓝莓后端已启动: http://localhost:${env.port}/api/health`);
