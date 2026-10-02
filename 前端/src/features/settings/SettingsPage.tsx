@@ -12,6 +12,7 @@ import {
   Info,
   KeyRound,
   Loader2,
+  Lock,
   MessageCircle,
   Moon,
   Palette,
@@ -43,6 +44,7 @@ import { SkillsPanel } from '@/features/skills/SkillsPanel';
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StickerSettings } from './StickerSettings';
 import { ProfilesSection } from './ProfilesSection';
+import { PrivateArchiveSection } from './PrivateArchiveSection';
 import { listMemos, type MemoDTO } from '@/lib/api/memo';
 import { CATEGORY_META } from '@/features/memo/MemoCard';
 import {
@@ -473,6 +475,20 @@ export function SettingsPage() {
         {expanded === 'profiles' && (
           <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
             <ProfilesSection />
+          </div>
+        )}
+
+        <IOSSettingItem
+          icon={<Lock className="h-4 w-4" />}
+          iconBg="bg-rose-500"
+          title="私密档案"
+          subtitle="偏好、边界与安全词"
+          showChevron
+          onClick={() => toggle('archive')}
+        />
+        {expanded === 'archive' && (
+          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+            <PrivateArchiveSection />
           </div>
         )}
 

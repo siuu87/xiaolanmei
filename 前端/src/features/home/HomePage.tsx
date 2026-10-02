@@ -6,6 +6,8 @@ import { TokenCard } from './TokenCard';
 import { FeatureGrid } from './FeatureGrid';
 import { PeriodHint } from './PeriodHint';
 import { InspirationNoteCard } from '@/features/notes/InspirationNoteCard';
+import { StateMonitor } from '@/features/state/StateMonitor';
+import { HealthIndicator } from '@/components/HealthIndicator';
 import { useMemorialStore } from './memorialStore';
 
 export function HomePage() {
@@ -22,6 +24,8 @@ export function HomePage() {
         {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
         <CalendarCard />
         <PeriodHint />
+        <StateMonitor />
+        <HealthIndicator />
         <CourseCard />
         <TodoCard />
         <div className="grid grid-cols-2 items-start gap-3">

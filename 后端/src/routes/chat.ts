@@ -190,6 +190,45 @@ function summarizeTool(toolName: string, args: Record<string, unknown>): string 
  * 逐事件透传 delta/tool_call/done/error；结束时按结果写 token_usage 一行。
  */
 export async function chatRoutes(app: FastifyInstance): Promise<void> {
+  // 链路健康看护：探活当前站子的上游模型服务（GET /models，5s 超时）。
+  // 200 = { ok, model, ts }；上游不可达 503 = { ok:false, error:'channel_unreachable' }。Key 绝不下发。
+  app.get('/chat/health', async (_req, reply) => {
+    const station = resolveStation();
+    const config = getAdapterConfig(station?.id);
+    const model = (station ? firstModel(station) : undefined) || getModelConfig().model;
+    const base = config.baseUrl?.replace(/\/+$/, '');
+    if (!base) {
+      reply.code(503).send({ ok: false, error: 'channel_unreachable', model: model ?? null, ts: Date.now() });
+      return;
+    }
+    const headers: Record<string, string> = config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {};
+    // 优先 /models（OpenAI 兼容的 baseUrl 通常已含 /v1）；个别服务不认时退到 /v1/models
+    const candidates = [`${base}/models`, `${base}/v1/models`];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    let reachable = false;
+    try {
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, { method: 'GET', headers, signal: controller.signal });
+          if (res.ok) {
+            reachable = true;
+            break;
+          }
+        } catch {
+          /* 该候选不通，试下一个 */
+        }
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!reachable) {
+      reply.code(503).send({ ok: false, error: 'channel_unreachable', model: model ?? null, ts: Date.now() });
+      return;
+    }
+    return { ok: true, model: model ?? null, ts: Date.now() };
+  });
+
   app.post('/chat/stream', async (req: FastifyRequest, reply: FastifyReply) => {
     const body = (req.body ?? {}) as ChatStreamBody;
     const messages = Array.isArray(body.messages) ? body.messages : [];
@@ -268,8 +307,10 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
     const started = now();
     const controller = new AbortController();
+    let closed = false;
     // 客户端断开时才中止上游；正常 end 后 close 不算（writableEnded 已置 true）
     const onClose = () => {
+      closed = true;
       if (!reply.raw.writableEnded) controller.abort();
     };
 
@@ -285,6 +326,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
     reply.raw.on('close', onClose);
 
+    // 背压写队列：raw.write 返回 false 时等 drain 再写，避免下游消费慢时内存积压
+    let writeChain: Promise<void> = Promise.resolve();
     const write = (
       ev:
         | ChatEvent
@@ -292,7 +335,24 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
         | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string },
     ) => {
-      reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
+      const chunk = `data: ${JSON.stringify(ev)}\n\n`;
+      writeChain = writeChain.then(async () => {
+        if (closed) return;
+        if (!reply.raw.write(chunk)) {
+          await new Promise<void>((resolve) => {
+            const onDrain = () => {
+              reply.raw.off('close', onCloseEv);
+              resolve();
+            };
+            const onCloseEv = () => {
+              reply.raw.off('drain', onDrain);
+              resolve();
+            };
+            reply.raw.once('drain', onDrain);
+            reply.raw.once('close', onCloseEv);
+          });
+        }
+      });
     };
 
     let status: 'success' | 'error' | 'aborted' = 'success';
@@ -436,6 +496,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       // token 落库失败不阻断流式响应
     }
 
+    await writeChain;
     reply.raw.end();
   });
 }
