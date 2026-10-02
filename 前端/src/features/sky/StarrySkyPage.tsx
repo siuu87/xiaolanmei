@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Cake, Headphones, BookOpen, type LucideIcon } from 'lucide-react';
+import { ChefHat, Cake, BookOpen, type LucideIcon } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
-import { VinylPlayer } from './VinylPlayer';
 import { Bookshelf } from './Bookshelf';
 
 function SectionTitle({ eyebrow, icon: Icon }: { eyebrow: string; icon: LucideIcon }) {
@@ -32,8 +31,7 @@ function EntryCard({ label, hint, icon: Icon, onClick }: { label: string; hint: 
 }
 
 /**
- * 星空主页：上方「一起听」网易云式黑胶唱片，下方「一起读」书架（书脊冲外）。
- * 食谱 / 甜品小屋收成底部小入口。
+ * 星空主页：「一起读」书架（书脊冲外），食谱 / 甜品小屋收成底部小入口。
  */
 export function StarrySkyPage() {
   const navigate = useNavigate();
@@ -43,18 +41,11 @@ export function StarrySkyPage() {
       <StarBackdrop />
 
       <div className="relative mx-auto w-full max-w-md px-4 pt-6 pb-10 md:max-w-3xl lg:max-w-5xl">
-        {/* 一起听 + 一起读：手机竖排，平板/电脑并排 */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:items-start">
-          <section>
-            <SectionTitle eyebrow="LISTEN" icon={Headphones} />
-            <VinylPlayer />
-          </section>
-
-          <section>
-            <SectionTitle eyebrow="READ" icon={BookOpen} />
-            <Bookshelf />
-          </section>
-        </div>
+        {/* 一起读：书架（书脊冲外） */}
+        <section>
+          <SectionTitle eyebrow="READ" icon={BookOpen} />
+          <Bookshelf />
+        </section>
 
         {/* 其它小入口：卡片式 */}
         <div className="mt-8 grid grid-cols-2 gap-3 sm:max-w-md">
