@@ -38,7 +38,7 @@ export function ModelPicker({ stationId, model, onChange }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         title="选择模型"
-        className="flex h-7 items-center gap-1.5 rounded-full bg-[#30302E] px-3 text-xs text-[#F8F8F6] transition hover:bg-[#3A3A38]"
+        className="flex h-7 items-center gap-1.5 rounded-full bg-[#E0E0E0] px-3 text-xs text-[#191919] transition hover:bg-[#D6D6D6]"
       >
         <span className="max-w-28 truncate">{label}</span>
         <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
