@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
-  Send,
+  ArrowUp,
   Square,
   Trash2,
   Pencil,
@@ -19,10 +19,11 @@ import {
   Mic,
   Menu,
   Globe,
-  ImagePlus,
+  Paperclip,
+  Settings,
   Smile,
   Phone,
-  Brain,
+  User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -124,40 +125,78 @@ function StickerBubble({ emoji }: { emoji: string }) {
   );
 }
 
-/** 思考链：Claude 式可折叠推理块，思考中自动展开、结束后收起为标题行 */
+/** Claude 星形 Logo（陶土橙），近似 Claude.ai 的八芒星标志 */
+function ClaudeMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <g fill="currentColor">
+        <path d="M12 1.6c.32 3.2.4 6.4 0 9.6-.4 3.2-.32 6.4 0 9.6.32-3.2.4-6.4 0-9.6-.4-3.2-.32-6.4 0-9.6Z" />
+        <path d="M1.6 12c3.2.32 6.4.4 9.6 0 3.2-.4 6.4-.32 9.6 0-3.2.32-6.4.4-9.6 0-3.2-.4-6.4-.32-9.6 0Z" />
+        <path d="M4.6 4.6c2.6 2.6 4.6 4.6 7.4 7.4 2.8 2.8 4.8 4.8 7.4 7.4-2.6-2.6-4.6-4.6-7.4-7.4-2.8-2.8-4.8-4.8-7.4-7.4Z" />
+        <path d="M19.4 4.6c-2.6 2.6-4.6 4.6-7.4 7.4-2.8 2.8-4.8 4.8-7.4 7.4 2.6-2.6 4.6-4.6 7.4-7.4 2.8-2.8 4.8-4.8 7.4-7.4Z" />
+      </g>
+    </svg>
+  );
+}
+
+/** 思考链：Claude 式可折叠推理卡片（思考中跳动圆点，结束后收起为标题行） */
 function ThinkingBlock({ reasoning, active }: { reasoning: string; active: boolean }) {
-  const [open, setOpen] = useState(active);
+  const [open, setOpen] = useState(true);
   useEffect(() => {
-    setOpen(active);
+    if (active) setOpen(true);
   }, [active]);
   return (
-    <div className="mb-2">
+    <div className="mb-2.5 overflow-hidden rounded-xl border border-[#30302E] bg-[#1C1C1A]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground/80 transition hover:text-muted-foreground"
+        className="flex w-full items-center gap-2 border-l-2 border-[#D4763B] px-3 py-2 text-left"
       >
+        <ClaudeMark className="h-3.5 w-3.5 shrink-0 text-[#D4763B]" />
+        <span className="text-xs text-[#A0A09C]">{active ? '正在思考' : '思考过程'}</span>
         {active ? (
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground/60" />
-            思考中…
+          <span className="flex items-center gap-1">
+            <span className="think-dot h-1 w-1 rounded-full bg-[#D4763B]" style={{ animationDelay: '0ms' }} />
+            <span className="think-dot h-1 w-1 rounded-full bg-[#D4763B]" style={{ animationDelay: '150ms' }} />
+            <span className="think-dot h-1 w-1 rounded-full bg-[#D4763B]" style={{ animationDelay: '300ms' }} />
           </span>
         ) : (
-          <span className="flex items-center gap-1.5">
-            <Brain className="h-3.5 w-3.5" />
-            思考过程
-            <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
-          </span>
+          <ChevronDown
+            className={cn('ml-auto h-3.5 w-3.5 text-[#D4763B] transition-transform', open && 'rotate-180')}
+          />
         )}
       </button>
       {open && (
-        <div className="mt-1.5 whitespace-pre-wrap border-l-2 border-border/80 pl-3 text-xs leading-relaxed text-muted-foreground/75">
-          {reasoning}
+        <div className="border-l-2 border-[#D4763B] pb-2.5 pl-4 pr-3">
+          <p className="whitespace-pre-wrap text-xs leading-relaxed text-[#A0A09C]">{reasoning}</p>
         </div>
       )}
     </div>
   );
 }
+
+/** Claude 深色配色（HSL），注入聊天页根节点，覆盖全局主题变量，使聊天页恒为深色暖调 */
+const CLAUDE_VARS = {
+  '--background': '60 3% 8%',
+  '--foreground': '60 12% 97%',
+  '--card': '60 4% 11%',
+  '--card-foreground': '60 12% 97%',
+  '--popover': '60 4% 11%',
+  '--popover-foreground': '60 12% 97%',
+  '--primary': '23 64% 53%',
+  '--primary-foreground': '0 0% 100%',
+  '--secondary': '60 4% 11%',
+  '--secondary-foreground': '60 12% 97%',
+  '--muted': '60 4% 11%',
+  '--muted-foreground': '60 2% 62%',
+  '--accent': '60 4% 11%',
+  '--accent-foreground': '60 12% 97%',
+  '--destructive': '0 62% 45%',
+  '--destructive-foreground': '0 0% 98%',
+  '--border': '60 2% 18%',
+  '--input': '60 2% 18%',
+  '--ring': '23 64% 53%',
+} as CSSProperties;
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -605,19 +644,20 @@ export function ChatPage() {
   const showWelcome = !conversation || conversation.messages.length === 0;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* 顶栏：抽屉入口 + 标题 + 模型/联网/搜索/编程 */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2">
+    <div className="flex h-full flex-col bg-[#141413] text-[#F8F8F6]" style={CLAUDE_VARS}>
+      {/* 顶栏：抽屉 + Logo + 衬线标题 + 模型/联网/搜索/通话 */}
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-[#30302E]/70 px-3 py-2.5">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
           aria-label="工具箱"
           title="插件 / 角色 / 世界书 / 工作区 / 技能"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#A0A09C] transition hover:text-[#F8F8F6]"
         >
           <Menu className="h-4 w-4" />
         </button>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        <ClaudeMark className="h-5 w-5 shrink-0 text-[#D4763B]" />
+        <span className="min-w-0 flex-1 truncate text-center font-serif text-[15px] text-[#F8F8F6]">
           {conversation?.title ?? '小蓝莓'}
         </span>
         <ModelPicker
@@ -634,8 +674,8 @@ export function ChatPage() {
           aria-label="联网"
           title="联网搜索"
           className={cn(
-            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition',
-            web ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition',
+            web ? 'text-[#D4763B]' : 'text-[#A0A09C] hover:text-[#F8F8F6]',
           )}
         >
           <Globe className="h-4 w-4" />
@@ -644,7 +684,7 @@ export function ChatPage() {
           type="button"
           onClick={() => setSearchOpen(true)}
           aria-label="搜索记录"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#A0A09C] transition hover:text-[#F8F8F6]"
         >
           <Search className="h-4 w-4" />
         </button>
@@ -653,21 +693,22 @@ export function ChatPage() {
           onClick={() => setCallOpen(true)}
           aria-label="语音通话"
           title="语音通话"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#A0A09C] transition hover:text-[#F8F8F6]"
         >
           <Phone className="h-4 w-4" />
         </button>
       </div>
 
       {/* 消息列表 */}
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+        <div className="mx-auto w-full max-w-3xl space-y-6">
         {!loaded ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          <div className="flex items-center justify-center py-20 text-sm text-[#A0A09C]">
             加载中…
           </div>
         ) : showWelcome ? (
           <div className="flex justify-start">
-            <div className="max-w-[85%] text-sm leading-6 text-foreground/90">
+            <div className="max-w-[85%] text-sm leading-6 text-[#F8F8F6]/90">
               <Markdown>{WELCOME_TEXT}</Markdown>
             </div>
           </div>
@@ -683,9 +724,9 @@ export function ChatPage() {
 
             return (
               <div key={m.id} className="flex flex-col">
-                {/* 气泡（长按弹出菜单） */}
+                {/* 消息行：头像 + 标签 + 内容（Claude 式左对齐） */}
                 <div
-                  className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+                  className="flex gap-3"
                   {...(!isEditing
                     ? {
                         onPointerDown: () => startPress(m.id),
@@ -696,16 +737,27 @@ export function ChatPage() {
                       }
                     : {})}
                 >
-                  <div
-                    className={cn(
-                      'max-w-[85%] text-sm leading-6',
-                      !isEditing && 'select-none',
-                      m.role === 'user'
-                        ? 'whitespace-pre-wrap rounded-2xl bg-muted px-3 py-2 text-foreground'
-                        : 'text-foreground/90',
-                      m.sticker && 'bg-transparent p-0',
-                    )}
-                  >
+                  {m.role === 'user' ? (
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#D4763B]/60 text-[#A0A09C]">
+                      <User className="h-4 w-4" />
+                    </div>
+                  ) : (
+                    <ClaudeMark className="mt-1 h-5 w-5 shrink-0 text-[#D4763B]" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-xs font-medium text-[#F8F8F6]">
+                      {m.role === 'user' ? '你' : '小蓝莓'}
+                    </div>
+                    <div
+                      className={cn(
+                        'max-w-full text-sm leading-6',
+                        !isEditing && 'select-none',
+                        m.role === 'user'
+                          ? 'whitespace-pre-wrap rounded-xl bg-[#1C1C1A] px-3.5 py-2.5 text-[#F8F8F6]'
+                          : 'text-[#F8F8F6]/95',
+                        m.sticker && 'bg-transparent p-0',
+                      )}
+                    >
                     {isEditing ? (
                       <div className="flex flex-col gap-2">
                         <textarea
@@ -713,14 +765,14 @@ export function ChatPage() {
                           onChange={(e) => setEditText(e.target.value)}
                           autoFocus
                           rows={3}
-                          className="w-full resize-none select-text rounded-lg bg-background/20 px-2 py-1 text-sm text-foreground outline-none"
+                          className="w-full resize-none select-text rounded-lg bg-[#141413]/60 px-2 py-1 text-sm text-[#F8F8F6] outline-none"
                         />
                         <div className="flex justify-end gap-1">
                           <button
                             type="button"
                             onClick={cancelEdit}
                             aria-label="取消编辑"
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-foreground/70 hover:bg-background/20"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-[#A0A09C] hover:bg-[#141413]/60"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -728,7 +780,7 @@ export function ChatPage() {
                             type="button"
                             onClick={() => void saveEdit(m)}
                             aria-label="保存编辑"
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-foreground/70 hover:bg-background/20"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-[#A0A09C] hover:bg-[#141413]/60"
                           >
                             <Check className="h-4 w-4" />
                           </button>
@@ -743,7 +795,7 @@ export function ChatPage() {
                           />
                         )}
                         {!m.reasoning && m.status === 'streaming' && !m.content && (
-                          <span className="text-muted-foreground">思考中…</span>
+                          <span className="text-[#A0A09C]">思考中…</span>
                         )}
                         {m.content && <Markdown>{m.content}</Markdown>}
                       </>
@@ -766,12 +818,13 @@ export function ChatPage() {
                         {m.content}
                       </>
                     )}
+                    </div>
                   </div>
                 </div>
 
                 {/* 已记入备忘录提示 */}
                 {m.role === 'assistant' && (memoAdded[m.id]?.length ?? 0) > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1.5">
+                  <div className="mt-1 flex flex-wrap gap-1.5 pl-10">
                     {memoAdded[m.id].map((mm, i) => (
                       <button
                         key={i}
@@ -799,12 +852,7 @@ export function ChatPage() {
                 )}
 
                 {/* 气泡下方：分支切换 + ⋯ */}
-                <div
-                  className={cn(
-                    'mt-1 flex items-center gap-1.5',
-                    m.role === 'user' ? 'justify-end' : 'justify-start',
-                  )}
-                >
+                <div className="mt-1 flex items-center gap-1.5 pl-10">
                   {showSwitch && (
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
                       <button
@@ -841,13 +889,7 @@ export function ChatPage() {
 
                 {/* 长按 / ⋯ 弹出的操作菜单 */}
                 {menuOpen && (
-                  <div
-                    data-menu
-                    className={cn(
-                      'mt-1 flex flex-wrap gap-1.5',
-                      m.role === 'user' ? 'justify-end' : 'justify-start',
-                    )}
-                  >
+                  <div data-menu className="mt-1 flex flex-wrap gap-1.5 pl-10">
                     <MenuAction
                       icon={<Copy className="h-3.5 w-3.5" />}
                       label="复制"
@@ -919,10 +961,11 @@ export function ChatPage() {
           })
         )}
         <div ref={bottomRef} />
+        </div>
       </div>
 
-      {/* 输入框 */}
-      <div className="shrink-0 border-t border-border/60 p-3">
+      {/* 输入框（Claude 深色） */}
+      <div className="shrink-0 border-t border-[#30302E]/70 bg-[#141413] px-4 pb-4 pt-3">
         {partnerStateNote && (
           <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-rose-400/10 px-3 py-1.5 text-xs text-rose-300">
             {partnerStateNote}
@@ -934,7 +977,7 @@ export function ChatPage() {
               <span
                 key={s.id}
                 title={`触发：${s.reason}`}
-                className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
+                className="flex items-center gap-1 rounded-full bg-[#D4763B]/10 px-2 py-0.5 text-[11px] text-[#D4763B]"
               >
                 {s.name}
               </span>
@@ -942,19 +985,19 @@ export function ChatPage() {
           </div>
         )}
         {toolStatus && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-[#1C1C1A] px-3 py-1.5 text-xs text-[#A0A09C]">
             <Globe className="h-3.5 w-3.5 animate-pulse" />
             <span>{toolStatus}</span>
           </div>
         )}
         {replyToId && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-[#1C1C1A] px-3 py-1.5 text-xs text-[#A0A09C]">
             <span className="flex-1 truncate">正在回复这条消息…</span>
             <button
               type="button"
               onClick={cancelReply}
               aria-label="取消回复"
-              className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+              className="flex h-5 w-5 items-center justify-center rounded hover:bg-[#30302E]"
             >
               <X className="h-3 w-3" />
             </button>
@@ -969,7 +1012,7 @@ export function ChatPage() {
                   type="button"
                   onClick={() => setPendingImages((prev) => prev.filter((_, j) => j !== i))}
                   aria-label="移除图片"
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#F8F8F6] text-[#141413] shadow"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -978,87 +1021,99 @@ export function ChatPage() {
           </div>
         )}
         {confirming && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground/90">
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-[#F8F8F6]/90">
             <span className="min-w-0 flex-1 truncate">⏸ 需要确认：{confirming.summary}</span>
             <button
               type="button"
               onClick={() => void answerConfirm('allow')}
-              className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground"
+              className="flex shrink-0 items-center gap-1 rounded-md bg-[#D4763B] px-2 py-1 text-xs text-white"
             >
               <Check className="h-3 w-3" /> 允许
             </button>
             <button
               type="button"
               onClick={() => void answerConfirm('deny')}
-              className="flex shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground/80"
+              className="flex shrink-0 items-center gap-1 rounded-md bg-[#1C1C1A] px-2 py-1 text-xs text-[#F8F8F6]/80"
             >
               <X className="h-3 w-3" /> 拒绝
             </button>
           </div>
         )}
-        <div className="flex items-center gap-1 rounded-[20px] border border-border bg-card p-1.5">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            multiple
-            hidden
-            onChange={(e) => {
-              void pickImages(e.target.files);
-              e.target.value = '';
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setStickerOpen((v) => !v)}
-            aria-label="表情包"
-            title="表情包"
-            className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
-              stickerOpen
-                ? 'bg-muted text-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            <Smile className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            aria-label="发图"
-            title="发图"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <ImagePlus className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={toggleListen}
-            aria-label="语音输入"
-            title="语音输入"
-            className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
-              listening ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            <Mic className={cn('h-5 w-5', listening && 'animate-pulse')} />
-          </button>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
-            placeholder={replyToId ? '回复这条消息…' : '想和哥哥说…'}
-            className="h-9 flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
-          />
-          <button
-            type="button"
-            onClick={busy ? stop : send}
-            aria-label={busy ? '停止' : '发送'}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-          >
-            {busy ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-          </button>
+        <div className="mx-auto w-full max-w-3xl">
+          <p className="mb-2 text-center text-[11px] text-[#A0A09C]">
+            小蓝莓可能会犯错，请核实重要信息
+          </p>
+          <div className="flex items-center gap-1 rounded-2xl border border-[#30302E] bg-[#1C1C1A] p-1.5 shadow-[0_4px_24px_rgba(0,0,0,0.35)] transition-colors focus-within:border-[#D4763B]">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              multiple
+              hidden
+              onChange={(e) => {
+                void pickImages(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setStickerOpen((v) => !v)}
+              aria-label="表情包"
+              title="表情包"
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
+                stickerOpen ? 'bg-[#30302E] text-[#F8F8F6]' : 'text-[#A0A09C] hover:text-[#F8F8F6]',
+              )}
+            >
+              <Smile className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleListen}
+              aria-label="语音输入"
+              title="语音输入"
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
+                listening ? 'bg-[#30302E] text-[#F8F8F6]' : 'text-[#A0A09C] hover:text-[#F8F8F6]',
+              )}
+            >
+              <Mic className={cn('h-5 w-5', listening && 'animate-pulse')} />
+            </button>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
+              placeholder={replyToId ? '回复这条消息…' : '今天想聊什么？'}
+              className="h-9 min-w-0 flex-1 bg-transparent px-1 text-sm text-[#F8F8F6] outline-none placeholder:text-[#A0A09C]/70"
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              aria-label="发图"
+              title="发图"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#A0A09C] transition hover:text-[#F8F8F6]"
+            >
+              <Paperclip className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="选项"
+              title="选项 / 工具箱"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#A0A09C] transition hover:text-[#F8F8F6]"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={busy ? stop : send}
+              aria-label={busy ? '停止' : '发送'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D4763B] text-[#F8F8F6] transition hover:bg-[#C5672F]"
+            >
+              {busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
