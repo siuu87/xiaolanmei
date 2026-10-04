@@ -686,14 +686,14 @@ export function ChatPage() {
       </div>
 
       {/* 消息列表 */}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
         {!loaded ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             加载中…
           </div>
         ) : showWelcome ? (
           <div className="flex justify-start">
-            <div className="glass max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-6 text-foreground/90">
+            <div className="max-w-[85%] text-sm leading-6 text-foreground/90">
               <Markdown>{WELCOME_TEXT}</Markdown>
             </div>
           </div>
@@ -724,11 +724,11 @@ export function ChatPage() {
                 >
                   <div
                     className={cn(
-                      'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-6',
+                      'max-w-[85%] text-sm leading-6',
                       !isEditing && 'select-none',
                       m.role === 'user'
-                        ? 'whitespace-pre-wrap bg-primary text-primary-foreground'
-                        : 'glass text-foreground/90',
+                        ? 'whitespace-pre-wrap rounded-2xl bg-primary px-3 py-2 text-primary-foreground'
+                        : 'text-foreground/90',
                       (m.sticker || m.poke) && 'bg-transparent p-0',
                     )}
                   >
