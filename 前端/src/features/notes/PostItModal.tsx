@@ -30,7 +30,7 @@ export function PostItModal({
             {/* 顶部胶带 */}
             <div className="absolute -top-3 left-1/2 h-6 w-20 -translate-x-1/2 rotate-2 rounded-sm bg-white/50 shadow-sm backdrop-blur-[2px]" />
             <p className="text-base leading-7">{note.content}</p>
-            <div className="mt-5 flex items-baseline justify-end gap-2">
+            <div className="mt-5 flex flex-col items-end gap-0.5">
               <span className="text-[11px] text-slate-500/80">
                 {formatNoteDate(note.createdAt)}
               </span>

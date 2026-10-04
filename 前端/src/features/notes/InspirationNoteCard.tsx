@@ -93,7 +93,7 @@ export function InspirationNoteCard() {
               className="relative flex h-full w-full flex-col justify-between rounded-md bg-[#fef9c3] px-7 py-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
             >
               <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
-              <div className="mt-2 flex items-baseline justify-end gap-2">
+              <div className="mt-2 flex flex-col items-end gap-0.5">
                 <span className="text-[10px] text-slate-500/80">
                   {formatNoteDate(note.createdAt)}
                 </span>

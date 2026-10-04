@@ -50,7 +50,7 @@ export function NotesPage() {
             className="relative flex min-h-[128px] flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
           >
             <p className="line-clamp-4 text-sm leading-6">{n.content}</p>
-            <div className="mt-2 flex items-baseline justify-end gap-1.5">
+            <div className="mt-2 flex flex-col items-end gap-0.5">
               <span className="text-[10px] text-slate-500/70">{formatNoteDate(n.createdAt)}</span>
               <span className="text-[10px] text-slate-500">{NOTE_AUTHOR}</span>
             </div>
