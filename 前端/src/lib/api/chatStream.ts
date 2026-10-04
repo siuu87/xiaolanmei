@@ -12,6 +12,7 @@ export interface StreamChatOptions {
   stationId?: string;
   web?: boolean;
   onDelta?: (text: string) => void;
+  onReasoning?: (text: string) => void;
   onToolCall?: (name: string) => void;
   onNeedsConfirm?: (confirmId: string, toolName: string, summary: string) => void;
   onMemoAdded?: (id: string | undefined, title: string, fromWho?: string, toWho?: string) => void;
@@ -25,7 +26,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat(
   messages: ChatPayloadMessage[],
-  { signal, conversationId, model, stationId, web, onDelta, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
+  { signal, conversationId, model, stationId, web, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
 ): Promise<void> {
   let res: Response;
   try {
@@ -104,6 +105,8 @@ export async function streamChat(
 
         if (ev.type === 'delta' && typeof ev.content === 'string') {
           onDelta?.(ev.content);
+        } else if (ev.type === 'reasoning' && typeof ev.content === 'string') {
+          onReasoning?.(ev.content);
         } else if (ev.type === 'tool_call' && typeof ev.name === 'string') {
           onToolCall?.(ev.name);
         } else if (ev.type === 'needs_confirm' && ev.confirmId) {

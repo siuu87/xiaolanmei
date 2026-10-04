@@ -62,6 +62,7 @@ export interface Usage {
 export type ChatEvent =
   | { type: 'start' }
   | { type: 'delta'; content: string }
+  | { type: 'reasoning'; content: string } // 思考链：模型推理内容（DeepSeek reasoning_content / OpenAI reasoning）
   | { type: 'tool_calls'; toolCalls: ToolCall[] }
   | { type: 'done'; usage?: Usage }
   | { type: 'error'; code: ErrorCode; message: string };

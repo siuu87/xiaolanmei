@@ -19,6 +19,7 @@ export interface ChatMessage {
   status?: MessageStatus;
   images?: ChatImage[];
   sticker?: string; // 表情包贴图（emoji key；content 同步存 emoji 供模型理解）
+  reasoning?: string; // 思考链：模型的推理内容（阶段 12），仅展示不回传模型
 }
 
 export interface Conversation {
@@ -34,13 +35,14 @@ export function uid(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** 从消息 meta JSON 解析图片引用 + 贴图（持久化只存 url/name/mime，不存 base64） */
-function parseMeta(meta?: string | null): { images: ChatImage[]; sticker?: string } {
+/** 从消息 meta JSON 解析图片引用 + 贴图 + 思考链（持久化只存 url/name/mime，不存 base64） */
+function parseMeta(meta?: string | null): { images: ChatImage[]; sticker?: string; reasoning?: string } {
   if (!meta) return { images: [] };
   try {
     const obj = JSON.parse(meta) as {
       images?: { url: string; name?: string; mime?: string }[];
       sticker?: string;
+      reasoning?: string;
     };
     const images = Array.isArray(obj.images)
       ? obj.images
@@ -50,22 +52,25 @@ function parseMeta(meta?: string | null): { images: ChatImage[]; sticker?: strin
     return {
       images,
       sticker: typeof obj.sticker === 'string' ? obj.sticker : undefined,
+      reasoning: typeof obj.reasoning === 'string' ? obj.reasoning : undefined,
     };
   } catch {
     return { images: [] };
   }
 }
 
-/** 把图片引用 / 贴图序列化进消息 meta（丢弃 base64，只留后端 URL） */
-function serializeMeta(msg: { images?: ChatImage[]; sticker?: string }): string | null {
+/** 把图片引用 / 贴图 / 思考链序列化进消息 meta（丢弃 base64，只留后端 URL） */
+function serializeMeta(msg: { images?: ChatImage[]; sticker?: string; reasoning?: string }): string | null {
   const images =
     msg.images && msg.images.length
       ? msg.images.map((i) => ({ url: i.url, name: i.name, mime: i.mime }))
       : undefined;
-  if (!images && !msg.sticker) return null;
+  const reasoning = msg.reasoning && msg.reasoning.trim() ? msg.reasoning : undefined;
+  if (!images && !msg.sticker && !reasoning) return null;
   return JSON.stringify({
     ...(images ? { images } : {}),
     ...(msg.sticker ? { sticker: msg.sticker } : {}),
+    ...(reasoning ? { reasoning } : {}),
   });
 }
 
@@ -176,6 +181,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               status: (m.status ?? 'done') as MessageStatus,
               images: meta.images,
               sticker: meta.sticker,
+              reasoning: meta.reasoning,
             };
           }),
         },
@@ -230,11 +236,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!conv) return;
     const existing = conv.messages.find((m) => m.id === msgId);
     const content = patch.content !== undefined ? patch.content : (existing?.content ?? '');
+    const merged = { ...existing, ...patch, content } as ChatMessage;
 
     set({
       conversation: {
         ...conv,
-        messages: conv.messages.map((m) => (m.id === msgId ? { ...m, ...patch } : m)),
+        messages: conv.messages.map((m) => (m.id === msgId ? merged : m)),
       },
     });
 
@@ -242,6 +249,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await api.patchMessage(msgId, {
         content,
         ...(patch.status !== undefined ? { status: patch.status } : {}),
+        // 终稿把思考链一并写进 meta（含图片/贴图），保证刷新后仍可展开
+        meta: serializeMeta(merged),
       });
     } catch (err) {
       console.error('保存消息终稿失败', err);

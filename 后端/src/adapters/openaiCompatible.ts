@@ -124,6 +124,11 @@ export function openaiCompatibleAdapter(config: OpenAIConfig): ChatAdapter {
             }
 
             const delta = obj.choices?.[0]?.delta;
+            // 思考链：优先 DeepSeek/Qwen/Kimi 的 reasoning_content，其次 OpenAI 的 reasoning
+            const reasoning = delta?.reasoning_content ?? delta?.reasoning;
+            if (typeof reasoning === 'string' && reasoning.length > 0) {
+              yield { type: 'reasoning', content: reasoning };
+            }
             if (typeof delta?.content === 'string' && delta.content.length > 0) {
               yield { type: 'delta', content: delta.content };
             }

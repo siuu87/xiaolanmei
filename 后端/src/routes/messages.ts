@@ -17,6 +17,7 @@ interface CreateMessageBody {
 interface PatchMessageBody {
   content?: string;
   status?: string;
+  meta?: string | null; // JSON：发图附件引用 / 思考链等（阶段 12）
 }
 
 /**
@@ -76,6 +77,7 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
       .set({
         ...(body.content !== undefined ? { content: body.content } : {}),
         ...(body.status !== undefined ? { status: body.status } : {}),
+        ...(body.meta !== undefined ? { meta: body.meta } : {}),
         updatedAt: now(),
       })
       .where(eq(messages.id, id))

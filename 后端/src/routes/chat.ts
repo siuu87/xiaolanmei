@@ -331,6 +331,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const write = (
       ev:
         | ChatEvent
+        | { type: 'reasoning'; content: string }
         | { type: 'tool_call'; name: string; args?: Record<string, unknown> }
         | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
         | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string },
@@ -440,6 +441,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         signal: controller.signal,
         handlers: {
           onDelta: (text) => write({ type: 'delta', content: text }),
+          onReasoning: (text) => write({ type: 'reasoning', content: text }),
           onToolCall: (tc) => {
             const name = tc.function?.name ?? '';
             const rawArgs = (tc.function as { arguments?: unknown } | undefined)?.arguments;

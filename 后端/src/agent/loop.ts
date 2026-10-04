@@ -8,6 +8,7 @@ import type { ChatAdapter, ChatMessage, ToolCall, ToolDef, Usage } from '../adap
 
 export interface AgentLoopHandlers {
   onDelta?: (text: string) => void;
+  onReasoning?: (text: string) => void;
   onToolCall?: (tc: ToolCall, args: Record<string, unknown>) => void;
   onError?: (message: string) => void;
 }
@@ -53,6 +54,8 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopRes
     )) {
       if (ev.type === 'delta') {
         handlers?.onDelta?.(ev.content);
+      } else if (ev.type === 'reasoning') {
+        handlers?.onReasoning?.(ev.content);
       } else if (ev.type === 'tool_calls') {
         toolCalls = ev.toolCalls;
         sawToolCalls = true;

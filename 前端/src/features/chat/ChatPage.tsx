@@ -11,6 +11,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Check,
   X,
   MoreHorizontal,
@@ -21,6 +22,7 @@ import {
   ImagePlus,
   Smile,
   Phone,
+  Brain,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -119,6 +121,41 @@ function StickerBubble({ emoji }: { emoji: string }) {
     <img src={img} alt="表情" draggable={false} className="h-24 w-24 select-none object-contain" />
   ) : (
     <span className="text-6xl leading-none">{emoji}</span>
+  );
+}
+
+/** 思考链：Claude 式可折叠推理块，思考中自动展开、结束后收起为标题行 */
+function ThinkingBlock({ reasoning, active }: { reasoning: string; active: boolean }) {
+  const [open, setOpen] = useState(active);
+  useEffect(() => {
+    setOpen(active);
+  }, [active]);
+  return (
+    <div className="mb-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground/80 transition hover:text-muted-foreground"
+      >
+        {active ? (
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground/60" />
+            思考中…
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <Brain className="h-3.5 w-3.5" />
+            思考过程
+            <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="mt-1.5 whitespace-pre-wrap border-l-2 border-border/80 pl-3 text-xs leading-relaxed text-muted-foreground/75">
+          {reasoning}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -276,6 +313,9 @@ export function ChatPage() {
       web,
       onDelta: (delta) => {
         updateMessage(assistantId, (prev) => ({ content: prev.content + delta }));
+      },
+      onReasoning: (delta) => {
+        updateMessage(assistantId, (prev) => ({ reasoning: (prev.reasoning ?? '') + delta }));
       },
       onToolCall: (name) => {
         if (name === 'save_courses') didSaveCourses = true;
@@ -695,11 +735,18 @@ export function ChatPage() {
                         </div>
                       </div>
                     ) : m.role === 'assistant' ? (
-                      m.status === 'streaming' && !m.content ? (
-                        <span className="text-muted-foreground">思考中…</span>
-                      ) : (
-                        <Markdown>{m.content}</Markdown>
-                      )
+                      <>
+                        {m.reasoning && (
+                          <ThinkingBlock
+                            reasoning={m.reasoning}
+                            active={m.status === 'streaming' && !m.content}
+                          />
+                        )}
+                        {!m.reasoning && m.status === 'streaming' && !m.content && (
+                          <span className="text-muted-foreground">思考中…</span>
+                        )}
+                        {m.content && <Markdown>{m.content}</Markdown>}
+                      </>
                     ) : m.sticker ? (
                       <StickerBubble emoji={m.sticker} />
                     ) : (

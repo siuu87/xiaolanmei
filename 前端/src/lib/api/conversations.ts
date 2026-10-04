@@ -77,7 +77,7 @@ export const createMessage = (
     body: JSON.stringify(msg),
   });
 
-export const patchMessage = (id: string, patch: { content?: string; status?: string }) =>
+export const patchMessage = (id: string, patch: { content?: string; status?: string; meta?: string | null }) =>
   request<{ ok: true }>(`/api/messages/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 
 export const batchDeleteMessages = (ids: string[]) =>
