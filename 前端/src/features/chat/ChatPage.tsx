@@ -727,7 +727,7 @@ export function ChatPage() {
                       'max-w-[85%] text-sm leading-6',
                       !isEditing && 'select-none',
                       m.role === 'user'
-                        ? 'whitespace-pre-wrap rounded-2xl bg-primary px-3 py-2 text-primary-foreground'
+                        ? 'whitespace-pre-wrap rounded-2xl bg-muted px-3 py-2 text-foreground'
                         : 'text-foreground/90',
                       (m.sticker || m.poke) && 'bg-transparent p-0',
                     )}
@@ -1020,7 +1020,7 @@ export function ChatPage() {
             </button>
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1 rounded-[20px] border border-border bg-card p-1.5">
           <input
             ref={fileRef}
             type="file"
@@ -1038,9 +1038,9 @@ export function ChatPage() {
             aria-label="表情包"
             title="表情包"
             className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition',
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
               stickerOpen
-                ? 'bg-primary/15 text-primary'
+                ? 'bg-muted text-foreground'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             )}
           >
@@ -1051,7 +1051,7 @@ export function ChatPage() {
             onClick={() => fileRef.current?.click()}
             aria-label="发图"
             title="发图"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <ImagePlus className="h-5 w-5" />
           </button>
@@ -1060,7 +1060,7 @@ export function ChatPage() {
             onClick={() => void doPoke()}
             aria-label="拍一拍"
             title="拍一拍"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <Hand className="h-5 w-5" />
           </button>
@@ -1070,8 +1070,8 @@ export function ChatPage() {
             aria-label="语音输入"
             title="语音输入"
             className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition',
-              listening ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
+              listening ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             )}
           >
             <Mic className={cn('h-5 w-5', listening && 'animate-pulse')} />
@@ -1082,13 +1082,13 @@ export function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
             placeholder={replyToId ? '回复这条消息…' : '想和哥哥说…'}
-            className="h-10 flex-1 rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-muted/80"
+            className="h-9 flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
           />
           <button
             type="button"
             onClick={busy ? stop : send}
             aria-label={busy ? '停止' : '发送'}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
           >
             {busy ? <Square className="h-4 w-4" /> : <Send className="h-4 w-4" />}
           </button>
