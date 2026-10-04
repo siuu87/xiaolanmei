@@ -183,7 +183,7 @@ export function LibraryPage() {
   return (
     <div className="relative min-h-full bg-[#070b1a] text-slate-200">
       <StarBackdrop />
-      <div className="relative mx-auto w-full max-w-md px-4 py-8 md:max-w-4xl lg:max-w-6xl">
+      <div className="relative mx-auto w-full max-w-md px-4 py-6">
         <header className="mb-6 flex items-center gap-2">
           <button
             type="button"
@@ -219,7 +219,7 @@ export function LibraryPage() {
         {books.length === 0 ? (
           <div className="py-20 text-center text-sm text-slate-500">书架上还没有书，点右上角 + 放上第一本吧。</div>
         ) : (
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+          <div className="grid grid-cols-3 gap-3">
             {books.map((b) => (
               <FlatCover
                 key={b.id}

@@ -197,6 +197,9 @@ interface BookState {
   setProgress: (id: string, progress: number) => void;
 }
 
+/** 进行中的加载（防止 React StrictMode 双挂载并发播种造成重复） */
+let loadPromise: Promise<void> | null = null;
+
 /** 一起读共享 store：读后端 books 表，本地乐观更新 + 写穿；我的进度落 reading_progress */
 export const useBookStore = create<BookState>((set, get) => ({
   books: [],
@@ -204,40 +207,46 @@ export const useBookStore = create<BookState>((set, get) => ({
 
   load: async () => {
     if (get().loaded) return;
-    try {
-      let list = await listReadingBooks();
-      if (list.length === 0) {
-        // 后端为空：优先迁移旧 localStorage，其次播种内置书
-        const local = readLocalBooks();
-        const seed = local && local.length ? local : seedBooks();
-        for (const b of seed) {
-          const created = await createReadingBook({
-            title: b.title,
-            author: b.author,
-            coverUrl: b.cover,
-            content: b.content,
-            desc: b.desc,
-            toc: b.toc,
-            color: b.color,
-            band: b.band,
-            height: b.height,
-          });
-          if (b.progress > 0) {
-            void saveProgress({
-              bookId: created.id,
-              reader: 'me',
-              currentChapter: 1,
-              currentPosition: Math.round(b.progress * 100),
-              percent: Math.round(b.progress * 100),
+    if (loadPromise) return loadPromise;
+    loadPromise = (async () => {
+      try {
+        let list = await listReadingBooks();
+        if (list.length === 0) {
+          // 后端为空：优先迁移旧 localStorage，其次播种内置书
+          const local = readLocalBooks();
+          const seed = local && local.length ? local : seedBooks();
+          for (const b of seed) {
+            const created = await createReadingBook({
+              title: b.title,
+              author: b.author,
+              coverUrl: b.cover,
+              content: b.content,
+              desc: b.desc,
+              toc: b.toc,
+              color: b.color,
+              band: b.band,
+              height: b.height,
             });
+            if (b.progress > 0) {
+              void saveProgress({
+                bookId: created.id,
+                reader: 'me',
+                currentChapter: 1,
+                currentPosition: Math.round(b.progress * 100),
+                percent: Math.round(b.progress * 100),
+              });
+            }
           }
+          list = await listReadingBooks();
         }
-        list = await listReadingBooks();
+        set({ books: list.map(fromDTO), loaded: true });
+      } catch {
+        set({ loaded: true });
+      } finally {
+        loadPromise = null;
       }
-      set({ books: list.map(fromDTO), loaded: true });
-    } catch {
-      set({ loaded: true });
-    }
+    })();
+    return loadPromise;
   },
 
   addBook: async ({ title, author, paletteIdx, cover, desc, content, toc }) => {

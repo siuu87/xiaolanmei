@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Cake, Headphones, BookOpen, type LucideIcon } from 'lucide-react';
+import { ChefHat, Headphones, BookOpen, type LucideIcon } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
 import { VinylPlayer } from './VinylPlayer';
 import { Bookshelf } from './Bookshelf';
@@ -42,9 +42,9 @@ export function StarrySkyPage() {
     <div className="relative min-h-full bg-[#070b1a] text-slate-200">
       <StarBackdrop />
 
-      <div className="relative mx-auto w-full max-w-md px-4 pt-6 pb-10 md:max-w-3xl lg:max-w-5xl">
-        {/* 一起听 + 一起读：手机竖排，平板/电脑并排 */}
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:items-start">
+      <div className="relative mx-auto w-full max-w-md px-4 py-6">
+        {/* 一起听 + 一起读：竖排 */}
+        <div className="space-y-8">
           <section>
             <SectionTitle eyebrow="LISTEN" icon={Headphones} />
             <VinylPlayer />
@@ -57,9 +57,8 @@ export function StarrySkyPage() {
         </div>
 
         {/* 其它小入口：卡片式 */}
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:max-w-md">
-          <EntryCard label="今天吃什么 · 正餐" hint="点菜 · 看食材用量" icon={ChefHat} onClick={() => navigate('/food?tab=meal')} />
-          <EntryCard label="今天吃什么 · 甜品" hint="抽盲盒 · 治愈推荐" icon={Cake} onClick={() => navigate('/food?tab=dessert')} />
+        <div className="mt-8">
+          <EntryCard label="今天吃什么" hint="正餐 · 甜品 · 抽盲盒" icon={ChefHat} onClick={() => navigate('/food')} />
         </div>
       </div>
     </div>

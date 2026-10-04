@@ -58,7 +58,7 @@ export function FoodDetailPage() {
   const triggerMango = () => setKick((t) => t + 1);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6">
+    <div className="mx-auto w-full max-w-md px-4 py-6">
       <div className="flex items-center gap-3">
         <button
           type="button"

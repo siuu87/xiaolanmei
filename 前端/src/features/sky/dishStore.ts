@@ -18,6 +18,9 @@ interface DishState {
   removeDish: (id: string) => Promise<void>;
 }
 
+/** 进行中的加载（防止 React StrictMode 双挂载并发播种造成重复） */
+let loadPromise: Promise<void> | null = null;
+
 /** 今天吃什么共享 store：读后端 dishes 表，本地乐观更新 + 写穿；后端为空时播种内置菜品 */
 export const useDishStore = create<DishState>((set, get) => ({
   dishes: [],
@@ -25,18 +28,24 @@ export const useDishStore = create<DishState>((set, get) => ({
 
   load: async () => {
     if (get().loaded) return;
-    try {
-      let list = await listDishes();
-      if (list.length === 0) {
-        for (const input of seedDishInputs()) {
-          await createDish(input);
+    if (loadPromise) return loadPromise;
+    loadPromise = (async () => {
+      try {
+        let list = await listDishes();
+        if (list.length === 0) {
+          for (const input of seedDishInputs()) {
+            await createDish(input);
+          }
+          list = await listDishes();
         }
-        list = await listDishes();
+        set({ dishes: list, loaded: true });
+      } catch {
+        set({ loaded: true });
+      } finally {
+        loadPromise = null;
       }
-      set({ dishes: list, loaded: true });
-    } catch {
-      set({ loaded: true });
-    }
+    })();
+    return loadPromise;
   },
 
   addDish: async (input) => {

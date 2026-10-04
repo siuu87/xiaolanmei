@@ -234,7 +234,7 @@ export function FoodPage() {
   const aiSystem = `你是一个「今天吃什么」整理助手。根据用户提供的信息（菜名/链接/描述），整理出一道菜品，只输出一个 JSON 对象，不要任何其它文字或 markdown。字段：name(名称)、type(从 meal/dessert 选一个，正餐=meal、甜品/饮品=dessert)、coverUrl(图片链接，可为空字符串)、description(一句话描述)、ingredients(数组，每项 {"name":"食材","amount":"用量","unit":"单位"}，如 {"name":"牛腩","amount":"500","unit":"g"})、steps(做法步骤字符串数组)、tags(标签数组，从 多囊友好/姨妈期推荐/治愈指数 选)、difficulty(难度 1-3 整数)、healingIndex(治愈指数 1-5 整数)。`;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 md:max-w-4xl lg:max-w-5xl">
+    <div className="mx-auto w-full max-w-md px-4 py-6">
       {/* 顶栏 */}
       <div className="sticky top-0 z-20 -mx-4 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-3">
@@ -320,7 +320,7 @@ export function FoodPage() {
           {keyword ? '没有搜到这道菜，换个关键词试试' : '还没有菜品，点右上角 + 记下第一道吧'}
         </div>
       ) : (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3">
           {list.map((d) => (
             <div key={d.id} className="group relative">
               <DishCard dish={d} onOpen={() => navigate(`/food/${d.id}`)} />
