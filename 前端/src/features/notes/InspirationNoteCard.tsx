@@ -69,66 +69,63 @@ export function InspirationNoteCard() {
         </span>
       </button>
 
-      {/* 便签 + 两侧切换箭头（与 Token 卡片底边齐平） */}
-      <div className="relative mt-4 flex flex-1 items-center gap-1.5">
-        {count > 1 && (
-          <button
-            type="button"
-            onClick={() => paginate(-1)}
-            aria-label="上一张"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        )}
-
-        <div className="relative flex-1 self-stretch">
-          <AnimatePresence mode="wait" custom={direction} initial={false}>
-            {note ? (
-              <motion.button
-                key={note.id}
-                type="button"
-                custom={direction}
-                variants={variants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{
-                  x: { type: 'spring', stiffness: 320, damping: 30 },
-                  opacity: { duration: 0.16 },
-                }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={1}
-                onDragEnd={onDragEnd}
-                onClick={() => setPreviewOpen(true)}
-                className="relative flex h-full w-full flex-col justify-between rounded-md bg-[#fef9c3] p-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
-              >
-                <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
-                <div className="mt-2 flex items-baseline justify-end gap-2">
-                  <span className="text-[10px] text-slate-500/80">
-                    {formatNoteDate(note.createdAt)}
-                  </span>
-                  <span className="text-[10px] text-slate-500">{NOTE_AUTHOR}</span>
-                </div>
-              </motion.button>
-            ) : (
-              <div className="flex h-full items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
-                生成中…
+      {/* 便签占满整列宽度，两侧箭头悬浮在便签边缘上 */}
+      <div className="relative mt-4 flex-1">
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
+          {note ? (
+            <motion.button
+              key={note.id}
+              type="button"
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: 'spring', stiffness: 320, damping: 30 },
+                opacity: { duration: 0.16 },
+              }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={1}
+              onDragEnd={onDragEnd}
+              onClick={() => setPreviewOpen(true)}
+              className="relative flex h-full w-full flex-col justify-between rounded-md bg-[#fef9c3] px-7 py-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+            >
+              <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
+              <div className="mt-2 flex items-baseline justify-end gap-2">
+                <span className="text-[10px] text-slate-500/80">
+                  {formatNoteDate(note.createdAt)}
+                </span>
+                <span className="text-[10px] text-slate-500">{NOTE_AUTHOR}</span>
               </div>
-            )}
-          </AnimatePresence>
-        </div>
+            </motion.button>
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
+              生成中…
+            </div>
+          )}
+        </AnimatePresence>
 
         {count > 1 && (
-          <button
-            type="button"
-            onClick={() => paginate(1)}
-            aria-label="下一张"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => paginate(-1)}
+              aria-label="上一张"
+              className="absolute left-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/70 text-slate-600 shadow-sm transition hover:bg-white"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => paginate(1)}
+              aria-label="下一张"
+              className="absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/70 text-slate-600 shadow-sm transition hover:bg-white"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
         )}
       </div>
 
