@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, Lightbulb, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getDish, type Dish, type DishIngredient } from '@/lib/api/dishes';
+import { AppleEmoji } from '@/components/AppleEmoji';
 import { useDishStore } from './dishStore';
 import { MangoKick } from './MangoKick';
 import { SUBSTITUTE_MAP, checkMango, tagClass, tagEmoji } from './foodData';
@@ -90,8 +91,8 @@ export function FoodDetailPage() {
               {dish.coverUrl ? (
                 <img src={dish.coverUrl} alt={dish.name} className="aspect-square w-full rounded-md object-cover" />
               ) : (
-                <div className="flex aspect-square w-full items-center justify-center rounded-md bg-gradient-to-br from-rose-100 to-amber-100 text-8xl dark:from-zinc-700 dark:to-rose-950">
-                  {dish.type === 'dessert' ? '🍰' : '🍚'}
+                <div className="flex aspect-square w-full items-center justify-center rounded-md bg-gradient-to-br from-rose-100 to-amber-100 dark:from-zinc-700 dark:to-rose-950">
+                  <AppleEmoji emoji={dish.type === 'dessert' ? '🍰' : '🍚'} className="h-20 w-20" />
                 </div>
               )}
               <div className="mt-3 text-center text-sm font-semibold tracking-wide text-zinc-700 dark:text-zinc-200">{dish.name}</div>
@@ -112,11 +113,13 @@ export function FoodDetailPage() {
             )}
             {dish.description && <p className="mt-3 text-sm italic text-muted-foreground">{dish.description}</p>}
             <div className="mt-3 flex items-center justify-center gap-3 text-xs text-muted-foreground">
-              <span>难度 {'🥄'.repeat(dish.difficulty)}</span>
-              {dish.type === 'dessert' && <span>治愈 {'🍬'.repeat(dish.healingIndex)}</span>}
+              <span className="flex items-center gap-0.5">难度 <AppleEmoji emoji="🥄" className="h-3 w-3" /> {dish.difficulty}</span>
+              {dish.type === 'dessert' && (
+                <span className="flex items-center gap-0.5">治愈 <AppleEmoji emoji="🍬" className="h-3 w-3" /> {dish.healingIndex}</span>
+              )}
               {hasMango && (
-                <button type="button" onClick={triggerMango} className="rounded-full bg-pink-100 px-2 py-0.5 text-pink-600 transition hover:bg-pink-200 dark:bg-pink-950/50 dark:text-pink-300">
-                  🥭 含芒果
+                <button type="button" onClick={triggerMango} className="flex items-center gap-0.5 rounded-full bg-pink-100 px-2 py-0.5 text-pink-600 transition hover:bg-pink-200 dark:bg-pink-950/50 dark:text-pink-300">
+                  <AppleEmoji emoji="🥭" className="h-3.5 w-3.5" /> 含芒果
                 </button>
               )}
             </div>

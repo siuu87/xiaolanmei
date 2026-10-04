@@ -51,9 +51,9 @@ export function tagEmoji(tag: string): string {
   return '';
 }
 
-export const DISH_TABS: { value: DishType; label: string }[] = [
-  { value: 'meal', label: '🍚 日常正餐' },
-  { value: 'dessert', label: '🍰 治愈甜品' },
+export const DISH_TABS: { value: DishType; label: string; emoji: string }[] = [
+  { value: 'meal', label: '日常正餐', emoji: '🍚' },
+  { value: 'dessert', label: '治愈甜品', emoji: '🍰' },
 ];
 
 /** 内置菜品（迁移自旧食谱 + 甜品，播种后端用） */

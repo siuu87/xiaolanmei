@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, X, Sparkles, Dices, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AppleEmoji } from '@/components/AppleEmoji';
 import { useDishStore } from './dishStore';
 import { MangoKick } from './MangoKick';
 import { AiImportDialog } from './AiImportDialog';
@@ -32,29 +33,31 @@ function formatIngredients(ings: DishIngredient[]): string {
   return ings.map((i) => [i.name, i.amount, i.unit].filter(Boolean).join(' ')).join('\n');
 }
 
-/** 等大小菜谱卡片（无图片）：emoji + 难度/治愈 + 名称 + 描述 + 标签 */
+/** 等大小菜谱卡片（无图片）：小 emoji + 名称 + 描述 + 标签 + 难度 */
 function DishCard({ dish, onOpen }: { dish: Dish; onOpen: () => void }) {
   return (
     <div
       onClick={onOpen}
       className="flex h-[172px] cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card p-3.5 shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="flex items-start justify-between">
-        <span className="text-3xl leading-none">{dish.type === 'dessert' ? '🍰' : '🍚'}</span>
-        <span className="flex flex-col items-end gap-0.5 text-xs leading-none text-muted-foreground">
-          <span>{'🥄'.repeat(dish.difficulty)}</span>
-          {dish.type === 'dessert' && <span>{'🍬'.repeat(dish.healingIndex)}</span>}
-        </span>
+      <div className="flex items-center gap-1.5">
+        <AppleEmoji emoji={dish.type === 'dessert' ? '🍰' : '🍚'} className="h-4 w-4" />
+        <h3 className="truncate text-sm font-semibold">{dish.name}</h3>
       </div>
-      <h3 className="mt-2 truncate text-sm font-semibold">{dish.name}</h3>
       <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{dish.description || ' '}</p>
-      <div className="mt-auto flex flex-wrap gap-1 pt-1.5">
-        {dish.tags.map((tag) => (
-          <span key={tag} className={cn('rounded-full border px-2 py-0.5 text-[10px]', tagClass(tag))}>
-            {tagEmoji(tag)}
-            {tag}
-          </span>
-        ))}
+      <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
+        <div className="flex flex-wrap gap-1">
+          {dish.tags.map((tag) => (
+            <span key={tag} className={cn('rounded-full border px-2 py-0.5 text-[10px]', tagClass(tag))}>
+              {tagEmoji(tag)}
+              {tag}
+            </span>
+          ))}
+        </div>
+        <span className="flex shrink-0 items-center gap-0.5 text-xs leading-none text-muted-foreground">
+          <AppleEmoji emoji="🥄" className="h-3 w-3" />
+          {dish.difficulty}
+        </span>
       </div>
     </div>
   );
@@ -253,10 +256,11 @@ export function FoodPage() {
               type="button"
               onClick={() => setTab(t.value)}
               className={cn(
-                'flex-1 rounded-full px-3 py-1.5 text-sm transition',
+                'flex flex-1 items-center justify-center gap-1 rounded-full px-3 py-1.5 text-sm transition',
                 tab === t.value ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
             >
+              <AppleEmoji emoji={t.emoji} className="h-4 w-4" />
               {t.label}
             </button>
           ))}
@@ -326,8 +330,8 @@ export function FoodPage() {
             {result.coverUrl ? (
               <img src={result.coverUrl} alt={result.name} className="mx-auto h-32 w-32 -rotate-3 rounded-3xl object-cover shadow-lg" />
             ) : (
-              <div className="mx-auto flex h-32 w-32 -rotate-3 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-100 to-amber-100 text-6xl shadow-lg dark:from-zinc-800 dark:to-rose-950">
-                {result.type === 'dessert' ? '🍰' : '🍚'}
+              <div className="mx-auto flex h-32 w-32 -rotate-3 items-center justify-center rounded-3xl bg-gradient-to-br from-rose-100 to-amber-100 shadow-lg dark:from-zinc-800 dark:to-rose-950">
+                <AppleEmoji emoji={result.type === 'dessert' ? '🍰' : '🍚'} className="h-16 w-16" />
               </div>
             )}
             <h3 className="mt-3 text-2xl font-bold">{result.name}</h3>
@@ -371,8 +375,9 @@ export function FoodPage() {
                       key={t.value}
                       type="button"
                       onClick={() => setEditing((f) => (f ? { ...f, type: t.value } : f))}
-                      className={cn('flex-1 rounded-full px-3 py-1 text-xs transition', editing.type === t.value ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground')}
+                      className={cn('flex flex-1 items-center justify-center gap-1 rounded-full px-3 py-1 text-xs transition', editing.type === t.value ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground')}
                     >
+                      <AppleEmoji emoji={t.emoji} className="h-4 w-4" />
                       {t.label}
                     </button>
                   ))}
