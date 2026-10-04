@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, X, Sparkles, Dices, Heart, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, X, Sparkles, Dices, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDishStore } from './dishStore';
 import { MangoKick } from './MangoKick';
@@ -32,48 +32,29 @@ function formatIngredients(ings: DishIngredient[]): string {
   return ings.map((i) => [i.name, i.amount, i.unit].filter(Boolean).join(' ')).join('\n');
 }
 
-/** 拍立得风菜谱卡片 */
+/** 等大小菜谱卡片（无图片）：emoji + 难度/治愈 + 名称 + 描述 + 标签 */
 function DishCard({ dish, onOpen }: { dish: Dish; onOpen: () => void }) {
   return (
     <div
       onClick={onOpen}
-      className="group cursor-pointer overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md"
+      className="flex h-[172px] cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card p-3.5 shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="relative">
-        {dish.coverUrl ? (
-          <img src={dish.coverUrl} alt={dish.name} className="aspect-[4/3] w-full object-cover" />
-        ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-orange-100 via-amber-50 to-rose-100 text-6xl dark:from-zinc-800 dark:via-zinc-900 dark:to-rose-950">
-            {dish.type === 'dessert' ? '🍰' : '🍚'}
-          </div>
-        )}
-        {/* 难度（勺子） */}
-        <div className="absolute left-2 top-2 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white backdrop-blur">
-          {'🥄'.repeat(dish.difficulty)}
-        </div>
-        {/* 治愈指数（甜品） */}
-        {dish.type === 'dessert' && (
-          <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs shadow backdrop-blur dark:bg-zinc-900/90">
-            {'🍬'.repeat(dish.healingIndex)}
-          </div>
-        )}
+      <div className="flex items-start justify-between">
+        <span className="text-3xl leading-none">{dish.type === 'dessert' ? '🍰' : '🍚'}</span>
+        <span className="flex flex-col items-end gap-0.5 text-xs leading-none text-muted-foreground">
+          <span>{'🥄'.repeat(dish.difficulty)}</span>
+          {dish.type === 'dessert' && <span>{'🍬'.repeat(dish.healingIndex)}</span>}
+        </span>
       </div>
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-semibold leading-snug">{dish.name}</h3>
-          <Heart className="h-5 w-5 shrink-0 text-pink-500" />
-        </div>
-        {dish.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{dish.description}</p>}
-        {dish.tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {dish.tags.map((tag) => (
-              <span key={tag} className={cn('rounded-full border px-2 py-0.5 text-[10px]', tagClass(tag))}>
-                {tagEmoji(tag)}
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+      <h3 className="mt-2 truncate text-sm font-semibold">{dish.name}</h3>
+      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{dish.description || ' '}</p>
+      <div className="mt-auto flex flex-wrap gap-1 pt-1.5">
+        {dish.tags.map((tag) => (
+          <span key={tag} className={cn('rounded-full border px-2 py-0.5 text-[10px]', tagClass(tag))}>
+            {tagEmoji(tag)}
+            {tag}
+          </span>
+        ))}
       </div>
     </div>
   );
