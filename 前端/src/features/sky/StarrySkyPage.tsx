@@ -58,8 +58,8 @@ export function StarrySkyPage() {
 
         {/* 其它小入口：卡片式 */}
         <div className="mt-8 grid grid-cols-2 gap-3 sm:max-w-md">
-          <EntryCard label="食谱" hint="点菜 · 看食材用量" icon={ChefHat} onClick={() => navigate('/cookbook')} />
-          <EntryCard label="甜品小屋" hint="按品类挑甜品" icon={Cake} onClick={() => navigate('/dessert')} />
+          <EntryCard label="今天吃什么 · 正餐" hint="点菜 · 看食材用量" icon={ChefHat} onClick={() => navigate('/food?tab=meal')} />
+          <EntryCard label="今天吃什么 · 甜品" hint="抽盲盒 · 治愈推荐" icon={Cake} onClick={() => navigate('/food?tab=dessert')} />
         </div>
       </div>
     </div>

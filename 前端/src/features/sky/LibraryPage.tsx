@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, X, Sparkles, Upload, ListOrdered, Loader2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -70,9 +70,15 @@ function FlatCover({ book, onOpen, onEdit, onDelete }: { book: Book; onOpen: () 
 export function LibraryPage() {
   const navigate = useNavigate();
   const books = useBookStore((s) => s.books);
+  const load = useBookStore((s) => s.load);
   const addBook = useBookStore((s) => s.addBook);
   const updateBook = useBookStore((s) => s.updateBook);
   const removeBook = useBookStore((s) => s.removeBook);
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);

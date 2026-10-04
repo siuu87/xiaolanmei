@@ -3,8 +3,8 @@ import { AppLayout } from './layout/AppLayout';
 import { HomePage } from '@/features/home/HomePage';
 import { ChatPage } from '@/features/chat/ChatPage';
 import { StarrySkyPage } from '@/features/sky/StarrySkyPage';
-import { CookbookPage } from '@/features/sky/CookbookPage';
-import { DessertHousePage } from '@/features/sky/DessertHousePage';
+import { FoodPage } from '@/features/sky/FoodPage';
+import { FoodDetailPage } from '@/features/sky/FoodDetailPage';
 import { ReadPage } from '@/features/sky/ReadPage';
 import { LibraryPage } from '@/features/sky/LibraryPage';
 import { BookReaderPage } from '@/features/sky/BookReaderPage';
@@ -17,7 +17,7 @@ import { MemoHomePage } from '@/features/memo/MemoHomePage';
 
 /**
  * 路由表：底部 4 个 Tab = 首页 / 聊天 / 星空 / 我。
- * 星空是「一起读」书架主页，食谱 / 甜品小屋收成小入口。
+ * 星空是「一起读」书架主页，「今天吃什么」收成小入口（正餐 / 甜品合并）。
  * 其余（日记本 / 纪念日 / 蓝莓信箱）作为详情子页，从首页进入，不进底部导航。
  * MCP / 世界书 / 编程 / 同步 / 记忆 已并入聊天抽屉或「我」页。
  */
@@ -30,8 +30,8 @@ export const router = createBrowserRouter([
       { path: 'chat', element: <ChatPage /> },
       { path: 'sky', element: <StarrySkyPage /> },
       // 星空里的功能星（非 Tab）
-      { path: 'cookbook', element: <CookbookPage /> },
-      { path: 'dessert', element: <DessertHousePage /> },
+      { path: 'food', element: <FoodPage /> },
+      { path: 'food/:id', element: <FoodDetailPage /> },
       { path: 'read', element: <ReadPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'read/:id', element: <BookReaderPage /> },

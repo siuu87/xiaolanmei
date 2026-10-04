@@ -1,20 +1,12 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-/** 标画类型：荧光笔高亮 / 下划线 */
-export type AnnotationKind = 'highlight' | 'underline';
-
-/** 一段标画（荧光笔/下划线）或旁边留言，按字符区间锚定在正文上 */
-export interface Annotation {
-  id: string;
-  start: number; // 相对 content 的字符起点（含）
-  end: number; // 字符终点（不含）
-  kind: AnnotationKind;
-  text: string; // 选中的原句
-  comment?: string; // 这句话旁边的留言（TA 可见）
-  author: 'me' | 'ta';
-  createdAt: number;
-}
+import {
+  listReadingBooks,
+  createReadingBook,
+  updateReadingBook,
+  deleteReadingBook,
+  saveProgress,
+  type ReadingBook,
+} from '@/lib/api/reading';
 
 export interface Book {
   id: string;
@@ -34,10 +26,8 @@ export interface Book {
   content: string;
   /** 目录（章节标题） */
   toc: string[];
-  /** 阅读进度 0~1 */
+  /** 我的阅读进度 0~1 */
   progress: number;
-  /** 标画 + 留言 */
-  annotations: Annotation[];
   /** 最近一次阅读时间戳 */
   lastReadAt?: number;
 }
@@ -111,6 +101,7 @@ const CONTENT: Record<string, { desc: string; toc: string[]; content: string }> 
   },
 };
 
+/** 内置占位书（后端为空时播种） */
 function seedBooks(): Book[] {
   return [
     '小王子',
@@ -136,14 +127,62 @@ function seedBooks(): Book[] {
       content: c.content,
       toc: c.toc,
       progress: 0,
-      annotations: [],
       lastReadAt: undefined,
     };
   });
 }
 
+/** 迁移旧 localStorage 数据（blueberry.bookhouse.books.v2） */
+function readLocalBooks(): Book[] | null {
+  try {
+    const raw = localStorage.getItem('blueberry.bookhouse.books.v2');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { state?: { books?: unknown }; books?: unknown };
+    const list = parsed?.state?.books ?? parsed?.books;
+    if (!Array.isArray(list)) return null;
+    return list
+      .map((b) => b as Partial<Book>)
+      .filter((b) => b?.title)
+      .map((b) => ({
+        id: b.id ?? newId(),
+        title: String(b.title),
+        author: b.author ?? '佚名',
+        color: b.color ?? PALETTE[0].color,
+        band: b.band ?? PALETTE[0].band,
+        height: b.height ?? heightOf(String(b.title)),
+        cover: b.cover ?? undefined,
+        desc: b.desc ?? '',
+        content: b.content ?? '',
+        toc: b.toc ?? [],
+        progress: b.progress ?? 0,
+        lastReadAt: b.lastReadAt,
+      }));
+  } catch {
+    return null;
+  }
+}
+
+function fromDTO(d: ReadingBook): Book {
+  return {
+    id: d.id,
+    title: d.title,
+    author: d.author ?? '佚名',
+    color: d.color ?? PALETTE[0].color,
+    band: d.band ?? PALETTE[0].band,
+    height: d.height ?? heightOf(d.title),
+    cover: d.coverUrl || undefined,
+    desc: d.desc ?? '',
+    content: d.content ?? '',
+    toc: d.toc ?? [],
+    progress: 0,
+    lastReadAt: undefined,
+  };
+}
+
 interface BookState {
   books: Book[];
+  loaded: boolean;
+  load: () => Promise<void>;
   addBook: (input: {
     title: string;
     author: string;
@@ -152,71 +191,119 @@ interface BookState {
     desc?: string;
     content?: string;
     toc?: string[];
-  }) => void;
-  updateBook: (id: string, patch: Partial<Omit<Book, 'id'>>) => void;
-  removeBook: (id: string) => void;
+  }) => Promise<void>;
+  updateBook: (id: string, patch: Partial<Omit<Book, 'id'>>) => Promise<void>;
+  removeBook: (id: string) => Promise<void>;
   setProgress: (id: string, progress: number) => void;
-  addAnnotation: (id: string, ann: Omit<Annotation, 'id' | 'createdAt'>) => void;
-  removeAnnotation: (bookId: string, annId: string) => void;
-  setAnnotationComment: (bookId: string, annId: string, comment: string) => void;
 }
 
-export const useBookStore = create<BookState>()(
-  persist(
-    (set) => ({
-      books: seedBooks(),
-      addBook: ({ title, author, paletteIdx, cover, desc, content, toc }) => {
-        const p = PALETTE[((paletteIdx % PALETTE.length) + PALETTE.length) % PALETTE.length];
-        set((s) => ({
-          books: [
-            {
-              id: newId(),
-              title: title.trim(),
-              author: author.trim() || '佚名',
-              color: p.color,
-              band: p.band,
-              height: heightOf(title),
-              cover: cover ?? '',
-              desc: desc ?? '',
-              content: content ?? '',
-              toc: toc ?? [],
-              progress: 0,
-              annotations: [],
-            },
-            ...s.books,
-          ],
-        }));
-      },
-      updateBook: (id, patch) =>
-        set((s) => ({ books: s.books.map((b) => (b.id === id ? { ...b, ...patch } : b)) })),
-      removeBook: (id) => set((s) => ({ books: s.books.filter((b) => b.id !== id) })),
-      setProgress: (id, progress) =>
-        set((s) => ({
-          books: s.books.map((b) => (b.id === id ? { ...b, progress, lastReadAt: Date.now() } : b)),
-        })),
-      addAnnotation: (id, ann) =>
-        set((s) => ({
-          books: s.books.map((b) =>
-            b.id === id
-              ? { ...b, annotations: [...b.annotations, { ...ann, id: newId(), createdAt: Date.now() }] }
-              : b,
-          ),
-        })),
-      removeAnnotation: (bookId, annId) =>
-        set((s) => ({
-          books: s.books.map((b) =>
-            b.id === bookId ? { ...b, annotations: b.annotations.filter((a) => a.id !== annId) } : b,
-          ),
-        })),
-      setAnnotationComment: (bookId, annId, comment) =>
-        set((s) => ({
-          books: s.books.map((b) =>
-            b.id === bookId
-              ? { ...b, annotations: b.annotations.map((a) => (a.id === annId ? { ...a, comment } : a)) }
-              : b,
-          ),
-        })),
-    }),
-    { name: 'blueberry.bookhouse.books.v2' },
-  ),
-);
+/** 一起读共享 store：读后端 books 表，本地乐观更新 + 写穿；我的进度落 reading_progress */
+export const useBookStore = create<BookState>((set, get) => ({
+  books: [],
+  loaded: false,
+
+  load: async () => {
+    if (get().loaded) return;
+    try {
+      let list = await listReadingBooks();
+      if (list.length === 0) {
+        // 后端为空：优先迁移旧 localStorage，其次播种内置书
+        const local = readLocalBooks();
+        const seed = local && local.length ? local : seedBooks();
+        for (const b of seed) {
+          const created = await createReadingBook({
+            title: b.title,
+            author: b.author,
+            coverUrl: b.cover,
+            content: b.content,
+            desc: b.desc,
+            toc: b.toc,
+            color: b.color,
+            band: b.band,
+            height: b.height,
+          });
+          if (b.progress > 0) {
+            void saveProgress({
+              bookId: created.id,
+              reader: 'me',
+              currentChapter: 1,
+              currentPosition: Math.round(b.progress * 100),
+              percent: Math.round(b.progress * 100),
+            });
+          }
+        }
+        list = await listReadingBooks();
+      }
+      set({ books: list.map(fromDTO), loaded: true });
+    } catch {
+      set({ loaded: true });
+    }
+  },
+
+  addBook: async ({ title, author, paletteIdx, cover, desc, content, toc }) => {
+    const p = PALETTE[((paletteIdx % PALETTE.length) + PALETTE.length) % PALETTE.length];
+    const book: Book = {
+      id: newId(),
+      title: title.trim(),
+      author: author.trim() || '佚名',
+      color: p.color,
+      band: p.band,
+      height: heightOf(title),
+      cover: cover ?? undefined,
+      desc: desc ?? '',
+      content: content ?? '',
+      toc: toc ?? [],
+      progress: 0,
+    };
+    set((s) => ({ books: [book, ...s.books] }));
+    try {
+      const r = await createReadingBook({
+        title: book.title,
+        author: book.author,
+        coverUrl: book.cover,
+        content: book.content,
+        desc: book.desc,
+        toc: book.toc,
+        color: book.color,
+        band: book.band,
+        height: book.height,
+      });
+      set((s) => ({ books: s.books.map((b) => (b.id === book.id ? { ...b, id: r.id } : b)) }));
+    } catch {
+      /* 保持本地乐观数据 */
+    }
+  },
+
+  updateBook: async (id, patch) => {
+    set((s) => ({ books: s.books.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
+    try {
+      await updateReadingBook(id, {
+        title: patch.title,
+        author: patch.author,
+        coverUrl: patch.cover,
+        content: patch.content,
+        desc: patch.desc,
+        toc: patch.toc,
+        color: patch.color,
+        band: patch.band,
+        height: patch.height,
+      });
+    } catch {
+      /* ignore */
+    }
+  },
+
+  removeBook: async (id) => {
+    set((s) => ({ books: s.books.filter((b) => b.id !== id) }));
+    try {
+      await deleteReadingBook(id);
+    } catch {
+      /* ignore */
+    }
+  },
+
+  setProgress: (id, progress) =>
+    set((s) => ({
+      books: s.books.map((b) => (b.id === id ? { ...b, progress, lastReadAt: Date.now() } : b)),
+    })),
+}));

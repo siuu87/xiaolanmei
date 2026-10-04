@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Library, Settings2 } from 'lucide-react';
 import { useBookStore, type Book } from './bookStore';
@@ -43,8 +43,14 @@ function BookSpine({ book, onOpen }: { book: Book; onOpen: () => void }) {
 export function Bookshelf() {
   const navigate = useNavigate();
   const books = useBookStore((s) => s.books);
+  const load = useBookStore((s) => s.load);
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = books.find((b) => b.id === detailId) ?? null;
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">

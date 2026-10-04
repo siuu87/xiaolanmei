@@ -28,13 +28,14 @@ function paragraphCount(content: string | null): number {
   return n || 1;
 }
 
-function bookDTO(b: typeof books.$inferSelect, withContent = false) {
+function bookDTO(b: typeof books.$inferSelect) {
   return {
     id: b.id,
     title: b.title,
     author: b.author ?? undefined,
     coverUrl: b.coverUrl ?? undefined,
     totalChapters: b.totalChapters,
+    content: b.content ?? '',
     desc: b.desc ?? undefined,
     toc: parseToc(b.toc),
     color: b.color ?? undefined,
@@ -42,7 +43,6 @@ function bookDTO(b: typeof books.$inferSelect, withContent = false) {
     height: b.height ?? undefined,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
-    ...(withContent ? { content: b.content ?? '' } : {}),
   };
 }
 
@@ -106,7 +106,7 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
       reply.code(404).send({ message: '书不存在' });
       return;
     }
-    return bookDTO(b, true);
+    return bookDTO(b);
   });
 
   app.post('/reading/books', async (req, reply) => {

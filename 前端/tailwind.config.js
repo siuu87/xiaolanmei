@@ -40,6 +40,11 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        // 阅读主题（一起读）：米白纸面 / 暗夜 / 墨色
+        paper: '#FBF7F0',
+        night: '#1A1A1F',
+        ink: '#2E2A26',
+        'ink-night': '#E8E4DD',
       },
       borderRadius: {
         lg: 'var(--radius)',
