@@ -21,7 +21,6 @@ import {
   ImagePlus,
   Smile,
   Phone,
-  Hand,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -123,30 +122,6 @@ function StickerBubble({ emoji }: { emoji: string }) {
   );
 }
 
-/** 拍一拍 / 戳一戳气泡：胶囊形 + 抖动动画，assistant 侧带「戳回去」快捷回复 */
-function PokeBubble({ role, onPokeBack }: { role: 'user' | 'assistant'; onPokeBack?: () => void }) {
-  return (
-    <div className="flex flex-col items-start gap-1">
-      <span
-        className="inline-flex items-center gap-1.5 rounded-full border border-rose-300/40 bg-rose-100/70 px-3 py-1.5 text-sm text-rose-600 dark:bg-rose-500/10 dark:text-rose-300"
-        style={{ animation: 'poke-shake 0.6s ease' }}
-      >
-        {role === 'user' ? '👋 拍了拍 TA' : '💗 TA 戳了戳你'}
-      </span>
-      {role === 'assistant' && onPokeBack && (
-        <button
-          type="button"
-          onClick={onPokeBack}
-          className="ml-1 text-xs text-primary transition hover:underline"
-        >
-          戳回去 👆
-        </button>
-      )}
-      <style>{`@keyframes poke-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px) rotate(-3deg); } 40% { transform: translateX(5px) rotate(3deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }`}</style>
-    </div>
-  );
-}
-
 export function ChatPage() {
   const navigate = useNavigate();
   const conversation = useChatStore((s) => s.conversation);
@@ -178,7 +153,6 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [pokeFlash, setPokeFlash] = useState(false);
   const [memoAdded, setMemoAdded] = useState<
     Record<string, { id?: string; title: string; fromWho?: string; toWho?: string }[]>
   >({});
@@ -471,46 +445,6 @@ export function ChatPage() {
     await produceReply('[表情包]', userMsg.id, [...base, toPayload(userMsg)]);
   };
 
-  // 拍一拍 / 戳一戳：抖动气泡 + 震动 + 闪光，TA 会戳回来
-  const pokeOnce = () => {
-    try {
-      navigator.vibrate?.(80);
-    } catch {
-      /* ignore */
-    }
-    setPokeFlash(true);
-    window.setTimeout(() => setPokeFlash(false), 320);
-  };
-
-  const doPoke = async () => {
-    if (busy) return;
-    const conv = useChatStore.getState().conversation;
-    if (!conv) return;
-
-    await appendMessage({
-      id: uid(),
-      role: 'user',
-      content: '拍了拍 TA',
-      parentId: conv.activeMessageId,
-      status: 'done',
-      poke: true,
-    });
-    pokeOnce();
-
-    window.setTimeout(async () => {
-      const state = useChatStore.getState().conversation;
-      await appendMessage({
-        id: uid(),
-        role: 'assistant',
-        content: 'TA 戳了戳你',
-        parentId: state?.activeMessageId ?? null,
-        status: 'done',
-        poke: true,
-      });
-      pokeOnce();
-    }, 700);
-  };
-
   // 重新生成：为该 assistant 建 sibling（同 parentId），旧回复保留。
   const regenerate = async (assistantMsg: ChatMessage) => {
     if (busy || !conversation) return;
@@ -729,7 +663,7 @@ export function ChatPage() {
                       m.role === 'user'
                         ? 'whitespace-pre-wrap rounded-2xl bg-muted px-3 py-2 text-foreground'
                         : 'text-foreground/90',
-                      (m.sticker || m.poke) && 'bg-transparent p-0',
+                      m.sticker && 'bg-transparent p-0',
                     )}
                   >
                     {isEditing ? (
@@ -760,11 +694,6 @@ export function ChatPage() {
                           </button>
                         </div>
                       </div>
-                    ) : m.poke ? (
-                      <PokeBubble
-                        role={m.role}
-                        onPokeBack={m.role === 'assistant' ? () => void doPoke() : undefined}
-                      />
                     ) : m.role === 'assistant' ? (
                       m.status === 'streaming' && !m.content ? (
                         <span className="text-muted-foreground">思考中…</span>
@@ -1057,15 +986,6 @@ export function ChatPage() {
           </button>
           <button
             type="button"
-            onClick={() => void doPoke()}
-            aria-label="拍一拍"
-            title="拍一拍"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <Hand className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
             onClick={toggleListen}
             aria-label="语音输入"
             title="语音输入"
@@ -1094,17 +1014,6 @@ export function ChatPage() {
           </button>
         </div>
       </div>
-
-      {/* 拍一拍闪光覆盖层 */}
-      {pokeFlash && (
-        <>
-          <div
-            className="pointer-events-none fixed inset-0 z-[60] bg-white/60"
-            style={{ animation: 'poke-flash 0.32s ease-out' }}
-          />
-          <style>{`@keyframes poke-flash { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }`}</style>
-        </>
-      )}
 
       {/* 微信式全屏搜索 */}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
