@@ -404,3 +404,81 @@ export const skillExecutions = sqliteTable('skill_executions', {
   latencyMs: integer('latency_ms'),
   createdAt: integer('created_at').notNull(),
 });
+
+/** 阅读书目（一起读 / 书房）：content 全文按 \\n\\n 分段，toc 存 JSON 目录，进度与标画分表 */
+export const books = sqliteTable('books', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  author: text('author'),
+  coverUrl: text('cover_url'), // 封面（URL 或 dataURL）
+  totalChapters: integer('total_chapters').notNull().default(1),
+  content: text('content'),
+  desc: text('desc'), // 一句话详情
+  toc: text('toc'), // JSON：目录章节标题数组
+  color: text('color'), // 书脊底色
+  band: text('band'), // 书头/书脚带颜色
+  height: integer('height'), // 书脊高度 px
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 阅读进度（双人各有进度）：reader = me | partner */
+export const readingProgress = sqliteTable('reading_progress', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull(),
+  reader: text('reader').notNull(), // me | partner
+  currentChapter: integer('current_chapter').notNull().default(1),
+  currentPosition: integer('current_position').notNull().default(0), // 段落/字符偏移
+  percent: integer('percent').notNull().default(0), // 0-100
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 划线 + 批注：chapter 为段落索引（0 起），offset 为段内字符偏移 */
+export const annotations = sqliteTable('annotations', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull(),
+  chapter: integer('chapter').notNull(),
+  startOffset: integer('start_offset').notNull(),
+  endOffset: integer('end_offset').notNull(),
+  selectedText: text('selected_text').notNull(),
+  color: text('color').notNull().default('yellow'), // yellow | green | blue | pink
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 批注留言（关联划线，双人气泡）：author = me | partner */
+export const annotationNotes = sqliteTable('annotation_notes', {
+  id: text('id').primaryKey(),
+  annotationId: text('annotation_id').notNull(),
+  author: text('author').notNull(), // me | partner
+  content: text('content').notNull(),
+  createdAt: integer('created_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 食材项（今天吃什么）：name 必填，amount / unit 可选 */
+export interface Ingredient {
+  name: string;
+  amount?: string;
+  unit?: string;
+}
+
+/** 菜谱（今天吃什么，合并食谱 + 甜品）：type = meal | dessert；ingredients/steps/tags 存 JSON */
+export const dishes = sqliteTable('dishes', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').notNull(), // meal 日常正餐 | dessert 治愈甜品
+  coverUrl: text('cover_url'),
+  description: text('description'),
+  ingredients: text('ingredients'), // JSON: Ingredient[]
+  steps: text('steps'), // JSON: string[]
+  tags: text('tags'), // JSON: string[]，如 多囊友好 / 治愈指数 / 姨妈期推荐
+  difficulty: integer('difficulty').notNull().default(1), // 1-3
+  healingIndex: integer('healing_index').notNull().default(3), // 治愈指数 1-5
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});

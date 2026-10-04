@@ -404,6 +404,76 @@ CREATE TABLE IF NOT EXISTS skill_executions (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_skill_executions_created ON skill_executions(created_at);
+
+CREATE TABLE IF NOT EXISTS books (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  author TEXT,
+  cover_url TEXT,
+  total_chapters INTEGER NOT NULL DEFAULT 1,
+  content TEXT,
+  desc TEXT,
+  toc TEXT,
+  color TEXT,
+  band TEXT,
+  height INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS reading_progress (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL,
+  reader TEXT NOT NULL,
+  current_chapter INTEGER NOT NULL DEFAULT 1,
+  current_position INTEGER NOT NULL DEFAULT 0,
+  percent INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_reading_progress_book ON reading_progress(book_id);
+
+CREATE TABLE IF NOT EXISTS annotations (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL,
+  chapter INTEGER NOT NULL,
+  start_offset INTEGER NOT NULL,
+  end_offset INTEGER NOT NULL,
+  selected_text TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT 'yellow',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_annotations_book ON annotations(book_id);
+
+CREATE TABLE IF NOT EXISTS annotation_notes (
+  id TEXT PRIMARY KEY,
+  annotation_id TEXT NOT NULL,
+  author TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_annotation_notes_annotation ON annotation_notes(annotation_id);
+
+CREATE TABLE IF NOT EXISTS dishes (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  cover_url TEXT,
+  description TEXT,
+  ingredients TEXT,
+  steps TEXT,
+  tags TEXT,
+  difficulty INTEGER NOT NULL DEFAULT 1,
+  healing_index INTEGER NOT NULL DEFAULT 3,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_dishes_type ON dishes(type);
 `;
 
 /**
