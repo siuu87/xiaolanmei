@@ -5,7 +5,14 @@ import { UserAuthWidget } from './listen/UserAuthWidget';
 import { PlayerCard } from './listen/PlayerCard';
 import { LyricsPanel } from './listen/LyricsPanel';
 import { PlaylistSection } from './listen/PlaylistSection';
-import { getCurrentTrack, getLyrics, type Track, type LyricLine } from './listen/neteaseMcpConnector';
+import { streamChat } from '@/lib/api/chatStream';
+import {
+  getCurrentTrack,
+  getListeningHistory,
+  getLyrics,
+  type Track,
+  type LyricLine,
+} from './listen/neteaseMcpConnector';
 
 /**
  * LISTEN（音乐播放页）：
@@ -18,6 +25,7 @@ export function ListenPage() {
   const [lines, setLines] = useState<LyricLine[]>([]);
   const [playing, setPlaying] = useState(false);
   const [progressMs, setProgressMs] = useState(0);
+  const [aiPicking, setAiPicking] = useState(false);
 
   useEffect(() => {
     getCurrentTrack().then(setTrack);
@@ -35,15 +43,49 @@ export function ListenPage() {
 
   const toggle = () => setPlaying((p) => !p);
   const seek = (ms: number) => setProgressMs(ms);
-  // 上一曲 / 下一曲（占位）：真实实现切 MCP 播放队列
-  const prev = () => setProgressMs(0);
-  const next = () => setProgressMs(0);
 
   // 列表点播放：切到该曲并开始播放
   const playTrack = (t: Track) => {
     setTrack(t);
     setProgressMs(0);
     setPlaying(true);
+  };
+
+  // 双爱心：AI 选一首歌并播放
+  const aiPick = async () => {
+    if (aiPicking) return;
+    setAiPicking(true);
+    try {
+      const history = await getListeningHistory();
+      const list = history.map((t) => `${t.name} - ${t.artist}`).join('、');
+      const prompt = `以下是用户最近的听歌记录：${list || '（暂无记录）'}。\n请据此推荐 1 首用户可能喜欢的中文歌。\n严格只返回一个 JSON 对象，形如 {"name":"歌名","artist":"歌手"}，不要输出任何其它文字。`;
+      let acc = '';
+      await streamChat([{ role: 'user', content: prompt }], {
+        onDelta: (t) => {
+          acc += t;
+        },
+        onError: () => {},
+      });
+      const m = acc.match(/\{[\s\S]*?\}/);
+      if (m) {
+        const obj = JSON.parse(m[0]) as { name?: unknown; artist?: unknown };
+        if (obj && typeof obj.name === 'string' && obj.name.trim()) {
+          setTrack({
+            id: 'ai-pick',
+            name: obj.name.trim(),
+            artist: typeof obj.artist === 'string' ? obj.artist.trim() : '',
+            album: '',
+            durationMs: 240000,
+          });
+          setProgressMs(0);
+          setPlaying(true);
+        }
+      }
+    } catch {
+      // 忽略解析 / 网络错误
+    } finally {
+      setAiPicking(false);
+    }
   };
 
   return (
@@ -72,9 +114,9 @@ export function ListenPage() {
             playing={playing}
             progressMs={progressMs}
             onToggle={toggle}
-            onPrev={prev}
-            onNext={next}
             onSeek={seek}
+            onAiPick={() => void aiPick()}
+            aiPicking={aiPicking}
           />
           <LyricsPanel progressMs={progressMs} lines={lines} />
           <PlaylistSection onPlayTrack={playTrack} />
