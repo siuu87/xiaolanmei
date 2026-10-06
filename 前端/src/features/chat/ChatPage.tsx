@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   ArrowUp,
   Square,
@@ -192,70 +192,6 @@ function ThoughtSheet({ reasoning, onClose }: { reasoning: string; onClose: () =
   );
 }
 
-/** 允许在 style 上写 CSS 变量（--xxx）的主题对象 */
-type CSSVars = CSSProperties & Record<`--${string}`, string>;
-
-/** 浅色配色（HSL）—— 微信风，跟随系统 prefers-color-scheme */
-const LIGHT_VARS: CSSVars = {
-  '--background': '0 0% 93%',
-  '--foreground': '0 0% 10%',
-  '--card': '0 0% 100%',
-  '--card-foreground': '0 0% 10%',
-  '--popover': '0 0% 100%',
-  '--popover-foreground': '0 0% 10%',
-  '--primary': '255 92% 76%',
-  '--primary-foreground': '0 0% 100%',
-  '--secondary': '0 0% 90%',
-  '--secondary-foreground': '0 0% 10%',
-  '--muted': '0 0% 90%',
-  '--muted-foreground': '0 0% 45%',
-  '--accent': '0 0% 90%',
-  '--accent-foreground': '0 0% 10%',
-  '--destructive': '0 72% 51%',
-  '--destructive-foreground': '0 0% 98%',
-  '--border': '0 0% 85%',
-  '--input': '0 0% 85%',
-  '--ring': '255 92% 76%',
-  '--bubble-ai': '210 100% 89%',
-  '--bubble-me': '0 0% 100%',
-};
-
-/** 深色配色（HSL）—— 纯黑底，跟随系统 */
-const DARK_VARS: CSSVars = {
-  '--background': '0 0% 0%',
-  '--foreground': '235 235 235',
-  '--card': '44 44 46',
-  '--card-foreground': '235 235 235',
-  '--popover': '44 44 46',
-  '--popover-foreground': '235 235 235',
-  '--primary': '255 92% 76%',
-  '--primary-foreground': '0 0% 100%',
-  '--secondary': '44 44 46',
-  '--secondary-foreground': '235 235 235',
-  '--muted': '44 44 46',
-  '--muted-foreground': '150 150 150',
-  '--accent': '44 44 46',
-  '--accent-foreground': '235 235 235',
-  '--destructive': '0 72% 51%',
-  '--destructive-foreground': '0 0% 98%',
-  '--border': '50 50 50',
-  '--input': '50 50 50',
-  '--ring': '255 92% 76%',
-  '--bubble-ai': '240 2% 18%',
-  '--bubble-me': '240 2% 23%',
-};
-
-/** 读取系统深浅色偏好（跟随设备，无手动切换） */
-function useSystemDark(): boolean {
-  const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return dark;
-}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -267,10 +203,6 @@ export function ChatPage() {
   const updateMessage = useChatStore((s) => s.updateMessage);
   const finalizeMessage = useChatStore((s) => s.finalizeMessage);
   const removeSubtree = useChatStore((s) => s.removeSubtree);
-
-  // 深浅色跟随系统（无手动切换）
-  const dark = useSystemDark();
-  const vars: CSSProperties = dark ? DARK_VARS : LIGHT_VARS;
 
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -684,7 +616,7 @@ export function ChatPage() {
   const showWelcome = !conversation || conversation.messages.length === 0;
 
   return (
-    <div className="flex h-full flex-col bg-background text-foreground" style={vars}>
+    <div className="flex h-full flex-col bg-background text-foreground">
       {/* 顶栏：抽屉 + Logo + 衬线标题 + 模型/联网/搜索/通话 */}
       <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2.5">
         <button
