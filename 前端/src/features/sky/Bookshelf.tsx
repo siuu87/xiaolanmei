@@ -57,7 +57,7 @@ export function Bookshelf() {
       {/* 书架顶板 + 标题 */}
       <div className="flex items-center justify-between border-b border-black/30 bg-[#3b2416] px-4 py-2.5">
         <div className="flex items-center gap-2 text-sm font-medium text-amber-100/90">
-          <Library className="h-4 w-4" /> 一起读 · 书架
+          <Library className="h-4 w-4" /> 书架
         </div>
         <button
           type="button"
