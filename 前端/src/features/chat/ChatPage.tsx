@@ -197,27 +197,27 @@ type CSSVars = CSSProperties & Record<`--${string}`, string>;
 
 /** 浅色配色（HSL）—— 微信风，跟随系统 prefers-color-scheme */
 const LIGHT_VARS: CSSVars = {
-  '--background': '242 242 246',
-  '--foreground': '25 25 25',
-  '--card': '255 255 255',
-  '--card-foreground': '25 25 25',
-  '--popover': '255 255 255',
-  '--popover-foreground': '25 25 25',
+  '--background': '0 0% 93%',
+  '--foreground': '0 0% 10%',
+  '--card': '0 0% 100%',
+  '--card-foreground': '0 0% 10%',
+  '--popover': '0 0% 100%',
+  '--popover-foreground': '0 0% 10%',
   '--primary': '255 92% 76%',
   '--primary-foreground': '0 0% 100%',
-  '--secondary': '237 231 230',
-  '--secondary-foreground': '25 25 25',
-  '--muted': '237 231 230',
-  '--muted-foreground': '120 120 120',
-  '--accent': '237 231 230',
-  '--accent-foreground': '25 25 25',
+  '--secondary': '0 0% 90%',
+  '--secondary-foreground': '0 0% 10%',
+  '--muted': '0 0% 90%',
+  '--muted-foreground': '0 0% 45%',
+  '--accent': '0 0% 90%',
+  '--accent-foreground': '0 0% 10%',
   '--destructive': '0 72% 51%',
   '--destructive-foreground': '0 0% 98%',
-  '--border': '224 224 224',
-  '--input': '224 224 224',
+  '--border': '0 0% 85%',
+  '--input': '0 0% 85%',
   '--ring': '255 92% 76%',
-  '--bubble-ai': '9 16% 92%',
-  '--bubble-me': '0 0% 85%',
+  '--bubble-ai': '210 100% 89%',
+  '--bubble-me': '0 0% 100%',
 };
 
 /** 深色配色（HSL）—— 纯黑底，跟随系统 */
@@ -801,7 +801,7 @@ export function ChatPage() {
                         'relative text-sm leading-6',
                         !isEditing && 'select-none',
                         m.role === 'user'
-                          ? 'whitespace-pre-wrap rounded-xl rounded-tr-[4px] bg-[hsl(var(--bubble-me))] px-3 py-2 text-foreground'
+                          ? 'whitespace-pre-wrap rounded-xl rounded-tr-[4px] border border-border/60 bg-[hsl(var(--bubble-me))] px-3 py-2 text-foreground shadow-sm'
                           : 'rounded-xl rounded-tl-[4px] bg-[hsl(var(--bubble-ai))] px-3 py-2 text-foreground shadow-sm',
                         m.sticker && 'bg-transparent p-0 shadow-none',
                       )}
