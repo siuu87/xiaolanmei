@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
+import { usePlayerStore } from '@/stores/playerStore';
 
 const NOTES = [
   { left: '6%', top: '18%', ch: '♪', delay: 0, dur: 6 },
@@ -19,33 +20,41 @@ const SPARKLES = [
   { left: '58%', top: '4%', delay: 1.0 },
 ];
 
-const TRACKS = ['占位曲目 一', '占位曲目 二', '占位曲目 三'];
-
 /**
- * 一起听（占位）：黑胶唱片 + 两个贴靠的头像。
- * 点播放：唱片转动、两个头像碰一下、音符亮起；真实音频源后续再接。
+ * 一起听（黑胶播放器）：黑胶唱片 + 两个贴靠的头像。
+ * 播放/切歌状态来自全局 playerStore，与 LISTEN 播放页联动。
  */
 export function VinylPlayer() {
   const meAvatar = useProfileStore((s) => s.avatar) || '🫐';
   const taAvatar = useProfileStore((s) => s.partnerAvatar) || '🐰';
   const meName = useProfileStore((s) => s.name) || '我';
 
-  const [playing, setPlaying] = useState(false);
+  const playing = usePlayerStore((s) => s.playing);
+  const track = usePlayerStore((s) => s.track);
+  const load = usePlayerStore((s) => s.load);
+  const toggle = usePlayerStore((s) => s.toggle);
+  const prev = usePlayerStore((s) => s.prev);
+  const next = usePlayerStore((s) => s.next);
+
   const [bumping, setBumping] = useState(false);
-  const [track, setTrack] = useState(0);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const bump = () => {
     setBumping(true);
     window.setTimeout(() => setBumping(false), 700);
   };
 
-  const toggle = () => {
-    setPlaying((p) => !p);
+  const onToggle = () => {
     if (!playing) bump();
+    toggle();
   };
 
   const skip = (dir: number) => {
-    setTrack((t) => (t + dir + TRACKS.length) % TRACKS.length);
+    if (dir > 0) next();
+    else prev();
     bump();
   };
 
@@ -133,7 +142,7 @@ export function VinylPlayer() {
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#ff9fb0] to-[#e76b84] shadow-inner" />
               <button
                 type="button"
-                onClick={toggle}
+                onClick={onToggle}
                 aria-label={playing ? '暂停' : '播放'}
                 className="absolute flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-500 shadow-md transition hover:scale-105 active:scale-95"
               >
@@ -152,7 +161,7 @@ export function VinylPlayer() {
           </button>
         </div>
 
-        <div className="mt-3 text-center text-[11px] text-slate-400">{TRACKS[track]}</div>
+        <div className="mt-3 text-center text-[11px] text-slate-400">{track?.name ?? '一起听'}</div>
       </div>
 
       <style>{`

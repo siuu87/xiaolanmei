@@ -7,7 +7,8 @@ import { PlayerCard } from './listen/PlayerCard';
 import { LyricsPanel } from './listen/LyricsPanel';
 import { PlaylistSection } from './listen/PlaylistSection';
 import { useProfileStore } from '@/stores/profileStore';
-import { getCurrentTrack, getLyrics, type Track, type LyricLine } from './listen/neteaseMcpConnector';
+import { usePlayerStore } from '@/stores/playerStore';
+import { getLyrics, type LyricLine } from './listen/neteaseMcpConnector';
 
 /** 一起听声波：三根竖条随播放跳动，暂停时变短停止 */
 function SoundWave({ playing }: { playing: boolean }) {
@@ -28,48 +29,33 @@ function SoundWave({ playing }: { playing: boolean }) {
 /**
  * LISTEN（音乐播放页）：
  * 顶部「一起听」双头像 + 声波 + 沉浸式播放区 + 歌词 + 推荐列表。
- * 黑金配色、无星空背景。预留网易云音乐 MCP 接入点（见 ./listen/neteaseMcpConnector.ts）。
+ * 播放状态来自全局 playerStore，与星空页黑胶播放器联动。
  */
 export function ListenPage() {
   const navigate = useNavigate();
   const myAvatar = useProfileStore((s) => s.avatar) || '🫐';
   const taAvatar = useProfileStore((s) => s.partnerAvatar) || '🐰';
 
-  const [track, setTrack] = useState<Track | null>(null);
+  const track = usePlayerStore((s) => s.track);
+  const playing = usePlayerStore((s) => s.playing);
+  const progressMs = usePlayerStore((s) => s.progressMs);
+  const load = usePlayerStore((s) => s.load);
+  const toggle = usePlayerStore((s) => s.toggle);
+  const seek = usePlayerStore((s) => s.seek);
+  const prev = usePlayerStore((s) => s.prev);
+  const next = usePlayerStore((s) => s.next);
+  const playTrack = usePlayerStore((s) => s.playTrack);
+
   const [lines, setLines] = useState<LyricLine[]>([]);
-  const [playing, setPlaying] = useState(false);
-  const [progressMs, setProgressMs] = useState(0);
 
   useEffect(() => {
-    getCurrentTrack().then(setTrack);
-  }, []);
+    void load();
+  }, [load]);
 
   // 歌词自动调取：切歌时按当前曲目重新拉取
   useEffect(() => {
     getLyrics(track).then(setLines);
   }, [track]);
-
-  // 模拟播放进度（接入真实 MCP 音频源后替换）
-  useEffect(() => {
-    if (!playing || !track) return;
-    const timer = setInterval(() => {
-      setProgressMs((p) => (p + 1000 >= track.durationMs ? 0 : p + 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [playing, track]);
-
-  const toggle = () => setPlaying((p) => !p);
-  const seek = (ms: number) => setProgressMs(ms);
-  // 上一曲 / 下一曲（占位）：真实实现切 MCP 播放队列
-  const prev = () => setProgressMs(0);
-  const next = () => setProgressMs(0);
-
-  // 列表点播放：切到该曲并开始播放
-  const playTrack = (t: Track) => {
-    setTrack(t);
-    setProgressMs(0);
-    setPlaying(true);
-  };
 
   return (
     <div className="relative min-h-full bg-black text-[#E0E0E0]">
