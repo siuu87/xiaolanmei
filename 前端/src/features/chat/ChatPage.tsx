@@ -141,40 +141,49 @@ function fmtTime(ts?: number): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
-/** 思考链内联块：点击展开/收起完整推理过程（思考中圆点弹动，完成后 ✓） */
-function ThinkingBlock({
-  reasoning,
-  streaming,
-  open,
-  onToggle,
-}: {
-  reasoning: string;
-  streaming: boolean;
-  open: boolean;
-  onToggle: () => void;
-}) {
+/** 思考链入口胶囊：三个圆点（思考中弹动，完成后 ✓）+ 文案 */
+function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
-    <div className="mb-1.5 w-full max-w-full rounded-xl border border-border/60 bg-card/60 px-3 py-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-2 text-xs text-muted-foreground"
-      >
-        {streaming ? (
-          <span className="flex items-center gap-1">
-            <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
-            <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
-            <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
-          </span>
-        ) : (
-          <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
-        )}
-        <span className="flex-1 text-left">思考过程</span>
-        <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-90')} />
-      </button>
-      {open && (
-        <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground/80">{reasoning}</p>
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-1.5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1 text-xs text-muted-foreground transition hover:bg-card"
+    >
+      {active ? (
+        <span className="flex items-center gap-1">
+          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
+          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
+          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+        </span>
+      ) : (
+        <Check className="h-3.5 w-3.5 text-primary" />
       )}
+      <span>Thought process</span>
+    </button>
+  );
+}
+
+/** Claude 风「Thought process」弹窗：白色大圆角卡片 + 半透明灰蒙版 + 左上角黑色× */
+function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 flex max-h-[72vh] w-full max-w-md flex-col rounded-3xl bg-white p-5 shadow-2xl">
+        <div className="relative mb-4 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="关闭"
+            className="absolute left-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-black transition hover:bg-black/5"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <h2 className="text-base font-semibold text-black">Thought process</h2>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-600">{reasoning}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -210,7 +219,7 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [expandedThoughtId, setExpandedThoughtId] = useState<string | null>(null);
+  const [thoughtReasoning, setThoughtReasoning] = useState<string | null>(null);
   const [memoAdded, setMemoAdded] = useState<
     Record<string, { id?: string; title: string; fromWho?: string; toWho?: string }[]>
   >({});
@@ -709,11 +718,9 @@ export function ChatPage() {
                   )}
                   <div className={cn('flex min-w-0 max-w-[72%] flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
                     {m.role === 'assistant' && m.reasoning && (
-                      <ThinkingBlock
-                        reasoning={m.reasoning}
-                        streaming={m.status === 'streaming' && !m.content}
-                        open={expandedThoughtId === m.id}
-                        onToggle={() => setExpandedThoughtId((v) => (v === m.id ? null : m.id))}
+                      <ThoughtEntry
+                        active={m.status === 'streaming' && !m.content}
+                        onClick={() => setThoughtReasoning(m.reasoning ?? '')}
                       />
                     )}
                     <div
@@ -788,7 +795,7 @@ export function ChatPage() {
                       </>
                     )}
                     </div>
-                    <span className="mt-1 text-[10px] leading-none text-muted-foreground/60">{fmtTime(m.createdAt)}</span>
+                    <span className="mt-1 self-end text-[10px] leading-none text-muted-foreground/60">{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
 
@@ -1070,6 +1077,11 @@ export function ChatPage() {
 
       {/* 语音通话（占位界面，后续接 WebRTC） */}
       {callOpen && <CallOverlay name="哥哥" onClose={() => setCallOpen(false)} />}
+
+      {/* 思考链弹窗 */}
+      {thoughtReasoning !== null && (
+        <ThoughtModal reasoning={thoughtReasoning} onClose={() => setThoughtReasoning(null)} />
+      )}
     </div>
   );
 }
