@@ -238,7 +238,7 @@ export function BookReaderPage() {
       <div className="relative min-h-full bg-night px-4 py-16 text-center text-slate-400">
         <StarBackdrop />
         加载中…
-        <button type="button" onClick={() => navigate('/library')} className="mt-3 block text-primary hover:underline">返回书房</button>
+        <button type="button" onClick={() => navigate('/sky')} className="mt-3 block text-primary hover:underline">返回星空</button>
       </div>
     );
   }
@@ -353,7 +353,7 @@ export function BookReaderPage() {
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/library')}
+            onClick={() => navigate('/sky')}
             aria-label="返回"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink/60 transition hover:bg-black/5 dark:text-ink-night/60 dark:hover:bg-white/10"
           >

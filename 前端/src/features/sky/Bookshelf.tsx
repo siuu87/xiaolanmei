@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Library, Settings2 } from 'lucide-react';
 import { useBookStore, type Book } from './bookStore';
-import { BookDetailModal } from './BookDetailModal';
 
-/** 单本书：书脊冲外，竖排书名；点击打开详情 */
+/** 单本书：书脊冲外，竖排书名；点击直接进入阅读 */
 function BookSpine({ book, onOpen }: { book: Book; onOpen: () => void }) {
   return (
     <button
@@ -39,13 +38,11 @@ function BookSpine({ book, onOpen }: { book: Book; onOpen: () => void }) {
   );
 }
 
-/** 一起读：单层可滑动书架（书脊冲外），点书脊看详情，点「管理」进入平铺管理页 */
+/** 一起读：单层可滑动书架（书脊冲外），点书脊直接进入阅读，点「管理」进入平铺管理页 */
 export function Bookshelf() {
   const navigate = useNavigate();
   const books = useBookStore((s) => s.books);
   const load = useBookStore((s) => s.load);
-  const [detailId, setDetailId] = useState<string | null>(null);
-  const detail = books.find((b) => b.id === detailId) ?? null;
 
   useEffect(() => {
     void load();
@@ -75,7 +72,7 @@ export function Bookshelf() {
         ) : (
           <div className="flex items-end gap-1.5 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {books.map((b) => (
-              <BookSpine key={b.id} book={b} onOpen={() => setDetailId(b.id)} />
+              <BookSpine key={b.id} book={b} onOpen={() => navigate(`/read/${b.id}`)} />
             ))}
           </div>
         )}
@@ -88,7 +85,6 @@ export function Bookshelf() {
         />
       </div>
 
-      {detail && <BookDetailModal book={detail} onClose={() => setDetailId(null)} />}
     </div>
   );
 }
