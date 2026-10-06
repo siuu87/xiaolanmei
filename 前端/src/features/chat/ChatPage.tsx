@@ -19,6 +19,11 @@ import {
   Globe,
   Phone,
   User,
+  Plus,
+  Image,
+  Camera,
+  FileText,
+  Smile,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -188,6 +193,19 @@ function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () =
   );
 }
 
+/** 附件面板里的单个入口（图标 + 文案） */
+function AttachButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs text-foreground/80 transition hover:bg-muted"
+    >
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground">{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -211,13 +229,14 @@ export function ChatPage() {
   const [confirming, setConfirming] = useState<{ confirmId: string; toolName: string; summary: string } | null>(
     null,
   );
-  const [web, setWeb] = useState(true);
+  const [web] = useState(true);
   const [stationId, setStationId] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [vision, setVision] = useState<{ model: string | null } | null>(null);
   const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [thoughtReasoning, setThoughtReasoning] = useState<string | null>(null);
   const [memoAdded, setMemoAdded] = useState<
@@ -233,6 +252,8 @@ export function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const fileDocRef = useRef<HTMLInputElement>(null);
   const pressTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -405,6 +426,25 @@ export function ChatPage() {
         setPendingImages((prev) => [...prev, img]);
       } catch (e) {
         setToolStatus(`图片上传失败：${(e as Error).message}`);
+        setTimeout(() => setToolStatus(null), 3000);
+      }
+    }
+  };
+
+  // 选择文件：图片走图片上传，其他类型暂不支持
+  const pickFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    for (const f of Array.from(files).slice(0, 4)) {
+      if (f.type.startsWith('image/')) {
+        try {
+          const img = await uploadImage(f);
+          setPendingImages((prev) => [...prev, img]);
+        } catch (e) {
+          setToolStatus(`图片上传失败：${(e as Error).message}`);
+          setTimeout(() => setToolStatus(null), 3000);
+        }
+      } else {
+        setToolStatus('暂不支持发送该类型文件');
         setTimeout(() => setToolStatus(null), 3000);
       }
     }
@@ -635,18 +675,6 @@ export function ChatPage() {
             setModel(m);
           }}
         />
-        <button
-          type="button"
-          onClick={() => setWeb((v) => !v)}
-          aria-label="联网"
-          title="联网搜索"
-          className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition',
-            web ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <Globe className="h-4 w-4" />
-        </button>
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
@@ -1028,6 +1056,33 @@ export function ChatPage() {
           </div>
         )}
         <div className="mx-auto w-full max-w-3xl">
+          {attachOpen && (
+            <div className="mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border bg-popover p-2 shadow-lg">
+              <AttachButton
+                icon={<Image className="h-5 w-5" />}
+                label="图片"
+                onClick={() => fileRef.current?.click()}
+              />
+              <AttachButton
+                icon={<Camera className="h-5 w-5" />}
+                label="拍照"
+                onClick={() => cameraRef.current?.click()}
+              />
+              <AttachButton
+                icon={<FileText className="h-5 w-5" />}
+                label="文件"
+                onClick={() => fileDocRef.current?.click()}
+              />
+              <AttachButton
+                icon={<Smile className="h-5 w-5" />}
+                label="表情包"
+                onClick={() => {
+                  setAttachOpen(false);
+                  setStickerOpen(true);
+                }}
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary">
             <input
               ref={fileRef}
@@ -1040,6 +1095,35 @@ export function ChatPage() {
                 e.target.value = '';
               }}
             />
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={(e) => {
+                void pickImages(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={fileDocRef}
+              type="file"
+              accept="*/*"
+              hidden
+              onChange={(e) => {
+                void pickFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setAttachOpen((v) => !v)}
+              aria-label="添加附件"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
             <input
               ref={inputRef}
               value={input}
