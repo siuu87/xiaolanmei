@@ -199,3 +199,21 @@
 .think-dot {
   animation: think-dot 1.2s ease-in-out infinite;
 }
+
+/* ===== 聊天气泡小尾巴（微信式） ===== */
+.bubble-tail {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 14px;
+}
+.bubble-tail--ai {
+  left: -5px;
+  background: hsl(var(--bubble-ai));
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+.bubble-tail--me {
+  right: -5px;
+  background: hsl(var(--bubble-me));
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}

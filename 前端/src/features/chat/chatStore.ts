@@ -20,6 +20,7 @@ export interface ChatMessage {
   images?: ChatImage[];
   sticker?: string; // 表情包贴图（emoji key；content 同步存 emoji 供模型理解）
   reasoning?: string; // 思考链：模型的推理内容（阶段 12），仅展示不回传模型
+  createdAt?: number; // 发送时间戳（气泡下方时间）
 }
 
 export interface Conversation {
@@ -182,6 +183,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               images: meta.images,
               sticker: meta.sticker,
               reasoning: meta.reasoning,
+              createdAt: m.createdAt,
             };
           }),
         },

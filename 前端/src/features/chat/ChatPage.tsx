@@ -11,7 +11,6 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Check,
   X,
   MoreHorizontal,
@@ -135,64 +134,128 @@ function ClaudeMark({ className }: { className?: string }) {
   );
 }
 
-/** 思考链：Claude 式可折叠推理卡片（思考中跳动圆点，结束后收起为标题行） */
-function ThinkingBlock({ reasoning, active }: { reasoning: string; active: boolean }) {
-  const [open, setOpen] = useState(true);
-  useEffect(() => {
-    if (active) setOpen(true);
-  }, [active]);
+/** 气泡下方的时间戳：HH:MM */
+function fmtTime(ts?: number): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
+/** 思考链入口胶囊：三个淡紫圆点（思考中弹动，完成后 ✓）+ 文案 + 箭头 */
+function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
-    <div className="mb-2.5 overflow-hidden rounded-xl border border-[#3A3A3C] bg-[#2A2A2A]">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 border-l-2 border-[#07C160] px-3 py-2 text-left"
-      >
-        <ClaudeMark className="h-3.5 w-3.5 shrink-0 text-[#07C160]" />
-        <span className="text-xs text-[#8A8A8A]">{active ? '正在思考' : '思考过程'}</span>
-        {active ? (
-          <span className="flex items-center gap-1">
-            <span className="think-dot h-1 w-1 rounded-full bg-[#07C160]" style={{ animationDelay: '0ms' }} />
-            <span className="think-dot h-1 w-1 rounded-full bg-[#07C160]" style={{ animationDelay: '150ms' }} />
-            <span className="think-dot h-1 w-1 rounded-full bg-[#07C160]" style={{ animationDelay: '300ms' }} />
-          </span>
-        ) : (
-          <ChevronDown
-            className={cn('ml-auto h-3.5 w-3.5 text-[#07C160] transition-transform', open && 'rotate-180')}
-          />
-        )}
-      </button>
-      {open && (
-        <div className="border-l-2 border-[#07C160] pb-2.5 pl-4 pr-3">
-          <p className="whitespace-pre-wrap text-xs leading-relaxed text-[#8A8A8A]">{reasoning}</p>
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-1.5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1 text-xs text-muted-foreground transition hover:bg-card"
+    >
+      {active ? (
+        <span className="flex items-center gap-1">
+          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
+          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
+          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+        </span>
+      ) : (
+        <Check className="h-3.5 w-3.5 text-primary" />
       )}
+      <span>思考过程</span>
+      <ChevronRight className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+/** 思考链底部弹窗：占屏幕 1/3 高，只收顶边圆角，完整思维链文本 */
+function ThoughtSheet({ reasoning, onClose }: { reasoning: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className="absolute inset-x-0 bottom-0 flex flex-col rounded-t-2xl border-t border-border bg-popover p-4 shadow-2xl"
+        style={{ height: '33.333vh', minHeight: 200 }}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-medium text-foreground">思考过程</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="关闭"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{reasoning}</p>
+        </div>
+      </div>
     </div>
   );
 }
 
-/** 微信深色配色（HSL），注入聊天页根节点，覆盖全局主题变量，使聊天页恒为深色 */
-const CHAT_VARS = {
-  '--background': '0 0% 7%',
-  '--foreground': '0 0% 91%',
-  '--card': '0 0% 16%',
-  '--card-foreground': '0 0% 91%',
-  '--popover': '0 0% 16%',
-  '--popover-foreground': '0 0% 91%',
-  '--primary': '153 93% 39%',
+/** 允许在 style 上写 CSS 变量（--xxx）的主题对象 */
+type CSSVars = CSSProperties & Record<`--${string}`, string>;
+
+/** 浅色配色（HSL）—— 微信风，跟随系统 prefers-color-scheme */
+const LIGHT_VARS: CSSVars = {
+  '--background': '242 242 246',
+  '--foreground': '25 25 25',
+  '--card': '255 255 255',
+  '--card-foreground': '25 25 25',
+  '--popover': '255 255 255',
+  '--popover-foreground': '25 25 25',
+  '--primary': '255 92% 76%',
   '--primary-foreground': '0 0% 100%',
-  '--secondary': '0 0% 13%',
-  '--secondary-foreground': '0 0% 91%',
-  '--muted': '0 0% 13%',
-  '--muted-foreground': '0 0% 54%',
-  '--accent': '0 0% 13%',
-  '--accent-foreground': '0 0% 91%',
+  '--secondary': '237 231 230',
+  '--secondary-foreground': '25 25 25',
+  '--muted': '237 231 230',
+  '--muted-foreground': '120 120 120',
+  '--accent': '237 231 230',
+  '--accent-foreground': '25 25 25',
   '--destructive': '0 72% 51%',
   '--destructive-foreground': '0 0% 98%',
-  '--border': '0 0% 23%',
-  '--input': '0 0% 23%',
-  '--ring': '153 93% 39%',
-} as CSSProperties;
+  '--border': '224 224 224',
+  '--input': '224 224 224',
+  '--ring': '255 92% 76%',
+  '--bubble-ai': '9 16% 92%',
+  '--bubble-me': '0 0% 85%',
+};
+
+/** 深色配色（HSL）—— 纯黑底，跟随系统 */
+const DARK_VARS: CSSVars = {
+  '--background': '0 0% 0%',
+  '--foreground': '235 235 235',
+  '--card': '44 44 46',
+  '--card-foreground': '235 235 235',
+  '--popover': '44 44 46',
+  '--popover-foreground': '235 235 235',
+  '--primary': '255 92% 76%',
+  '--primary-foreground': '0 0% 100%',
+  '--secondary': '44 44 46',
+  '--secondary-foreground': '235 235 235',
+  '--muted': '44 44 46',
+  '--muted-foreground': '150 150 150',
+  '--accent': '44 44 46',
+  '--accent-foreground': '235 235 235',
+  '--destructive': '0 72% 51%',
+  '--destructive-foreground': '0 0% 98%',
+  '--border': '50 50 50',
+  '--input': '50 50 50',
+  '--ring': '255 92% 76%',
+  '--bubble-ai': '240 2% 18%',
+  '--bubble-me': '240 2% 23%',
+};
+
+/** 读取系统深浅色偏好（跟随设备，无手动切换） */
+function useSystemDark(): boolean {
+  const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return dark;
+}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -204,6 +267,10 @@ export function ChatPage() {
   const updateMessage = useChatStore((s) => s.updateMessage);
   const finalizeMessage = useChatStore((s) => s.finalizeMessage);
   const removeSubtree = useChatStore((s) => s.removeSubtree);
+
+  // 深浅色跟随系统（无手动切换）
+  const dark = useSystemDark();
+  const vars: CSSProperties = dark ? DARK_VARS : LIGHT_VARS;
 
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -224,6 +291,7 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [thoughtReasoning, setThoughtReasoning] = useState<string | null>(null);
   const [memoAdded, setMemoAdded] = useState<
     Record<string, { id?: string; title: string; fromWho?: string; toWho?: string }[]>
   >({});
@@ -316,6 +384,7 @@ export function ChatPage() {
         content: local,
         parentId,
         status: 'done',
+        createdAt: Date.now(),
       });
       return;
     }
@@ -327,6 +396,7 @@ export function ChatPage() {
       content: '',
       parentId,
       status: 'streaming',
+      createdAt: Date.now(),
     });
     setBusy(true);
 
@@ -458,6 +528,7 @@ export function ChatPage() {
       content: text + imgText,
       parentId,
       status: 'done',
+      createdAt: Date.now(),
       images: pendingImages.length
         ? pendingImages.map((i) => (direct ? i : { ...i, dataUrl: undefined }))
         : undefined,
@@ -486,6 +557,7 @@ export function ChatPage() {
         parentId: conv.activeMessageId,
         status: 'done',
         sticker: key,
+        createdAt: Date.now(),
       });
       return;
     }
@@ -510,6 +582,7 @@ export function ChatPage() {
       parentId: conv.activeMessageId,
       status: 'done',
       sticker: key,
+      createdAt: Date.now(),
       images: dataUrl ? [{ url: key, ...(direct ? { dataUrl } : {}) }] : undefined,
     };
     await appendMessage(userMsg);
@@ -611,20 +684,20 @@ export function ChatPage() {
   const showWelcome = !conversation || conversation.messages.length === 0;
 
   return (
-    <div className="flex h-full flex-col bg-[#111111] text-[#E9E9E9]" style={CHAT_VARS}>
+    <div className="flex h-full flex-col bg-background text-foreground" style={vars}>
       {/* 顶栏：抽屉 + Logo + 衬线标题 + 模型/联网/搜索/通话 */}
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-[#3A3A3C]/70 px-3 py-2.5">
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2.5">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
           aria-label="工具箱"
           title="插件 / 角色 / 世界书 / 工作区 / 技能"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#8A8A8A] transition hover:text-[#E9E9E9]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
         >
           <Menu className="h-4 w-4" />
         </button>
-        <ClaudeMark className="h-5 w-5 shrink-0 text-[#07C160]" />
-        <span className="min-w-0 flex-1 truncate text-center font-serif text-[15px] text-[#E9E9E9]">
+        <ClaudeMark className="h-5 w-5 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 truncate text-center font-serif text-[15px] text-foreground">
           {conversation?.title ?? '小蓝莓'}
         </span>
         <ModelPicker
@@ -642,7 +715,7 @@ export function ChatPage() {
           title="联网搜索"
           className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition',
-            web ? 'text-[#07C160]' : 'text-[#8A8A8A] hover:text-[#E9E9E9]',
+            web ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           <Globe className="h-4 w-4" />
@@ -651,7 +724,7 @@ export function ChatPage() {
           type="button"
           onClick={() => setSearchOpen(true)}
           aria-label="搜索记录"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#8A8A8A] transition hover:text-[#E9E9E9]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
         >
           <Search className="h-4 w-4" />
         </button>
@@ -660,7 +733,7 @@ export function ChatPage() {
           onClick={() => setCallOpen(true)}
           aria-label="语音通话"
           title="语音通话"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#8A8A8A] transition hover:text-[#E9E9E9]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:text-foreground"
         >
           <Phone className="h-4 w-4" />
         </button>
@@ -670,12 +743,12 @@ export function ChatPage() {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
         <div className="mx-auto w-full max-w-3xl space-y-6">
         {!loaded ? (
-          <div className="flex items-center justify-center py-20 text-sm text-[#8A8A8A]">
+          <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
             加载中…
           </div>
         ) : showWelcome ? (
           <div className="flex justify-start">
-            <div className="max-w-[85%] text-sm leading-6 text-[#E9E9E9]/90">
+            <div className="max-w-[85%] text-sm leading-6 text-foreground/90">
               <Markdown>{WELCOME_TEXT}</Markdown>
             </div>
           </div>
@@ -691,7 +764,7 @@ export function ChatPage() {
 
             return (
               <div key={m.id} className="flex flex-col">
-                {/* 消息行：微信式气泡（你=右侧绿气泡，小蓝莓=左侧白气泡） */}
+                {/* 消息行：微信式气泡（你=右侧，小蓝莓=左侧，带尖角指向头像） */}
                 <div
                   className={cn(
                     'flex items-start gap-2',
@@ -708,25 +781,38 @@ export function ChatPage() {
                     : {})}
                 >
                   {m.role === 'user' ? (
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#3A3A3C] text-white">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                       <User className="h-5 w-5" />
                     </div>
                   ) : (
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#07C160] text-white">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
                       <ClaudeMark className="h-5 w-5" />
                     </div>
                   )}
-                  <div className="flex min-w-0 max-w-[72%] flex-col">
+                  <div className={cn('flex min-w-0 max-w-[72%] flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
+                    {m.role === 'assistant' && m.reasoning && (
+                      <ThoughtEntry
+                        active={m.status === 'streaming' && !m.content}
+                        onClick={() => setThoughtReasoning(m.reasoning ?? '')}
+                      />
+                    )}
                     <div
                       className={cn(
-                        'text-sm leading-6',
+                        'relative text-sm leading-6',
                         !isEditing && 'select-none',
                         m.role === 'user'
-                          ? 'whitespace-pre-wrap rounded-lg rounded-tr-[3px] bg-[#0E5A2A] px-3 py-2 text-[#E9E9E9]'
-                          : 'rounded-lg rounded-tl-[3px] bg-[#2A2A2A] px-3 py-2 text-[#E9E9E9] shadow-sm',
+                          ? 'whitespace-pre-wrap rounded-xl rounded-tr-[4px] bg-[hsl(var(--bubble-me))] px-3 py-2 text-foreground'
+                          : 'rounded-xl rounded-tl-[4px] bg-[hsl(var(--bubble-ai))] px-3 py-2 text-foreground shadow-sm',
                         m.sticker && 'bg-transparent p-0 shadow-none',
                       )}
                     >
+                      {!m.sticker && (
+                        <span
+                          className={
+                            m.role === 'user' ? 'bubble-tail bubble-tail--me' : 'bubble-tail bubble-tail--ai'
+                          }
+                        />
+                      )}
                     {isEditing ? (
                       <div className="flex flex-col gap-2">
                         <textarea
@@ -734,14 +820,14 @@ export function ChatPage() {
                           onChange={(e) => setEditText(e.target.value)}
                           autoFocus
                           rows={3}
-                          className="w-full resize-none select-text rounded-lg bg-[#111111]/60 px-2 py-1 text-sm text-[#E9E9E9] outline-none"
+                          className="w-full resize-none select-text rounded-lg bg-background/60 px-2 py-1 text-sm text-foreground outline-none"
                         />
                         <div className="flex justify-end gap-1">
                           <button
                             type="button"
                             onClick={cancelEdit}
                             aria-label="取消编辑"
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-[#8A8A8A] hover:bg-[#111111]/60"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -749,7 +835,7 @@ export function ChatPage() {
                             type="button"
                             onClick={() => void saveEdit(m)}
                             aria-label="保存编辑"
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-[#8A8A8A] hover:bg-[#111111]/60"
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60"
                           >
                             <Check className="h-4 w-4" />
                           </button>
@@ -757,14 +843,8 @@ export function ChatPage() {
                       </div>
                     ) : m.role === 'assistant' ? (
                       <>
-                        {m.reasoning && (
-                          <ThinkingBlock
-                            reasoning={m.reasoning}
-                            active={m.status === 'streaming' && !m.content}
-                          />
-                        )}
-                        {!m.reasoning && m.status === 'streaming' && !m.content && (
-                          <span className="text-[#8A8A8A]">思考中…</span>
+                        {m.status === 'streaming' && !m.content && !m.reasoning && (
+                          <span className="text-muted-foreground">思考中…</span>
                         )}
                         {m.content && <Markdown>{m.content}</Markdown>}
                       </>
@@ -788,6 +868,7 @@ export function ChatPage() {
                       </>
                     )}
                     </div>
+                    <span className="mt-1 text-[10px] text-muted-foreground/60">{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
 
@@ -945,7 +1026,7 @@ export function ChatPage() {
       </div>
 
       {/* 输入框（Claude 深色） */}
-      <div className="shrink-0 border-t border-[#3A3A3C]/70 bg-[#111111] px-4 pb-4 pt-3">
+      <div className="shrink-0 border-t border-border bg-background px-4 pb-4 pt-3">
         {partnerStateNote && (
           <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-rose-400/10 px-3 py-1.5 text-xs text-rose-300">
             {partnerStateNote}
@@ -957,7 +1038,7 @@ export function ChatPage() {
               <span
                 key={s.id}
                 title={`触发：${s.reason}`}
-                className="flex items-center gap-1 rounded-full bg-[#07C160]/10 px-2 py-0.5 text-[11px] text-[#07C160]"
+                className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
               >
                 {s.name}
               </span>
@@ -965,19 +1046,19 @@ export function ChatPage() {
           </div>
         )}
         {toolStatus && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-[#2A2A2A] px-3 py-1.5 text-xs text-[#8A8A8A]">
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground">
             <Globe className="h-3.5 w-3.5 animate-pulse" />
             <span>{toolStatus}</span>
           </div>
         )}
         {replyToId && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-[#2A2A2A] px-3 py-1.5 text-xs text-[#8A8A8A]">
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-card px-3 py-1.5 text-xs text-muted-foreground">
             <span className="flex-1 truncate">正在回复这条消息…</span>
             <button
               type="button"
               onClick={cancelReply}
               aria-label="取消回复"
-              className="flex h-5 w-5 items-center justify-center rounded hover:bg-[#3A3A3C]"
+              className="flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
             >
               <X className="h-3 w-3" />
             </button>
@@ -992,7 +1073,7 @@ export function ChatPage() {
                   type="button"
                   onClick={() => setPendingImages((prev) => prev.filter((_, j) => j !== i))}
                   aria-label="移除图片"
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#E9E9E9] text-[#111111] shadow"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1001,26 +1082,26 @@ export function ChatPage() {
           </div>
         )}
         {confirming && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-[#E9E9E9]/90">
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground/90">
             <span className="min-w-0 flex-1 truncate">⏸ 需要确认：{confirming.summary}</span>
             <button
               type="button"
               onClick={() => void answerConfirm('allow')}
-              className="flex shrink-0 items-center gap-1 rounded-md bg-[#07C160] px-2 py-1 text-xs text-white"
+              className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground"
             >
               <Check className="h-3 w-3" /> 允许
             </button>
             <button
               type="button"
               onClick={() => void answerConfirm('deny')}
-              className="flex shrink-0 items-center gap-1 rounded-md bg-[#2A2A2A] px-2 py-1 text-xs text-[#E9E9E9]/80"
+              className="flex shrink-0 items-center gap-1 rounded-md bg-card px-2 py-1 text-xs text-foreground/80"
             >
               <X className="h-3 w-3" /> 拒绝
             </button>
           </div>
         )}
         <div className="mx-auto w-full max-w-3xl">
-          <div className="flex items-center gap-2 rounded-lg border border-[#3A3A3C] bg-[#2A2A2A] px-3 py-1.5 transition-colors focus-within:border-[#07C160]">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary">
             <input
               ref={fileRef}
               type="file"
@@ -1038,13 +1119,13 @@ export function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
               placeholder={replyToId ? '回复这条消息…' : ''}
-              className="h-8 min-w-0 flex-1 bg-transparent text-sm text-[#E9E9E9] outline-none placeholder:text-[#8A8A8A]/70"
+              className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
             />
             <button
               type="button"
               onClick={busy ? stop : send}
               aria-label={busy ? '停止' : '发送'}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#07C160] text-white transition hover:bg-[#06AD56]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
             >
               {busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
             </button>
@@ -1069,6 +1150,11 @@ export function ChatPage() {
 
       {/* 语音通话（占位界面，后续接 WebRTC） */}
       {callOpen && <CallOverlay name="哥哥" onClose={() => setCallOpen(false)} />}
+
+      {/* 思考链底部弹窗 */}
+      {thoughtReasoning !== null && (
+        <ThoughtSheet reasoning={thoughtReasoning} onClose={() => setThoughtReasoning(null)} />
+      )}
     </div>
   );
 }
