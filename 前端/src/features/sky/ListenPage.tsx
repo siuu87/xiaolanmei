@@ -5,7 +5,7 @@ import { StarBackdrop } from './StarBackdrop';
 import { UserAuthWidget } from './listen/UserAuthWidget';
 import { PlayerCard } from './listen/PlayerCard';
 import { LyricsPanel } from './listen/LyricsPanel';
-import { RecommendList } from './listen/RecommendList';
+import { PlaylistSection } from './listen/PlaylistSection';
 import { getCurrentTrack, getLyrics, type Track, type LyricLine } from './listen/neteaseMcpConnector';
 
 /**
@@ -74,7 +74,7 @@ export function ListenPage() {
             onSeek={seek}
           />
           <LyricsPanel progressMs={progressMs} lines={lines} />
-          <RecommendList />
+          <PlaylistSection />
         </div>
       </div>
     </div>

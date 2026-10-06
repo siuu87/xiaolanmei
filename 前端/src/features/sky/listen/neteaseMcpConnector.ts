@@ -1,7 +1,7 @@
-// ===== 网易云音乐 MCP 接入点（占位）=====
-// 后续接入真实网易云音乐 MCP 时，只需替换本文件的占位实现，
-// 组件层（UserAuthWidget / PlayerCard / LyricsPanel / RecommendList）无需改动。
-// 所有数据均为占位，不涉及真实账号。
+// ===== 网易云音乐 MCP 接入点 =====
+// 真实网易云数据需在「MCP 管理」页配置网易云音乐 MCP 服务器后接入；
+// 当前为占位数据，组件层按真实接口形态调用，接入真实 MCP 时替换本文件实现即可。
+// 不涉及真实账号与密钥。
 
 export interface NeteaseUser {
   userId: string;
@@ -23,9 +23,9 @@ export interface LyricLine {
   translation?: string;
 }
 
-export interface PlaylistTab {
-  key: string;
-  label: string;
+export interface Playlist {
+  id: string;
+  name: string;
   tracks: Track[];
 }
 
@@ -68,34 +68,54 @@ export function getLyrics(): Promise<LyricLine[]> {
   ]);
 }
 
-// MCP 接入点：推荐歌单（分 Tab 返回）
-export function getRecommendPlaylist(): Promise<PlaylistTab[]> {
+// MCP 接入点：每日推荐（对应 MCP 工具 get_daily_recommend_songs）
+export function getDailyRecommendSongs(): Promise<Track[]> {
+  return mock([
+    { id: 'd1', name: '起风了', artist: '买辣椒也用券', album: '起风了', durationMs: 305000 },
+    { id: 'd2', name: '光年之外', artist: '邓紫棋', album: '光年之外', durationMs: 235000 },
+    { id: 'd3', name: '平凡之路', artist: '朴树', album: '猎户星座', durationMs: 301000 },
+    { id: 'd4', name: '夜空中最亮的星', artist: '逃跑计划', album: '世界', durationMs: 264000 },
+  ]);
+}
+
+// MCP 接入点：我的歌单（对应 MCP 工具 get_user_playlists）
+export function getUserPlaylists(): Promise<Playlist[]> {
   return mock([
     {
-      key: 'daily',
-      label: '每日推荐',
-      tracks: [
-        { id: 'd1', name: '起风了', artist: '买辣椒也用券', album: '起风了', durationMs: 305000 },
-        { id: 'd2', name: '光年之外', artist: '邓紫棋', album: '光年之外', durationMs: 235000 },
-        { id: 'd3', name: '平凡之路', artist: '朴树', album: '猎户星座', durationMs: 301000 },
-      ],
-    },
-    {
-      key: 'mine',
-      label: '我的歌单',
+      id: 'p1',
+      name: '我喜欢的音乐',
       tracks: [
         { id: 'm1', name: '晴天', artist: '周杰伦', album: '叶惠美', durationMs: 269000 },
         { id: 'm2', name: '后来', artist: '刘若英', album: '我等你', durationMs: 330000 },
       ],
     },
     {
-      key: 'queue',
-      label: '播放队列',
+      id: 'p2',
+      name: '深夜 emo',
       tracks: [
-        { id: 'q1', name: '晴天', artist: '周杰伦', album: '叶惠美', durationMs: 269000 },
-        { id: 'q2', name: '夜曲', artist: '周杰伦', album: '十一月的萧邦', durationMs: 226000 },
+        { id: 'm3', name: '夜曲', artist: '周杰伦', album: '十一月的萧邦', durationMs: 226000 },
+        { id: 'm4', name: '平凡之路', artist: '朴树', album: '猎户星座', durationMs: 301000 },
       ],
     },
+  ]);
+}
+
+// MCP 接入点：播放队列
+export function getPlayQueue(): Promise<Track[]> {
+  return mock([
+    { id: 'q1', name: '晴天', artist: '周杰伦', album: '叶惠美', durationMs: 269000 },
+    { id: 'q2', name: '夜曲', artist: '周杰伦', album: '十一月的萧邦', durationMs: 226000 },
+  ]);
+}
+
+// 听歌记录（供「AI 专属推荐」分析口味；真实实现从 MCP 拉取最近播放）
+export function getListeningHistory(): Promise<Track[]> {
+  return mock([
+    { id: 'h1', name: '晴天', artist: '周杰伦', album: '叶惠美', durationMs: 269000 },
+    { id: 'h2', name: '七里香', artist: '周杰伦', album: '七里香', durationMs: 298000 },
+    { id: 'h3', name: '光年之外', artist: '邓紫棋', album: '光年之外', durationMs: 235000 },
+    { id: 'h4', name: '起风了', artist: '买辣椒也用券', album: '起风了', durationMs: 305000 },
+    { id: 'h5', name: '平凡之路', artist: '朴树', album: '猎户星座', durationMs: 301000 },
   ]);
 }
 
