@@ -36,8 +36,7 @@ export function ReadPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex-1 text-center">
-            <p className="text-xs tracking-[0.3em] text-slate-400/80">READ</p>
-            <h1 className="mt-0.5 text-xl font-bold text-slate-100">一起读</h1>
+            <h1 className="text-xl font-bold text-slate-100">READ</h1>
           </div>
           <span className="w-8" />
         </header>

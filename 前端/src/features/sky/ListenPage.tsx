@@ -57,7 +57,7 @@ export function ListenPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <h1 className="text-xl font-bold text-slate-100">一起听</h1>
+            <h1 className="text-xl font-bold text-slate-100">LISTEN</h1>
           </div>
           <UserAuthWidget />
         </header>

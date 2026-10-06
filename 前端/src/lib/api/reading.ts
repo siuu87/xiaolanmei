@@ -3,7 +3,7 @@ import { request } from './conversations';
 // ---- 一起读 / 书房 类型与 API ----
 
 export type Reader = 'me' | 'partner';
-export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink';
+export type AnnotationColor = 'yellow' | 'green' | 'blue' | 'pink' | 'violet' | 'amber';
 
 export interface ReadingBook {
   id: string;

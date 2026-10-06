@@ -280,7 +280,7 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
     }
     const id = body.id?.trim() || newId();
     const ts = now();
-    const colors = ['yellow', 'green', 'blue', 'pink'];
+    const colors = ['yellow', 'green', 'blue', 'pink', 'violet', 'amber'];
     const color = colors.includes(body.color ?? '') ? body.color! : 'yellow';
     db.insert(annotations)
       .values({

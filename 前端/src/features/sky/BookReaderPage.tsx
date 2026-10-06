@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { StarBackdrop } from './StarBackdrop';
 import { useBookStore } from './bookStore';
+import { AnnotationCenter } from './AnnotationCenter';
 import { useProfileStore } from '@/stores/profileStore';
 import {
   getProgress,
@@ -35,11 +36,13 @@ interface Sel {
   y: number;
 }
 
-const HIGHLIGHT_COLORS: Record<AnnotationColor, { cls: string; hex: string; label: string }> = {
-  yellow: { cls: 'bg-yellow-200/70 dark:bg-yellow-500/25', hex: '#eab308', label: '柔黄' },
-  green: { cls: 'bg-green-200/70 dark:bg-green-500/25', hex: '#22c55e', label: '青绿' },
-  blue: { cls: 'bg-sky-200/70 dark:bg-sky-500/25', hex: '#38bdf8', label: '天蓝' },
-  pink: { cls: 'bg-pink-200/70 dark:bg-pink-500/25', hex: '#ec4899', label: '樱粉' },
+const HIGHLIGHT_COLORS: Record<AnnotationColor, { hex: string; label: string }> = {
+  yellow: { hex: '#d8c39a', label: '燕麦黄' },
+  green: { hex: '#a3b8a0', label: '灰绿' },
+  blue: { hex: '#9fb4c4', label: '雾蓝' },
+  pink: { hex: '#cba3ad', label: '灰粉' },
+  violet: { hex: '#b3a3c4', label: '灰紫' },
+  amber: { hex: '#cfae8f', label: '灰橙' },
 };
 
 function formatTime(ts: number): string {
@@ -100,6 +103,7 @@ export function BookReaderPage() {
   const [sel, setSel] = useState<Sel | null>(null);
   const [menuColor, setMenuColor] = useState<AnnotationColor>('yellow');
   const [showToc, setShowToc] = useState(false);
+  const [showCenter, setShowCenter] = useState(false);
 
   // 留纸条弹窗
   const [noteDlg, setNoteDlg] = useState<Sel | null>(null);
@@ -297,6 +301,18 @@ export function BookReaderPage() {
     setShowToc(false);
   };
 
+  const jumpToc = (idx: number) => jumpTo(idx, Math.max(1, book.toc.length));
+  const jumpParagraph = (idx: number) => jumpTo(idx, Math.max(1, paragraphs.length));
+
+  const deleteAnn = async (ann: ReadingAnnotation) => {
+    try {
+      await deleteAnnotation(ann.id);
+      setAnnotations((a) => a.filter((x) => x.id !== ann.id));
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div className="relative min-h-full bg-paper text-ink dark:bg-night dark:text-ink-night">
       <StarBackdrop />
@@ -334,6 +350,14 @@ export function BookReaderPage() {
             className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition', showToc ? 'bg-black/10 dark:bg-white/15' : 'text-ink/60 hover:bg-black/5 dark:text-ink-night/60 dark:hover:bg-white/10')}
           >
             <ListOrdered className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCenter(true)}
+            aria-label="批注中心"
+            className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition', showCenter ? 'bg-black/10 dark:bg-white/15' : 'text-ink/60 hover:bg-black/5 dark:text-ink-night/60 dark:hover:bg-white/10')}
+          >
+            <MessageSquareText className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -382,7 +406,8 @@ export function BookReaderPage() {
                 seg.ann ? (
                   <mark
                     key={j}
-                    className={cn('relative rounded-[2px] text-inherit', HIGHLIGHT_COLORS[seg.ann.color].cls)}
+                    className="relative rounded-[2px] text-inherit"
+                    style={{ backgroundColor: `${HIGHLIGHT_COLORS[seg.ann.color].hex}40` }}
                   >
                     {seg.text}
                     <span
@@ -419,7 +444,7 @@ export function BookReaderPage() {
           style={{ left: Math.min(Math.max(sel.x, 130), window.innerWidth - 130), top: Math.max(sel.y - 6, 8) }}
         >
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-popover px-1 py-1 text-popover-foreground shadow-lg">
-            {(['yellow', 'green', 'blue', 'pink'] as AnnotationColor[]).map((c) => (
+            {(['yellow', 'green', 'blue', 'pink', 'violet', 'amber'] as AnnotationColor[]).map((c) => (
               <button
                 key={c}
                 type="button"
@@ -551,6 +576,19 @@ export function BookReaderPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 批注中心 */}
+      {showCenter && (
+        <AnnotationCenter
+          book={book}
+          annotations={annotations}
+          progress={progress}
+          onJumpToc={jumpToc}
+          onJumpParagraph={jumpParagraph}
+          onDeleteAnnotation={deleteAnn}
+          onClose={() => setShowCenter(false)}
+        />
       )}
     </div>
   );
