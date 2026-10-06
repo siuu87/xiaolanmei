@@ -1083,39 +1083,7 @@ export function ChatPage() {
               />
             </div>
           )}
-          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              multiple
-              hidden
-              onChange={(e) => {
-                void pickImages(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            <input
-              ref={cameraRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              hidden
-              onChange={(e) => {
-                void pickImages(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            <input
-              ref={fileDocRef}
-              type="file"
-              accept="*/*"
-              hidden
-              onChange={(e) => {
-                void pickFiles(e.target.files);
-                e.target.value = '';
-              }}
-            />
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setAttachOpen((v) => !v)}
@@ -1124,22 +1092,56 @@ export function ChatPage() {
             >
               <Plus className="h-5 w-5" />
             </button>
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
-              placeholder={replyToId ? '回复这条消息…' : ''}
-              className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
-            />
-            <button
-              type="button"
-              onClick={busy ? stop : send}
-              aria-label={busy ? '停止' : '发送'}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-            >
-              {busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
-            </button>
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                multiple
+                hidden
+                onChange={(e) => {
+                  void pickImages(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                onChange={(e) => {
+                  void pickImages(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <input
+                ref={fileDocRef}
+                type="file"
+                accept="*/*"
+                hidden
+                onChange={(e) => {
+                  void pickFiles(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !busy && send()}
+                placeholder={replyToId ? '回复这条消息…' : ''}
+                className="h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+              />
+              <button
+                type="button"
+                onClick={busy ? stop : send}
+                aria-label={busy ? '停止' : '发送'}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+              >
+                {busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
