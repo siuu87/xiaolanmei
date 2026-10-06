@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBookStore, type Book } from './bookStore';
+import { getReadingTime, localDateString } from '@/lib/api/reading';
 import { BookDetailModal } from './BookDetailModal';
 import { AiImportDialog } from './AiImportDialog';
 import { aiSummarizeToc } from './aiImport';
@@ -149,6 +150,14 @@ export function LibraryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [timeLogs, setTimeLogs] = useState<{ day: string; minutes: number }[]>([]);
+
+  useEffect(() => {
+    const to = localDateString(new Date());
+    const from = localDateString(new Date(Date.now() - 6 * 86400000));
+    getReadingTime('me', from, to).then(setTimeLogs).catch(() => {});
+  }, []);
+
   const [view, setView] = useState<View>('home');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -262,8 +271,10 @@ export function LibraryPage() {
   }, [books]);
 
   const progressPct = Math.round((current?.progress ?? 0) * 100);
-  const todayMin = Math.round((current?.progress ?? 0) * 90);
-  const ringPct = Math.min(100, Math.round((todayMin / goal) * 100));
+  const todayStr = localDateString(new Date());
+  const todayMin = timeLogs.find((t) => t.day === todayStr)?.minutes ?? 0;
+  const weekMin = timeLogs.reduce((s, t) => s + t.minutes, 0);
+  const ringPct = Math.min(100, Math.round((weekMin / goal) * 100));
   const activeCount = books.filter((b) => b.progress > 0).length;
   const inProgress = books.filter((b) => b.progress > 0 && b.progress < 1);
 
@@ -272,13 +283,13 @@ export function LibraryPage() {
   const week = useMemo(() => {
     const days = ['日', '一', '二', '三', '四', '五', '六'];
     const now = new Date();
-    const k = Math.min(5, activeCount);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(now);
       d.setDate(now.getDate() - (6 - i));
-      return { label: days[d.getDay()], today: i === 6, active: i === 6 || i >= 6 - k };
+      const minutes = timeLogs.find((t) => t.day === localDateString(d))?.minutes ?? 0;
+      return { label: days[d.getDay()], today: i === 6, active: minutes > 0 };
     });
-  }, [activeCount]);
+  }, [timeLogs]);
 
   const commitGoal = () => {
     const v = Math.round(goalDraft);
@@ -370,7 +381,7 @@ export function LibraryPage() {
 
                   {/* 本周目标环 + 可编辑目标 */}
                   <div className="mt-4 flex items-center justify-between border-t border-[#2A2A2A] pt-4">
-                    <Ring value={ringPct} display={String(todayMin)} sub="分钟" label="本周已读" />
+                    <Ring value={ringPct} display={String(weekMin)} sub="分钟" label="本周已读" />
                     <div className="text-right">
                       <p className="text-[11px] text-[#8A8A8A]">本周目标</p>
                       {editingGoal ? (

@@ -459,6 +459,18 @@ export const annotationNotes = sqliteTable('annotation_notes', {
   deletedAt: integer('deleted_at'),
 });
 
+/** 阅读时长（分钟，按天累计）：day = YYYY-MM-DD，reader = me | partner */
+export const readingLogs = sqliteTable('reading_logs', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull(),
+  reader: text('reader').notNull(), // me | partner
+  day: text('day').notNull(), // YYYY-MM-DD
+  minutes: integer('minutes').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 /** 食材项（今天吃什么）：name 必填，amount / unit 可选 */
 export interface Ingredient {
   name: string;

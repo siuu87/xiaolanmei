@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { annotationNotes, annotations, books, readingProgress } from '../db/schema.js';
+import { annotationNotes, annotations, books, readingLogs, readingProgress } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 
 /**
@@ -338,5 +338,43 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
       .values({ id: noteId, annotationId: id, author, content, createdAt: ts })
       .run();
     reply.code(201).send({ id: noteId, annotationId: id, author, content, createdAt: ts });
+  });
+
+  // ---- 阅读时长（分钟，按天累计） ----
+  app.get('/reading/time', async (req) => {
+    const { reader, from, to } = req.query as { reader?: string; from?: string; to?: string };
+    const r = reader === 'partner' ? 'partner' : 'me';
+    const rows = db
+      .select()
+      .from(readingLogs)
+      .all()
+      .filter((l) => l.deletedAt == null && l.reader === r && (!from || l.day >= from) && (!to || l.day <= to));
+    const map = new Map<string, number>();
+    for (const l of rows) map.set(l.day, (map.get(l.day) ?? 0) + l.minutes);
+    return [...map.entries()].map(([day, minutes]) => ({ day, minutes })).sort((a, b) => a.day.localeCompare(b.day));
+  });
+
+  app.put('/reading/time', async (req, reply) => {
+    const body = (req.body ?? {}) as { bookId?: string; reader?: string; day?: string; minutes?: number };
+    const bookId = body.bookId?.trim();
+    const day = body.day?.trim();
+    const minutes = Math.max(0, Math.round(body.minutes ?? 0));
+    if (!bookId || !day || minutes <= 0) {
+      reply.code(400).send({ message: 'bookId / day / minutes 必填且 minutes>0' });
+      return;
+    }
+    const reader = body.reader === 'partner' ? 'partner' : 'me';
+    const ts = now();
+    const existing = db
+      .select()
+      .from(readingLogs)
+      .all()
+      .find((l) => l.bookId === bookId && l.reader === reader && l.day === day && l.deletedAt == null);
+    if (existing) {
+      db.update(readingLogs).set({ minutes: existing.minutes + minutes, updatedAt: ts }).where(eq(readingLogs.id, existing.id)).run();
+    } else {
+      db.insert(readingLogs).values({ id: newId(), bookId, reader, day, minutes, createdAt: ts, updatedAt: ts }).run();
+    }
+    reply.send({ ok: true });
   });
 }

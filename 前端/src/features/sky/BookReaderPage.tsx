@@ -22,6 +22,8 @@ import {
   deleteAnnotation,
   createAnnotationNote,
   saveProgress,
+  saveReadingTime,
+  localDateString,
   type AnnotationColor,
   type Reader,
   type ReadingAnnotation,
@@ -201,6 +203,35 @@ export function BookReaderPage() {
       if (timer) clearTimeout(timer);
     };
   }, [book, paragraphs.length]);
+
+  // 阅读计时：每 60s / 页面隐藏 / 卸载时，把累计分钟数落库
+  useEffect(() => {
+    if (!book) return;
+    let lastTs = Date.now();
+    let accSec = 0;
+    const flush = () => {
+      const nowTs = Date.now();
+      accSec += (nowTs - lastTs) / 1000;
+      lastTs = nowTs;
+      const minutes = Math.floor(accSec / 60);
+      if (minutes >= 1) {
+        accSec -= minutes * 60;
+        const day = localDateString(new Date());
+        void saveReadingTime({ bookId: book.id, reader: 'me', day, minutes }).catch(() => {});
+      }
+    };
+    const timer = setInterval(flush, 60_000);
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onHide);
+      flush();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book?.id]);
 
   if (!book) {
     return (

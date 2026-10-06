@@ -458,6 +458,18 @@ CREATE TABLE IF NOT EXISTS annotation_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_annotation_notes_annotation ON annotation_notes(annotation_id);
 
+CREATE TABLE IF NOT EXISTS reading_logs (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL,
+  reader TEXT NOT NULL,
+  day TEXT NOT NULL,
+  minutes INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_reading_logs_reader_day ON reading_logs(reader, day);
+
 CREATE TABLE IF NOT EXISTS dishes (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

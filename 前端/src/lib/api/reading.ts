@@ -110,6 +110,23 @@ export const createAnnotation = (input: {
 export const deleteAnnotation = (id: string) =>
   request<{ ok: true }>(`/api/reading/annotations/${id}`, { method: 'DELETE' });
 
+export function localDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export const getReadingTime = (reader: Reader, from: string, to: string) =>
+  request<{ day: string; minutes: number }[]>(
+    `/api/reading/time?reader=${reader}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  );
+export const saveReadingTime = (input: { bookId: string; reader: Reader; day: string; minutes: number }) =>
+  request<{ ok: true }>('/api/reading/time', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+
 export const getAnnotationNotes = (id: string) =>
   request<AnnotationNote[]>(`/api/reading/annotations/${id}/notes`);
 export const createAnnotationNote = (id: string, input: { author: Reader; content: string }) =>
