@@ -100,18 +100,20 @@ export function ListenPage() {
                   <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-base">
                     {m.role === 'me' ? meAvatar : taAvatar}
                   </div>
-                  <div className={cn('flex min-w-0 max-w-[72%] flex-col', m.role === 'me' ? 'items-end' : 'items-start')}>
-                    <div
-                      className={cn(
-                        'relative whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-6',
-                        m.role === 'me'
-                          ? 'rounded-tr-[4px] bg-white text-slate-800'
-                          : 'rounded-tl-[4px] bg-[#a8c7f0] text-slate-900',
-                      )}
-                    >
-                      {m.content}
+                  <div className={cn('flex min-w-0 max-w-[80%] flex-col', m.role === 'me' ? 'items-end' : 'items-start')}>
+                    <div className="flex max-w-full items-end gap-1.5">
+                      <div
+                        className={cn(
+                          'relative whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-6',
+                          m.role === 'me'
+                            ? 'rounded-tr-[4px] bg-white text-slate-800'
+                            : 'rounded-tl-[4px] bg-[#a8c7f0] text-slate-900',
+                        )}
+                      >
+                        {m.content}
+                      </div>
+                      <span className="shrink-0 pb-0.5 text-[10px] leading-none text-slate-500">{fmtTime(m.createdAt)}</span>
                     </div>
-                    <span className="mt-1 self-end text-[10px] leading-none text-slate-500">{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
               </div>
