@@ -193,7 +193,7 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
       </div>
 
       {/* 内容 */}
-      <div className="max-h-96 overflow-y-auto p-2">
+      <div className="max-h-56 overflow-y-auto p-2">
         {active === 'daily' && (
           <>
             {daily === null ? (

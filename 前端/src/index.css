@@ -152,6 +152,46 @@
   display: none;
 }
 
+/* ===== 播放器极细进度条（黑金） ===== */
+.player-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+  cursor: pointer;
+}
+.player-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: #d4af37;
+  border: none;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.9), 0 0 2px rgba(212, 175, 55, 0.6);
+}
+.player-range::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: #d4af37;
+  border: none;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.9);
+}
+.player-range::-moz-range-track {
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.player-range::-moz-range-progress {
+  height: 3px;
+  border-radius: 9999px;
+  background: #d4af37;
+}
+
 /* 阅读正文衬线字体栈（中文衬线优先，回退系统宋体） */
 .reading-body {
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', 'Playfair Display', serif;
