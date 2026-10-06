@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Loader2, Music, Plus, Sparkles } from 'lucide-react';
+import { Check, Loader2, Play, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { streamChat } from '@/lib/api/chatStream';
 import {
@@ -41,49 +41,51 @@ function parseTrackList(text: string): Track[] {
   }
 }
 
-/** 单个曲目行；AI 推荐时封面用 ✨ 并标注 */
+/** 单个曲目行：无封面图标，右侧「播放」+「添加」按钮；AI 推荐用金色 AI 角标 */
 function TrackRow({
   track,
   ai,
   added,
   onAdd,
+  onPlay,
 }: {
   track: Track;
   ai?: boolean;
   added?: boolean;
   onAdd?: () => void;
+  onPlay?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-white/5">
-      <div
-        className={cn(
-          'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white',
-          ai
-            ? 'bg-gradient-to-br from-violet-400/80 to-rose-400/80'
-            : 'bg-gradient-to-br from-rose-400/70 to-purple-500/70',
-        )}
-      >
-        {ai ? <Sparkles className="h-5 w-5" /> : <Music className="h-5 w-5" />}
-      </div>
+    <div className="flex items-center gap-2 rounded-xl px-2 py-2 transition hover:bg-white/5">
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-sm text-slate-100">
+        <p className="flex items-center gap-1.5 text-sm text-[#E0E0E0]">
           <span className="truncate">{track.name}</span>
           {ai && (
-            <span className="shrink-0 rounded-full bg-violet-400/15 px-1.5 py-0.5 text-[10px] text-violet-300">
+            <span className="shrink-0 rounded-full bg-[#D4AF37]/15 px-1.5 py-0.5 text-[10px] text-[#D4AF37]">
               AI
             </span>
           )}
         </p>
-        <p className="truncate text-xs text-slate-400">{track.artist || '未知歌手'}</p>
+        <p className="truncate text-xs text-[#8A8A8A]">{track.artist || '未知歌手'}</p>
       </div>
+      {onPlay && (
+        <button
+          type="button"
+          onClick={onPlay}
+          aria-label="播放"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D4AF37]/15 text-[#D4AF37] transition hover:bg-[#D4AF37]/25"
+        >
+          <Play className="h-4 w-4" />
+        </button>
+      )}
       {onAdd && (
         <button
           type="button"
           onClick={onAdd}
           aria-label={added ? '已添加' : '添加到队列'}
           className={cn(
-            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition',
-            added ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-slate-300 hover:bg-white/20',
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition',
+            added ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/10 text-[#E0E0E0] hover:bg-white/20',
           )}
         >
           {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -95,7 +97,7 @@ function TrackRow({
 
 function Loading({ text = '加载中…' }: { text?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+    <div className="flex items-center justify-center gap-2 py-10 text-sm text-[#8A8A8A]">
       <Loader2 className="h-4 w-4 animate-spin" />
       <span>{text}</span>
     </div>
@@ -103,11 +105,11 @@ function Loading({ text = '加载中…' }: { text?: string }) {
 }
 
 function Empty({ text = '暂无内容' }: { text?: string }) {
-  return <p className="py-10 text-center text-sm text-slate-500">{text}</p>;
+  return <p className="py-10 text-center text-sm text-[#8A8A8A]">{text}</p>;
 }
 
 /** 底部列表区：每日推荐 / 我的歌单 / 播放队列 / AI 专属推荐 */
-export function PlaylistSection() {
+export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) => void }) {
   const [active, setActive] = useState<TabKey>('daily');
   const [daily, setDaily] = useState<Track[] | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[] | null>(null);
@@ -171,7 +173,7 @@ export function PlaylistSection() {
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm">
+    <div className="overflow-hidden rounded-2xl border border-[#D4AF37]/15 bg-[#121212]">
       {/* Tab 切换：四等分 */}
       <div className="grid grid-cols-4 border-b border-white/10">
         {TABS.map((t) => (
@@ -181,11 +183,11 @@ export function PlaylistSection() {
             onClick={() => setActive(t.key)}
             className={cn(
               'relative py-3 text-center text-xs transition',
-              active === t.key ? 'font-medium text-white' : 'text-slate-400 hover:text-slate-200',
+              active === t.key ? 'font-medium text-[#D4AF37]' : 'text-[#8A8A8A] hover:text-[#E0E0E0]',
             )}
           >
             {t.label}
-            {active === t.key && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-rose-400" />}
+            {active === t.key && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#D4AF37]" />}
           </button>
         ))}
       </div>
@@ -200,7 +202,13 @@ export function PlaylistSection() {
               <Empty text="今日推荐还未生成" />
             ) : (
               daily.map((t) => (
-                <TrackRow key={t.id} track={t} added={added.has(t.id)} onAdd={() => toggleAdd(t.id)} />
+                <TrackRow
+                  key={t.id}
+                  track={t}
+                  added={added.has(t.id)}
+                  onPlay={() => onPlayTrack(t)}
+                  onAdd={() => toggleAdd(t.id)}
+                />
               ))
             )}
           </>
@@ -215,11 +223,17 @@ export function PlaylistSection() {
             ) : (
               playlists.map((p) => (
                 <div key={p.id} className="mb-2">
-                  <p className="px-2 pb-1 text-xs font-medium text-slate-400">
+                  <p className="px-2 pb-1 text-xs font-medium text-[#8A8A8A]">
                     {p.name} · {p.tracks.length} 首
                   </p>
                   {p.tracks.map((t) => (
-                    <TrackRow key={t.id} track={t} added={added.has(t.id)} onAdd={() => toggleAdd(t.id)} />
+                    <TrackRow
+                      key={t.id}
+                      track={t}
+                      added={added.has(t.id)}
+                      onPlay={() => onPlayTrack(t)}
+                      onAdd={() => toggleAdd(t.id)}
+                    />
                   ))}
                 </div>
               ))
@@ -235,7 +249,13 @@ export function PlaylistSection() {
               <Empty text="播放队列为空" />
             ) : (
               queue.map((t) => (
-                <TrackRow key={t.id} track={t} added={added.has(t.id)} onAdd={() => toggleAdd(t.id)} />
+                <TrackRow
+                  key={t.id}
+                  track={t}
+                  added={added.has(t.id)}
+                  onPlay={() => onPlayTrack(t)}
+                  onAdd={() => toggleAdd(t.id)}
+                />
               ))
             )}
           </>
@@ -247,12 +267,19 @@ export function PlaylistSection() {
               <Loading text="正在品味你的听歌记录…" />
             ) : aiTracks && aiTracks.length ? (
               aiTracks.map((t) => (
-                <TrackRow key={t.id} track={t} ai added={added.has(t.id)} onAdd={() => toggleAdd(t.id)} />
+                <TrackRow
+                  key={t.id}
+                  track={t}
+                  ai
+                  added={added.has(t.id)}
+                  onPlay={() => onPlayTrack(t)}
+                  onAdd={() => toggleAdd(t.id)}
+                />
               ))
             ) : aiFallback ? (
-              <p className="whitespace-pre-wrap px-2 py-4 text-sm leading-6 text-slate-300">{aiFallback}</p>
+              <p className="whitespace-pre-wrap px-2 py-4 text-sm leading-6 text-[#E0E0E0]">{aiFallback}</p>
             ) : aiError ? (
-              <p className="px-2 py-8 text-center text-sm text-slate-500">{aiError}</p>
+              <p className="px-2 py-8 text-center text-sm text-[#8A8A8A]">{aiError}</p>
             ) : (
               <Empty text="点击后 AI 将为你生成专属推荐" />
             )}

@@ -83,7 +83,7 @@ export function LyricsPanel({ progressMs, lines }: Props) {
       {/* AI 歌词伴侣（点击歌词展开） */}
       {activeLyric && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-1.5 text-xs text-rose-300/90">
+          <div className="flex items-center gap-1.5 text-xs text-[#D4AF37]">
             <Sparkles className="h-3.5 w-3.5" />
             <span className="truncate">AI 歌词伴侣 · 「{activeLyric.text}」</span>
           </div>
@@ -126,13 +126,13 @@ export function LyricsPanel({ progressMs, lines }: Props) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="点评或问问这句歌词…"
-              className="min-w-0 flex-1 rounded-full bg-white/10 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none ring-1 ring-white/10 focus:ring-rose-400/50"
+              className="min-w-0 flex-1 rounded-full bg-white/10 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none ring-1 ring-white/10 focus:ring-[#D4AF37]/50"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
               aria-label="发送"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-400 text-white transition hover:bg-rose-500 disabled:opacity-40"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D4AF37] text-black transition hover:bg-[#E6C45A] disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>

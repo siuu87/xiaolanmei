@@ -22,7 +22,7 @@ export function UserAuthWidget() {
     <>
       {user ? (
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-purple-500 text-base ring-1 ring-white/20">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#E6C45A] to-[#B8860B] text-base ring-1 ring-white/20">
             {user.avatarUrl}
           </div>
           <div className="flex min-w-0 flex-col leading-tight">
