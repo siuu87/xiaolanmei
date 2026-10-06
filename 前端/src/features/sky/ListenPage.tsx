@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Headphones, UserRound } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { UserAuthWidget } from './listen/UserAuthWidget';
 import { PlayerCard } from './listen/PlayerCard';
 import { LyricsPanel } from './listen/LyricsPanel';
@@ -16,7 +16,7 @@ import {
 
 /**
  * LISTEN（音乐播放页）：
- * 一起听状态栏 + 沉浸式播放区（无卡片）+ 歌词 + 推荐列表。
+ * 沉浸式播放区（无卡片）+ 歌词 + 推荐列表。
  * 黑金配色、无星空背景。预留网易云音乐 MCP 接入点（见 ./listen/neteaseMcpConnector.ts）。
  */
 export function ListenPage() {
@@ -29,8 +29,12 @@ export function ListenPage() {
 
   useEffect(() => {
     getCurrentTrack().then(setTrack);
-    getLyrics().then(setLines);
   }, []);
+
+  // 歌词自动调取：切歌时按当前曲目重新拉取
+  useEffect(() => {
+    getLyrics(track).then(setLines);
+  }, [track]);
 
   // 模拟播放进度（接入真实 MCP 音频源后替换）
   useEffect(() => {
@@ -110,22 +114,8 @@ export function ListenPage() {
           <UserAuthWidget />
         </header>
 
-        {/* 主体：一起听状态栏在最上方，其次才是歌曲信息 */}
+        {/* 主体：手机单列堆叠 */}
         <div className="mt-6 space-y-6">
-          {/* 一起听状态栏：两个头像连着一只耳机 */}
-          <div className="flex items-center justify-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#E6C45A] to-[#B8860B] ring-1 ring-[#D4AF37]/40">
-              <UserRound className="h-3.5 w-3.5 text-black" />
-            </div>
-            <span className="h-px w-4 bg-[#D4AF37]/40" />
-            <Headphones className="h-4 w-4 text-[#D4AF37]" />
-            <span className="h-px w-4 bg-[#D4AF37]/40" />
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#8a6a1f] to-[#3c2f0d] ring-1 ring-[#D4AF37]/40">
-              <UserRound className="h-3.5 w-3.5 text-[#E6C45A]" />
-            </div>
-            <span className="ml-1 text-xs text-[#8A8A8A]">一起听</span>
-          </div>
-
           <PlayerCard
             track={track}
             playing={playing}

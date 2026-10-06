@@ -54,17 +54,20 @@ export function getCurrentTrack(): Promise<Track> {
   return mock({ id: 'track-qingtian', name: '晴天', artist: '周杰伦', album: '叶惠美', durationMs: 269000 });
 }
 
-// MCP 接入点：歌词（含双语占位）
-export function getLyrics(): Promise<LyricLine[]> {
+// MCP 接入点：歌词（按当前曲目自动调取；真实实现从网易云按 track 拉取对应歌词）
+export function getLyrics(track?: Track | null): Promise<LyricLine[]> {
+  const title = track?.name ?? '晴天';
+  // 占位：首行展示当前曲名，后续为示例歌词；接入真实网易云后按 track 拉取
   return mock([
-    { timeMs: 0, text: '故事的小黄花', translation: 'The little yellow flower of the story' },
-    { timeMs: 15000, text: '从出生那年就飘着', translation: 'Has been drifting since the year I was born' },
-    { timeMs: 30000, text: '童年的荡秋千', translation: 'The swing of childhood' },
-    { timeMs: 45000, text: '随记忆一直晃到现在', translation: 'Still swaying with my memory' },
-    { timeMs: 60000, text: 'Re So So Si Do Si La', translation: '' },
-    { timeMs: 75000, text: 'So La Si Si Si Si La Si La So', translation: '' },
-    { timeMs: 90000, text: '吹着前奏望着天空', translation: 'Blowing the prelude, gazing at the sky' },
-    { timeMs: 105000, text: '我想起花瓣试着掉落', translation: 'I think of petals trying to fall' },
+    { timeMs: 0, text: title, translation: '' },
+    { timeMs: 15000, text: '故事的小黄花', translation: 'The little yellow flower of the story' },
+    { timeMs: 30000, text: '从出生那年就飘着', translation: 'Has been drifting since the year I was born' },
+    { timeMs: 45000, text: '童年的荡秋千', translation: 'The swing of childhood' },
+    { timeMs: 60000, text: '随记忆一直晃到现在', translation: 'Still swaying with my memory' },
+    { timeMs: 75000, text: 'Re So So Si Do Si La', translation: '' },
+    { timeMs: 90000, text: 'So La Si Si Si Si La Si La So', translation: '' },
+    { timeMs: 105000, text: '吹着前奏望着天空', translation: 'Blowing the prelude, gazing at the sky' },
+    { timeMs: 120000, text: '我想起花瓣试着掉落', translation: 'I think of petals trying to fall' },
   ]);
 }
 
