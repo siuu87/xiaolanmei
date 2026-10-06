@@ -141,53 +141,40 @@ function fmtTime(ts?: number): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
-/** 思考链入口胶囊：三个淡紫圆点（思考中弹动，完成后 ✓）+ 文案 + 箭头 */
-function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
+/** 思考链内联块：点击展开/收起完整推理过程（思考中圆点弹动，完成后 ✓） */
+function ThinkingBlock({
+  reasoning,
+  streaming,
+  open,
+  onToggle,
+}: {
+  reasoning: string;
+  streaming: boolean;
+  open: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mb-1.5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3 py-1 text-xs text-muted-foreground transition hover:bg-card"
-    >
-      {active ? (
-        <span className="flex items-center gap-1">
-          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
-          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
-          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
-        </span>
-      ) : (
-        <Check className="h-3.5 w-3.5 text-primary" />
-      )}
-      <span>思考过程</span>
-      <ChevronRight className="h-3.5 w-3.5" />
-    </button>
-  );
-}
-
-/** 思考链底部弹窗：占屏幕 1/3 高，只收顶边圆角，完整思维链文本 */
-function ThoughtSheet({ reasoning, onClose }: { reasoning: string; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div
-        className="absolute inset-x-0 bottom-0 flex flex-col rounded-t-2xl border-t border-border bg-popover p-4 shadow-2xl"
-        style={{ height: '33.333vh', minHeight: 200 }}
+    <div className="mb-1.5 w-full max-w-full rounded-xl border border-border/60 bg-card/60 px-3 py-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 text-xs text-muted-foreground"
       >
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-medium text-foreground">思考过程</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{reasoning}</p>
-        </div>
-      </div>
+        {streaming ? (
+          <span className="flex items-center gap-1">
+            <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
+            <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
+            <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+          </span>
+        ) : (
+          <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+        )}
+        <span className="flex-1 text-left">思考过程</span>
+        <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-90')} />
+      </button>
+      {open && (
+        <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground/80">{reasoning}</p>
+      )}
     </div>
   );
 }
@@ -223,7 +210,7 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [thoughtReasoning, setThoughtReasoning] = useState<string | null>(null);
+  const [expandedThoughtId, setExpandedThoughtId] = useState<string | null>(null);
   const [memoAdded, setMemoAdded] = useState<
     Record<string, { id?: string; title: string; fromWho?: string; toWho?: string }[]>
   >({});
@@ -628,7 +615,6 @@ export function ChatPage() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        <ClaudeMark className="h-5 w-5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate text-center font-serif text-[15px] text-foreground">
           {conversation?.title ?? '小蓝莓'}
         </span>
@@ -723,9 +709,11 @@ export function ChatPage() {
                   )}
                   <div className={cn('flex min-w-0 max-w-[72%] flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
                     {m.role === 'assistant' && m.reasoning && (
-                      <ThoughtEntry
-                        active={m.status === 'streaming' && !m.content}
-                        onClick={() => setThoughtReasoning(m.reasoning ?? '')}
+                      <ThinkingBlock
+                        reasoning={m.reasoning}
+                        streaming={m.status === 'streaming' && !m.content}
+                        open={expandedThoughtId === m.id}
+                        onToggle={() => setExpandedThoughtId((v) => (v === m.id ? null : m.id))}
                       />
                     )}
                     <div
@@ -799,8 +787,10 @@ export function ChatPage() {
                         {m.content}
                       </>
                     )}
+                      <span className="mt-1 block text-right text-[10px] leading-none text-muted-foreground/60">
+                        {fmtTime(m.createdAt)}
+                      </span>
                     </div>
-                    <span className="mt-1 text-[10px] text-muted-foreground/60">{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
 
@@ -1082,11 +1072,6 @@ export function ChatPage() {
 
       {/* 语音通话（占位界面，后续接 WebRTC） */}
       {callOpen && <CallOverlay name="哥哥" onClose={() => setCallOpen(false)} />}
-
-      {/* 思考链底部弹窗 */}
-      {thoughtReasoning !== null && (
-        <ThoughtSheet reasoning={thoughtReasoning} onClose={() => setThoughtReasoning(null)} />
-      )}
     </div>
   );
 }
