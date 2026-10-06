@@ -1,31 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { UserAuthWidget } from './listen/UserAuthWidget';
 import { PlayerCard } from './listen/PlayerCard';
 import { LyricsPanel } from './listen/LyricsPanel';
 import { PlaylistSection } from './listen/PlaylistSection';
-import { streamChat } from '@/lib/api/chatStream';
-import {
-  getCurrentTrack,
-  getListeningHistory,
-  getLyrics,
-  type Track,
-  type LyricLine,
-} from './listen/neteaseMcpConnector';
+import { useProfileStore } from '@/stores/profileStore';
+import { getCurrentTrack, getLyrics, type Track, type LyricLine } from './listen/neteaseMcpConnector';
+
+/** 一起听声波：三根竖条随播放跳动，暂停时变短停止 */
+function SoundWave({ playing }: { playing: boolean }) {
+  const heights = [10, 20, 10];
+  return (
+    <div className="flex h-5 items-center gap-[3px]">
+      {heights.map((h, i) => (
+        <span
+          key={i}
+          className={cn('w-[3px] rounded-full bg-[#D4AF37] transition-all duration-300', playing && 'soundwave-bar')}
+          style={{ height: playing ? h : 4, animationDelay: `${i * 0.2}s` }}
+        />
+      ))}
+    </div>
+  );
+}
 
 /**
  * LISTEN（音乐播放页）：
- * 沉浸式播放区（无卡片）+ 歌词 + 推荐列表。
+ * 顶部「一起听」双头像 + 声波 + 沉浸式播放区 + 歌词 + 推荐列表。
  * 黑金配色、无星空背景。预留网易云音乐 MCP 接入点（见 ./listen/neteaseMcpConnector.ts）。
  */
 export function ListenPage() {
   const navigate = useNavigate();
+  const myAvatar = useProfileStore((s) => s.avatar) || '🫐';
+  const taAvatar = useProfileStore((s) => s.partnerAvatar) || '🐰';
+
   const [track, setTrack] = useState<Track | null>(null);
   const [lines, setLines] = useState<LyricLine[]>([]);
   const [playing, setPlaying] = useState(false);
   const [progressMs, setProgressMs] = useState(0);
-  const [aiPicking, setAiPicking] = useState(false);
 
   useEffect(() => {
     getCurrentTrack().then(setTrack);
@@ -58,43 +71,6 @@ export function ListenPage() {
     setPlaying(true);
   };
 
-  // 双爱心：AI 选一首歌并播放
-  const aiPick = async () => {
-    if (aiPicking) return;
-    setAiPicking(true);
-    try {
-      const history = await getListeningHistory();
-      const list = history.map((t) => `${t.name} - ${t.artist}`).join('、');
-      const prompt = `以下是用户最近的听歌记录：${list || '（暂无记录）'}。\n请据此推荐 1 首用户可能喜欢的中文歌。\n严格只返回一个 JSON 对象，形如 {"name":"歌名","artist":"歌手"}，不要输出任何其它文字。`;
-      let acc = '';
-      await streamChat([{ role: 'user', content: prompt }], {
-        onDelta: (t) => {
-          acc += t;
-        },
-        onError: () => {},
-      });
-      const m = acc.match(/\{[\s\S]*?\}/);
-      if (m) {
-        const obj = JSON.parse(m[0]) as { name?: unknown; artist?: unknown };
-        if (obj && typeof obj.name === 'string' && obj.name.trim()) {
-          setTrack({
-            id: 'ai-pick',
-            name: obj.name.trim(),
-            artist: typeof obj.artist === 'string' ? obj.artist.trim() : '',
-            album: '',
-            durationMs: 240000,
-          });
-          setProgressMs(0);
-          setPlaying(true);
-        }
-      }
-    } catch {
-      // 忽略解析 / 网络错误
-    } finally {
-      setAiPicking(false);
-    }
-  };
-
   return (
     <div className="relative min-h-full bg-black text-[#E0E0E0]">
       <div className="relative mx-auto w-full max-w-md px-4 py-6">
@@ -116,6 +92,17 @@ export function ListenPage() {
 
         {/* 主体：手机单列堆叠 */}
         <div className="mt-6 space-y-6">
+          {/* 顶部连接区：双头像 + 声波 */}
+          <div className="flex items-center justify-center gap-5">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-2xl ring-1 ring-[#D4AF37]/30">
+              {myAvatar}
+            </div>
+            <SoundWave playing={playing} />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-2xl ring-1 ring-[#D4AF37]/30">
+              {taAvatar}
+            </div>
+          </div>
+
           <PlayerCard
             track={track}
             playing={playing}
@@ -124,8 +111,6 @@ export function ListenPage() {
             onPrev={prev}
             onNext={next}
             onSeek={seek}
-            onAiPick={() => void aiPick()}
-            aiPicking={aiPicking}
           />
           <LyricsPanel progressMs={progressMs} lines={lines} />
           <PlaylistSection onPlayTrack={playTrack} />

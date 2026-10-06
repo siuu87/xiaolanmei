@@ -192,6 +192,16 @@
   background: #d4af37;
 }
 
+/* ===== 一起听声波动画（黑金） ===== */
+@keyframes soundwave {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+.soundwave-bar {
+  animation: soundwave 1s ease-in-out infinite;
+  transform-origin: center;
+}
+
 /* 阅读正文衬线字体栈（中文衬线优先，回退系统宋体） */
 .reading-body {
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', 'Playfair Display', serif;
