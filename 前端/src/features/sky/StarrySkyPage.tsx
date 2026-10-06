@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Headphones, BookOpen, type LucideIcon } from 'lucide-react';
+import { ChefHat, Headphones, BookOpen, ChevronRight, type LucideIcon } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
 import { VinylPlayer } from './VinylPlayer';
 import { Bookshelf } from './Bookshelf';
@@ -46,7 +46,16 @@ export function StarrySkyPage() {
         {/* 一起听 + 一起读：竖排 */}
         <div className="space-y-8">
           <section>
-            <SectionTitle eyebrow="LISTEN" icon={Headphones} />
+            <button
+              type="button"
+              onClick={() => navigate('/listen')}
+              title="进入一起听"
+              className="mx-auto mb-3 flex items-center justify-center gap-2 text-center transition hover:opacity-70"
+            >
+              <Headphones className="h-4 w-4 text-slate-400" />
+              <p className="text-[10px] tracking-[0.35em] text-slate-400/80">LISTEN</p>
+              <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
+            </button>
             <VinylPlayer />
           </section>
 
