@@ -11,7 +11,7 @@ import { getCurrentTrack, getLyrics, type Track, type LyricLine } from './listen
 /**
  * 一起听（音乐播放页）：
  * 顶部导航栏（标题 + 用户登录）+ 核心播放卡片 + 歌词 + 推荐列表。
- * 响应式：手机单列，平板与桌面左右分栏。
+ * 默认手机模式：单列堆叠（先不做平板/桌面分栏）。
  * 预留网易云音乐 MCP 接入点（见 ./listen/neteaseMcpConnector.ts）。
  */
 export function ListenPage() {
@@ -45,7 +45,7 @@ export function ListenPage() {
     <div className="relative min-h-full bg-[#070b1a] text-slate-200">
       <StarBackdrop />
 
-      <div className="relative mx-auto w-full max-w-5xl px-4 py-6">
+      <div className="relative mx-auto w-full max-w-md px-4 py-6">
         {/* 顶部导航栏：标题 + 用户状态 */}
         <header className="mb-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -62,20 +62,18 @@ export function ListenPage() {
           <UserAuthWidget />
         </header>
 
-        {/* 主体：手机单列，平板/桌面左右分栏 */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
-          <div className="space-y-6">
-            <PlayerCard
-              track={track}
-              playing={playing}
-              progressMs={progressMs}
-              onToggle={toggle}
-              onPrev={prev}
-              onNext={next}
-              onSeek={seek}
-            />
-            <LyricsPanel progressMs={progressMs} lines={lines} />
-          </div>
+        {/* 主体：手机单列堆叠 */}
+        <div className="space-y-6">
+          <PlayerCard
+            track={track}
+            playing={playing}
+            progressMs={progressMs}
+            onToggle={toggle}
+            onPrev={prev}
+            onNext={next}
+            onSeek={seek}
+          />
+          <LyricsPanel progressMs={progressMs} lines={lines} />
           <RecommendList />
         </div>
       </div>
