@@ -2,25 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  BarChart3,
   BookOpen,
+  Check,
   Clock,
   Library,
   ListOrdered,
   Loader2,
   Pencil,
   Plus,
-  Quote,
   Sparkles,
   Trash2,
   Upload,
-  UserRound,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBookStore, type Book } from './bookStore';
-import { useProfileStore } from '@/stores/profileStore';
 import { BookDetailModal } from './BookDetailModal';
 import { AiImportDialog } from './AiImportDialog';
 import { aiSummarizeToc } from './aiImport';
@@ -32,6 +29,8 @@ const PALETTE = [
 
 const inputCls =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none focus:border-white/30';
+
+const GOAL_KEY = 'blueberry.reading.goal';
 
 interface EditorState {
   id: string | null;
@@ -49,15 +48,9 @@ const EMPTY: EditorState = { id: null, title: '', author: '', paletteIdx: 0, cov
 
 const INSIGHT = { text: '我们读书，而后知道自己并不孤单。', author: '威廉·萨默塞特·毛姆' };
 
-type Tab = 'home' | 'shelf' | 'profile';
+type View = 'home' | 'shelf' | 'reading';
 
-const NAV: { key: Tab; label: string; icon: LucideIcon }[] = [
-  { key: 'shelf', label: '书架', icon: Library },
-  { key: 'home', label: '统计', icon: BarChart3 },
-  { key: 'profile', label: '我的', icon: UserRound },
-];
-
-/** 环形进度（Coco Reading 风格） */
+/** 环形进度（本周目标进度） */
 function Ring({ value, display, sub, label, size = 72, stroke = 6 }: { value: number; display: string; sub: string; label: string; size?: number; stroke?: number }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -89,13 +82,21 @@ function Ring({ value, display, sub, label, size = 72, stroke = 6 }: { value: nu
   );
 }
 
-function StatCard({ icon: Icon, value, label }: { icon: LucideIcon; value: string; label: string }) {
-  return (
-    <div className="rounded-2xl bg-[#1E1E1E] p-4 text-center">
+function StatCard({ icon: Icon, value, label, onClick }: { icon: LucideIcon; value: string; label: string; onClick?: () => void }) {
+  const cls = 'rounded-2xl bg-[#1E1E1E] p-4 text-center';
+  const inner = (
+    <>
       <Icon className="mx-auto h-4 w-4 text-[#C9A96A]" />
       <p className="mt-2 text-xl font-semibold text-[#E0E0E0]">{value}</p>
       <p className="mt-0.5 text-[11px] text-[#8A8A8A]">{label}</p>
-    </div>
+    </>
+  );
+  return onClick ? (
+    <button type="button" onClick={onClick} className={cn(cls, 'transition hover:bg-[#262626]')}>
+      {inner}
+    </button>
+  ) : (
+    <div className={cls}>{inner}</div>
   );
 }
 
@@ -134,7 +135,7 @@ function FlatCover({ book, onOpen, onEdit, onDelete }: { book: Book; onOpen: () 
   );
 }
 
-/** Coco Reading · 阅读仪表盘：每日一句 + 在读状态 + 统计 + 时间线，底部书架/统计/我的导航 */
+/** READ · 阅读仪表盘：每日一句 + 在读状态 + 统计 + 时间线；藏书/在读可点入对应视图 */
 export function LibraryPage() {
   const navigate = useNavigate();
   const books = useBookStore((s) => s.books);
@@ -142,20 +143,26 @@ export function LibraryPage() {
   const addBook = useBookStore((s) => s.addBook);
   const updateBook = useBookStore((s) => s.updateBook);
   const removeBook = useBookStore((s) => s.removeBook);
-  const avatar = useProfileStore((s) => s.avatar) || '🫐';
-  const name = useProfileStore((s) => s.name) || '我';
 
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [tab, setTab] = useState<Tab>('home');
+  const [view, setView] = useState<View>('home');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [tocBusy, setTocBusy] = useState(false);
   const [tocError, setTocError] = useState('');
+
+  // 本周目标（分钟，可编辑，localStorage 持久化）
+  const [goal, setGoal] = useState<number>(() => {
+    const v = Number(localStorage.getItem(GOAL_KEY));
+    return Number.isFinite(v) && v > 0 ? v : 90;
+  });
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState<number>(goal);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,9 +263,9 @@ export function LibraryPage() {
 
   const progressPct = Math.round((current?.progress ?? 0) * 100);
   const todayMin = Math.round((current?.progress ?? 0) * 90);
-  const ringPct = Math.min(100, Math.round((todayMin / 90) * 100));
+  const ringPct = Math.min(100, Math.round((todayMin / goal) * 100));
   const activeCount = books.filter((b) => b.progress > 0).length;
-  const doneCount = books.filter((b) => b.progress >= 1).length;
+  const inProgress = books.filter((b) => b.progress > 0 && b.progress < 1);
 
   const dateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
@@ -273,21 +280,52 @@ export function LibraryPage() {
     });
   }, [activeCount]);
 
+  const commitGoal = () => {
+    const v = Math.round(goalDraft);
+    if (Number.isFinite(v) && v > 0) {
+      setGoal(v);
+      localStorage.setItem(GOAL_KEY, String(v));
+    }
+    setEditingGoal(false);
+  };
+
+  const title = view === 'home' ? 'READ' : view === 'shelf' ? '书架' : '正在读';
+  const back = () => (view === 'home' ? navigate('/sky') : setView('home'));
+
   return (
-    <div className="relative min-h-full bg-[#121212] pb-24 text-[#E0E0E0]">
-      {/* 顶部：Coco Reading + 日期 */}
+    <div className="relative min-h-full bg-[#121212] pb-16 text-[#E0E0E0]">
+      {/* 顶部 */}
       <header className="flex items-center justify-between px-5 pb-3 pt-6">
         <div className="flex items-center gap-2.5">
-          <button type="button" onClick={() => navigate('/sky')} aria-label="返回" className="text-[#8A8A8A] transition hover:text-[#E0E0E0]">
+          <button type="button" onClick={back} aria-label="返回" className="text-[#8A8A8A] transition hover:text-[#E0E0E0]">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="font-serif text-lg font-semibold tracking-wide text-[#E0E0E0]">Coco Reading</h1>
+          <h1 className="font-serif text-lg font-semibold tracking-wide text-[#E0E0E0]">{title}</h1>
         </div>
-        <span className="text-sm text-[#8A8A8A]">{dateLabel}</span>
+        {view === 'home' && <span className="text-sm text-[#8A8A8A]">{dateLabel}</span>}
+        {view === 'shelf' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAiOpen(true)}
+              className="flex h-8 items-center gap-1 rounded-full bg-[#C9A96A]/15 px-3 text-xs text-[#C9A96A] transition hover:bg-[#C9A96A]/25"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> AI
+            </button>
+            <button
+              type="button"
+              onClick={openNew}
+              aria-label="导入"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1E1E1E] text-[#E0E0E0] transition hover:bg-[#2A2A2A]"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="mx-auto w-full max-w-md">
-        {tab === 'home' && (
+        {view === 'home' && (
           <div className="space-y-4 px-5">
             {/* 每日一句 */}
             <section className="rounded-2xl bg-[#1E1E1E] p-5">
@@ -330,11 +368,39 @@ export function LibraryPage() {
                     </div>
                   </div>
 
+                  {/* 本周目标环 + 可编辑目标 */}
                   <div className="mt-4 flex items-center justify-between border-t border-[#2A2A2A] pt-4">
-                    <Ring value={ringPct} display={String(todayMin)} sub="分钟" label="今日阅读" />
+                    <Ring value={ringPct} display={String(todayMin)} sub="分钟" label="本周已读" />
                     <div className="text-right">
                       <p className="text-[11px] text-[#8A8A8A]">本周目标</p>
-                      <p className="font-serif text-lg font-semibold text-[#E0E0E0]">90 分钟</p>
+                      {editingGoal ? (
+                        <div className="mt-1 flex items-center justify-end gap-1.5">
+                          <input
+                            type="number"
+                            min={1}
+                            value={Number.isFinite(goalDraft) ? goalDraft : ''}
+                            onChange={(e) => setGoalDraft(Number(e.target.value))}
+                            onKeyDown={(e) => e.key === 'Enter' && commitGoal()}
+                            className="w-16 rounded bg-[#2A2A2A] px-2 py-1 text-right font-serif text-lg font-semibold text-[#E0E0E0] outline-none"
+                            autoFocus
+                          />
+                          <button type="button" onClick={commitGoal} aria-label="保存目标" className="text-[#C9A96A]">
+                            <Check className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGoalDraft(goal);
+                            setEditingGoal(true);
+                          }}
+                          className="group inline-flex items-center gap-1"
+                        >
+                          <p className="font-serif text-lg font-semibold text-[#E0E0E0]">{goal} 分钟</p>
+                          <Pencil className="h-3 w-3 text-[#8A8A8A] transition group-hover:text-[#C9A96A]" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -342,7 +408,7 @@ export function LibraryPage() {
                 <div className="mt-4 rounded-xl bg-[#1A1A1A] px-4 py-8 text-center">
                   <BookOpen className="mx-auto h-6 w-6 text-[#8A8A8A]" />
                   <p className="mt-2 text-sm text-[#8A8A8A]">还没有在读的书</p>
-                  <button type="button" onClick={() => setTab('shelf')} className="mt-3 text-xs font-medium text-[#C9A96A]">
+                  <button type="button" onClick={() => setView('shelf')} className="mt-3 text-xs font-medium text-[#C9A96A]">
                     去书架看看 →
                   </button>
                 </div>
@@ -352,8 +418,8 @@ export function LibraryPage() {
             {/* 统计 */}
             <section className="grid grid-cols-3 gap-3">
               <StatCard icon={Clock} value={String(todayMin)} label="今日分钟" />
-              <StatCard icon={Library} value={String(books.length)} label="藏书" />
-              <StatCard icon={BookOpen} value={String(activeCount)} label="在读" />
+              <StatCard icon={Library} value={String(books.length)} label="藏书" onClick={() => setView('shelf')} />
+              <StatCard icon={BookOpen} value={String(activeCount)} label="在读" onClick={() => setView('reading')} />
             </section>
 
             {/* 阅读时间线 */}
@@ -376,29 +442,8 @@ export function LibraryPage() {
           </div>
         )}
 
-        {tab === 'shelf' && (
+        {view === 'shelf' && (
           <div className="px-5">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#8A8A8A]">My Bookshelf</p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAiOpen(true)}
-                  className="flex h-8 items-center gap-1 rounded-full bg-[#C9A96A]/15 px-3 text-xs text-[#C9A96A] transition hover:bg-[#C9A96A]/25"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> AI
-                </button>
-                <button
-                  type="button"
-                  onClick={openNew}
-                  aria-label="导入"
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1E1E1E] text-[#E0E0E0] transition hover:bg-[#2A2A2A]"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
             {books.length === 0 ? (
               <div className="rounded-2xl bg-[#1E1E1E] py-16 text-center text-sm text-[#8A8A8A]">书架上还没有书，点右上角 + 放上第一本吧。</div>
             ) : (
@@ -411,41 +456,45 @@ export function LibraryPage() {
           </div>
         )}
 
-        {tab === 'profile' && (
+        {view === 'reading' && (
           <div className="px-5">
-            <div className="rounded-2xl bg-[#1E1E1E] p-6 text-center">
-              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#2A2A2A] text-2xl">{avatar}</span>
-              <p className="mt-3 font-serif text-lg font-semibold text-[#E0E0E0]">{name}</p>
-              <p className="mt-1 text-xs text-[#8A8A8A]">和 TA 一起，读下去</p>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <StatCard icon={Library} value={String(books.length)} label="藏书" />
-              <StatCard icon={BookOpen} value={String(activeCount)} label="在读" />
-              <StatCard icon={Quote} value={String(doneCount)} label="读完" />
-            </div>
+            {inProgress.length === 0 ? (
+              <div className="rounded-2xl bg-[#1E1E1E] py-16 text-center text-sm text-[#8A8A8A]">还没有在读的书</div>
+            ) : (
+              <div className="space-y-3">
+                {inProgress.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => navigate(`/read/${b.id}`)}
+                    className="flex w-full items-center gap-3 rounded-2xl bg-[#1E1E1E] p-4 text-left transition hover:bg-[#262626]"
+                  >
+                    {b.cover ? (
+                      <img src={b.cover} alt={b.title} className="h-16 w-12 shrink-0 rounded-md object-cover" />
+                    ) : (
+                      <div
+                        className="flex h-16 w-12 shrink-0 flex-col justify-between rounded-md p-1.5"
+                        style={{ background: `linear-gradient(160deg, ${b.color}, ${b.color} 60%, rgba(0,0,0,0.5))` }}
+                      >
+                        <span className="text-[8px] text-white/50">{b.author}</span>
+                        <span className="text-[9px] font-semibold leading-tight text-white/80">{b.title}</span>
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-serif text-sm font-semibold text-[#E0E0E0]">{b.title}</p>
+                      <p className="truncate text-xs text-[#8A8A8A]">{b.author}</p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#2A2A2A]">
+                        <div className="h-full rounded-full bg-[#C9A96A]" style={{ width: `${Math.round(b.progress * 100)}%` }} />
+                      </div>
+                      <p className="mt-1 text-[10px] text-[#8A8A8A]">{Math.round(b.progress * 100)}% 已读</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* 底部导航 */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#1F1F1F] bg-[#121212]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-md">
-          {NAV.map((n) => (
-            <button
-              key={n.key}
-              type="button"
-              onClick={() => setTab(n.key)}
-              className={cn(
-                'flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] transition',
-                tab === n.key ? 'text-[#C9A96A]' : 'text-[#8A8A8A] hover:text-[#E0E0E0]',
-              )}
-            >
-              <n.icon className="h-5 w-5" />
-              {n.label}
-            </button>
-          ))}
-        </div>
-      </nav>
 
       {detail && <BookDetailModal book={detail} onClose={() => setDetailId(null)} />}
 
