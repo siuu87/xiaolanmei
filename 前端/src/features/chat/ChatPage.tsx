@@ -787,10 +787,8 @@ export function ChatPage() {
                         {m.content}
                       </>
                     )}
-                      <span className="mt-1 block text-right text-[10px] leading-none text-muted-foreground/60">
-                        {fmtTime(m.createdAt)}
-                      </span>
                     </div>
+                    <span className="mt-1 text-[10px] leading-none text-muted-foreground/60">{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
 
