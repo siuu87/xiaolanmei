@@ -111,7 +111,7 @@ export function ListenPage() {
                     >
                       {m.content}
                     </div>
-                    <span className={cn('mt-1 text-[11px] leading-none text-slate-500', m.role === 'me' ? 'pr-1' : 'pl-1')}>{fmtTime(m.createdAt)}</span>
+                    <span className={cn('text-[11px] leading-none text-slate-500', m.role === 'me' ? 'pr-1' : 'pl-1')}>{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
               </div>

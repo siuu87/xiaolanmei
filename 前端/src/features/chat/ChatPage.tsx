@@ -823,7 +823,7 @@ export function ChatPage() {
                         </>
                       )}
                     </div>
-                    <span className={cn('mt-1 text-[11px] leading-none text-muted-foreground/60', m.role === 'user' ? 'pr-1' : 'pl-1')}>{fmtTime(m.createdAt)}</span>
+                    <span className={cn('text-[11px] leading-none text-muted-foreground/60', m.role === 'user' ? 'pr-1' : 'pl-1')}>{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
 
