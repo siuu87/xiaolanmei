@@ -17,7 +17,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'daily', label: '每日推荐' },
   { key: 'playlists', label: '我的歌单' },
   { key: 'queue', label: '播放队列' },
-  { key: 'ai', label: 'AI 专属推荐' },
+  { key: 'ai', label: '专属推荐' },
 ];
 
 /** 从 AI 回复文本里提取第一个 JSON 数组并解析为曲目列表 */
@@ -172,19 +172,20 @@ export function PlaylistSection() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm">
-      {/* Tab 切换 */}
-      <div className="flex gap-1 overflow-x-auto border-b border-white/10 px-3 pt-3">
+      {/* Tab 切换：四等分 */}
+      <div className="grid grid-cols-4 border-b border-white/10">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setActive(t.key)}
             className={cn(
-              'shrink-0 rounded-full px-3 py-1.5 text-xs transition',
-              active === t.key ? 'bg-white/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+              'relative py-3 text-center text-xs transition',
+              active === t.key ? 'font-medium text-white' : 'text-slate-400 hover:text-slate-200',
             )}
           >
             {t.label}
+            {active === t.key && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-rose-400" />}
           </button>
         ))}
       </div>

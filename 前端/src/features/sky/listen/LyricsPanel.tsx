@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { streamChat } from '@/lib/api/chatStream';
@@ -16,8 +16,6 @@ interface ChatMsg {
 
 /** 歌词面板（无框、居中）+ 点击歌词展开 AI 歌词伴侣对话 */
 export function LyricsPanel({ progressMs, lines }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const activeRef = useRef<HTMLDivElement>(null);
   const [activeLyric, setActiveLyric] = useState<LyricLine | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
@@ -25,17 +23,6 @@ export function LyricsPanel({ progressMs, lines }: Props) {
 
   // 当前高亮行：最后一条 timeMs <= progressMs 的行
   const activeIdx = lines.reduce((acc, line, i) => (line.timeMs <= progressMs ? i : acc), 0);
-
-  // 高亮行始终保持在可视区域中间
-  useEffect(() => {
-    const el = activeRef.current;
-    const container = scrollRef.current;
-    if (!el || !container) return;
-    const elRect = el.getBoundingClientRect();
-    const cRect = container.getBoundingClientRect();
-    const target = container.scrollTop + (elRect.top - cRect.top) - (cRect.height / 2 - elRect.height / 2);
-    container.scrollTo({ top: target, behavior: 'smooth' });
-  }, [activeIdx]);
 
   const openLyric = (line: LyricLine) => {
     setActiveLyric(line);
@@ -75,11 +62,10 @@ export function LyricsPanel({ progressMs, lines }: Props) {
   return (
     <div className="space-y-4">
       {/* 歌词：无框、居中 */}
-      <div ref={scrollRef} className="max-h-64 space-y-3 overflow-y-auto">
+      <div className="space-y-3">
         {lines.map((line, i) => (
           <div
             key={i}
-            ref={i === activeIdx ? activeRef : undefined}
             onClick={() => openLyric(line)}
             role="button"
             tabIndex={0}
