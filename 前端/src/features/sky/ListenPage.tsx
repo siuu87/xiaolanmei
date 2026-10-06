@@ -101,19 +101,17 @@ export function ListenPage() {
                     {m.role === 'me' ? meAvatar : taAvatar}
                   </div>
                   <div className={cn('flex min-w-0 max-w-[80%] flex-col', m.role === 'me' ? 'items-end' : 'items-start')}>
-                    <div className="flex max-w-full items-end gap-1.5">
-                      <div
-                        className={cn(
-                          'relative whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-6',
-                          m.role === 'me'
-                            ? 'rounded-tr-[4px] bg-white text-slate-800'
-                            : 'rounded-tl-[4px] bg-[#a8c7f0] text-slate-900',
-                        )}
-                      >
-                        {m.content}
-                      </div>
-                      <span className="shrink-0 pb-0.5 text-[10px] leading-none text-slate-500">{fmtTime(m.createdAt)}</span>
+                    <div
+                      className={cn(
+                        'relative whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-6',
+                        m.role === 'me'
+                          ? 'rounded-tr-[4px] bg-white text-slate-800'
+                          : 'rounded-tl-[4px] bg-[#a8c7f0] text-slate-900',
+                      )}
+                    >
+                      {m.content}
                     </div>
+                    <span className={cn('mt-1 text-[11px] leading-none text-slate-500', m.role === 'me' ? 'pr-1' : 'pl-1')}>{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
               </div>

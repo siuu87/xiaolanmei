@@ -751,81 +751,79 @@ export function ChatPage() {
                         onClick={() => setThoughtReasoning(m.reasoning ?? '')}
                       />
                     )}
-                    <div className="flex max-w-full items-end gap-1.5">
-                      <div
-                        className={cn(
-                          'relative text-sm leading-6',
-                          !isEditing && 'select-none',
-                          m.role === 'user'
-                            ? 'whitespace-pre-wrap rounded-xl rounded-tr-[4px] border border-border/60 bg-[hsl(var(--bubble-me))] px-3 py-2 text-foreground shadow-sm'
-                            : 'rounded-xl rounded-tl-[4px] bg-[hsl(var(--bubble-ai))] px-3 py-2 text-foreground shadow-sm',
-                          m.sticker && 'bg-transparent p-0 shadow-none',
-                        )}
-                      >
-                        {!m.sticker && (
-                          <span
-                            className={
-                              m.role === 'user' ? 'bubble-tail bubble-tail--me' : 'bubble-tail bubble-tail--ai'
-                            }
+                    <div
+                      className={cn(
+                        'relative text-sm leading-6',
+                        !isEditing && 'select-none',
+                        m.role === 'user'
+                          ? 'whitespace-pre-wrap rounded-xl rounded-tr-[4px] border border-border/60 bg-[hsl(var(--bubble-me))] px-3 py-2 text-foreground shadow-sm'
+                          : 'rounded-xl rounded-tl-[4px] bg-[hsl(var(--bubble-ai))] px-3 py-2 text-foreground shadow-sm',
+                        m.sticker && 'bg-transparent p-0 shadow-none',
+                      )}
+                    >
+                      {!m.sticker && (
+                        <span
+                          className={
+                            m.role === 'user' ? 'bubble-tail bubble-tail--me' : 'bubble-tail bubble-tail--ai'
+                          }
+                        />
+                      )}
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            autoFocus
+                            rows={3}
+                            className="w-full resize-none select-text rounded-lg bg-background/60 px-2 py-1 text-sm text-foreground outline-none"
                           />
-                        )}
-                        {isEditing ? (
-                          <div className="flex flex-col gap-2">
-                            <textarea
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              autoFocus
-                              rows={3}
-                              className="w-full resize-none select-text rounded-lg bg-background/60 px-2 py-1 text-sm text-foreground outline-none"
-                            />
-                            <div className="flex justify-end gap-1">
-                              <button
-                                type="button"
-                                onClick={cancelEdit}
-                                aria-label="取消编辑"
-                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void saveEdit(m)}
-                                aria-label="保存编辑"
-                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60"
-                              >
-                                <Check className="h-4 w-4" />
-                              </button>
-                            </div>
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              aria-label="取消编辑"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void saveEdit(m)}
+                              aria-label="保存编辑"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
                           </div>
-                        ) : m.role === 'assistant' ? (
-                          <>
-                            {m.status === 'streaming' && !m.content && !m.reasoning && (
-                              <span className="text-muted-foreground">思考中…</span>
-                            )}
-                            {m.content && <Markdown>{m.content}</Markdown>}
-                          </>
-                        ) : m.sticker ? (
-                          <StickerBubble emoji={m.sticker} />
-                        ) : (
-                          <>
-                            {m.images && m.images.length > 0 && (
-                              <div className="mb-1.5 flex flex-wrap gap-1.5">
-                                {m.images.map((img, i) => (
-                                  <img
-                                    key={i}
-                                    src={img.dataUrl ?? img.url}
-                                    alt={img.name ?? '图片'}
-                                    className="max-h-44 max-w-full rounded-lg object-cover"
-                                  />
-                                ))}
-                              </div>
-                            )}
-                            {m.content}
-                          </>
-                        )}
-                      </div>
-                      <span className="shrink-0 pb-0.5 text-[10px] leading-none text-muted-foreground/60">{fmtTime(m.createdAt)}</span>
+                        </div>
+                      ) : m.role === 'assistant' ? (
+                        <>
+                          {m.status === 'streaming' && !m.content && !m.reasoning && (
+                            <span className="text-muted-foreground">思考中…</span>
+                          )}
+                          {m.content && <Markdown>{m.content}</Markdown>}
+                        </>
+                      ) : m.sticker ? (
+                        <StickerBubble emoji={m.sticker} />
+                      ) : (
+                        <>
+                          {m.images && m.images.length > 0 && (
+                            <div className="mb-1.5 flex flex-wrap gap-1.5">
+                              {m.images.map((img, i) => (
+                                <img
+                                  key={i}
+                                  src={img.dataUrl ?? img.url}
+                                  alt={img.name ?? '图片'}
+                                  className="max-h-44 max-w-full rounded-lg object-cover"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {m.content}
+                        </>
+                      )}
                     </div>
+                    <span className={cn('mt-1 text-[11px] leading-none text-muted-foreground/60', m.role === 'user' ? 'pr-1' : 'pl-1')}>{fmtTime(m.createdAt)}</span>
                   </div>
                 </div>
 
