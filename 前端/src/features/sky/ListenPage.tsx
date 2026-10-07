@@ -43,7 +43,7 @@ function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right'
 
 /**
  * LISTEN（音乐播放页）：
- * 左边 AI 戴左耳机（外侧）、右边我戴右耳机（外侧），中间声波随播放跳动，耳机线（镰刀弧线）垂落到卡片歌曲名处。
+ * 左边 AI 戴左耳机（外侧）、右边我戴右耳机（外侧），中间声波随播放跳动，耳机线各自自然下垂到卡片。
  * 播放状态来自全局 playerStore，与星空页黑胶播放器联动。
  */
 export function ListenPage() {
@@ -94,26 +94,29 @@ export function ListenPage() {
         {/* 主体：手机单列堆叠 */}
         <div className="mt-6 space-y-6">
           {/* 一起听 + 播放小卡片 */}
-          <div>
+          <div className="relative">
             {/* 左 AI 戴左耳机 · 中间声波 · 右我戴右耳机 */}
-            <div className="flex items-center justify-center gap-5">
+            <div className="relative z-10 flex items-center justify-center gap-5">
               <EarphoneAvatar emoji={taAvatar} side="left" />
               <SoundWave playing={playing} />
               <EarphoneAvatar emoji={myAvatar} side="right" />
             </div>
-            {/* 耳机线（镰刀弧线）：从外侧耳机塞垂落到卡片歌曲名处（居中） */}
+
+            {/* 耳机线各自自然下垂（占位） */}
+            <div className="h-10" aria-hidden />
+
+            {/* 耳机线 SVG：从耳机塞底部各自带弧度下垂，不汇聚 */}
             <svg
-              className="-mt-px h-9 w-full"
-              viewBox="0 0 416 36"
+              className="pointer-events-none absolute inset-x-0 top-0 h-24 w-full"
+              viewBox="0 0 416 96"
               preserveAspectRatio="none"
               fill="none"
               aria-hidden
             >
-              <path d="M122 0 C 122 14 196 16 202 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M296 0 C 296 14 220 16 214 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="202" cy="34" r="2" fill="#E5E7EB" />
-              <circle cx="214" cy="34" r="2" fill="#E5E7EB" />
+              <path d="M121 42 C 121 58 119 74 118 90" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M295 42 C 295 58 297 74 298 90" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
+
             <PlayerCard
               track={track}
               playing={playing}
