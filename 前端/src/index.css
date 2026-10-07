@@ -216,6 +216,30 @@
   background: #6b7280;
 }
 
+/* ===== 播放器进度条·暗色毛玻璃卡片变体（白色） ===== */
+.player-range--dark {
+  height: 2px;
+}
+.player-range--dark::-webkit-slider-thumb {
+  height: 8px;
+  width: 8px;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+.player-range--dark::-moz-range-thumb {
+  height: 8px;
+  width: 8px;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+.player-range--dark::-moz-range-track {
+  height: 2px;
+}
+.player-range--dark::-moz-range-progress {
+  height: 2px;
+  background: #ffffff;
+}
+
 /* ===== 一起听声波动画（黑金） ===== */
 @keyframes soundwave {
   0%, 100% { transform: scaleY(0.5); opacity: 0.5; }

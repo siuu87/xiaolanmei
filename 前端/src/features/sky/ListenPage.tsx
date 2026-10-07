@@ -33,7 +33,7 @@ function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right'
       {emoji}
       <span
         className={cn(
-          'absolute top-1/2 h-3.5 w-1.5 rounded-full bg-white shadow-sm',
+          'absolute top-1/2 h-3.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.35)]',
           side === 'left' ? '-left-1.5' : '-right-1.5',
         )}
       />
@@ -93,39 +93,42 @@ export function ListenPage() {
 
         {/* 主体：手机单列堆叠 */}
         <div className="mt-6 space-y-6">
-          {/* 一起听 + 播放小卡片 */}
+          {/* 一起听 + 播放卡片（耳机线自然垂落连接卡片） */}
           <div className="relative">
-            {/* 左 AI 戴左耳机 · 中间声波 · 右我戴右耳机 */}
-            <div className="relative z-10 flex items-center justify-center gap-5">
-              <EarphoneAvatar emoji={taAvatar} side="left" />
-              <SoundWave playing={playing} />
-              <EarphoneAvatar emoji={myAvatar} side="right" />
+            {/* 连线容器：底层 SVG 耳机线 + 顶层头像/耳机塞 */}
+            <div className="relative h-[110px]">
+              {/* 耳机线（贝塞尔曲线，从耳机塞自然下垂） */}
+              <svg
+                className="absolute inset-0 z-0 h-full w-full"
+                viewBox="0 0 416 110"
+                preserveAspectRatio="none"
+                fill="none"
+                aria-hidden
+              >
+                <path d="M121 42 C 121 80 112 98 110 110" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M295 42 C 295 80 304 98 306 110" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+
+              {/* 左 AI 戴左耳机 · 中间声波 · 右我戴右耳机（位于连线起点） */}
+              <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-5">
+                <EarphoneAvatar emoji={taAvatar} side="left" />
+                <SoundWave playing={playing} />
+                <EarphoneAvatar emoji={myAvatar} side="right" />
+              </div>
             </div>
 
-            {/* 耳机线各自自然下垂（占位） */}
-            <div className="h-10" aria-hidden />
-
-            {/* 耳机线 SVG：从耳机塞底部各自带弧度下垂，不汇聚 */}
-            <svg
-              className="pointer-events-none absolute inset-x-0 top-0 h-24 w-full"
-              viewBox="0 0 416 96"
-              preserveAspectRatio="none"
-              fill="none"
-              aria-hidden
-            >
-              <path d="M121 42 C 121 58 119 74 118 90" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M295 42 C 295 58 297 74 298 90" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-
-            <PlayerCard
-              track={track}
-              playing={playing}
-              progressMs={progressMs}
-              onToggle={toggle}
-              onPrev={prev}
-              onNext={next}
-              onSeek={seek}
-            />
+            {/* 卡片：负上边距上移，让耳机线尾端插进卡片顶部 */}
+            <div className="relative z-10 -mt-6">
+              <PlayerCard
+                track={track}
+                playing={playing}
+                progressMs={progressMs}
+                onToggle={toggle}
+                onPrev={prev}
+                onNext={next}
+                onSeek={seek}
+              />
+            </div>
           </div>
           <LyricsPanel progressMs={progressMs} lines={lines} />
           <PlaylistSection onPlayTrack={playTrack} />
