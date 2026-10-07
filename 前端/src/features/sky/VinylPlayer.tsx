@@ -131,13 +131,18 @@ export function VinylPlayer() {
             <div
               className="absolute inset-0 rounded-full"
               style={{
-                animation: 'vinyl-spin 12s linear infinite',
+                animation: 'vinyl-spin 8s linear infinite',
                 animationPlayState: playing ? 'running' : 'paused',
                 background:
                   'repeating-radial-gradient(circle at 50% 50%, #1c1c20 0px, #1c1c20 1px, #26262b 1px, #26262b 2px)',
                 boxShadow: '0 14px 40px rgba(0,0,0,0.5), 0 0 0 5px rgba(255,255,255,0.18)',
               }}
-            />
+            >
+              {/* 唱片反光标记：随唱片转动，让旋转更明显 */}
+              <span className="absolute left-1/2 top-3 h-2 w-2 -translate-x-1/2 rounded-full bg-white/70" />
+              <span className="absolute left-[72%] top-8 h-1.5 w-1.5 rounded-full bg-white/50" />
+              <span className="absolute left-[26%] top-12 h-1 w-1 rounded-full bg-white/40" />
+            </div>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#ff9fb0] to-[#e76b84] shadow-inner" />
               <button

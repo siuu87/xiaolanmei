@@ -51,14 +51,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { queue, index } = get();
     if (queue.length === 0) return;
     const ni = (index + 1) % queue.length;
-    set({ index: ni, track: queue[ni], progressMs: 0 });
+    set({ index: ni, track: queue[ni], progressMs: 0, playing: true });
   },
 
   prev: () => {
     const { queue, index } = get();
     if (queue.length === 0) return;
     const ni = (index - 1 + queue.length) % queue.length;
-    set({ index: ni, track: queue[ni], progressMs: 0 });
+    set({ index: ni, track: queue[ni], progressMs: 0, playing: true });
   },
 
   playTrack: (t) => {

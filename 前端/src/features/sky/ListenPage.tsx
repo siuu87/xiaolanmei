@@ -105,8 +105,8 @@ export function ListenPage() {
                 fill="none"
                 aria-hidden
               >
-                <path d="M121 42 C 121 80 112 98 110 110" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
-                <path d="M295 42 C 295 80 304 98 306 110" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M121 42 C 121 76 174 68 174 110" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M295 42 C 295 76 242 68 242 110" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
 
               {/* 左 AI 戴左耳机 · 中间声波 · 右我戴右耳机（位于连线起点） */}
