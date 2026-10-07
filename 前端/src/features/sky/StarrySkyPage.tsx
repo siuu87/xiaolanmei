@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Headphones, BookOpen, ChevronRight, type LucideIcon } from 'lucide-react';
+import { ChefHat, Headphones, BookOpen, ChevronRight, Beer, type LucideIcon } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
 import { VinylPlayer } from './VinylPlayer';
 import { Bookshelf } from './Bookshelf';
@@ -66,8 +66,9 @@ export function StarrySkyPage() {
         </div>
 
         {/* 其它小入口：卡片式 */}
-        <div className="mt-8">
+        <div className="mt-8 space-y-3">
           <EntryCard label="今天吃什么" hint="正餐 · 甜品 · 抽盲盒" icon={ChefHat} onClick={() => navigate('/food')} />
+          <EntryCard label="酒馆" hint="角色扮演 · 进入聊天" icon={Beer} onClick={() => navigate('/tavern')} />
         </div>
       </div>
     </div>
