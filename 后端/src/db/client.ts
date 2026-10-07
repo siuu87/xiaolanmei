@@ -486,6 +486,47 @@ CREATE TABLE IF NOT EXISTS dishes (
   deleted_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_dishes_type ON dishes(type);
+
+CREATE TABLE IF NOT EXISTS tavern_characters (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  avatar TEXT,
+  description TEXT,
+  personality TEXT,
+  scenario TEXT,
+  first_message TEXT,
+  system_prompt TEXT,
+  tags TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS tavern_worldbook (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  keywords TEXT,
+  content TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 0,
+  position TEXT NOT NULL DEFAULT 'before',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS tavern_personas (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  avatar TEXT,
+  description TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
 `;
 
 /**

@@ -494,3 +494,47 @@ export const dishes = sqliteTable('dishes', {
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
 });
+
+/** 酒馆角色卡（SillyTavern 风格 AI 角色扮演）：tags 存 JSON */
+export const tavernCharacters = sqliteTable('tavern_characters', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  avatar: text('avatar'), // emoji 头像
+  description: text('description'), // 一句话人设
+  personality: text('personality'), // 详细性格 / 设定
+  scenario: text('scenario'), // 当前场景
+  firstMessage: text('first_message'), // 开场白
+  systemPrompt: text('system_prompt'), // 自定义系统提示（可选，覆盖默认模板）
+  tags: text('tags'), // JSON: string[]
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 酒馆世界书条目：关键词命中时按优先级注入上下文；keywords 存 JSON */
+export const tavernWorldbook = sqliteTable('tavern_worldbook', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  keywords: text('keywords'), // JSON: string[]，逗号/换行分隔后存入
+  content: text('content').notNull(),
+  priority: integer('priority').notNull().default(0), // 数值越大越靠前
+  position: text('position').notNull().default('before'), // before 角色前 | after 角色后
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 酒馆人设卡（用户扮演的角色） */
+export const tavernPersonas = sqliteTable('tavern_personas', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  avatar: text('avatar'), // emoji 头像
+  description: text('description'), // 用户自己的人设
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
