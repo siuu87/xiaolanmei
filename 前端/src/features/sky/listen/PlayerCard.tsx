@@ -26,8 +26,8 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
 
   return (
     <div className="rounded-2xl bg-[#E9EAEC] p-3 text-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
-      {/* 歌曲信息（居左，仿网易云） */}
-      <div className="text-left">
+      {/* 歌曲信息（居中，仿网易云） */}
+      <div className="text-center">
         <h2 className="truncate text-sm font-medium text-gray-700">{track?.name ?? '—'}</h2>
         <p className="mt-0.5 truncate text-[11px] text-gray-400">{track?.artist ?? '暂无曲目'}</p>
       </div>

@@ -55,11 +55,9 @@ export function getCurrentTrack(): Promise<Track> {
 }
 
 // MCP 接入点：歌词（按当前曲目自动调取；真实实现从网易云按 track 拉取对应歌词）
-export function getLyrics(track?: Track | null): Promise<LyricLine[]> {
-  const title = track?.name ?? '晴天';
-  // 占位：首行展示当前曲名，后续为示例歌词；接入真实网易云后按 track 拉取
+export function getLyrics(_track?: Track | null): Promise<LyricLine[]> {
+  // 占位：示例歌词；接入真实网易云后按 track 拉取对应歌词
   return mock([
-    { timeMs: 0, text: title, translation: '' },
     { timeMs: 15000, text: '故事的小黄花', translation: 'The little yellow flower of the story' },
     { timeMs: 30000, text: '从出生那年就飘着', translation: 'Has been drifting since the year I was born' },
     { timeMs: 45000, text: '童年的荡秋千', translation: 'The swing of childhood' },

@@ -10,14 +10,30 @@ import { useProfileStore } from '@/stores/profileStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { getLyrics, type LyricLine } from './listen/neteaseMcpConnector';
 
-/** 一起听单边耳机头像：左头像戴左耳机罩，右头像戴右耳机罩（都朝内侧） */
+/** 一起听声波：三根竖条随播放跳动，暂停时变短停止 */
+function SoundWave({ playing }: { playing: boolean }) {
+  const heights = [10, 20, 10];
+  return (
+    <div className="flex h-5 items-center gap-[3px]">
+      {heights.map((h, i) => (
+        <span
+          key={i}
+          className={cn('w-[3px] rounded-full bg-white transition-all duration-300', playing && 'soundwave-bar')}
+          style={{ height: playing ? h : 4, animationDelay: `${i * 0.2}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** 一起听单边耳机头像（耳机为白色）：left 戴左耳机罩（贴内侧），right 戴右耳机罩（贴内侧） */
 function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right' }) {
   return (
     <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-2xl ring-1 ring-white/20">
       {emoji}
       <span
         className={cn(
-          'absolute top-1/2 h-7 w-3 rounded-full bg-[#6B7280] ring-1 ring-white/20',
+          'absolute top-1/2 h-7 w-3 rounded-full bg-white shadow-sm',
           side === 'left' ? '-right-2' : '-left-2',
         )}
       />
@@ -27,7 +43,7 @@ function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right'
 
 /**
  * LISTEN（音乐播放页）：
- * 双头像各戴单边耳机 → 耳机线（镰刀弧线）垂落到淡灰小卡片 → 歌词 + 推荐列表。
+ * 左边 AI 戴左耳机、右边我戴右耳机，中间声波随播放跳动，耳机线（镰刀弧线）垂落到卡片歌曲名处。
  * 播放状态来自全局 playerStore，与星空页黑胶播放器联动。
  */
 export function ListenPage() {
@@ -79,11 +95,13 @@ export function ListenPage() {
         <div className="mt-6 space-y-6">
           {/* 一起听 + 播放小卡片 */}
           <div>
-            <div className="flex items-start justify-center gap-14">
-              <EarphoneAvatar emoji={myAvatar} side="left" />
-              <EarphoneAvatar emoji={taAvatar} side="right" />
+            {/* 左 AI 戴左耳机 · 中间声波 · 右我戴右耳机 */}
+            <div className="flex items-center justify-center gap-5">
+              <EarphoneAvatar emoji={taAvatar} side="left" />
+              <SoundWave playing={playing} />
+              <EarphoneAvatar emoji={myAvatar} side="right" />
             </div>
-            {/* 耳机线（镰刀弧线）：从耳机罩垂落到卡片歌曲名处 */}
+            {/* 耳机线（镰刀弧线）：从耳机罩垂落到卡片歌曲名处（居中） */}
             <svg
               className="-mt-px h-9 w-full"
               viewBox="0 0 416 36"
@@ -91,10 +109,10 @@ export function ListenPage() {
               fill="none"
               aria-hidden
             >
-              <path d="M184 0 C 184 16 116 14 118 34" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M232 0 C 232 16 156 14 150 34" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="118" cy="34" r="2" fill="#9CA3AF" />
-              <circle cx="150" cy="34" r="2" fill="#9CA3AF" />
+              <path d="M182 0 C 182 14 196 16 198 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M234 0 C 234 14 220 16 218 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="198" cy="34" r="2" fill="#E5E7EB" />
+              <circle cx="218" cy="34" r="2" fill="#E5E7EB" />
             </svg>
             <PlayerCard
               track={track}
