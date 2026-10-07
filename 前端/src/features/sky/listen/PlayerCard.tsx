@@ -26,10 +26,10 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
 
   return (
     <div>
-      {/* 歌曲信息（居中） */}
-      <div className="text-center">
-        <h2 className="truncate text-xl font-semibold tracking-wide text-[#E0E0E0]">{track?.name ?? '—'}</h2>
-        <p className="mt-1 truncate text-sm text-[#8A8A8A]">{track?.artist ?? '暂无曲目'}</p>
+      {/* 歌曲信息（居左，仿网易云） */}
+      <div className="text-left">
+        <h2 className="truncate text-base font-medium text-[#E0E0E0]">{track?.name ?? '—'}</h2>
+        <p className="mt-0.5 truncate text-xs text-[#8A8A8A]">{track?.artist ?? '暂无曲目'}</p>
       </div>
 
       {/* 极细进度条（发光滑块）+ 时间 */}
