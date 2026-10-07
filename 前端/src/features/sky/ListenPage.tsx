@@ -26,15 +26,15 @@ function SoundWave({ playing }: { playing: boolean }) {
   );
 }
 
-/** 一起听单边耳机头像（耳机为白色）：left 戴左耳机罩（贴内侧），right 戴右耳机罩（贴内侧） */
+/** 一起听单边耳机头像（白色耳机塞，戴在外侧）：left 戴左耳机塞，right 戴右耳机塞 */
 function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right' }) {
   return (
     <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-2xl ring-1 ring-white/20">
       {emoji}
       <span
         className={cn(
-          'absolute top-1/2 h-7 w-3 rounded-full bg-white shadow-sm',
-          side === 'left' ? '-right-2' : '-left-2',
+          'absolute top-1/2 h-3.5 w-1.5 rounded-full bg-white shadow-sm',
+          side === 'left' ? '-left-1.5' : '-right-1.5',
         )}
       />
     </div>
@@ -43,7 +43,7 @@ function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right'
 
 /**
  * LISTEN（音乐播放页）：
- * 左边 AI 戴左耳机、右边我戴右耳机，中间声波随播放跳动，耳机线（镰刀弧线）垂落到卡片歌曲名处。
+ * 左边 AI 戴左耳机（外侧）、右边我戴右耳机（外侧），中间声波随播放跳动，耳机线（镰刀弧线）垂落到卡片歌曲名处。
  * 播放状态来自全局 playerStore，与星空页黑胶播放器联动。
  */
 export function ListenPage() {
@@ -101,7 +101,7 @@ export function ListenPage() {
               <SoundWave playing={playing} />
               <EarphoneAvatar emoji={myAvatar} side="right" />
             </div>
-            {/* 耳机线（镰刀弧线）：从耳机罩垂落到卡片歌曲名处（居中） */}
+            {/* 耳机线（镰刀弧线）：从外侧耳机塞垂落到卡片歌曲名处（居中） */}
             <svg
               className="-mt-px h-9 w-full"
               viewBox="0 0 416 36"
@@ -109,10 +109,10 @@ export function ListenPage() {
               fill="none"
               aria-hidden
             >
-              <path d="M182 0 C 182 14 196 16 198 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M234 0 C 234 14 220 16 218 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="198" cy="34" r="2" fill="#E5E7EB" />
-              <circle cx="218" cy="34" r="2" fill="#E5E7EB" />
+              <path d="M122 0 C 122 14 196 16 202 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M296 0 C 296 14 220 16 214 34" stroke="#E5E7EB" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="202" cy="34" r="2" fill="#E5E7EB" />
+              <circle cx="214" cy="34" r="2" fill="#E5E7EB" />
             </svg>
             <PlayerCard
               track={track}

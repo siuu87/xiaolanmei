@@ -25,15 +25,15 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
   const cycleMode = () => setMode((m) => (((m + 1) % 3) as PlayMode));
 
   return (
-    <div className="rounded-2xl bg-[#E9EAEC] p-3 text-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
-      {/* 歌曲信息（居中，仿网易云） */}
+    <div className="rounded-2xl bg-[#E9EAEC] p-2.5 text-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+      {/* 歌曲信息（居中，放大） */}
       <div className="text-center">
-        <h2 className="truncate text-sm font-medium text-gray-700">{track?.name ?? '—'}</h2>
-        <p className="mt-0.5 truncate text-[11px] text-gray-400">{track?.artist ?? '暂无曲目'}</p>
+        <h2 className="truncate text-lg font-medium text-gray-700">{track?.name ?? '—'}</h2>
+        <p className="mt-0.5 truncate text-sm text-gray-400">{track?.artist ?? '暂无曲目'}</p>
       </div>
 
       {/* 极细进度条（浅灰）+ 时间 */}
-      <div className="mt-3">
+      <div className="mt-2.5">
         <input
           type="range"
           min={0}
@@ -51,28 +51,28 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
       </div>
 
       {/* 控制行：收藏 | 上一曲 | 播放/暂停 | 下一曲 | 循环模式 */}
-      <div className="mt-3 flex items-center justify-center gap-5">
+      <div className="mt-2.5 flex items-center justify-center gap-4">
         <button
           type="button"
           onClick={() => setLiked((v) => !v)}
           aria-label={liked ? '取消收藏' : '收藏'}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-black/5"
+          className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-black/5"
         >
-          <Star className={cn('h-4 w-4 transition', liked ? 'fill-[#ff4d4d] text-[#ff4d4d]' : 'text-gray-400')} />
+          <Star className={cn('h-3.5 w-3.5 transition', liked ? 'fill-[#ff4d4d] text-[#ff4d4d]' : 'text-gray-400')} />
         </button>
         <button
           type="button"
           onClick={onPrev}
           aria-label="上一曲"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-black/5"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-gray-600 transition hover:bg-black/5"
         >
-          <SkipBack className="h-4 w-4" />
+          <SkipBack className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           onClick={onToggle}
           aria-label={playing ? '暂停' : '播放'}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 text-white shadow-md transition hover:bg-gray-700 active:scale-95"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-white shadow-md transition hover:bg-gray-700 active:scale-95"
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
         </button>
@@ -80,9 +80,9 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           type="button"
           onClick={onNext}
           aria-label="下一曲"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-black/5"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-gray-600 transition hover:bg-black/5"
         >
-          <SkipForward className="h-4 w-4" />
+          <SkipForward className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -90,11 +90,11 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           aria-label="循环模式"
           title={mode === 0 ? '列表循环' : mode === 1 ? '随机播放' : '单曲循环'}
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-black/5',
+            'flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-black/5',
             mode !== 0 ? 'text-gray-800' : 'text-gray-400',
           )}
         >
-          {mode === 0 ? <Repeat className="h-4 w-4" /> : mode === 1 ? <Shuffle className="h-4 w-4" /> : <Repeat1 className="h-4 w-4" />}
+          {mode === 0 ? <Repeat className="h-3.5 w-3.5" /> : mode === 1 ? <Shuffle className="h-3.5 w-3.5" /> : <Repeat1 className="h-3.5 w-3.5" />}
         </button>
       </div>
     </div>
