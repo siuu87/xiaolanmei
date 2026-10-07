@@ -125,8 +125,8 @@ export function ListenPage() {
               fill="none"
               aria-hidden
             >
-              <path d="M121 42 C 108 78 146 78 146 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M295 42 C 308 78 270 78 270 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M121 42 C 100 76 112 88 146 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M295 42 C 316 76 304 88 270 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
           <LyricsPanel progressMs={progressMs} lines={lines} />
