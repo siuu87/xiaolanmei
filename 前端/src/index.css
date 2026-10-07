@@ -192,6 +192,19 @@
   background: #d4af37;
 }
 
+/* ===== 播放器进度条·淡灰浅色卡片变体 ===== */
+.player-range--light::-webkit-slider-thumb {
+  background: #6b7280;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+}
+.player-range--light::-moz-range-thumb {
+  background: #6b7280;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+}
+.player-range--light::-moz-range-progress {
+  background: #6b7280;
+}
+
 /* ===== 一起听声波动画（黑金） ===== */
 @keyframes soundwave {
   0%, 100% { transform: scaleY(0.5); opacity: 0.5; }

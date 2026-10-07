@@ -15,7 +15,7 @@ interface Props {
 
 type PlayMode = 0 | 1 | 2; // 0 列表循环 / 1 随机 / 2 单曲循环
 
-/** 沉浸式播放区（无外框、悬浮式）：居中歌曲信息 + 极细进度条 + 控制行 */
+/** 播放小卡片（淡灰、整体缩小约四分之一）：歌曲信息 + 极细进度条 + 控制行 */
 export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNext, onSeek }: Props) {
   const [liked, setLiked] = useState(false);
   const [mode, setMode] = useState<PlayMode>(0);
@@ -25,15 +25,15 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
   const cycleMode = () => setMode((m) => (((m + 1) % 3) as PlayMode));
 
   return (
-    <div>
+    <div className="rounded-2xl bg-[#E9EAEC] p-3 text-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
       {/* 歌曲信息（居左，仿网易云） */}
       <div className="text-left">
-        <h2 className="truncate text-base font-medium text-[#E0E0E0]">{track?.name ?? '—'}</h2>
-        <p className="mt-0.5 truncate text-xs text-[#8A8A8A]">{track?.artist ?? '暂无曲目'}</p>
+        <h2 className="truncate text-sm font-medium text-gray-700">{track?.name ?? '—'}</h2>
+        <p className="mt-0.5 truncate text-[11px] text-gray-400">{track?.artist ?? '暂无曲目'}</p>
       </div>
 
-      {/* 极细进度条（发光滑块）+ 时间 */}
-      <div className="mt-5">
+      {/* 极细进度条（浅灰）+ 时间 */}
+      <div className="mt-3">
         <input
           type="range"
           min={0}
@@ -41,48 +41,48 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           value={progressMs}
           onChange={(e) => onSeek(Number(e.target.value))}
           aria-label="播放进度"
-          className="player-range"
-          style={{ background: `linear-gradient(to right, #D4AF37 ${pct}%, rgba(255,255,255,0.18) ${pct}%)` }}
+          className="player-range player-range--light"
+          style={{ background: `linear-gradient(to right, #6B7280 ${pct}%, rgba(0,0,0,0.08) ${pct}%)` }}
         />
-        <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-[#8A8A8A]">
+        <div className="mt-1 flex justify-between text-[9px] tabular-nums text-gray-400">
           <span>{formatTime(progressMs)}</span>
           <span>{formatTime(duration)}</span>
         </div>
       </div>
 
       {/* 控制行：收藏 | 上一曲 | 播放/暂停 | 下一曲 | 循环模式 */}
-      <div className="mt-5 flex items-center justify-center gap-6">
+      <div className="mt-3 flex items-center justify-center gap-5">
         <button
           type="button"
           onClick={() => setLiked((v) => !v)}
           aria-label={liked ? '取消收藏' : '收藏'}
-          className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/5"
+          className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-black/5"
         >
-          <Star className={cn('h-5 w-5 transition', liked ? 'fill-[#ff4d4d] text-[#ff4d4d]' : 'text-[#8A8A8A]')} />
+          <Star className={cn('h-4 w-4 transition', liked ? 'fill-[#ff4d4d] text-[#ff4d4d]' : 'text-gray-400')} />
         </button>
         <button
           type="button"
           onClick={onPrev}
           aria-label="上一曲"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-[#E0E0E0] transition hover:bg-white/5"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-black/5"
         >
-          <SkipBack className="h-5 w-5" />
+          <SkipBack className="h-4 w-4" />
         </button>
         <button
           type="button"
           onClick={onToggle}
           aria-label={playing ? '暂停' : '播放'}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-[#D4AF37] text-black shadow-md transition hover:bg-[#E6C45A] active:scale-95"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 text-white shadow-md transition hover:bg-gray-700 active:scale-95"
         >
-          {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+          {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
         </button>
         <button
           type="button"
           onClick={onNext}
           aria-label="下一曲"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-[#E0E0E0] transition hover:bg-white/5"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 transition hover:bg-black/5"
         >
-          <SkipForward className="h-5 w-5" />
+          <SkipForward className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -90,11 +90,11 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           aria-label="循环模式"
           title={mode === 0 ? '列表循环' : mode === 1 ? '随机播放' : '单曲循环'}
           className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/5',
-            mode !== 0 ? 'text-[#D4AF37]' : 'text-[#8A8A8A]',
+            'flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-black/5',
+            mode !== 0 ? 'text-gray-800' : 'text-gray-400',
           )}
         >
-          {mode === 0 ? <Repeat className="h-5 w-5" /> : mode === 1 ? <Shuffle className="h-5 w-5" /> : <Repeat1 className="h-5 w-5" />}
+          {mode === 0 ? <Repeat className="h-4 w-4" /> : mode === 1 ? <Shuffle className="h-4 w-4" /> : <Repeat1 className="h-4 w-4" />}
         </button>
       </div>
     </div>
