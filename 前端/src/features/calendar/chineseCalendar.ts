@@ -85,16 +85,6 @@ export function daySpecial(y: number, m: number, d: number): DaySpecial | undefi
     isChuXi = !!tl && tl.lMonth === 1 && tl.lDay === 1;
   }
 
-  // 名称优先级：除夕 > 农历节日 > 公历节日 > 母亲/父亲节 > 节气
-  let label = '';
-  if (isChuXi) label = '除夕';
-  else if (lunarFest) label = lunarFest;
-  else if (solarFest) label = solarFest;
-  else if (mothersDay) label = '母亲节';
-  else if (fathersDay) label = '父亲节';
-  else if (termName) label = termName;
-  if (!label) return undefined;
-
   // 放假判断（法定节假日主要放假区间，含连假）
   const off =
     (m === 1 && d === 1) ||                     // 元旦
@@ -105,6 +95,17 @@ export function daySpecial(y: number, m: number, d: number): DaySpecial | undefi
     (lMonth === 1 && lDay >= 1 && lDay <= 6) || // 春节（初一~初六）
     (lMonth === 5 && lDay === 5) ||             // 端午
     (lMonth === 8 && lDay === 15);              // 中秋
+
+  // 名称优先级：除夕 > 农历节日 > 公历节日 > 母亲/父亲节 > 节气
+  let label = '';
+  if (isChuXi) label = '除夕';
+  else if (lunarFest) label = lunarFest;
+  else if (solarFest) label = solarFest;
+  else if (mothersDay) label = '母亲节';
+  else if (fathersDay) label = '父亲节';
+  else if (termName) label = termName;
+  // 无名称但为放假日（连假中的无名日，如国庆 2~7 日）也返回标注：仅画绿线，不写字
+  if (!label && !off) return undefined;
 
   const isTermOnly =
     !isChuXi && !lunarFest && !solarFest && !mothersDay && !fathersDay && !!termName;

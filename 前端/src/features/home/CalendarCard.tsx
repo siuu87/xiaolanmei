@@ -96,7 +96,7 @@ export function CalendarCard() {
           const memorial = memorialOnDate(memorialDays, sy, sm, sd);
           if (memorial) return { label: memorial.title, kind: 'anniversary', memorial };
           const sp = daySpecial(sy, sm, sd);
-          if (sp) return { label: sp.label, kind: sp.off ? 'holiday' : 'festival' };
+          if (sp && sp.label) return { label: sp.label, kind: sp.off ? 'holiday' : 'festival' };
           return null;
         })()
       : null;
