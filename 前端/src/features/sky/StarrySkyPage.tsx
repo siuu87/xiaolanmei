@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Headphones, BookOpen, ChevronRight, Beer, Gamepad2, type LucideIcon } from 'lucide-react';
+import { ChefHat, Headphones, BookOpen, ChevronRight, Beer, Gamepad2, Tv, type LucideIcon } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
 import { VinylPlayer } from './VinylPlayer';
 import { Bookshelf } from './Bookshelf';
+import { WatchlistTV } from './WatchlistTV';
 
 function SectionTitle({ eyebrow, icon: Icon }: { eyebrow: string; icon: LucideIcon }) {
   return (
@@ -62,6 +63,11 @@ export function StarrySkyPage() {
           <section>
             <SectionTitle eyebrow="READ" icon={BookOpen} />
             <Bookshelf />
+          </section>
+
+          <section>
+            <SectionTitle eyebrow="WATCH" icon={Tv} />
+            <WatchlistTV />
           </section>
 
           <section>

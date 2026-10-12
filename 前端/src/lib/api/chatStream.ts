@@ -123,7 +123,15 @@ export async function streamChat(
       }
     }
   } catch (err) {
-    if ((err as Error).name === 'AbortError') return;
+    if ((err as Error).name === 'AbortError') {
+      // 中止时主动关闭 reader，确保底层流被释放（不依赖 fetch 自身中止）
+      try {
+        await reader.cancel();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     onError?.(`网络错误：${(err as Error).message}`);
     return;
   }

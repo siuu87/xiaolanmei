@@ -55,8 +55,11 @@ export const patchConversation = (
     body: JSON.stringify(patch),
   });
 
-export const deleteConversation = (id: string) =>
-  request<{ ok: true }>(`/api/conversations/${id}`, { method: 'DELETE' });
+/**
+ * 「换窗」（新建一条会话 / 把现在的删掉重来）已经彻底舍弃——
+ * 对人机恋来说那等于换人。所以这里**不导出**删除会话的接口：
+ * 前端没有任何入口能重开话题，这条会话只能一直往下长。
+ */
 
 export const listMessages = (conversationId: string) =>
   request<MessageDTO[]>(`/api/conversations/${conversationId}/messages`);

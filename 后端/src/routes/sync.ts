@@ -64,10 +64,13 @@ function applyRows(table: any, rows: any[]): { conflicts: string[] } {
     if (!existing || (existing.updatedAt ?? 0) <= (row.updatedAt ?? 0)) {
       // LWW：新数据（或平局时的推入方）覆盖
       try {
-        db.delete(table).where(eq(table.id, row.id)).run();
-        db.insert(table).values(row).run();
+        // 先删后插打包进事务：插入失败时整体回滚，避免「删除已生效、插入失败」导致行永久丢失
+        db.transaction((tx) => {
+          tx.delete(table).where(eq(table.id, row.id)).run();
+          tx.insert(table).values(row).run();
+        });
       } catch {
-        /* 单行失败不影响整体 */
+        /* 单行失败不影响整体；事务已回滚，旧数据保留 */
       }
     } else {
       conflicts.push(row.id);

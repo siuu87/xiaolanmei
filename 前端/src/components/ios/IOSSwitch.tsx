@@ -6,10 +6,12 @@ export interface IOSSwitchProps {
   defaultChecked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
+  /** 给自动化测试/读屏用的可访问名 */
+  'aria-label'?: string;
 }
 
 /** iOS 开关：绿色 = 开启，灰色 = 关闭（h-8 w-14，圆点 h-7 w-7） */
-export function IOSSwitch({ checked, defaultChecked, onCheckedChange, disabled }: IOSSwitchProps) {
+export function IOSSwitch({ checked, defaultChecked, onCheckedChange, disabled, 'aria-label': ariaLabel }: IOSSwitchProps) {
   const [inner, setInner] = useState(!!defaultChecked);
   const isChecked = checked !== undefined ? checked : inner;
 
@@ -25,6 +27,7 @@ export function IOSSwitch({ checked, defaultChecked, onCheckedChange, disabled }
       type="button"
       role="switch"
       aria-checked={isChecked}
+      aria-label={ariaLabel}
       onClick={toggle}
       disabled={disabled}
       className={cn(

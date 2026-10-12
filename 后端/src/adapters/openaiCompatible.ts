@@ -101,6 +101,7 @@ export function openaiCompatibleAdapter(config: OpenAIConfig): ChatAdapter {
       let usage: Usage | undefined;
       // 流式工具调用：按 index 累计 fragments
       const pendingToolCalls = new Map<number, ToolCall>();
+      let toolCallsYielded = false;
 
       try {
         for (;;) {
@@ -158,6 +159,7 @@ export function openaiCompatibleAdapter(config: OpenAIConfig): ChatAdapter {
             // finish_reason === 'tool_calls' 时把累计结果作为事件透出一次
             if (obj.choices?.[0]?.finish_reason === 'tool_calls' && pendingToolCalls.size > 0) {
               yield { type: 'tool_calls', toolCalls: [...pendingToolCalls.values()] };
+              toolCallsYielded = true;
             }
 
             const u = obj.usage;
@@ -177,6 +179,12 @@ export function openaiCompatibleAdapter(config: OpenAIConfig): ChatAdapter {
           message: `流式读取中断：${(err as Error).message}`,
         };
         return;
+      }
+
+      // 兜底：部分兼容端点把 tool_calls 放在 delta、但 finish_reason 非 'tool_calls'（如 stop / 缺失），
+      // 流结束时若仍有未透传的 tool_calls，这里补发一次，避免模型请求的工具被静默丢弃
+      if (pendingToolCalls.size > 0 && !toolCallsYielded) {
+        yield { type: 'tool_calls', toolCalls: [...pendingToolCalls.values()] };
       }
 
       yield { type: 'done', usage };

@@ -51,7 +51,15 @@ export async function timetableConfigRoutes(app: FastifyInstance): Promise<void>
     const totalWeeks = Number.isFinite(Number(body.totalWeeks))
       ? Math.max(1, Math.round(Number(body.totalWeeks)))
       : current.totalWeeks;
-    const periodTimes = Array.isArray(body.periodTimes) ? body.periodTimes : JSON.parse(current.periodTimes);
+    const periodTimes = Array.isArray(body.periodTimes)
+      ? body.periodTimes
+      : (() => {
+          try {
+            return JSON.parse(current.periodTimes) as { start: string; end: string }[];
+          } catch {
+            return [];
+          }
+        })();
     const ts = now();
     db.update(timetableConfig)
       .set({ totalWeeks, periodTimes: JSON.stringify(periodTimes), updatedAt: ts })

@@ -24,10 +24,26 @@ export interface CalendarDayDecoration {
   moodColors?: string[]; // 心情圆点颜色（我、TA）
   period?: 'solid' | 'predicted'; // 经期实心 / 预测虚环
   memorial?: boolean; // 纪念日金线
-  holiday?: boolean; // 放假日绿线
+  /** 手机日历那套右上角角标：休 = 休息/放假，班 = 调休补班（只标法定节假日和补班日，普通周末不标） */
+  workFlag?: '休' | '班';
   label?: string; // 节日/节气名称（标注文本）
   labelKind?: 'holiday' | 'term' | 'festival'; // 标注配色
   scheduleColors?: string[]; // 当日日程颜色（小方块，最多 3 个）
+}
+
+/** 右上角「休 / 班」角标：休用绿（法定节假日），班用橙（避开纪念日琥珀与经期玫瑰） */
+function WorkBadge({ flag }: { flag: '休' | '班' }) {
+  return (
+    <span
+      aria-label={flag === '休' ? '休息' : '调休补班'}
+      className={cn(
+        'absolute right-0 top-0 text-[9px] font-semibold leading-none',
+        flag === '休' ? 'text-emerald-400' : 'text-orange-400',
+      )}
+    >
+      {flag}
+    </span>
+  );
 }
 
 /** 节日/节气标注文本的配色：放假绿、节气琥珀、普通节日天蓝 */
@@ -52,7 +68,6 @@ function DayMarkers({ dec }: { dec?: CalendarDayDecoration }) {
     <>
       <span className="flex h-1 flex-col items-center justify-center gap-px">
         {dec?.memorial && <span className="h-0.5 w-6 rounded-full bg-amber-400" />}
-        {dec?.holiday && <span className="h-0.5 w-6 rounded-full bg-emerald-400" />}
       </span>
       <span className="flex h-1.5 items-center gap-0.5">
         {moodColors.map((c, i) => (
@@ -76,7 +91,6 @@ function CompactDots({ dec }: { dec?: CalendarDayDecoration }) {
         <span key={`m${i}`} className="h-1 w-1 rounded-full" style={{ backgroundColor: c }} />
       ))}
       {dec?.memorial && <span className="h-1 w-1 rounded-full bg-amber-400" />}
-      {dec?.holiday && <span className="h-0.5 w-4 rounded-full bg-emerald-400" />}
       {(dec?.scheduleColors ?? []).slice(0, 3).map((c, i) => (
         <span key={`s${i}`} className="h-1 w-1 rounded-[1px]" style={{ backgroundColor: c }} />
       ))}
@@ -255,7 +269,7 @@ export function CollapsibleCalendar({
                     aria-pressed={selected}
                     aria-label={ds}
                     className={cn(
-                      'flex h-12 min-w-9 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full px-2 font-serif text-sm transition',
+                      'relative flex h-12 min-w-9 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full px-2 font-serif text-sm transition',
                       selected
                         ? 'bg-primary text-primary-foreground shadow-[0_4px_10px_rgba(0,0,0,0.25)]'
                         : isCurrent
@@ -264,6 +278,7 @@ export function CollapsibleCalendar({
                       isToday && !selected && 'ring-2 ring-primary/60',
                     )}
                   >
+                    {dec?.workFlag && <WorkBadge flag={dec.workFlag} />}
                     <span className="text-[8px] uppercase leading-none opacity-60">
                       {weekdayInitialOf(y, m, d)}
                     </span>
@@ -307,8 +322,9 @@ export function CollapsibleCalendar({
                   onClick={() => onChange(ds)}
                   aria-pressed={selected}
                   aria-label={ds}
-                  className="flex flex-col items-center gap-0.5 py-1"
+                  className="relative flex flex-col items-center gap-0.5 py-1"
                 >
+                  {dec?.workFlag && <WorkBadge flag={dec.workFlag} />}
                   <span
                     className={cn(
                       'flex h-7 w-7 items-center justify-center rounded-full font-serif text-sm transition',

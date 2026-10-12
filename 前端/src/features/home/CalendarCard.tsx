@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Pencil } from 'lucide-react';
+import { Check, Pencil, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { periodSummary } from '@/lib/cycle';
 import { diaryDayKey, AUTHOR_LABEL } from '@/features/diary/diaryData';
 import { useDiaryStore } from '@/features/diary/diaryStore';
 import { CollapsibleCalendar, type CalendarDayDecoration } from '@/features/calendar/CollapsibleCalendar';
-import { daySpecial } from '@/features/calendar/chineseCalendar';
+import { daySpecial, dayWorkFlag } from '@/features/calendar/chineseCalendar';
+import { lunarTextOf } from '@/features/calendar/almanac';
+import { AlmanacPage } from '@/features/calendar/AlmanacPage';
+import { useMoodStore, moodColor, moodInfo, type MoodKey } from './moodStore';
 import {
   usePeriodStore,
   periodDayIndexOf,
@@ -26,32 +29,10 @@ import {
   formatMemorialDate,
   type MemorialDay,
 } from './memorialStore';
-import happyEmoji from 'emoji-datasource-apple/img/apple/64/1f604.png';
-import calmEmoji from 'emoji-datasource-apple/img/apple/64/1f60c.png';
-import sadEmoji from 'emoji-datasource-apple/img/apple/64/1f622.png';
-import angryEmoji from 'emoji-datasource-apple/img/apple/64/1f620.png';
-import loveEmoji from 'emoji-datasource-apple/img/apple/64/1f970.png';
-
-type Mood = 'happy' | 'calm' | 'sad' | 'angry' | 'love';
-
-// 心情选项：Apple 风格 emoji 图片 + 文字标签 + 圆点颜色
-const MOODS: { key: Mood; label: string; color: string; emoji: string }[] = [
-  { key: 'happy', label: '开心', color: '#f59e0b', emoji: happyEmoji },
-  { key: 'calm', label: '平静', color: '#10b981', emoji: calmEmoji },
-  { key: 'sad', label: '难过', color: '#3b82f6', emoji: sadEmoji },
-  { key: 'angry', label: '生气', color: '#ef4444', emoji: angryEmoji },
-  { key: 'love', label: '幸福', color: '#ec4899', emoji: loveEmoji },
-];
-
-function moodColor(m?: Mood): string | undefined {
-  return m ? MOODS.find((x) => x.key === m)?.color : undefined;
-}
-
-interface DayMood {
-  me?: Mood; // 我的心情
-  partner?: Mood; // 对方的心情（手动填写；AI 每日抓取尚未接入）
-}
-
+/**
+ * 心情在这里**只读**：选心情的入口已经统一收到首页日历上方的 MOOD 卡片。
+ * 三种心情（高兴·黄 / 平静·绿 / 难过·蓝）与首页用的是同一份定义、同一份存储。
+ */
 export function CalendarCard() {
   const navigate = useNavigate();
   const entries = useDiaryStore((s) => s.entries);
@@ -61,25 +42,32 @@ export function CalendarCard() {
   const setSetting = usePeriodStore((s) => s.setSetting);
   const toggleDay = usePeriodStore((s) => s.toggleDay);
   const memorialDays = useMemorialStore((s) => s.days);
+  const moodDays = useMoodStore((s) => s.days);
+  const loadMood = useMoodStore((s) => s.load);
+
+  useEffect(() => {
+    loadMood();
+  }, [loadMood]);
 
   // 折叠日历选中的日期（yyyy-mm-dd），null = 未选中
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [moods, setMoods] = useState<Record<string, DayMood>>({});
   const [showPeriodSettings, setShowPeriodSettings] = useState(false);
+  // 点农历那行 → 小米日历风格的黄历详情页
+  const [almanacOpen, setAlmanacOpen] = useState(false);
 
   // 选中日期解析
   const [sy, sm, sd] = selectedDate ? selectedDate.split('-').map(Number) : [0, 0, 0];
   // 非补零 key（与心情/日记查找、?date= 深链的 YYYY-M-D 一致）
   const selectedKey = selectedDate ? `${sy}-${sm}-${sd}` : null;
   const selectedISO = selectedDate; // 补零 ISO（经期用）
-  const selectedRec = selectedKey ? (moods[selectedKey] ?? {}) : {};
+  const selectedRec = selectedKey ? (moodDays[selectedKey] ?? {}) : {};
   const selectedIsToday = selectedDate === todayISODate();
-  const selectedMeInfo = selectedRec.me ? MOODS.find((x) => x.key === selectedRec.me) : undefined;
-  const selectedPartnerInfo = selectedRec.partner
-    ? MOODS.find((x) => x.key === selectedRec.partner)
-    : undefined;
-  // 是否显示心情区：今天（可填写）或已填过心情；过去没填则不显示
-  const showMood = selectedIsToday || !!selectedMeInfo || !!selectedPartnerInfo;
+  const selectedMeInfo = moodInfo(selectedRec.me);
+  const selectedAiInfo = moodInfo(selectedRec.ai);
+  // 是否显示心情区：今天或已填过心情；过去没填则不显示
+  const showMood = selectedIsToday || !!selectedMeInfo || !!selectedAiInfo;
+  // 选中日期的农历月日（拓展页那一行）
+  const lunarText = selectedDate ? lunarTextOf(sy, sm, sd) : null;
   // 选中日期当天的日记（无则 null → 仅今天显示「去记日记」）
   const diaryOfDay = selectedKey
     ? (entries.find((d) => diaryDayKey(d) === selectedKey) ?? null)
@@ -120,11 +108,6 @@ export function CalendarCard() {
   const selectedRecord = selectedISO ? recordFor(selectedISO, records) : null;
   const selectedSymptoms = selectedISO ? (selectedRecord?.symptoms[selectedISO] ?? null) : null;
 
-  const setMood = (mood: Mood) => {
-    if (!selectedKey) return;
-    setMoods((prev) => ({ ...prev, [selectedKey]: { ...(prev[selectedKey] ?? {}), me: mood } }));
-  };
-
   // 逐日调整经期：取消 / 延长 / 记入（由 store 按相邻关系决定）
   const toggleMark = () => {
     if (selectedISO) toggleDay(selectedISO);
@@ -141,13 +124,12 @@ export function CalendarCard() {
   const dayDecoration = (iso: string): CalendarDayDecoration | undefined => {
     const [y, m, d] = iso.split('-').map(Number);
     const key = `${y}-${m}-${d}`;
-    const rec = moods[key];
-    const moodColors = [moodColor(rec?.me), moodColor(rec?.partner)].filter(
-      (c): c is string => !!c,
-    );
+    const rec = moodDays[key];
+    // 日历格上的心情颜色点：我 在前，AI 在后
+    const moodColors = [moodColor(rec?.me), moodColor(rec?.ai)].filter((c): c is string => !!c);
     const memorial = !!memorialOnDate(memorialDays, y, m, d);
     const sp = daySpecial(y, m, d);
-    const holiday = !!sp?.off;
+    const workFlag = dayWorkFlag(y, m, d) ?? undefined;
     const periodIdx = periodDayIndexOf(iso, records);
     const period =
       periodIdx !== null
@@ -155,12 +137,12 @@ export function CalendarCard() {
         : isPredictedDay(iso, next, settings.periodDays)
           ? ('predicted' as const)
           : undefined;
-    if (!moodColors.length && !period && !memorial && !holiday && !sp?.label) return undefined;
+    if (!moodColors.length && !period && !memorial && !workFlag && !sp?.label) return undefined;
     return {
       moodColors,
       period,
       memorial,
-      holiday,
+      workFlag,
       label: sp?.label,
       labelKind: sp?.kind,
     };
@@ -168,6 +150,11 @@ export function CalendarCard() {
 
   return (
     <div className="overflow-hidden rounded-3xl bg-[#0f172a] shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+      {/* 黄历详情页（点拓展页里的农历打开） */}
+      {almanacOpen && selectedDate && (
+        <AlmanacPage y={sy} m={sm} d={sd} onBack={() => setAlmanacOpen(false)} />
+      )}
+
       {/* 折叠日历（无外壳，与下方详情同卡相接） */}
       <CollapsibleCalendar
         value={selectedDate}
@@ -192,62 +179,34 @@ export function CalendarCard() {
             </button>
           </div>
 
-          {/* 心情：两人 emoji 并排，今日可填写/修改；过去没填则不显示 */}
+          {/* 心情：只读展示。「心情」二字与两个人的心情图标同一行，图案与首页 MOOD 一致 */}
           {showMood && (
-            <div>
-              <div className="font-serif text-xs text-[#64748b]">心情</div>
-              <div className="mt-2 flex items-center justify-center gap-8">
-                <div className="flex flex-col items-center gap-1">
-                  {selectedMeInfo ? (
-                    <img src={selectedMeInfo.emoji} alt={selectedMeInfo.label} className="h-8 w-8" />
-                  ) : (
-                    <span className="h-8 w-8 rounded-full border border-dashed border-[#334155]" />
-                  )}
-                  <span className="text-[10px] text-[#64748b]">我</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  {selectedPartnerInfo ? (
-                    <img
-                      src={selectedPartnerInfo.emoji}
-                      alt={selectedPartnerInfo.label}
-                      className="h-8 w-8"
-                    />
-                  ) : (
-                    <span className="h-8 w-8 rounded-full border border-dashed border-[#334155]" />
-                  )}
-                  <span className="text-[10px] text-[#64748b]">TA</span>
-                </div>
+            <div className="flex items-center gap-3">
+              <span className="font-serif text-xs text-[#64748b]">心情</span>
+              <div className="flex flex-1 items-center justify-end gap-4">
+                <MoodChip who="我" mood={selectedRec.me} />
+                <MoodChip who="AI" mood={selectedRec.ai} />
               </div>
-
-              {selectedIsToday && (
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  {MOODS.map((m) => (
-                    <button
-                      key={m.key}
-                      type="button"
-                      onClick={() => setMood(m.key)}
-                      className="flex flex-col items-center gap-1.5 px-2 py-1 text-xs transition"
-                    >
-                      <img
-                        src={m.emoji}
-                        alt={m.label}
-                        draggable={false}
-                        className={cn(
-                          'h-7 w-7 select-none transition',
-                          selectedRec.me === m.key ? 'scale-110' : 'opacity-60',
-                        )}
-                      />
-                      <span
-                        className={cn(selectedRec.me === m.key && 'font-semibold')}
-                        style={{ color: m.color }}
-                      >
-                        {m.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
+          )}
+
+          {/* 农历：心情下方，点开是小米日历风格的黄历详情页 */}
+          {selectedDate && lunarText && (
+            <button
+              type="button"
+              onClick={() => setAlmanacOpen(true)}
+              aria-label={`查看${lunarText}黄历详情`}
+              className={cn(
+                'mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 transition',
+                'hover:bg-[#22304a]',
+              )}
+            >
+              <span className="font-serif text-xs text-[#64748b]">农历</span>
+              <span className="flex items-center gap-1 text-[13px] text-[#c9cede]">
+                {lunarText}
+                <ChevronRight className="h-3.5 w-3.5 text-[#64748b]" />
+              </span>
+            </button>
           )}
 
           {/* 经期：关怀语 + 症状 / 记入 + 设置 */}
@@ -335,29 +294,6 @@ export function CalendarCard() {
                   />
                 </div>
 
-                <div>
-                  <div className="font-serif text-xs text-[#64748b]">今日心情</div>
-                  <div className="mt-1.5 flex items-center justify-between px-1">
-                    {MOODS.map((m) => (
-                      <button
-                        key={m.key}
-                        type="button"
-                        onClick={() => selectedISO && setSymptom(selectedISO, { mood: m.key })}
-                        className="transition"
-                      >
-                        <img
-                          src={m.emoji}
-                          alt={m.label}
-                          draggable={false}
-                          className={cn(
-                            'h-7 w-7 select-none transition',
-                            selectedSymptoms?.mood === m.key ? 'scale-110' : 'opacity-40',
-                          )}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
 
@@ -469,3 +405,34 @@ export function CalendarCard() {
     </div>
   );
 }
+
+/**
+ * 一个人的心情（只读）：图案沿用首页 MOOD 那套弧线，颜色即心情色。
+ * 没填的日子画一个虚线空圈，不占颜色、也不假装"心情不错"。
+ */
+function MoodChip({ who, mood }: { who: string; mood?: MoodKey }) {
+  const info = moodInfo(mood);
+  return (
+    <div className="flex items-center gap-1.5">
+      {info ? (
+        <svg
+          viewBox="0 0 32 32"
+          className="h-6 w-6"
+          fill="none"
+          stroke={info.color}
+          strokeWidth={2.4}
+          strokeLinecap="round"
+          role="img"
+          aria-label={`${who}的心情：${info.label}`}
+        >
+          <path d={info.path} />
+        </svg>
+      ) : (
+        <span className="h-6 w-6 rounded-full border border-dashed border-[#334155]" />
+      )}
+      <span className="text-[10px] text-[#64748b]">{who}</span>
+    </div>
+  );
+}
+
+export default CalendarCard;

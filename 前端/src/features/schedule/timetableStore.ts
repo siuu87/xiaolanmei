@@ -153,6 +153,14 @@ export function coursesForDayWeek(courses: Course[], day: number, week: number):
 /** 某门课是否在上午（12 点前下课）；未设上下课时间时，默认上午为前 4 节 */
 export function isMorningCourse(c: Course, periodTimes: PeriodTime[]): boolean {
   const end = periodTimes[c.endPeriod - 1]?.end;
-  if (end) return end <= '12:00';
+  if (end) {
+    // 按分钟数值比较，避免 "9:30" 这类未补零时间被字典序误判
+    const m = /^(\d{1,2}):(\d{2})$/.exec(end.trim());
+    if (m) {
+      const mins = Number(m[1]) * 60 + Number(m[2]);
+      return mins <= 12 * 60;
+    }
+    return end <= '12:00';
+  }
   return c.endPeriod <= 4;
 }

@@ -82,7 +82,7 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
 
   // 运行编码任务（SSE）
   app.post('/agent/run', async (req: FastifyRequest, reply: FastifyReply) => {
-    const body = (req.body ?? {}) as { title?: string; prompt?: string; conversationId?: string };
+    const body = (req.body ?? {}) as { title?: string; prompt?: string; conversationId?: string; stationId?: string };
     const prompt = (body.prompt ?? '').trim();
     if (!prompt) {
       reply.code(400).send({ code: 'invalid_request', message: '缺少任务描述' });
@@ -106,7 +106,9 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
       .run();
 
     const controller = new AbortController();
+    let closed = false;
     const onClose = () => {
+      closed = true;
       if (!reply.raw.writableEnded) controller.abort();
     };
 
@@ -121,6 +123,8 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
     reply.raw.on('close', onClose);
 
     const write = (ev: AgentEvent) => {
+      // 客户端断开后写已关闭的 socket 会抛 ERR_STREAM_WRITE_AFTER_END / EPIPE，需先判 closed
+      if (closed || reply.raw.writableEnded) return;
       reply.raw.write(`data: ${JSON.stringify(ev)}\n\n`);
     };
 
@@ -130,6 +134,7 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
         taskId,
         prompt,
         conversationId: body.conversationId ?? null,
+        stationId: body.stationId ?? null,
         signal: controller.signal,
         onEvent: (ev) => {
           write(ev);
@@ -145,6 +150,6 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
     if (controller.signal.aborted) finalStatus = 'stopped';
 
     db.update(agentTasks).set({ status: finalStatus, updatedAt: now() }).where(eq(agentTasks.id, taskId)).run();
-    reply.raw.end();
+    if (!reply.raw.writableEnded) reply.raw.end();
   });
 }

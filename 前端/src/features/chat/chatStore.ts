@@ -162,10 +162,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   load: async () => {
     try {
-      let conv = (await api.listConversations())[0];
-      if (!conv) {
-        conv = await api.createConversation(uid(), DEFAULT_TITLE);
-      }
+      /**
+       * 「换窗」已彻底移除：整个 App 只有这一条会话，永不断裂。
+       *
+       * 永远认**最早**的那一条，而不是列表的第一条——
+       * 后端排序一变（pinned、updatedAt 之类），取 [0] 就会跳到另一条会话上，
+       * 那跟换窗没区别：等于换了一个人。按 createdAt 取最早，才真的是同一条。
+       */
+      const all = await api.listConversations();
+      const conv = all.length
+        ? [...all].sort((a, b) => a.createdAt - b.createdAt)[0]
+        : await api.createConversation(uid(), DEFAULT_TITLE);
       const msgs = await api.listMessages(conv.id);
       set({
         conversation: {

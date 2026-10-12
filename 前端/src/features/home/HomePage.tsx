@@ -1,4 +1,5 @@
 import { AnniversaryCard } from './AnniversaryCard';
+import { MoodCard } from './MoodCard';
 import { CalendarCard } from './CalendarCard';
 import { CourseCard } from './CourseCard';
 import { TodoCard } from './TodoCard';
@@ -21,6 +22,7 @@ export function HomePage() {
       <div className="relative space-y-4">
         {/* 置顶区域：有置顶纪念日才显示，否则留空 */}
         {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
+        <MoodCard />
         <CalendarCard />
         <PeriodHint />
         <HealthIndicator />

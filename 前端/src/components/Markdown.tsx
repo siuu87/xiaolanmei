@@ -44,7 +44,11 @@ const components: Components = {
   pre: ({ children }) => <>{children}</>,
   code: ({ className, children }) => {
     const match = /language-(\w+)/.exec(className || '');
-    const text = String(children).replace(/\n$/, '');
+    // children 可能是嵌套节点数组，直接 String() 会得到 "[object Object]"，这里提取纯文本
+    const raw = Array.isArray(children)
+      ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
+      : String(children);
+    const text = raw.replace(/\n$/, '');
     const block = !!match || text.includes('\n');
     if (block) {
       return <CodeBlock language={match?.[1]} code={text} />;

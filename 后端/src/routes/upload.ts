@@ -45,13 +45,12 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
     const comma = data.indexOf(',');
     if (data.startsWith('data:') && comma !== -1) data = data.slice(comma + 1);
 
-    let buffer: Buffer;
-    try {
-      buffer = Buffer.from(data, 'base64');
-    } catch {
+    // Node 的 Buffer.from(base64) 对非法 base64 不会抛错而是静默截断，这里先做字符集校验
+    if (!/^[A-Za-z0-9+/=\s-_]*$/.test(data)) {
       reply.code(400).send({ message: '图片数据不是合法的 base64' });
       return;
     }
+    const buffer = Buffer.from(data, 'base64');
     if (buffer.length === 0 || buffer.length > MAX_BYTES) {
       reply.code(400).send({ message: `图片大小需在 1B ~ ${MAX_BYTES / 1024 / 1024}MB 之间` });
       return;

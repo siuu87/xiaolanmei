@@ -13,7 +13,6 @@ import {
   Loader2,
   MessageCircle,
   Moon,
-  Palette,
   Pencil,
   Plus,
   SlidersHorizontal,
@@ -24,20 +23,14 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import {
-  useAppStore,
-  ACCENT_HSL,
-  ACCENT_PRESETS,
-  type Accent,
-  type NumFont,
-  type Theme,
-} from '@/stores/appStore';
 import { useProfileStore } from '@/stores/profileStore';
 import { getSettings, updateSettings } from '@/lib/api/settings';
 import { useStationStore } from '@/stores/stationStore';
 import type { Station } from '@/lib/api/stations';
 import { MemoryPanel } from '@/features/memory/MemoryPage';
 import { SyncPanel } from '@/features/sync/SyncPage';
+import { DataCorePage } from '@/features/tavern/phone/datacore/DataCorePage';
+import { AppearanceSection } from './AppearanceSection';
 import { SkillsPanel } from '@/features/skills/SkillsPanel';
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StickerSettings } from './StickerSettings';
@@ -55,11 +48,6 @@ import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
 import { IOSSwitch } from '@/components/ios/IOSSwitch';
 import { IOSProfileCard } from '@/components/ios/ProfileCard';
-
-const NUM_FONT_PRESETS = [
-  { key: 'serif', name: '飘逸衬线', fontFamily: "'Playfair Display', Georgia, serif" },
-  { key: 'sans', name: '现代无衬线', fontFamily: 'Inter, system-ui, sans-serif' },
-] as const;
 
 const inputCls =
   'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
@@ -104,13 +92,6 @@ function fmtTime(ts: number): string {
 /** 设置页（iOS 风格）：把原设置页的各区块收进 iOS 分组，点击条目内联展开，业务逻辑不变。 */
 export function SettingsPage() {
   const navigate = useNavigate();
-
-  const theme = useAppStore((s) => s.theme);
-  const setTheme = useAppStore((s) => s.setTheme);
-  const numFont = useAppStore((s) => s.numFont);
-  const setNumFont = useAppStore((s) => s.setNumFont);
-  const accent = useAppStore((s) => s.accent);
-  const setAccent = useAppStore((s) => s.setAccent);
 
   const name = useProfileStore((s) => s.name);
   const avatar = useProfileStore((s) => s.avatar);
@@ -236,6 +217,14 @@ export function SettingsPage() {
 
       <div className="h-5" />
 
+      {/*
+        外观：从中枢里搬出来独立成组。
+        去掉了壁纸、作用域这些只有小手机才用得到的项，剩下的每项点开都是弹窗或展开。
+      */}
+      <AppearanceSection />
+
+      <div className="h-5" />
+
       {/* 备忘录 */}
       <IOSSettingGroup title="备忘录">
         <IOSSettingItem
@@ -339,6 +328,21 @@ export function SettingsPage() {
 
       <div className="h-5" />
 
+      {/*
+        数据中枢：直接把小手机里那套中枢整块搬过来。
+        同一个组件、同一份 localStorage 数据——在这儿改记忆/备份/主题，小手机里立刻一样，反之亦然。
+      */}
+      <IOSSettingGroup title="数据中枢">
+        <p className="px-4 py-2.5 text-[11px] leading-relaxed text-gray-500 dark:text-zinc-400">
+          和小手机「中枢」是同一套界面与同一份数据：存储占用、主角可见上下文、记忆区、快照备份。外观已单独提到上方。
+        </p>
+        <div className="h-[600px] overflow-hidden">
+          <DataCorePage panels={['storage', 'bridge', 'memory', 'backup']} />
+        </div>
+      </IOSSettingGroup>
+
+      <div className="h-5" />
+
       {/* 提醒与身体状态 */}
       <IOSSettingGroup title="提醒与身体状态">
         <IOSSettingItem
@@ -378,89 +382,6 @@ export function SettingsPage() {
 
       {/* 通用 */}
       <IOSSettingGroup title="通用">
-        <IOSSettingItem
-          icon={<Palette className="h-4 w-4" />}
-          iconBg="bg-amber-400"
-          title="外观"
-          subtitle="主题、强调色、数字字体"
-          value={theme === 'light' ? '浅色' : '深色'}
-          showChevron
-          onClick={() => toggle('appearance')}
-        />
-        {expanded === 'appearance' && (
-          <div className="space-y-4 bg-gray-50/60 px-4 py-4 dark:bg-zinc-950/40">
-            <div>
-              <div className="mb-1.5 text-[13px] font-medium text-gray-500 dark:text-zinc-400">主题</div>
-              <div className="flex gap-2">
-                {(['light', 'dark'] as Theme[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTheme(t)}
-                    className={cn(
-                      'rounded-lg px-4 py-1.5 text-sm transition',
-                      theme === t
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-300',
-                    )}
-                  >
-                    {t === 'light' ? '浅色' : '深色'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-1.5 text-[13px] font-medium text-gray-500 dark:text-zinc-400">强调色</div>
-              <div className="flex flex-wrap gap-3">
-                {ACCENT_PRESETS.map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => setAccent(p.key as Accent)}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-xs transition',
-                      accent === p.key
-                        ? 'bg-primary/15 text-foreground ring-1 ring-primary'
-                        : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-300',
-                    )}
-                  >
-                    <span
-                      className="h-5 w-5 rounded-full"
-                      style={{ backgroundColor: `hsl(${ACCENT_HSL[p.key]})` }}
-                    />
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-1.5 text-[13px] font-medium text-gray-500 dark:text-zinc-400">数字字体</div>
-              <div className="grid grid-cols-2 gap-2">
-                {NUM_FONT_PRESETS.map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => setNumFont(p.key as NumFont)}
-                    className={cn(
-                      'flex flex-col items-center gap-1 rounded-xl border p-3 transition',
-                      numFont === p.key
-                        ? 'border-primary bg-primary/10'
-                        : 'border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-900',
-                    )}
-                  >
-                    <span className="text-xl leading-none" style={{ fontFamily: p.fontFamily }}>
-                      0123456789
-                    </span>
-                    <span className="text-xs text-foreground">{p.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         <IOSSettingItem
           icon={<Heart className="h-4 w-4" />}
           iconBg="bg-pink-400"

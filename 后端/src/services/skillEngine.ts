@@ -92,7 +92,7 @@ export function buildSkillContext(query: string, manual?: string[]): string {
   return matches
     .map(
       ({ skill, reason }) =>
-        `<skill name="${escapeXml(skill.name)}" trigger="${escapeXml(reason)}">${skill.instruction}</skill>`,
+        `<skill name="${escapeXml(skill.name)}" trigger="${escapeXml(reason)}">${escapeXml(skill.instruction)}</skill>`,
     )
     .join('\n');
 }

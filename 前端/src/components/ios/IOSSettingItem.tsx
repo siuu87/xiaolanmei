@@ -29,45 +29,54 @@ export function IOSSettingItem({
   destructive,
   showChevron,
 }: IOSSettingItemProps) {
+  /**
+   * 外层用 div，点击区只在「图标 + 文字」这个 button 上：
+   * trailing 里常放 IOSSwitch（它自己就是 button），套在 button 里就是 <button> 套 <button>，
+   * 属于非法 DOM 嵌套，部分浏览器里内层点击根本不触发。
+   */
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={cn(
         'flex w-full items-center gap-3 px-4 py-3 text-left transition',
         onClick ? 'cursor-pointer active:bg-gray-100 dark:active:bg-zinc-800' : 'cursor-default',
       )}
     >
-      {icon && (
-        <span
-          className={cn(
-            'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-white',
-            iconBg ?? 'bg-gray-400',
-          )}
-        >
-          {icon}
-        </span>
-      )}
-      <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            'block text-[16px] leading-tight',
-            destructive ? 'text-red-500' : 'text-gray-900 dark:text-gray-100',
-          )}
-        >
-          {title}
-        </span>
-        {subtitle && (
-          <span className="mt-0.5 block text-[13px] text-gray-500 dark:text-zinc-400">
-            {subtitle}
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        {icon && (
+          <span
+            className={cn(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-white',
+              iconBg ?? 'bg-gray-400',
+            )}
+          >
+            {icon}
           </span>
         )}
-      </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              'block text-[16px] leading-tight',
+              destructive ? 'text-red-500' : 'text-gray-900 dark:text-gray-100',
+            )}
+          >
+            {title}
+          </span>
+          {subtitle && (
+            <span className="mt-0.5 block text-[13px] text-gray-500 dark:text-zinc-400">
+              {subtitle}
+            </span>
+          )}
+        </span>
+      </button>
       {value && <span className="shrink-0 text-[16px] text-gray-400 dark:text-zinc-500">{value}</span>}
       {trailing}
       {showChevron && !trailing && (
         <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 dark:text-zinc-600" />
       )}
-    </button>
+    </div>
   );
 }

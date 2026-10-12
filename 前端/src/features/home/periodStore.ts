@@ -22,7 +22,9 @@ export {
 /** 兼容旧名：预测下一次经期开始日 */
 export const predictNextStart = predictNextPeriod;
 
-export type MoodKey = 'happy' | 'calm' | 'sad' | 'angry' | 'love';
+/** 心情统一用 moodStore 里那三种（高兴 / 平静 / 难过），这里不再另立一套 */
+export type { MoodKey } from './moodStore';
+import type { MoodKey as SharedMoodKey } from './moodStore';
 
 /** 经期某天记录的痛经程度：0 无 / 1 轻微 / 2 中等 / 3 严重 */
 export const CRAMP_LEVELS = ['无', '轻微', '中等', '严重'] as const;
@@ -31,7 +33,7 @@ export const CRAMP_LEVELS = ['无', '轻微', '中等', '严重'] as const;
 export interface PeriodSymptoms {
   cramps: number; // 痛经程度 0-3
   discomfort: string; // 其他不适
-  mood?: MoodKey; // 今日心情（经期）
+  mood?: SharedMoodKey; // 今日心情（经期）
 }
 
 /** 一条经期记录：days 为标记为经期的日期集合（升序，第 1 天 = days[0]） */
@@ -79,7 +81,7 @@ export function careMessage(
     const tips: string[] = [];
     if (sym) {
       if (sym.cramps >= 2) tips.push('痛经的话别硬撑，喝点热的、好好休息');
-      if (sym.mood === 'sad' || sym.mood === 'angry') tips.push('看起来有点难受，我陪着你');
+      if (sym.mood === 'sad') tips.push('看起来有点难受，我陪着你');
     }
     if (tips.length) return `经期第 ${idx} 天，${tips.join('，')} 🫐`;
     return `经期第 ${idx} 天，注意保暖、别贪凉～ 🫐`;

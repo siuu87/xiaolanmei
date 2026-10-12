@@ -64,13 +64,13 @@ export function getAdapterConfig(stationId?: string | null): { baseUrl: string; 
   };
 }
 
-/** 模型运行参数：temperature 仍为全局；默认模型 = 默认站子第一个模型 → legacy → env。 */
-export function getModelConfig(): {
+/** 模型运行参数：temperature 仍为全局；默认模型 = 指定站子（缺省默认站子）第一个模型 → legacy → env。 */
+export function getModelConfig(stationId?: string | null): {
   model: string;
   temperature: number | undefined;
 } {
   const temperature = getSettingValue<number | null>('model.temperature', null);
-  const st = resolveStation();
+  const st = resolveStation(stationId);
   const model = st?.models ? parseModels(st.models)[0] : undefined;
   return {
     model: model || getSettingValue<string>(LEGACY.defaultModel, env.defaultModel),

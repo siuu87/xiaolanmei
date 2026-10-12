@@ -16,7 +16,7 @@ export interface BalanceResult {
 }
 
 const CACHE_TTL = 60_000; // 上游余额变动慢，60 秒内复用，避免前端每 30 秒刷新就打到上游
-let cache: { at: number; result: BalanceResult } | null = null;
+let cache: { at: number; key: string; result: BalanceResult } | null = null;
 
 function detectProvider(baseUrl: string): string {
   try {
@@ -79,12 +79,14 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
   app.get('/billing/balance', async () => {
     const { baseUrl, apiKey } = getAdapterConfig();
     const provider = detectProvider(baseUrl);
+    const cacheKey = `${provider}|${baseUrl}`;
 
-    if (cache && Date.now() - cache.at < CACHE_TTL) return cache.result;
+    // 缓存按「供应商 + Base URL」区分，切换站子不会返回陈旧余额
+    if (cache && cache.key === cacheKey && Date.now() - cache.at < CACHE_TTL) return cache.result;
 
     const notSupported = (source: string) => {
       const result = unavailable(provider, source);
-      cache = { at: Date.now(), result };
+      cache = { at: Date.now(), key: cacheKey, result };
       return result;
     };
 
@@ -98,7 +100,7 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
     } catch (err) {
       result = unavailable(provider, (err as Error).message);
     }
-    cache = { at: Date.now(), result };
+    cache = { at: Date.now(), key: cacheKey, result };
     return result;
   });
 }

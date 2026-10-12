@@ -35,6 +35,10 @@ export function dayStatus(day: MemorialDay, today: string = todayISODate()): Day
   const ty = Number(today.slice(0, 4));
   const tm = Number(today.slice(5, 7));
   const td = Number(today.slice(8, 10));
+
+  // 日期格式非法时（缺段/非数字）兜底为「今天」，避免产生 NaN 天数
+  if (![m, d, ty, tm, td].every((n) => Number.isFinite(n))) return { kind: 'today', count: 0 };
+
   const todayDate = new Date(ty, tm - 1, td);
 
   if (day.repeat === 'none') {

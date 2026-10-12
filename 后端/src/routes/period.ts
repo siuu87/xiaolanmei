@@ -36,6 +36,17 @@ function toDTO(r: typeof periodRecords.$inferSelect): PeriodRecordDTO {
   return { id: r.id, days, symptoms };
 }
 
+/** 从 days 的 JSON 字符串安全解析出第一条日期（用于排序，避免按整段 JSON 字符串比较） */
+function firstDayOf(daysJson: string): string {
+  try {
+    const arr = JSON.parse(daysJson) as unknown[];
+    if (Array.isArray(arr) && typeof arr[0] === 'string') return arr[0];
+  } catch {
+    /* 损坏数据兜底 */
+  }
+  return '';
+}
+
 export async function periodRoutes(app: FastifyInstance): Promise<void> {
   app.get('/period', async () => ({
     settings: getSettingValue(PERIOD_SETTINGS_KEY, DEFAULT_SETTINGS),
@@ -44,7 +55,11 @@ export async function periodRoutes(app: FastifyInstance): Promise<void> {
       .from(periodRecords)
       .all()
       .filter((r) => r.deletedAt == null)
-      .sort((a, b) => a.days.localeCompare(b.days))
+      .sort((a, b) => {
+        const d0 = firstDayOf(a.days);
+        const d1 = firstDayOf(b.days);
+        return d0 < d1 ? -1 : d0 > d1 ? 1 : 0;
+      })
       .map(toDTO),
   }));
 

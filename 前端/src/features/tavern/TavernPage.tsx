@@ -16,7 +16,9 @@ import {
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useImmersiveStore } from '@/stores/immersiveStore';
 import { StarBackdrop } from '@/features/sky/StarBackdrop';
+import { PhoneApp } from './phone/PhoneApp';
 import {
   listTavernCharacters,
   createTavernCharacter,
@@ -38,15 +40,31 @@ import {
 
 type Tab = 'characters' | 'worldbook' | 'personas';
 
+/**
+ * 酒馆页的两种形态：
+ * - phone  小手机（默认，进入酒馆即呈现）
+ * - config 配置台（角色卡 / 世界书 / 人设卡），从手机内「卡片库」的设置入口进入
+ */
+type TavernView = 'phone' | 'config';
+
 const inputCls =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none focus:border-white/30';
 const btnCls =
   'rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-white/15 disabled:opacity-40';
 
-/** 酒馆（SillyTavern 风格 AI 角色扮演）：角色卡 / 世界书 / 人设卡 + 沉浸式聊天，数据走 /api/tavern */
+/** 酒馆 = 小手机：进入即呈现拟物手机（聊天 / 通讯录 / 群聊 / 朋友圈 / 卡片库） */
 export function TavernPage() {
   const navigate = useNavigate();
+  const setImmersive = useImmersiveStore((s) => s.setImmersive);
+  const [view, setView] = useState<TavernView>('phone');
   const [tab, setTab] = useState<Tab>('characters');
+
+  // 进入小手机 = 沉浸式（收起 App 侧边栏与底部导航）；配置台形态保留导航
+  useEffect(() => {
+    setImmersive(view === 'phone');
+  }, [view, setImmersive]);
+  // 离开酒馆页无论如何都要把导航还回去
+  useEffect(() => () => setImmersive(false), [setImmersive]);
   const [characters, setCharacters] = useState<TavernCharacter[]>([]);
   const [worldbook, setWorldbook] = useState<TavernWorldbookEntry[]>([]);
   const [personas, setPersonas] = useState<TavernPersona[]>([]);
@@ -82,6 +100,21 @@ export function TavernPage() {
     return <TavernChat character={chatChar} personaId={activePersonaId} onExit={() => setChatChar(null)} />;
   }
 
+  // 酒馆默认形态：小手机（独立封装，不共享下方的配置台状态）
+  //
+  // 沉浸式：外层不放任何 App 级导航（侧边栏 / 底部 Tab 已在 AppLayout 里收起），
+  // 也不放标题栏——只有小手机自己顶部的退出键。配置台入口挪进「卡片库」页右上角。
+  if (view === 'phone') {
+    return (
+      <div className="relative flex h-full min-h-full flex-col bg-[#070b1a] text-slate-200">
+        <StarBackdrop />
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
+          <PhoneApp onExit={() => navigate('/sky')} onOpenConfig={() => setView('config')} />
+        </div>
+      </div>
+    );
+  }
+
   const TABS: { key: Tab; label: string; icon: typeof Bot }[] = [
     { key: 'characters', label: '角色卡', icon: Bot },
     { key: 'worldbook', label: '世界书', icon: BookMarked },
@@ -95,15 +128,15 @@ export function TavernPage() {
         <header className="mb-6 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate('/sky')}
-            aria-label="返回"
+            onClick={() => setView('phone')}
+            aria-label="返回小手机"
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-1 items-center justify-center gap-2 text-center">
             <Beer className="h-4 w-4 text-amber-300" />
-            <h1 className="text-xl font-bold text-slate-100">酒馆</h1>
+            <h1 className="text-xl font-bold text-slate-100">酒馆设置</h1>
           </div>
           <span className="w-8" />
         </header>

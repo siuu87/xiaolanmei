@@ -128,9 +128,10 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
   }, []);
 
   // AI 专属推荐：点击 Tab 时触发（LLM 较慢，先展示加载动画）
+  // 依赖数组只含 active，避免 setAiLoading(true) 触发自身 effect 重跑、把 cancelled 提前置真而丢弃结果
   useEffect(() => {
     if (active !== 'ai') return;
-    if (aiTracks || aiFallback || aiError || aiLoading) return;
+    if (aiTracks || aiFallback || aiError) return;
     let cancelled = false;
     (async () => {
       setAiLoading(true);
@@ -161,7 +162,8 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
     return () => {
       cancelled = true;
     };
-  }, [active, aiTracks, aiFallback, aiError, aiLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   const toggleAdd = (id: string) => {
     setAdded((prev) => {

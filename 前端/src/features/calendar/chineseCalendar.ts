@@ -64,6 +64,19 @@ function isNthWeekday(y: number, m: number, d: number, n: number, weekday: numbe
 
 /** 某天的节日/节气标注；无标注返回 undefined */
 export function daySpecial(y: number, m: number, d: number): DaySpecial | undefined {
+  const key = `${y}-${m}-${d}`;
+  const hit = specialCache.get(key);
+  if (hit !== undefined) return hit ?? undefined;
+  const v = computeDaySpecial(y, m, d);
+  // 「休/班」要往前后各看 10 天，一格要算 20 次，不缓存的话翻月会明显卡
+  if (specialCache.size > 4000) specialCache.clear();
+  specialCache.set(key, v ?? null);
+  return v;
+}
+
+const specialCache = new Map<string, DaySpecial | null>();
+
+function computeDaySpecial(y: number, m: number, d: number): DaySpecial | undefined {
   const lunar = lunarOf(y, m, d);
   if (!lunar) return undefined;
   const lMonth = lunar.lMonth;
@@ -112,4 +125,53 @@ export function daySpecial(y: number, m: number, d: number): DaySpecial | undefi
   const kind: DaySpecial['kind'] = off ? 'holiday' : isTermOnly ? 'term' : 'festival';
 
   return { label, off, kind };
+}
+
+/* ------------------------------ 休 / 班 角标 ------------------------------ */
+
+/** 手机日历右上角那两个小标记：休息/放假 = 休，调休补班 = 班 */
+export type WorkFlag = '休' | '班';
+
+/**
+ * 官方公布的调休补班日（周末却要上班），yyyy-mm-dd。
+ * 2026 年的部分按国务院办公厅公布的放假安排填；之后年份逐年往这里补。
+ */
+const OFFICIAL_MAKEUP: string[] = [
+  // 2026 春节（2/15–2/22 放假调休）
+  '2026-02-14',
+  '2026-02-28',
+  // 2026 劳动节（5/1–5/5 放假调休）
+  '2026-04-26',
+  '2026-05-09',
+];
+
+/** 官方公布的调休放假日（工作日却放假 / 连假里的普通周末也按官方日历标「休」），yyyy-mm-dd */
+const OFFICIAL_OFF: string[] = [
+  // 2026 春节连假首日（周日，但属于法定假期区间）
+  '2026-02-15',
+  // 2026 清明 4/4–4/6 三天（首尾两天单靠节气只标得到 4/5）
+  '2026-04-04',
+  '2026-04-06',
+  // 2026 端午连假的周末两天
+  '2026-06-20',
+  '2026-06-21',
+];
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * 判断某天该标「休」还是「班」（对齐中国日历的做法）：
+ * - 官方调休表里有 → 直接按表来
+ * - 法定放假日（含连休里的日子）→ 休
+ * - **普通周末 → 不标**：正常周六日谁都看得出是休息，标了反而吵；
+ *   只有法定节假日标「休」、调休补班日标「班」。
+ */
+export function dayWorkFlag(y: number, m: number, d: number): WorkFlag | null {
+  const iso = `${y}-${pad2(m)}-${pad2(d)}`;
+  if (OFFICIAL_MAKEUP.includes(iso)) return '班';
+  if (OFFICIAL_OFF.includes(iso)) return '休';
+
+  if (daySpecial(y, m, d)?.off) return '休';
+
+  return null;
 }

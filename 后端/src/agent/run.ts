@@ -45,14 +45,15 @@ export interface CodingAgentOptions {
   taskId: string;
   prompt: string;
   conversationId?: string | null;
+  stationId?: string | null;
   signal?: AbortSignal;
   onEvent: (ev: AgentEvent) => void;
 }
 
 export async function runCodingAgent(opts: CodingAgentOptions): Promise<void> {
   const { taskId, prompt, conversationId, signal, onEvent } = opts;
-  const { model, temperature } = getModelConfig();
-  const adapter = openaiCompatibleAdapter(getAdapterConfig());
+  const { model, temperature } = getModelConfig(opts.stationId);
+  const adapter = openaiCompatibleAdapter(getAdapterConfig(opts.stationId));
   const started = now();
 
   const messages: ChatMessage[] = [

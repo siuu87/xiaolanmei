@@ -140,6 +140,7 @@ export function AnniversaryCard({ memorial }: { memorial: MemorialDay }) {
             onChange={(e) => setDraft(e.target.value)}
             onBlur={confirmEdit}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               if (e.key === 'Enter') confirmEdit();
               if (e.key === 'Escape') cancelEdit();
             }}

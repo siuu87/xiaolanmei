@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Pencil, Trash2, X, Sparkles, Dices, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -99,11 +99,20 @@ export function FoodPage() {
 
   const [editing, setEditing] = useState<FormState | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const drawTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 卸载时清理「摇一摇」定时器，避免跳转后回调对已卸载组件 setState
+  useEffect(
+    () => () => {
+      if (drawTimerRef.current != null) window.clearTimeout(drawTimerRef.current);
+    },
+    [],
+  );
 
   const setTab = (t: DishType) => setParams({ tab: t });
 
@@ -123,7 +132,7 @@ export function FoodPage() {
   const draw = async () => {
     if (shaking) return;
     setShaking(true);
-    setTimeout(async () => {
+    drawTimerRef.current = window.setTimeout(async () => {
       setShaking(false);
       try {
         const res = await randomDish(tab);
@@ -272,7 +281,10 @@ export function FoodPage() {
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSearchEnter()}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+              if (e.key === 'Enter') onSearchEnter();
+            }}
             placeholder="搜一道菜…（含芒果会被拦下 🥭）"
             className="h-9 flex-1 bg-transparent text-sm outline-none"
           />
