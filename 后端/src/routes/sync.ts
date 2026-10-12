@@ -15,6 +15,11 @@ import {
   memorials,
   notes,
   periodRecords,
+  moods,
+  watchItems,
+  phoneContacts,
+  phoneSessions,
+  phoneMoments,
 } from '../db/schema.js';
 import { getSettingValue, setSetting } from './settings.js';
 
@@ -42,6 +47,11 @@ const SYNCABLE: Record<string, any> = {
   memorials,
   notes,
   period_records: periodRecords,
+  moods,
+  watch_items: watchItems,
+  phone_contacts: phoneContacts,
+  phone_sessions: phoneSessions,
+  phone_moments: phoneMoments,
 };
 
 const NODE_KEY = 'sync.nodeId';

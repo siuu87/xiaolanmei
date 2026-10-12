@@ -262,6 +262,76 @@ CREATE TABLE IF NOT EXISTS period_records (
   deleted_at INTEGER
 );
 
+/** 每日心情（阶段 P2 数据单源化）：id 即日期 key（非补零 YYYY-M-D，与前端 moodStore 一致），me/ai 为两人当天心情 */
+CREATE TABLE IF NOT EXISTS moods (
+  id TEXT PRIMARY KEY,
+  me TEXT,
+  ai TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+/** 追剧片单（阶段 P2 数据单源化）：一级分类 movie/anime/show × 二级状态 planned/watched */
+CREATE TABLE IF NOT EXISTS watch_items (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'planned',
+  poster TEXT,
+  note TEXT,
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+/** 酒馆小手机 · 联系人（阶段 P2 数据单源化）：基本由角色卡派生，仍整体持久化防规则变化丢数据 */
+CREATE TABLE IF NOT EXISTS phone_contacts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  avatar TEXT,
+  character_id TEXT NOT NULL DEFAULT '',
+  signature TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+/** 酒馆小手机 · 会话（单聊/群聊统一模型；messages 存 JSON 数组） */
+CREATE TABLE IF NOT EXISTS phone_sessions (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'single',
+  target_id TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  avatar TEXT,
+  member_ids TEXT NOT NULL DEFAULT '[]',
+  mode TEXT NOT NULL DEFAULT 'online',
+  pinned INTEGER NOT NULL DEFAULT 0,
+  unread INTEGER NOT NULL DEFAULT 0,
+  last_active_at INTEGER NOT NULL DEFAULT 0,
+  messages TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+/** 酒馆小手机 · 朋友圈动态（images/likes/comments 存 JSON） */
+CREATE TABLE IF NOT EXISTS phone_moments (
+  id TEXT PRIMARY KEY,
+  author_name TEXT NOT NULL DEFAULT '',
+  author_avatar TEXT,
+  content TEXT NOT NULL DEFAULT '',
+  images TEXT NOT NULL DEFAULT '[]',
+  likes TEXT NOT NULL DEFAULT '[]',
+  comments TEXT NOT NULL DEFAULT '[]',
+  mine INTEGER NOT NULL DEFAULT 0,
+  location TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS courses (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

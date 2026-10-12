@@ -28,6 +28,8 @@ import { todoRoutes } from './routes/todos.js';
 import { memorialRoutes } from './routes/memorials.js';
 import { noteRoutes } from './routes/notes.js';
 import { periodRoutes } from './routes/period.js';
+import { moodRoutes } from './routes/moods.js';
+import { watchlistRoutes } from './routes/watchlist.js';
 import { courseRoutes } from './routes/courses.js';
 import { timetableConfigRoutes } from './routes/timetableConfig.js';
 import { stickerRoutes } from './routes/stickers.js';
@@ -39,6 +41,7 @@ import { profileRoutes } from './routes/profiles.js';
 import { readingRoutes } from './routes/reading.js';
 import { dishRoutes } from './routes/dishes.js';
 import { tavernRoutes } from './routes/tavern.js';
+import { phoneRoutes } from './routes/phone.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
 
 async function main(): Promise<void> {
@@ -76,6 +79,8 @@ async function main(): Promise<void> {
   await app.register(memorialRoutes, { prefix: '/api' });
   await app.register(noteRoutes, { prefix: '/api' });
   await app.register(periodRoutes, { prefix: '/api' });
+  await app.register(moodRoutes, { prefix: '/api' });
+  await app.register(watchlistRoutes, { prefix: '/api' });
   await app.register(courseRoutes, { prefix: '/api' });
   await app.register(timetableConfigRoutes, { prefix: '/api' });
   await app.register(stickerRoutes, { prefix: '/api' });
@@ -87,6 +92,7 @@ async function main(): Promise<void> {
   await app.register(readingRoutes, { prefix: '/api' });
   await app.register(dishRoutes, { prefix: '/api' });
   await app.register(tavernRoutes, { prefix: '/api' });
+  await app.register(phoneRoutes, { prefix: '/api' });
 
   /*
    * Host 化（阶段 1）：前端产物就托管在这里，一个进程=完整应用。

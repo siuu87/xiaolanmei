@@ -9,8 +9,13 @@
  *   高兴 = 上扬的弧线（黄）、平静 = 一条水平线（绿）、难过 = 下弯的弧线（蓝）。
  *
  * 按天存「我」和「AI」两份，首页卡片负责写，日历负责读（只读展示 + 日期格上的颜色点）。
+ *
+ * 持久化（阶段 P2 数据单源化）：后端 /api/moods（moods 表）是单一事实来源；
+ * localStorage 只留一份双写影子，供后端不可用时回退。首次加载会把本地已有的
+ * 天合并推上后端（本地优先），之后读写都以后端为准。
  */
 import { create } from 'zustand';
+import { getMoods, putMoods } from '@/lib/api/mood';
 
 export type MoodKey = 'happy' | 'calm' | 'sad';
 
@@ -112,6 +117,11 @@ function migrateLegacy(): Record<string, DayMood> {
   }
 }
 
+/**
+ * localStorage 影子写（双写期的回退源）。
+ * 后端 /api/moods 已是单一事实来源；这里保留一份本地副本，
+ * 一旦后端不可用或需要回滚，load() 的合并逻辑会以它为基础复原。
+ */
 function write(days: Record<string, DayMood>) {
   try {
     localStorage.setItem(KEY, JSON.stringify(days));
@@ -123,18 +133,53 @@ function write(days: Record<string, DayMood>) {
 interface MoodState {
   days: Record<string, DayMood>;
   loaded: boolean;
-  load: () => void;
+  load: () => Promise<void>;
   /** 设置某天某人（我 / AI）的心情；传 null 表示清空 */
   setMood: (dateKey: string, who: 'me' | 'ai', mood: MoodKey | null) => void;
+}
+
+/** 本次会话里被本地改过的日期（含删掉的）——远端合并时本地优先，防止刚写的被旧快照盖掉 */
+const touched = new Set<string>();
+let loadInFlight: Promise<void> | null = null;
+let putTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** 防抖写穿后端（整体替换），失败不阻塞界面 */
+function schedulePut(days: Record<string, DayMood>) {
+  if (putTimer) clearTimeout(putTimer);
+  putTimer = setTimeout(() => {
+    putTimer = undefined;
+    void putMoods(days).catch(() => {});
+  }, 300);
 }
 
 export const useMoodStore = create<MoodState>((set, get) => ({
   days: {},
   loaded: false,
 
-  load: () => {
+  load: async () => {
     if (get().loaded) return;
-    set({ days: read(), loaded: true });
+    if (loadInFlight) return loadInFlight;
+    loadInFlight = (async () => {
+      // 1) 本地（localStorage / 旧格式迁移）立即上屏，界面不等网络
+      set({ days: read(), loaded: true });
+      // 2) 拉后端全量，按天合并：本地（含刚写的）优先，远端补洞；
+      //    本地删过的天不被旧远端快照填回
+      try {
+        const remote = await getMoods();
+        const cur = get().days;
+        const merged: Record<string, DayMood> = { ...remote.days };
+        for (const [k, v] of Object.entries(cur)) merged[k] = v;
+        for (const k of touched) if (!(k in cur)) delete merged[k];
+        set({ days: merged });
+        // 3) 本地有后端没有的（首次迁移 / 后端曾不可用）→ 自愈推上去
+        if (JSON.stringify(merged) !== JSON.stringify(remote.days)) {
+          void putMoods(merged).catch(() => {});
+        }
+      } catch {
+        /* 后端不可用：保留本地数据，双写影子即回退源 */
+      }
+    })();
+    return loadInFlight;
   },
 
   setMood: (dateKey, who, mood) => {
@@ -148,7 +193,9 @@ export const useMoodStore = create<MoodState>((set, get) => ({
       const days = { ...base };
       if (!next.me && !next.ai) delete days[dateKey];
       else days[dateKey] = next;
-      write(days);
+      touched.add(dateKey);
+      write(days); // 双写：本地影子（回滚用）
+      schedulePut(days); // 双写：后端（事实来源）
       return { days };
     });
   },

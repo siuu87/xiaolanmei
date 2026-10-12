@@ -1,10 +1,14 @@
 /**
  * 片单（WATCH）状态与持久化
  *
- * 独立于 bookStore，只落 localStorage，不新增后端接口。
- * 结构：一级分类（影视 / 动漫 / 演出）× 二级状态（准备看的 / 看完的）。
+ * 独立于 bookStore。结构：一级分类（影视 / 动漫 / 演出）× 二级状态（准备看的 / 看完的）。
+ *
+ * 持久化（阶段 P2 数据单源化）：后端 /api/watchlist（watch_items 表）是单一事实来源，
+ * 整体替换语义；localStorage 只留一份双写影子供回退。首次加载把本地已有的条目
+ * 合并推上后端（本地优先），之后增删改都写穿后端。
  */
 import { create } from 'zustand';
+import { getWatchlist, putWatchlist } from '@/lib/api/watchlist';
 
 /** 一级分类 */
 export type WatchCategory = 'movie' | 'anime' | 'show';
@@ -70,7 +74,7 @@ const STORAGE_KEY = 'blueberry.watchlist.v1';
 interface WatchState {
   items: WatchItem[];
   loaded: boolean;
-  load: () => void;
+  load: () => Promise<void>;
   add: (input: Omit<WatchItem, 'id' | 'createdAt' | 'updatedAt'>) => string;
   update: (id: string, patch: Partial<Omit<WatchItem, 'id'>>) => void;
   remove: (id: string) => void;
@@ -102,16 +106,26 @@ function read(): WatchItem[] {
   }
 }
 
-let timer: number | null = null;
+/**
+ * localStorage 影子写（双写期的回退源）。
+ * 后端 /api/watchlist 已是单一事实来源；这份本地副本供后端不可用或回滚时复原。
+ */
 function persist(items: WatchItem[]) {
   if (typeof window === 'undefined') return;
-  if (timer !== null) window.clearTimeout(timer);
-  timer = window.setTimeout(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      /* 忽略隐私模式 / 配额不足 */
-    }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    /* 忽略隐私模式 / 配额不足 */
+  }
+}
+
+/** 防抖写穿后端（整体替换），失败不阻塞界面 */
+let putTimer: ReturnType<typeof setTimeout> | undefined;
+function schedulePut(items: WatchItem[]) {
+  if (putTimer) clearTimeout(putTimer);
+  putTimer = setTimeout(() => {
+    putTimer = undefined;
+    void putWatchlist(items).catch(() => {});
   }, 300);
 }
 
@@ -123,9 +137,25 @@ export const useWatchListStore = create<WatchState>((set, get) => ({
   items: [],
   loaded: false,
 
-  load: () => {
+  load: async () => {
     if (get().loaded) return;
+    // 1) 本地先上屏，界面不等网络
     set({ items: read(), loaded: true });
+    // 2) 拉后端全量，按 id 合并：本地（含刚加的）优先，远端补洞
+    try {
+      const remote = await getWatchlist();
+      const cur = get().items;
+      const byId = new Map(remote.items.map((i) => [i.id, i]));
+      for (const it of cur) byId.set(it.id, it); // 本地优先
+      const merged = [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+      set({ items: merged });
+      // 3) 本地有后端没有的（首次迁移 / 后端曾不可用）→ 自愈推上去
+      if (merged.length !== remote.items.length) {
+        void putWatchlist(merged).catch(() => {});
+      }
+    } catch {
+      /* 后端不可用：保留本地数据，双写影子即回退源 */
+    }
   },
 
   add: (input) => {
@@ -134,6 +164,7 @@ export const useWatchListStore = create<WatchState>((set, get) => ({
     set((s) => {
       const next = [item, ...s.items];
       persist(next);
+      schedulePut(next);
       return { items: next };
     });
     return item.id;
@@ -143,6 +174,7 @@ export const useWatchListStore = create<WatchState>((set, get) => ({
     set((s) => {
       const next = s.items.map((x) => (x.id === id ? { ...x, ...patch, updatedAt: Date.now() } : x));
       persist(next);
+      schedulePut(next);
       return { items: next };
     });
   },
@@ -151,6 +183,7 @@ export const useWatchListStore = create<WatchState>((set, get) => ({
     set((s) => {
       const next = s.items.filter((x) => x.id !== id);
       persist(next);
+      schedulePut(next);
       return { items: next };
     });
   },

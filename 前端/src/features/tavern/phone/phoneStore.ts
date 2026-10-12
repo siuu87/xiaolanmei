@@ -2,11 +2,14 @@
  * 酒馆「小手机」模块 —— 状态管理
  *
  * 完全独立于 TavernPage 原有 state：
- *  - 卡片（角色卡 + 人设卡合并）
+ *  - 卡片（角色卡 + 人设卡合并，来自 /api/tavern）
  *  - 会话（单聊 / 群聊）
  *  - 联系人
  *  - 朋友圈
- * 全部落 localStorage，不影响其他页面。
+ *
+ * 持久化（阶段 P2 数据单源化）：会话 / 联系人 / 朋友圈 / 当前人设以后端
+ * /api/phone/snapshot 为单一事实来源（整体替换语义）；localStorage 只留
+ * 一份双写影子供回退。首次加载会把本地已有数据合并推上后端（本地优先）。
  *
  * 群聊 AI：把群里其他角色的发言也纳入上下文，角色既会回应我，
  * 也会回应其他 AI 的消息（逐角色顺序生成，复用 streamTavernChat）。
@@ -14,6 +17,7 @@
 import { create } from 'zustand';
 import { newId } from '@/lib/id';
 import { listTavernCharacters, listTavernPersonas, streamTavernChat } from '@/lib/api/tavern';
+import { getPhoneSnapshot, putPhoneSnapshot, type PhoneSnapshot } from '@/lib/api/phone';
 import type { ChatMessage, Contact, Moment, MomentComment, PhoneCard, Session } from './types';
 import {
   composeContext,
@@ -64,7 +68,7 @@ function loadPersisted(): Partial<PersistedShape> {
 }
 
 let saveTimer: number | null = null;
-/** 去抖写入 localStorage，避免流式生成时每次 set 都序列化 */
+/** 去抖写入：localStorage 影子（回退用）+ 后端快照（事实来源），避免流式生成时每次 set 都序列化 */
 function scheduleSave(get: () => PhoneState) {
   if (typeof window === 'undefined') return;
   if (saveTimer !== null) window.clearTimeout(saveTimer);
@@ -72,8 +76,7 @@ function scheduleSave(get: () => PhoneState) {
     saveTimer = null;
     try {
       const s = get();
-      const payload: PersistedShape = {
-        cards: s.cards,
+      const snap: PhoneSnapshot = {
         contacts: s.contacts,
         // 流式中的半成品消息不落盘，避免刷新后残留 "streaming" 状态
         sessions: s.sessions.map((x) => ({
@@ -83,7 +86,8 @@ function scheduleSave(get: () => PhoneState) {
         moments: s.moments,
         activePersonaId: s.activePersonaId,
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snap)); // 双写影子
+      void putPhoneSnapshot(snap).catch(() => {}); // 事实来源
     } catch {
       /* 配额满 / 隐私模式：静默忽略 */
     }
@@ -157,10 +161,16 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
     if (get().loaded) return;
     const persisted = loadPersisted();
 
-    // 示例卡片 + 后端真实卡片合并
+    // 示例卡片 + 后端真实卡片合并；同时拉手机快照（联系人/会话/朋友圈的远端事实来源）
     let cards: PhoneCard[] = [...SAMPLE_CHARACTER_CARDS, ...SAMPLE_PERSONA_CARDS];
+    let remote: PhoneSnapshot = { contacts: [], sessions: [], moments: [], activePersonaId: null };
     try {
-      const [chars, personas] = await Promise.all([listTavernCharacters(), listTavernPersonas()]);
+      const [chars, personas, snap] = await Promise.all([
+        listTavernCharacters(),
+        listTavernPersonas(),
+        getPhoneSnapshot(),
+      ]);
+      remote = snap;
       const normChars: PhoneCard[] = chars.map((c) => ({
         id: c.id,
         kind: 'character',
@@ -195,11 +205,18 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
         ...cards.filter((c) => !realNames.has(`${c.kind}:${c.name}`)),
       ];
     } catch {
-      /* 后端不可用时用示例数据兜底 */
+      /* 后端不可用时用示例数据 + 本地影子兜底 */
     }
 
-    // 联系人：后端角色卡补齐（示例联系人对应的角色被删则保留示例）
-    let contacts = persisted.contacts?.length ? persisted.contacts : [...SAMPLE_CONTACTS];
+    // 联系人：本地影子 ∪ 远端（按 id，本地优先），后端角色卡补齐，剔除已删角色
+    let contacts: Contact[] = [...(persisted.contacts ?? [])];
+    {
+      const byId = new Map<string, Contact>();
+      for (const c of remote.contacts as Contact[]) byId.set(c.id, c);
+      for (const c of contacts) byId.set(c.id, c);
+      contacts = [...byId.values()];
+    }
+    if (!contacts.length) contacts = [...SAMPLE_CONTACTS];
     const knownCharIds = new Set(cards.filter((c) => c.kind === 'character').map((c) => c.id));
     for (const card of cards) {
       if (card.kind !== 'character') continue;
@@ -218,19 +235,50 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
     // 剔除已被删除的角色联系人（保留示例联系人，示例卡在 cards 中始终存在）
     contacts = contacts.filter((c) => knownCharIds.has(c.characterId));
 
+    // 会话 / 朋友圈：本地影子 ∪ 远端（按 id，本地优先）
+    const sessionById = new Map<string, Session>();
+    for (const s of remote.sessions as Session[]) sessionById.set(s.id, s);
+    for (const s of persisted.sessions ?? []) sessionById.set(s.id, s);
+    const sessions = [...sessionById.values()];
+
+    const momentById = new Map<string, Moment>();
+    for (const m of remote.moments as Moment[]) momentById.set(m.id, m);
+    for (const m of persisted.moments ?? []) momentById.set(m.id, m);
+    const moments = [...momentById.values()];
+
     const activePersonaId =
       persisted.activePersonaId !== undefined
         ? persisted.activePersonaId
-        : (cards.find((c) => c.kind === 'persona')?.id ?? null);
+        : (remote.activePersonaId ?? (cards.find((c) => c.kind === 'persona')?.id ?? null));
 
     set({
       cards,
       contacts,
-      sessions: persisted.sessions ?? [],
-      moments: persisted.moments?.length ? persisted.moments : SAMPLE_MOMENTS,
+      sessions,
+      moments: moments.length ? moments : SAMPLE_MOMENTS,
       activePersonaId,
       loaded: true,
     });
+
+    // 自愈：本地/示例有而后端没有的（首次迁移 / 后端曾不可用）→ 推上去
+    const snapNow: PhoneSnapshot = {
+      contacts: get().contacts,
+      sessions: get().sessions.map((x) => ({
+        ...x,
+        messages: x.messages.filter((m) => !m.streaming),
+      })),
+      moments: get().moments,
+      activePersonaId: get().activePersonaId,
+    };
+    const remoteJson = JSON.stringify({
+      contacts: remote.contacts,
+      sessions: remote.sessions,
+      moments: remote.moments,
+      activePersonaId: remote.activePersonaId,
+    });
+    if (JSON.stringify(snapNow) !== remoteJson) {
+      void putPhoneSnapshot(snapNow).catch(() => {});
+    }
   },
 
   /* ----------------------------- 卡片 ----------------------------- */
@@ -491,7 +539,15 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
       activePersonaId: 'sample-me-1',
       loaded: false,
     });
-    void get().init();
+    // 先把后端快照清空再重新 init，否则旧会话/朋友圈会被远端快照合并回来
+    void (async () => {
+      try {
+        await putPhoneSnapshot({ contacts: [], sessions: [], moments: [], activePersonaId: null });
+      } catch {
+        /* 后端不可用：本地已重置，后端残留下次 init 自愈时再处理 */
+      }
+      await get().init();
+    })();
   },
 }));
 

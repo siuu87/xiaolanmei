@@ -258,6 +258,76 @@ export const periodRecords = sqliteTable('period_records', {
   deletedAt: integer('deleted_at'),
 });
 
+/** 每日心情（阶段 P2 数据单源化）：id 即日期 key（非补零 YYYY-M-D，与前端 moodStore 的 dateKeyOf 一致）；me/ai 为两人当天心情，可空 */
+export const moods = sqliteTable('moods', {
+  id: text('id').primaryKey(),
+  me: text('me'),
+  ai: text('ai'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 追剧片单（阶段 P2 数据单源化）：一级分类 × 二级状态；poster 可能是 data URL */
+export const watchItems = sqliteTable('watch_items', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  category: text('category').notNull(), // movie 影视 | anime 动漫 | show 演出
+  status: text('status').notNull().default('planned'), // planned 准备看的 | watched 看完的
+  poster: text('poster'),
+  note: text('note'),
+  source: text('source').notNull().default('manual'), // manual | ai
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 酒馆小手机 · 联系人（阶段 P2 数据单源化）：character_id 指向角色卡 */
+export const phoneContacts = sqliteTable('phone_contacts', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().default(''),
+  avatar: text('avatar'),
+  characterId: text('character_id').notNull().default(''),
+  signature: text('signature').notNull().default(''),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 酒馆小手机 · 会话（单聊/群聊统一模型；member_ids/messages 存 JSON） */
+export const phoneSessions = sqliteTable('phone_sessions', {
+  id: text('id').primaryKey(),
+  kind: text('kind').notNull().default('single'), // single | group
+  targetId: text('target_id').notNull().default(''),
+  title: text('title').notNull().default(''),
+  avatar: text('avatar'),
+  memberIds: text('member_ids').notNull().default('[]'), // JSON: string[]
+  mode: text('mode').notNull().default('online'), // online | offline
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+  unread: integer('unread').notNull().default(0),
+  lastActiveAt: integer('last_active_at').notNull().default(0),
+  messages: text('messages').notNull().default('[]'), // JSON: ChatMessage[]
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 酒馆小手机 · 朋友圈动态（images/likes/comments 存 JSON） */
+export const phoneMoments = sqliteTable('phone_moments', {
+  id: text('id').primaryKey(),
+  authorName: text('author_name').notNull().default(''),
+  authorAvatar: text('author_avatar'),
+  content: text('content').notNull().default(''),
+  images: text('images').notNull().default('[]'), // JSON
+  likes: text('likes').notNull().default('[]'), // JSON: string[]
+  comments: text('comments').notNull().default('[]'), // JSON
+  mine: integer('mine', { mode: 'boolean' }).notNull().default(false),
+  location: text('location'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 /** 课程表（阶段 7 收尾）：单人课表，WakeUp 风格。day 1=周一…7=周日；节次+周次（时间不固定）；parity all/odd/even */
 export const courses = sqliteTable('courses', {
   id: text('id').primaryKey(),
