@@ -1,6 +1,9 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
 import { env } from './config/env.js';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { initDatabase } from './db/client.js';
 import { healthRoutes } from './routes/health.js';
 import { chatRoutes } from './routes/chat.js';
@@ -85,8 +88,35 @@ async function main(): Promise<void> {
   await app.register(dishRoutes, { prefix: '/api' });
   await app.register(tavernRoutes, { prefix: '/api' });
 
+  /*
+   * Host 化（阶段 1）：前端产物就托管在这里，一个进程=完整应用。
+   *
+   * - 生产：`前端/` 先 `npm run build`，本服务直接把 dist 当静态根目录，
+   *   访问 http://localhost:3001/ 就是完整 App，不再需要 Vite dev server 或 nginx。
+   * - 开发：dist 不存在（或没 build 过）时静默跳过，dev 仍走 5173 + /api 代理，行为不变。
+   * - SPA fallback：任何非 /api 的 GET 都回 index.html，前端路由（/sky、/tavern…）刷新不 404。
+   */
+  // server.ts 在 后端/src/ 下，退两级才是仓库根；Docker 部署时用 WEB_ROOT 显式指定
+  const webRoot =
+    process.env.WEB_ROOT ?? fileURLToPath(new URL('../../前端/dist', import.meta.url));
+  if (existsSync(webRoot)) {
+    await app.register(fastifyStatic, { root: webRoot, prefix: '/' });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api')) {
+        return reply.sendFile('index.html');
+      }
+      return reply.status(404).send({ message: 'Not Found' });
+    });
+    console.log(`📦 前端产物已托管: ${webRoot}（单端口 Host 模式）`);
+  } else {
+    console.log(`ℹ️  未找到前端产物（${webRoot}），仅提供 /api（dev 模式）`);
+  }
+
   await app.listen({ port: env.port, host: '0.0.0.0' });
   console.log(`✅ 小蓝莓后端已启动: http://localhost:${env.port}/api/health`);
+  if (existsSync(webRoot)) {
+    console.log(`🌐 完整应用入口: http://localhost:${env.port}/`);
+  }
 }
 
 main().catch((err) => {
