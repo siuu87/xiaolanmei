@@ -7,7 +7,11 @@ interface Props {
   lines: LyricLine[];
 }
 
-/** 歌词面板：只显示 2-3 句、随进度滚动并高亮当前句（无点击分析） */
+/** 歌词面板：一屏放下 8 行（含译文），随进度滚动并高亮当前句（无点击分析）。
+ *
+ *  高度口径：实测 8 行歌词（44/44/44/44/24/24/44/44，带译文的行 44px、纯文本行 24px，
+ *  行间 space-y-1 各 4px）内容总高 = 340px，所以取 h-[340px] —— 全部 8 行一眼看完，
+ *  歌词再多（真实接口）时这个高度才会开始滚动。 */
 export function LyricsPanel({ progressMs, lines }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -27,7 +31,7 @@ export function LyricsPanel({ progressMs, lines }: Props) {
   return (
     <div
       ref={listRef}
-      className="h-24 space-y-1 overflow-y-auto px-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="h-[340px] space-y-1 overflow-y-auto px-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {lines.map((line, i) => (
         <div
