@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotesStore } from './notesStore';
 import { NOTE_AUTHOR, formatNoteDate } from './notesData';
-import { PostItModal } from './PostItModal';
+import { LetterModal } from './LetterModal';
 
 const SWIPE_THRESHOLD = 70;
 
@@ -19,8 +19,8 @@ const variants = {
 /**
  * 蓝莓信箱卡片（独立组件，不依赖首页布局）。
  * - 每日首次打开自动生成一条（幂等、静默）；
- * - 多张便签左右滑动或点两侧箭头切换浏览；
- * - 点便签 → 居中放大成便利贴；点头部「全部」→ 全部便签页。
+ * - 多封来信左右滑动或点两侧箭头切换浏览；
+ * - 点信封 → 展开成一整张信纸；点头部「全部」→ 全部来信页。
  */
 export function InspirationNoteCard() {
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ export function InspirationNoteCard() {
         </span>
       </button>
 
-      {/* 便签占满整列宽度，两侧箭头悬浮在便签边缘上 */}
+      {/* 信封占满整列宽度，两侧箭头悬浮在信封边缘上 */}
       <div className="relative mt-4 flex-1">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           {note ? (
@@ -90,14 +90,31 @@ export function InspirationNoteCard() {
               dragElastic={1}
               onDragEnd={onDragEnd}
               onClick={() => setPreviewOpen(true)}
-              className="relative flex h-full w-full flex-col justify-between rounded-md bg-[#fef9c3] px-7 py-3.5 text-left text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+              data-testid="letter-envelope"
+              className="relative flex h-full w-full flex-col justify-between overflow-hidden rounded-md bg-gradient-to-b from-[#f7f1e6] to-[#ebe1cf] px-6 pb-2.5 pt-8 text-left text-[#4a4034] shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
             >
-              <p className="line-clamp-3 text-sm leading-6">{note.content}</p>
-              <div className="mt-2 flex flex-col items-end gap-0.5">
-                <span className="text-[10px] text-slate-500/80">
-                  {formatNoteDate(note.createdAt)}
-                </span>
-                <span className="text-[10px] text-slate-500">{NOTE_AUTHOR}</span>
+              {/* 信封封盖：顶部三角 */}
+              <svg
+                viewBox="0 0 100 26"
+                preserveAspectRatio="none"
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-7 w-full"
+              >
+                <path d="M0 0 H100 L50 26 Z" fill="#e0d4bf" />
+                <path d="M0 0 H100 L50 26 Z" fill="none" stroke="#cdbfa6" strokeWidth="0.8" />
+              </svg>
+              {/* 火漆印 */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-5 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-[#a8443c] text-[8px] shadow-sm"
+              >
+                🫐
+              </span>
+
+              <p className="line-clamp-3 text-[11px] leading-[17px]">{note.content}</p>
+              <div className="mt-1.5 flex flex-col items-end gap-0.5">
+                <span className="text-[9px] text-[#8a7f6d]">{formatNoteDate(note.createdAt)}</span>
+                <span className="text-[9px] text-[#6f6555]">{NOTE_AUTHOR}</span>
               </div>
             </motion.button>
           ) : (
@@ -144,7 +161,7 @@ export function InspirationNoteCard() {
         </div>
       )}
 
-      <PostItModal note={previewOpen ? note : null} onClose={() => setPreviewOpen(false)} />
+      <LetterModal note={previewOpen ? note : null} onClose={() => setPreviewOpen(false)} />
     </div>
   );
 }
