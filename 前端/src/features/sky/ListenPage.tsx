@@ -93,14 +93,8 @@ export function ListenPage() {
 
         {/* 主体：手机单列堆叠 */}
         <div className="mt-6 space-y-6">
-          {/* 一起听 + 播放卡片（耳机线括号式内收，落进卡片内停在歌曲名两侧）
-
-              整块等比缩到 50%：外层只占一半宽并居中，内层先撑回原始宽度再 zoom:0.5。
-              这样头像 / 耳机线 / 卡片三者的相对位置完全不变，占位也跟着缩一半，
-              右侧不会留下一大片空白。 */}
-          <div className="mx-auto w-1/2" data-testid="listen-card-wrap">
-            <div className="w-[200%] origin-top-left [zoom:0.5]" data-testid="listen-card-scale">
-            <div className="relative">
+          {/* 一起听 + 播放卡片（耳机线括号式内收，落进卡片内停在歌曲名两侧） */}
+          <div className="relative" data-testid="listen-card">
             {/* 头像层：左 AI 戴左耳机 · 中间声波 · 右我戴右耳机（连线起点） */}
             <div className="relative h-[110px]">
               <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-5">
@@ -134,8 +128,6 @@ export function ListenPage() {
               <path d="M121 42 C 100 76 112 88 146 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
               <path d="M295 42 C 316 76 304 88 270 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            </div>
-            </div>
           </div>
           <LyricsPanel progressMs={progressMs} lines={lines} />
           <PlaylistSection onPlayTrack={playTrack} />
