@@ -129,7 +129,8 @@ export function ListenPage() {
               <path d="M295 42 C 316 76 304 88 270 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
-          <LyricsPanel progressMs={progressMs} lines={lines} />
+          {/* 歌词：一屏 5 行、当前行恒定在正中；上下拖动可直接调进度 */}
+          <LyricsPanel progressMs={progressMs} lines={lines} onSeek={seek} />
           <PlaylistSection onPlayTrack={playTrack} />
         </div>
       </div>
