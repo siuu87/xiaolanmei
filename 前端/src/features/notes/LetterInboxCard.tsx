@@ -22,8 +22,8 @@ function shortDate(ts: number): string {
  *   （记在 localStorage 的 readIds 里，只跟这台设备有关）。
  * - 右上角信封 → 收录所有信件的页面（/notes）。
  * - **不再需要点开才看全文**：正文默认全展开。
- * - 换信控件（‹ ›+计数）固定在**顶栏**：正文长短变化时它不上不下地跳；
- *   卡片上左右滑也能换信。
+ * - 换信控件（计数 + ‹ ›）固定在卡片**右下角**，正文区高度写死，
+ *   所以它不会随来信长短上下跳；卡片上左右滑也能换信。
  *
  * 手势坑（别删注释）：抽屉的「左滑关闭」在 window 上监听，这里必须打
  * `data-no-drawer-swipe` 把横向手势让给自己；滑动结束浏览器补的 click
@@ -143,50 +143,17 @@ export function LetterInboxCard({
           </span>
         </span>
 
-        <div className="flex shrink-0 items-center gap-0.5" data-no-flip>
-          {list.length > 1 && (
-            <>
-              <span
-                data-testid="mail-counter"
-                className="mr-1 text-[9px] font-light tabular-nums tracking-wider text-[#6b7488]"
-              >
-                {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
-              </span>
-              <button
-                type="button"
-                data-testid="mail-prev"
-                aria-label="上一封"
-                disabled={i === 0}
-                onClick={() => setIndex(Math.max(0, i - 1))}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                data-testid="mail-next"
-                aria-label="下一封"
-                disabled={i === list.length - 1}
-                onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </>
-          )}
-
-          <button
-            type="button"
-            data-testid="mail-all"
-            data-no-flip
-            onClick={goAll}
-            aria-label="查看全部来信"
-            title="全部来信"
-            className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade]"
-          >
-            <Mail className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          data-testid="mail-all"
+          data-no-flip
+          onClick={goAll}
+          aria-label="查看全部来信"
+          title="全部来信"
+          className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade]"
+        >
+          <Mail className="h-4 w-4" />
+        </button>
       </div>
 
       {/* 日期 */}
@@ -224,6 +191,39 @@ export function LetterInboxCard({
           </button>
         )}
       </div>
+
+      {/* 换信：固定在**右下角**（计数 + ‹ ›，多于一封才出现）。
+          正文区是固定高度，所以这一条不会随来信长短上下跳。 */}
+      {list.length > 1 && (
+        <div className="mt-2 flex items-center justify-end gap-1" data-no-flip>
+          <span
+            data-testid="mail-counter"
+            className="mr-0.5 text-[9px] font-light tabular-nums tracking-wider text-[#6b7488]"
+          >
+            {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
+          </span>
+          <button
+            type="button"
+            data-testid="mail-prev"
+            aria-label="上一封"
+            disabled={i === 0}
+            onClick={() => setIndex(Math.max(0, i - 1))}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            data-testid="mail-next"
+            aria-label="下一封"
+            disabled={i === list.length - 1}
+            onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
