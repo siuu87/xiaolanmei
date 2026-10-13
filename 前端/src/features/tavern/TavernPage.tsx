@@ -52,7 +52,7 @@ const inputCls =
 const btnCls =
   'rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-white/15 disabled:opacity-40';
 
-/** 酒馆 = 小手机：进入即呈现拟物手机（聊天 / 通讯录 / 群聊 / 朋友圈 / 卡片库） */
+/** 酒馆 = 小手机：进入即呈现拟物手机（聊天 / 群聊 / 朋友圈 / 卡片库） */
 export function TavernPage() {
   const navigate = useNavigate();
   const setImmersive = useImmersiveStore((s) => s.setImmersive);

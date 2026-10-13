@@ -109,23 +109,14 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
   };
 
   return (
-    <div className="fixed inset-0 z-[1450] flex items-end justify-center" data-testid="profile-editor">
-      <motion.div
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.18 }}
-        onClick={onClose}
-      />
-
+    <div className="fixed inset-0 z-[1450] flex flex-col bg-[#0f1424]" data-testid="profile-editor">
       <motion.div
         role="dialog"
         aria-label={isMe ? '我的资料' : '他的资料'}
-        className="relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-3xl border-t border-white/10 bg-[#0f1424] shadow-2xl"
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        className="flex h-full w-full flex-col overflow-hidden bg-[#0f1424]"
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
         transition={{ type: 'spring', stiffness: 360, damping: 32 }}
       >
         {/* 顶栏：返回 + 标题（参考图二） */}

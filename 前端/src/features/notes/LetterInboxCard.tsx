@@ -21,7 +21,9 @@ function shortDate(ts: number): string {
  * - 左上角「红点 + 第 N 封」：红点 = **今日的信已经到了**，点卡片看过后熄灭
  *   （记在 localStorage 的 readIds 里，只跟这台设备有关）。
  * - 右上角信封 → 收录所有信件的页面（/notes）。
- * - **不再需要点开才看全文**：正文默认全展开，底部仍可左右滑 / 箭头换信。
+ * - **不再需要点开才看全文**：正文默认全展开。
+ * - 换信控件（‹ ›+计数）固定在**顶栏**：正文长短变化时它不上不下地跳；
+ *   卡片上左右滑也能换信。
  *
  * 手势坑（别删注释）：抽屉的「左滑关闭」在 window 上监听，这里必须打
  * `data-no-drawer-swipe` 把横向手势让给自己；滑动结束浏览器补的 click
@@ -119,8 +121,9 @@ export function LetterInboxCard({
         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
       />
 
-      {/* 顶栏：左「红点 + 第 N 封」 ｜ 右「信封」进全部来信 */}
-      <div className="flex items-start justify-between gap-2">
+      {/* 顶栏：左「红点 + 第 N 封」｜右「换信 + 全部来信」
+          换信控件固定挂在顶栏，正文再长再短都不会把它顶下去 */}
+      <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <span
             aria-label={dotOn ? '今日来信已到' : '今日暂无新信'}
@@ -140,17 +143,50 @@ export function LetterInboxCard({
           </span>
         </span>
 
-        <button
-          type="button"
-          data-testid="mail-all"
-          data-no-flip
-          onClick={goAll}
-          aria-label="查看全部来信"
-          title="全部来信"
-          className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade]"
-        >
-          <Mail className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-0.5" data-no-flip>
+          {list.length > 1 && (
+            <>
+              <span
+                data-testid="mail-counter"
+                className="mr-1 text-[9px] font-light tabular-nums tracking-wider text-[#6b7488]"
+              >
+                {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
+              </span>
+              <button
+                type="button"
+                data-testid="mail-prev"
+                aria-label="上一封"
+                disabled={i === 0}
+                onClick={() => setIndex(Math.max(0, i - 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                data-testid="mail-next"
+                aria-label="下一封"
+                disabled={i === list.length - 1}
+                onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            data-testid="mail-all"
+            data-no-flip
+            onClick={goAll}
+            aria-label="查看全部来信"
+            title="全部来信"
+            className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade]"
+          >
+            <Mail className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* 日期 */}
@@ -161,65 +197,33 @@ export function LetterInboxCard({
         {shortDate(stamp)}
       </p>
 
-      {/* 正文：默认全展开；没有信就把信封居中放大放在这里 */}
-      {note ? (
-        <motion.p
-          layout
-          transition={{ type: 'spring', stiffness: 280, damping: 32 }}
-          data-testid="mail-body"
-          className="mt-1.5 whitespace-pre-wrap text-[13px] leading-[21px] tracking-[0.01em] text-[#aab3c8]"
-        >
-          {note.content}
-        </motion.p>
-      ) : (
-        <button
-          type="button"
-          data-testid="mail-empty-envelope"
-          onClick={goAll}
-          aria-label="还没有来信，去全部来信看看"
-          className="mt-2 flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 py-5"
-        >
-          <Mail className="h-9 w-9 text-white/25 transition-colors duration-300 hover:text-white/45" />
-          <span className="text-[10px] font-light tracking-wide text-[#6b7488]">
-            今天还没有信
-          </span>
-        </button>
-      )}
-
-      {/* 换信：计数 + 左右箭头（多于一封才出现） */}
-      {list.length > 1 && (
-        <div className="mt-2.5 flex items-center justify-between" data-no-flip>
-          <motion.span
-            layout
-            data-testid="mail-counter"
-            className="text-[9px] font-light tabular-nums tracking-wider text-[#6b7488]"
+      {/* 正文：**固定高度**（4 行）。
+          卡片不再随来信字数伸缩 —— 换信时上方那排切换键就不会上下跳。
+          正文依旧默认全展开（没有点击展开、没有 line-clamp、没有渐隐），
+          超出 4 行的长信在块内滚动，内容不丢；没有信时这里放居中的放大信封。 */}
+      <div className="mt-1.5 h-[84px]" data-testid="mail-body-box">
+        {note ? (
+          <p
+            data-testid="mail-body"
+            className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 text-[13px] leading-[21px] tracking-[0.01em] text-[#aab3c8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
-          </motion.span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              data-testid="mail-prev"
-              aria-label="上一封"
-              disabled={i === 0}
-              onClick={() => setIndex(Math.max(0, i - 1))}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              data-testid="mail-next"
-              aria-label="下一封"
-              disabled={i === list.length - 1}
-              onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
+            {note.content}
+          </p>
+        ) : (
+          <button
+            type="button"
+            data-testid="mail-empty-envelope"
+            onClick={goAll}
+            aria-label="还没有来信，去全部来信看看"
+            className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5"
+          >
+            <Mail className="h-9 w-9 text-white/25 transition-colors duration-300 hover:text-white/45" />
+            <span className="text-[10px] font-light tracking-wide text-[#6b7488]">
+              今天还没有信
+            </span>
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }

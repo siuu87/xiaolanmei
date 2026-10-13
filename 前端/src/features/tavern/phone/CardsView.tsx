@@ -3,9 +3,9 @@
  *
  * 把原本分离的「角色卡」与「人设卡」合并为一个区块，
  * 内部做二级细分：全部 / 角色卡 / 人设卡 / 按标签，支持卡片预览。
- * 新建的角色卡也会同步出现在「通讯录」里。
+ * 角色卡同时是聊天对象（联系人），所以「发起聊天」的选人也收在这里（pickMode）。
  */
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Check,
@@ -95,16 +95,33 @@ function FilterBar({
 
 /* ------------------------------ 卡片 ------------------------------ */
 
-function CardTile({ card, onOpen, onMore }: { card: PhoneCard; onOpen: () => void; onMore: () => void }) {
+function CardTile({
+  card,
+  onOpen,
+  onMore,
+  pickable = false,
+  picked = false,
+}: {
+  card: PhoneCard;
+  onOpen: () => void;
+  onMore: () => void;
+  /** 选人模式：点整张卡 = 勾选/取消勾选，不再进预览层 */
+  pickable?: boolean;
+  picked?: boolean;
+}) {
   const active = card.active;
   return (
     <div className="relative">
       <button
         type="button"
         onClick={onOpen}
+        data-testid={`card-tile-${card.id}`}
+        aria-label={pickable ? `${picked ? '取消选择' : '选择'} ${card.name}` : undefined}
+        aria-pressed={pickable ? picked : undefined}
         className={cn(
           'flex h-full w-full flex-col overflow-hidden rounded-xl bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition active:scale-[0.98]',
           card.kind === 'persona' && 'ring-1 ring-inset',
+          pickable && picked && 'ring-2 ring-[#007AFF]',
         )}
         style={card.kind === 'persona' ? { borderColor: 'transparent' } : undefined}
       >
@@ -152,15 +169,28 @@ function CardTile({ card, onOpen, onMore }: { card: PhoneCard; onOpen: () => voi
         )}
       </button>
 
-      {/* 更多操作：进预览层做编辑/删除/看详情 */}
-      <button
-        type="button"
-        onClick={onMore}
-        aria-label={`${card.name} 更多操作`}
-        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[#8e8e93] transition hover:bg-black/[0.06] active:bg-black/10"
-      >
-        <MoreHorizontal className="h-4 w-4" />
-      </button>
+      {/* 选人模式下把「更多操作」换成勾选圈，避免误开预览层 */}
+      {pickable ? (
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white transition',
+            picked ? 'border-[#007AFF] bg-[#007AFF] text-white' : 'border-[#C7C7CC] text-transparent',
+          )}
+        >
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
+      ) : (
+        /* 更多操作：进预览层做编辑/删除/看详情 */
+        <button
+          type="button"
+          onClick={onMore}
+          aria-label={`${card.name} 更多操作`}
+          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[#8e8e93] transition hover:bg-black/[0.06] active:bg-black/10"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -184,21 +214,15 @@ function CardPreview({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
-      className="absolute inset-0 z-40 flex flex-col bg-black/40"
-      onClick={onClose}
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+      className="absolute inset-0 z-40 flex flex-col bg-[#F2F2F7]"
+      data-testid="card-preview"
     >
-      <motion.div
-        initial={{ y: '8%', opacity: 0.6 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: '8%', opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-        className="mt-11 flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-2xl bg-white"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <PhoneNavBar title="卡片详情" onBack={onClose} />
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* 头部 */}
         <div
           className={cn(
@@ -284,7 +308,7 @@ function CardPreview({
             </button>
           )}
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -678,10 +702,22 @@ function FieldLabel({ text }: { text: string }) {
 export function CardsPage({
   onCreateChat,
   onOpenConfig,
+  pickMode = false,
+  checkedIds = [],
+  onCheckedChange,
+  onTogglePick,
 }: {
-  onCreateChat: (contactId: string) => void;
+  /** 点角色卡直接开会话（选人模式下用不到） */
+  onCreateChat?: (contactId: string) => void;
   /** 进入配置台：外层标题栏收起后，入口挪到这里，避免功能失联 */
   onOpenConfig?: () => void;
+  /** 选人模式：只列角色卡，点卡片 = 勾选（通讯录 Tab 移除后，「发起聊天」的选人落在这里） */
+  pickMode?: boolean;
+  /** 选人模式下已勾选的联系人 id */
+  checkedIds?: string[];
+  onCheckedChange?: (ids: string[]) => void;
+  /** 点标题栏「完成」或底部「发起聊天」：由编排层决定私聊还是建群 */
+  onTogglePick?: () => void;
 }) {
   const cards = usePhoneStore((s) => s.cards);
   const contacts = usePhoneStore((s) => s.contacts);
@@ -731,34 +767,68 @@ export function CardsPage({
     });
   }, [withActive, filter, query]);
 
+  /** 选人模式下的可选角色卡：只有角色卡能当聊天对象，人设卡不进列表 */
+  const pickable = useMemo(() => {
+    const kw = query.trim().toLowerCase();
+    return withActive
+      .filter((c) => c.kind === 'character')
+      .filter((c) => (kw ? `${c.name} ${c.intro ?? ''}`.toLowerCase().includes(kw) : true));
+  }, [withActive, query]);
+
+  /** 卡片 id → 联系人 id（角色卡与联系人一一对应，见 phoneStore.init） */
+  const contactIdOf = useCallback(
+    (cardId: string) => contacts.find((ct) => ct.characterId === cardId)?.id ?? null,
+    [contacts],
+  );
+
+  const togglePick = (cardId: string) => {
+    const cid = contactIdOf(cardId);
+    if (!cid || !onCheckedChange) return;
+    onCheckedChange(checkedIds.includes(cid) ? checkedIds.filter((x) => x !== cid) : [...checkedIds, cid]);
+  };
+
+  /** 实际渲染的卡片：选人模式只列角色卡，其余走筛选结果 */
+  const list = pickMode ? pickable : filtered;
+
   const previewCard = withActive.find((c) => c.id === preview) ?? null;
 
   return (
-    <div className="relative flex h-full flex-col bg-white">
+    <div data-testid="cards-page" data-pick-mode={pickMode ? '1' : '0'} className="relative flex h-full flex-col bg-white">
       <PhoneNavBar
-        title="卡片库"
+        title={pickMode ? '选择联系人' : '卡片库'}
         right={
-          <div className="flex items-center gap-0.5">
-            {onOpenConfig && (
-              <button
-                type="button"
-                onClick={onOpenConfig}
-                aria-label="角色卡设置"
-                title="角色卡 / 世界书 / 人设卡"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-[#3C3C43] active:bg-black/10"
-              >
-                <Settings className="h-[18px] w-[18px]" strokeWidth={2} />
-              </button>
-            )}
+          pickMode ? (
             <button
               type="button"
-              onClick={() => setEditing('new')}
-              aria-label="新建卡片"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[#000000] active:bg-black/10"
+              onClick={onTogglePick}
+              aria-label="完成"
+              className="flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[13px] font-semibold text-[#007AFF] transition active:bg-black/10"
             >
-              <Plus className="h-5 w-5" strokeWidth={2.2} />
+              完成
             </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-0.5">
+              {onOpenConfig && (
+                <button
+                  type="button"
+                  onClick={onOpenConfig}
+                  aria-label="角色卡设置"
+                  title="角色卡 / 世界书 / 人设卡"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#3C3C43] active:bg-black/10"
+                >
+                  <Settings className="h-[18px] w-[18px]" strokeWidth={2} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setEditing('new')}
+                aria-label="新建卡片"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#000000] active:bg-black/10"
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.2} />
+              </button>
+            </div>
+          )
         }
       />
       <div className="shrink-0 px-3 pb-2">
@@ -767,7 +837,7 @@ export function CardsPage({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索卡片"
+            placeholder={pickMode ? '搜索联系人' : '搜索卡片'}
             className="h-full flex-1 bg-transparent text-[14px] text-[#000000] outline-none placeholder:text-[#8e8e93]"
           />
           {query && (
@@ -778,27 +848,46 @@ export function CardsPage({
         </div>
       </div>
 
-      <FilterBar filter={filter} onChange={setFilter} counts={counts} tags={tags} />
+      {/* 选人模式下不显示分类 / 标签筛选：此刻只有「选谁」一件事 */}
+      {!pickMode && <FilterBar filter={filter} onChange={setFilter} counts={counts} tags={tags} />}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
-        {filtered.length === 0 ? (
+        {list.length === 0 ? (
           <EmptyState
             icon={<Users className="h-9 w-9" />}
-            title={query || filter.type !== 'all' ? '没有匹配的卡片' : '还没有卡片'}
-            desc={query || filter.type !== 'all' ? '换个分类或关键词试试' : '新建一张角色卡或人设卡吧'}
-            action={!query && filter.type === 'all' ? { label: '新建卡片', onClick: () => setEditing('new') } : undefined}
+            title={pickMode ? '还没有角色卡' : query || filter.type !== 'all' ? '没有匹配的卡片' : '还没有卡片'}
+            desc={
+              pickMode
+                ? '先新建一张角色卡，再回来选人聊天'
+                : query || filter.type !== 'all'
+                  ? '换个分类或关键词试试'
+                  : '新建一张角色卡或人设卡吧'
+            }
+            action={
+              pickMode
+                ? { label: '新建角色卡', onClick: () => setEditing('new') }
+                : !query && filter.type === 'all'
+                  ? { label: '新建卡片', onClick: () => setEditing('new') }
+                  : undefined
+            }
           />
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
-            {filtered.map((c) => (
+            {list.map((c) => (
               <CardTile
                 key={c.id}
                 card={c}
+                pickable={pickMode}
+                picked={pickMode && checkedIds.includes(contactIdOf(c.id) ?? '')}
                 onOpen={() => {
+                  if (pickMode) {
+                    togglePick(c.id);
+                    return;
+                  }
                   // 角色卡：点卡片直接进聊天（chatbox）；人设卡：进预览层「设为我的」
                   if (c.kind === 'character') {
                     const contact = contacts.find((ct) => ct.characterId === c.id);
-                    if (contact) onCreateChat(contact.id);
+                    if (contact) onCreateChat?.(contact.id);
                     else setPreview(c.id);
                   } else {
                     setPreview(c.id);
@@ -812,24 +901,54 @@ export function CardsPage({
         <div className="h-4" />
       </div>
 
+      {/* 选人模式底部操作条：与原来的通讯录选人条同款 */}
+      {pickMode && (
+        <div className="shrink-0 border-t border-black/[0.06] bg-white px-3 py-2.5">
+          <button
+            type="button"
+            onClick={onTogglePick}
+            disabled={checkedIds.length === 0}
+            data-testid="pick-cta"
+            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#007AFF] text-[14px] font-medium text-white transition active:scale-[0.99] disabled:bg-[#C7C7CC]"
+          >
+            {checkedIds.length >= 2 ? (
+              <>
+                <Users className="h-4 w-4" />
+                发起群聊（{checkedIds.length}）
+              </>
+            ) : (
+              <>
+                <MessageCircle className="h-4 w-4" />
+                发起聊天
+              </>
+            )}
+          </button>
+          <p className="mt-1.5 text-center text-[11px] text-[#8e8e93]">
+            {checkedIds.length === 0
+              ? '选择 1 位联系人开始私聊，2 位及以上创建群聊'
+              : checkedIds.length === 1
+                ? `将与「${contacts.find((c) => c.id === checkedIds[0])?.name ?? ''}」私聊`
+                : `已选择：${checkedIds
+                    .map((id) => contacts.find((c) => c.id === id)?.name)
+                    .filter(Boolean)
+                    .join('、')}`}
+          </p>
+        </div>
+      )}
+
       <AnimatePresence>
         {previewCard && (
           <CardPreview
             key={previewCard.id}
             card={previewCard}
             onClose={() => setPreview(null)}
-            onEdit={() => {
-              setEditing(previewCard);
-              setPreview(null);
-            }}
-            onDelete={() => {
-              setConfirmDel(previewCard);
-              setPreview(null);
-            }}
+            // 编辑 / 删除都是「在详情之上再开一页」，返回时回到详情而不是卡片库
+            onEdit={() => setEditing(previewCard)}
+            onDelete={() => setConfirmDel(previewCard)}
             onSetPersona={() => setActivePersona(previewCard.active ? null : previewCard.id)}
             onChat={() => {
               const contact = contacts.find((c) => c.characterId === previewCard.id);
-              if (contact) onCreateChat(contact.id);
+              if (contact) onCreateChat?.(contact.id);
               setPreview(null);
             }}
           />

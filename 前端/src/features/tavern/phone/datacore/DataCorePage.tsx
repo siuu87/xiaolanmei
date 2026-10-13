@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePhoneStore } from '../phoneStore';
+import { PhoneNavBar } from '../PhoneShell';
 import { BUCKET_META } from './registry';
 import {
   scanUsage,
@@ -219,33 +220,40 @@ function ConfirmSheet({
   onCancel: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 p-3" onClick={onCancel}>
-      <motion.div
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-        className="w-full max-w-[340px] overflow-hidden rounded-[14px] bg-white"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 pt-4 pb-3 text-center">
-          <p className="text-[16px] font-semibold text-black">{title}</p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[#8e8e93]">{body}</p>
-        </div>
-        <Divider />
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+      className="absolute inset-0 z-50 flex flex-col bg-white"
+      data-testid="confirm-page"
+    >
+      <PhoneNavBar title={title} onBack={onCancel} />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-[#3C3C43]">{body}</p>
+      </div>
+      <div className="shrink-0 space-y-2 border-t border-black/[0.07] px-4 py-3">
         <button
           type="button"
           onClick={onConfirm}
           aria-label={confirmText}
-          className={cn('w-full py-3 text-[16px] font-semibold', danger ? 'text-[#FF3B30]' : 'text-[#007AFF]')}
+          className={cn(
+            'flex h-11 w-full items-center justify-center rounded-xl text-[15px] font-semibold text-white transition active:scale-[0.99]',
+            danger ? 'bg-[#FF3B30]' : 'bg-[#007AFF]',
+          )}
         >
           {confirmText}
         </button>
-        <Divider />
-        <button type="button" onClick={onCancel} aria-label="取消" className="w-full py-3 text-[16px] text-[#007AFF]">
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="取消"
+          className="flex h-11 w-full items-center justify-center rounded-xl bg-[#E9E9EB] text-[15px] font-medium text-[#3C3C43] transition active:scale-[0.99]"
+        >
           取消
         </button>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 

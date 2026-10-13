@@ -8,15 +8,14 @@
  */
 import { type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Contact, MessageCircle, Compass, LayoutGrid, LogOut, Settings } from 'lucide-react';
+import { MessageCircle, Compass, LayoutGrid, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type PhoneTab = 'sessions' | 'contacts' | 'discover' | 'cards' | 'core';
+export type PhoneTab = 'sessions' | 'discover' | 'cards' | 'core';
 
-/** 底部 Tab 定义：信息 / 通讯录 / 发现（朋友圈） / 卡片 / 数据中枢 */
+/** 底部 Tab 定义：信息 / 发现（朋友圈） / 卡片 / 数据中枢 */
 export const PHONE_TABS: { key: PhoneTab; label: string; icon: typeof MessageCircle }[] = [
   { key: 'sessions', label: '信息', icon: MessageCircle },
-  { key: 'contacts', label: '通讯录', icon: Contact },
   { key: 'discover', label: '发现', icon: Compass },
   { key: 'cards', label: '卡片', icon: LayoutGrid },
   { key: 'core', label: '中枢', icon: Settings },
@@ -44,6 +43,7 @@ function TabBar({
               key={t.key}
               type="button"
               onClick={() => onChange(t.key)}
+              data-testid={`phone-tab-${t.key}`}
               className={cn(
                 'relative flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors active:opacity-60',
                 on ? 'text-[#007AFF]' : 'text-[#8e8e93]',
@@ -153,7 +153,7 @@ export function PhoneNavBar({
         <span className="w-8" />
       )}
       <div className="min-w-0 flex-1 text-center">
-        <p className="truncate text-[15px] font-semibold">{title}</p>
+        <p data-testid="phone-nav-title" className="truncate text-[15px] font-semibold">{title}</p>
         {subtitle && <p className="truncate text-[10px] font-normal opacity-60">{subtitle}</p>}
       </div>
       {right ?? <span className="w-8" />}

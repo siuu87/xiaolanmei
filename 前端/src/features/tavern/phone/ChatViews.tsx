@@ -1,5 +1,5 @@
 /**
- * 酒馆「小手机」模块 —— 聊天 / 通讯录 / 群聊
+ * 酒馆「小手机」模块 —— 聊天 / 群聊
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -13,7 +13,6 @@ import {
   Plus,
   Search,
   Trash2,
-  UserPlus,
   Users,
   X,
 } from 'lucide-react';
@@ -158,7 +157,7 @@ export function SessionsPage({ onOpen, onCompose }: { onOpen: (id: string) => vo
           <EmptyState
             icon={<MessageSquarePlus className="h-9 w-9" />}
             title={query ? '没有匹配的会话' : '还没有信息'}
-            desc={query ? '换个关键词试试' : '去通讯录找个人聊聊，或点右上角发起聊天'}
+            desc={query ? '换个关键词试试' : '去「卡片」找个人聊聊，或点右上角发起聊天'}
             action={!query ? { label: '发起聊天', onClick: onCompose } : undefined}
           />
         ) : (
@@ -399,140 +398,6 @@ export function ChatPage({ sessionId, onBack, onOpenInfo }: { sessionId: string;
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ============================ 通讯录页 ============================ */
-
-export function ContactsPage({
-  onOpenChat,
-  buildMode,
-  checkedIds,
-  onCheckedChange,
-  onToggleBuild,
-}: {
-  onOpenChat: (contactId: string) => void;
-  /** 建群模式：勾选联系人 */
-  buildMode: boolean;
-  /** 已勾选的联系人 id（由编排层持有，便于建群向导读取） */
-  checkedIds: string[];
-  onCheckedChange: (ids: string[]) => void;
-  onToggleBuild: () => void;
-}) {
-  const contacts = usePhoneStore((s) => s.contacts);
-  const [query, setQuery] = useState('');
-  const selected = checkedIds;
-
-  const filtered = useMemo(() => {
-    const kw = query.trim().toLowerCase();
-    const list = kw ? contacts.filter((c) => c.name.toLowerCase().includes(kw)) : contacts;
-    return [...list].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
-  }, [contacts, query]);
-
-  const toggle = (id: string) => {
-    onCheckedChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
-  };
-
-  return (
-    <div className="flex h-full flex-col bg-white">
-      <PhoneNavBar
-        title={buildMode ? '选择联系人' : '通讯录'}
-        right={
-          <button
-            type="button"
-            onClick={onToggleBuild}
-            aria-label={buildMode ? '完成' : '发起聊天'}
-            className={cn(
-              'flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[13px] transition active:bg-black/10',
-              buildMode ? 'font-semibold text-[#007AFF]' : 'text-[#000000]',
-            )}
-          >
-            {buildMode ? '完成' : <UserPlus className="h-5 w-5" strokeWidth={2} />}
-          </button>
-        }
-      />
-      <div className="shrink-0 px-3 pb-2">
-        <div className="flex h-8 items-center gap-1.5 rounded-lg bg-[#E9E9EB] px-2.5">
-          <Search className="h-4 w-4 shrink-0 text-[#8e8e93]" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索联系人"
-            className="h-full flex-1 bg-transparent text-[14px] text-[#000000] outline-none placeholder:text-[#8e8e93]"
-          />
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
-        {filtered.length === 0 ? (
-          <EmptyState icon={<UserPlus className="h-9 w-9" />} title="没有联系人" desc="在「卡片」里新建角色卡即可添加联系人" />
-        ) : (
-          filtered.map((c) => {
-            const on = selected.includes(c.id);
-            return (
-              <button
-                key={c.id}
-                type="button"
-                aria-label={buildMode ? `选择 ${c.name}` : `和 ${c.name} 聊天`}
-                aria-pressed={buildMode ? on : undefined}
-                onClick={() => (buildMode ? toggle(c.id) : onOpenChat(c.id))}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition active:bg-black/[0.04]"
-              >
-                {buildMode && (
-                  <span
-                    className={cn(
-                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition',
-                      on ? 'border-[#007AFF] bg-[#007AFF] text-white' : 'border-[#C7C7CC] text-transparent',
-                    )}
-                  >
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                )}
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E9EB] text-2xl">
-                  <AvatarContent value={c.avatar ?? ''} fallback="🙂" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-medium text-[#000000]">{c.name}</span>
-                  <span className="mt-0.5 block truncate text-[12px] text-[#8e8e93]">{c.signature}</span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-[#C7C7CC]" />
-              </button>
-            );
-          })
-        )}
-      </div>
-
-      {/* 建群模式底部操作条 */}
-      {buildMode && (
-        <div className="shrink-0 border-t border-black/[0.06] bg-white px-3 py-2.5">
-          <button
-            type="button"
-            onClick={onToggleBuild}
-            disabled={selected.length === 0}
-            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#007AFF] text-[14px] font-medium text-white transition active:scale-[0.99] disabled:bg-[#C7C7CC]"
-          >
-            {selected.length >= 2 ? (
-              <>
-                <Users className="h-4 w-4" />
-                发起群聊（{selected.length}）
-              </>
-            ) : (
-              <>
-                <MessageSquarePlus className="h-4 w-4" />
-                发起聊天
-              </>
-            )}
-          </button>
-          <p className="mt-1.5 text-center text-[11px] text-[#8e8e93]">
-            {selected.length === 0
-              ? '选择 1 位联系人开始私聊，2 位及以上创建群聊'
-              : selected.length === 1
-                ? `将与「${contacts.find((c) => c.id === selected[0])?.name ?? ''}」私聊`
-                : `已选择：${selected.map((id) => contacts.find((c) => c.id === id)?.name).filter(Boolean).join('、')}`}
-          </p>
-        </div>
-      )}
     </div>
   );
 }
@@ -878,38 +743,43 @@ export function PhoneDialog({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/35 px-6" onClick={onCancel}>
-      <motion.div
-        initial={{ scale: 0.92, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.16 }}
-        className="w-full max-w-[280px] overflow-hidden rounded-2xl bg-white"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 pt-5 pb-4 text-center">
-          <p className="text-[16px] font-semibold text-[#000000]">{title}</p>
-          {text && <p className="mt-2 text-[13px] leading-relaxed text-[#6b7280]">{text}</p>}
-          {children}
-        </div>
-        <div className="flex border-t border-black/[0.07] text-[15px]">
-          <button type="button" onClick={onCancel} className="flex-1 py-3 text-[#3C3C43] transition active:bg-black/[0.04]">
-            取消
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+      className="absolute inset-0 z-40 flex flex-col bg-white"
+      data-testid="phone-dialog"
+    >
+      <PhoneNavBar title={title} onBack={onCancel} />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
+        {text && <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-[#3C3C43]">{text}</p>}
+        {children}
+      </div>
+      <div className="shrink-0 space-y-2 border-t border-black/[0.07] px-4 py-3">
+        {onOk && (
+          <button
+            type="button"
+            onClick={onOk}
+            data-testid="phone-dialog-ok"
+            className={cn(
+              'flex h-11 w-full items-center justify-center rounded-xl text-[15px] font-semibold text-white transition active:scale-[0.99]',
+              danger ? 'bg-[#FF3B30]' : 'bg-[#007AFF]',
+            )}
+          >
+            {okText}
           </button>
-          {onOk && (
-            <button
-              type="button"
-              onClick={onOk}
-              className={cn(
-                'flex-1 border-l border-black/[0.07] py-3 font-medium transition active:bg-black/[0.04]',
-                danger ? 'text-[#FF3B30]' : 'text-[#007AFF]',
-              )}
-            >
-              {okText}
-            </button>
-          )}
-        </div>
-      </motion.div>
-    </div>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          data-testid="phone-dialog-cancel"
+          className="flex h-11 w-full items-center justify-center rounded-xl bg-[#E9E9EB] text-[15px] font-medium text-[#3C3C43] transition active:scale-[0.99]"
+        >
+          取消
+        </button>
+      </div>
+    </motion.div>
   );
 }
 

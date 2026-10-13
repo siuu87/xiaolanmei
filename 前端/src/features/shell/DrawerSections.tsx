@@ -162,7 +162,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       {
         to: '/tavern',
         label: '小手机',
-        hint: '角色卡 · 通讯录 · 小世界书 · 朋友圈',
+        hint: '角色卡 · 小世界书 · 朋友圈',
         icon: Phone,
       },
     ],

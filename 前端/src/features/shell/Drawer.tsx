@@ -9,7 +9,7 @@
  */
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import { useShellStore } from '@/stores/shellStore';
 import { AppearanceSection } from '@/features/settings/AppearanceSection';
 import { ProfileHeader, DailyBoard, ModuleCards, StickyFooter } from './DrawerSections';
@@ -41,9 +41,9 @@ export function Drawer() {
       <AnimatePresence>
         {open && (
           <div className="fixed inset-0 z-[1200] md:hidden" data-testid="main-drawer">
-            {/* 遮罩：半透明 + 毛玻璃 */}
+            {/* 背板：纯色不透明，底下的页面不透出来 */}
             <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-[#0f1424]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -52,7 +52,7 @@ export function Drawer() {
             />
             {/* 面板 */}
             <motion.div
-              className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col border-r border-white/10 bg-[#0f1424]/95 shadow-2xl backdrop-blur-xl"
+              className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col border-r border-white/10 bg-[#0f1424] shadow-2xl"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
@@ -85,35 +85,28 @@ export function Drawer() {
         )}
       </AnimatePresence>
 
-      {/* 外观自定义浮层（齿轮）：直接复用「我」页那一套外观设置，不重造 */}
+      {/* 外观页（齿轮）：整页纯色，直接复用「我」页那一套外观设置，不重造 */}
       <AnimatePresence>
         {appearanceOpen && (
-          <div className="fixed inset-0 z-[1300] flex items-end justify-center" data-testid="appearance-sheet">
+          <div className="fixed inset-0 z-[1300] flex flex-col bg-[#0f1424]" data-testid="appearance-sheet">
             <motion.div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              onClick={closeAppearance}
-            />
-            <motion.div
-              className="relative flex max-h-[86vh] w-full flex-col overflow-hidden rounded-t-3xl border-t border-white/10 bg-[#0f1424] shadow-2xl"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
+              className="flex h-full w-full flex-col overflow-hidden bg-[#0f1424]"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 360, damping: 32 }}
             >
-              <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-2.5">
-                <span className="text-[13px] font-semibold text-[#e8ecf6]">外观与全局配置</span>
+              <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.08] px-2.5 py-2.5">
                 <button
                   type="button"
                   onClick={closeAppearance}
-                  aria-label="关闭外观设置"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.08]"
+                  aria-label="返回"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#a8b0c4] transition hover:bg-white/[0.08]"
                 >
-                  <X className="h-4 w-4" />
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
+                <p className="flex-1 text-center text-[15px] font-semibold text-[#e8ecf6]">外观与全局配置</p>
+                <span className="h-8 w-8 shrink-0" aria-hidden />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
                 <AppearanceSection />

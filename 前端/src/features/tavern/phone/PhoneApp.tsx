@@ -8,14 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePhoneStore } from './phoneStore';
 import { PhoneShell, tabTransition, type PhoneTab } from './PhoneShell';
-import {
-  ChatPage,
-  ContactsPage,
-  GroupEditSheet,
-  GroupInfoPage,
-  GroupSetupPage,
-  SessionsPage,
-} from './ChatViews';
+import { ChatPage, GroupEditSheet, GroupInfoPage, GroupSetupPage, SessionsPage } from './ChatViews';
 import { DiscoverPage, PublishSheet } from './MomentsView';
 import { CardsPage } from './CardsView';
 import { DataCorePage } from './datacore/DataCorePage';
@@ -27,7 +20,7 @@ type StackEntry =
   | { name: 'group-setup'; memberIds: string[] }
   | { name: 'group-info'; sessionId: string };
 
-const TAB_ORDER: PhoneTab[] = ['sessions', 'contacts', 'discover', 'cards', 'core'];
+const TAB_ORDER: PhoneTab[] = ['sessions', 'discover', 'cards', 'core'];
 
 /** 二级页面统一的进入 / 退出动效 */
 const slide = {
@@ -59,8 +52,9 @@ export function PhoneApp({
 
   const [tab, setTab] = useState<PhoneTab>('sessions');
   const [stack, setStack] = useState<StackEntry[]>([]);
-  const [buildMode, setBuildMode] = useState(false);
-  /** 建群模式下通讯录勾选的成员（提升到编排层，供向导读取） */
+  /** 选人模式：在「卡片」库里勾选角色卡发起聊天（通讯录 Tab 已移除，选人统一走卡片） */
+  const [pickMode, setPickMode] = useState(false);
+  /** 选人模式下勾选的联系人 id（提升到编排层，供建群向导读取） */
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [groupEditId, setGroupEditId] = useState<string | null>(null);
@@ -76,7 +70,7 @@ export function PhoneApp({
       dirRef.current = TAB_ORDER.indexOf(next) >= TAB_ORDER.indexOf(tab) ? 1 : -1;
       setTab(next);
       setStack([]);
-      setBuildMode(false);
+      setPickMode(false);
       setCheckedIds([]);
       setPublishing(false);
     },
@@ -98,28 +92,28 @@ export function PhoneApp({
     [contacts, openSingleSession, push],
   );
 
-  /** 从会话列表发起新聊天：切到通讯录并进入选人模式（1 人私聊 / 2+ 群聊） */
+  /** 从会话列表发起新聊天：切到「卡片」库并进入选人模式（1 人私聊 / 2+ 群聊） */
   const startComposeFlow = useCallback(() => {
-    setBuildMode(true);
+    setPickMode(true);
     setCheckedIds([]);
-    setTab('contacts');
+    setTab('cards');
     setStack([]);
     dirRef.current = 1;
   }, []);
 
-  /** 通讯录选人「完成」：勾选 1 人 → 私聊；≥2 人 → 建群向导 */
+  /** 卡片库选人「完成」：勾选 1 人 → 私聊；≥2 人 → 建群向导 */
   const finishCompose = useCallback(() => {
     if (checkedIds.length >= 2) {
       push({ name: 'group-setup', memberIds: checkedIds });
-      setBuildMode(false);
+      setPickMode(false);
       setCheckedIds([]);
     } else if (checkedIds.length === 1) {
-      setBuildMode(false);
+      setPickMode(false);
       setCheckedIds([]);
       openContactChat(checkedIds[0]);
       setTab('sessions');
     } else {
-      setBuildMode(false);
+      setPickMode(false);
       setCheckedIds([]);
     }
   }, [checkedIds, push, openContactChat]);
@@ -135,20 +129,19 @@ export function PhoneApp({
     if (tab === 'sessions') {
       return <SessionsPage onOpen={openChat} onCompose={startComposeFlow} />;
     }
-    if (tab === 'contacts') {
-      return (
-        <ContactsPage
-          onOpenChat={openContactChat}
-          buildMode={buildMode}
-          checkedIds={checkedIds}
-          onCheckedChange={setCheckedIds}
-          onToggleBuild={() => (buildMode ? finishCompose() : (setBuildMode(true), setCheckedIds([])))}
-        />
-      );
-    }
     if (tab === 'discover') return <DiscoverPage onPublish={() => setPublishing(true)} />;
     if (tab === 'core') return <DataCorePage />;
-    return <CardsPage onCreateChat={openContactChat} onOpenConfig={onOpenConfig} />;
+    if (pickMode) {
+      // 选人模式：卡片库只列角色卡，点卡片 = 勾选
+      return <CardsPage pickMode checkedIds={checkedIds} onCheckedChange={setCheckedIds} onTogglePick={finishCompose} />;
+    }
+    return (
+      <CardsPage
+        onCreateChat={openContactChat}
+        onOpenConfig={onOpenConfig}
+        onTogglePick={() => (setPickMode(true), setCheckedIds([]))}
+      />
+    );
   })();
 
   return (

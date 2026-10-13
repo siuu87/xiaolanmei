@@ -120,7 +120,7 @@ export type CardFilter =
 /** 手机模块内的页面栈条目 */
 export interface PhoneRoute {
   /** 页面 key */
-  name: 'home' | 'sessions' | 'contacts' | 'discover' | 'cards' | 'chat' | 'group-setup' | 'group-info';
+  name: 'home' | 'sessions' | 'discover' | 'cards' | 'chat' | 'group-setup' | 'group-info';
   /** 页面参数（如 chat 的会话 id、group-setup 的成员列表） */
   params?: Record<string, unknown>;
 }
