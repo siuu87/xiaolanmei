@@ -28,6 +28,7 @@ import { useProfileStore } from '@/stores/profileStore';
 import { useShellStore } from '@/stores/shellStore';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
+import { FolderDropZone } from '@/features/importer/FolderDropZone';
 import { InspirationNoteCard } from '@/features/notes/InspirationNoteCard';
 import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
@@ -87,13 +88,15 @@ export function DailyBoard() {
         {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
         <CalendarCard />
         <TodoCard />
-        {/* Token 和信箱并排，一半一半（跟旧首页那排一样） */}
+        {/* Token 和文件夹导入并排，一半一半 */}
         <div className="grid grid-cols-2 gap-3">
           <div data-testid="token-capsule">
             <TokenCard />
           </div>
-          <InspirationNoteCard />
+          <FolderDropZone />
         </div>
+        {/* 蓝莓信箱：仿文件夹卡片列表，单独占一行（半格放不下按月份归档的文件夹） */}
+        <InspirationNoteCard />
       </div>
     </section>
   );
