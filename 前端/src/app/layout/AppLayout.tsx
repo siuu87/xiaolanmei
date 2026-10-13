@@ -47,9 +47,9 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      {/* 手机底部导航：永远固定在底部；沉浸式界面例外，那里只留退出键 */}
+      {/* 手机底部导航：永远固定在底部，且置顶在所有图层之上（z-[1000]）；沉浸式界面例外，那里只留退出键 */}
       {!immersive && (
-        <nav className="fixed inset-x-0 bottom-0 z-10 border-t bg-card/95 backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-[1000] border-t bg-card/95 backdrop-blur md:hidden">
           <BottomNav />
         </nav>
       )}
