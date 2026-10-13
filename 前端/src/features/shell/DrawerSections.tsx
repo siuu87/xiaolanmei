@@ -27,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { useShellStore } from '@/stores/shellStore';
+import { ProfileEditor, type ProfileTarget } from './ProfileEditor';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
@@ -39,22 +40,45 @@ import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
 /**
  * 纪念日块（日历正上方）：两个人的头像挨着，下面一个更大的「在一起 N 天」数字。
  * 不要边框、不要名字——就放纪念日这一件事。
+ *
+ * 两个头像可点：左边改「我」，右边改「TA 的角色」（头像 + 称呼），
+ * 改完主界面顶栏的称呼与挂件头像立刻跟着变——抽屉里这两张脸本来就是聊天角色的脸，
+ * 顺手点一下就该能改，不用绕去设置页。设置页那张卡读写同一个 store，两边同步。
  */
 export function ProfileHeader() {
   const { avatar, partnerAvatar } = useProfileStore();
+  const [editing, setEditing] = useState<ProfileTarget | null>(null);
   const days = useMemo(() => loveDays(), []);
 
   return (
     <div className="shrink-0 px-4 pb-3 pt-4" data-testid="anniversary-block">
       <div className="flex flex-col items-center">
-        {/* 两个人的头像挨着 */}
+        {/* 两个人的头像挨着（可点：左边=我，右边=TA） */}
         <div className="flex items-center gap-1.5">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-[22px]">
-            {avatar || '🫐'}
-          </span>
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#5b3f6e] to-[#7a4a63] text-[22px]">
-            {partnerAvatar || '🐰'}
-          </span>
+          <button
+            type="button"
+            onClick={() => setEditing('me')}
+            aria-label="调整我的资料"
+            title="调整我的资料"
+            data-testid="avatar-me"
+            className="rounded-full transition hover:ring-2 hover:ring-white/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-[22px]">
+              {avatar || '🫐'}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing('partner')}
+            aria-label="调整 TA 的角色"
+            title="调整 TA 的角色"
+            data-testid="avatar-partner"
+            className="rounded-full transition hover:ring-2 hover:ring-white/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#5b3f6e] to-[#7a4a63] text-[22px]">
+              {partnerAvatar || '🐰'}
+            </span>
+          </button>
         </div>
 
         {/* 在一起 N 天：数字给到 32px，一眼看到 */}
@@ -73,6 +97,9 @@ export function ProfileHeader() {
           {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
         </span>
       </div>
+
+      {/* 点头像弹出来的角色调整浮层（portal 到 body，压过抽屉） */}
+      <ProfileEditor target={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

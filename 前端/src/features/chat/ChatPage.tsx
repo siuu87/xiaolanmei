@@ -187,16 +187,29 @@ function ClaudeMark({ className }: { className?: string }) {
   );
 }
 
-/** 气泡前的圆形头像（iMessage 风格）：你=灰色，小蓝莓=蓝色 */
+/**
+ * 气泡前的圆形头像（iMessage 风格）：你=灰色，TA=蓝色。
+ *
+ * TA 那张脸用抽屉里设的头像 emoji——在抽屉里改了头像，对话里立刻能看见，
+ * 不用去猜「调整到底生效了没」。这个头像本来就是 TA 的角色形象。
+ */
 function BubbleAvatar({ mine }: { mine: boolean }) {
+  const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   return (
     <span
+      data-testid={mine ? 'bubble-avatar-me' : 'bubble-avatar-partner'}
       className={cn(
         'mb-[18px] flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white',
         mine ? 'bg-[#8e8e93]' : 'bg-[#007AFF]',
       )}
     >
-      {mine ? <User className="h-4 w-4" /> : <ClaudeMark className="h-4 w-4" />}
+      {mine ? (
+        <User className="h-4 w-4" />
+      ) : partnerAvatar ? (
+        <span className="text-[17px] leading-none">{partnerAvatar}</span>
+      ) : (
+        <ClaudeMark className="h-4 w-4" />
+      )}
     </span>
   );
 }
@@ -327,6 +340,7 @@ export function ChatPage() {
   const openDrawer = useShellStore((s) => s.openDrawer);
   const openToolbox = useShellStore((s) => s.openToolbox);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
+  const partnerName = useProfileStore((s) => s.partnerName);
   const loveDayCount = useMemo(() => loveDays(), []);
   const [confirming, setConfirming] = useState<{ confirmId: string; toolName: string; summary: string } | null>(
     null,
@@ -810,7 +824,8 @@ export function ChatPage() {
             data-testid="chat-title"
             className="min-w-0 truncate font-serif text-[15px] font-semibold text-[#e8ecf6]"
           >
-            {conversation?.title ?? '小蓝莓'}
+            {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
+            {partnerName || conversation?.title || '小蓝莓'}
           </span>
           <span className="hidden shrink-0 items-center gap-1 rounded-full border border-white/[0.08] bg-black/25 px-1.5 py-0.5 text-[10px] text-[#8b93a7] sm:flex">
             <span aria-hidden>{partnerAvatar}</span>
