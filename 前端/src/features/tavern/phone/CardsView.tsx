@@ -7,7 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, MessageCircle, Pencil, Plus, Search, Settings, UserRound, Users, Bot, X } from 'lucide-react';
+import { Check, MessageCircle, MoreHorizontal, Pencil, Plus, Search, Settings, UserRound, Users, Bot, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePhoneStore } from './phoneStore';
 import { PhoneNavBar } from './PhoneShell';
@@ -77,60 +77,73 @@ function FilterBar({
 
 /* ------------------------------ 卡片 ------------------------------ */
 
-function CardTile({ card, onOpen }: { card: PhoneCard; onOpen: () => void }) {
+function CardTile({ card, onOpen, onMore }: { card: PhoneCard; onOpen: () => void; onMore: () => void }) {
   const active = card.active;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={cn(
-        'relative flex flex-col overflow-hidden rounded-xl bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition active:scale-[0.98]',
-        card.kind === 'persona' && 'ring-1 ring-inset',
-      )}
-      style={card.kind === 'persona' ? { borderColor: 'transparent' } : undefined}
-    >
-      {/* 头像 + 类型角标 */}
-      <div className="flex items-start gap-2">
-        <span
-          className={cn(
-            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl',
-            card.kind === 'character' ? 'bg-[#eef2ff]' : 'bg-[#fff4e8]',
-          )}
-        >
-          {card.avatar || (card.kind === 'character' ? '🤖' : '🙂')}
-        </span>
-        <span
-          className={cn(
-            'flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-            card.kind === 'character' ? 'bg-[#eef2ff] text-[#4c6ef5]' : 'bg-[#fff4e8] text-[#d9822b]',
-          )}
-        >
-          {card.kind === 'character' ? <Bot className="h-2.5 w-2.5" /> : <UserRound className="h-2.5 w-2.5" />}
-          {card.kind === 'character' ? '角色' : '人设'}
-        </span>
-      </div>
-
-      <p className="mt-2 truncate text-[14px] font-semibold text-[#000000]">{card.name}</p>
-      <p className="mt-0.5 line-clamp-2 min-h-[32px] text-[11px] leading-4 text-[#8e8e93]">
-        {card.intro || card.description || '还没有简介'}
-      </p>
-
-      {card.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {card.tags.slice(0, 3).map((t) => (
-            <span key={t} className="rounded bg-black/[0.05] px-1.5 py-0.5 text-[10px] text-[#8e8e93]">
-              {t}
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          'flex h-full w-full flex-col overflow-hidden rounded-xl bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition active:scale-[0.98]',
+          card.kind === 'persona' && 'ring-1 ring-inset',
+        )}
+        style={card.kind === 'persona' ? { borderColor: 'transparent' } : undefined}
+      >
+        {/* 头像 + 类型角标 */}
+        <div className="flex items-start gap-2 pr-6">
+          <span className="relative shrink-0">
+            <span
+              className={cn(
+                'flex h-12 w-12 items-center justify-center rounded-xl text-2xl',
+                card.kind === 'character' ? 'bg-[#eef2ff]' : 'bg-[#fff4e8]',
+              )}
+            >
+              {card.avatar || (card.kind === 'character' ? '🤖' : '🙂')}
             </span>
-          ))}
+            {active && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#007AFF] ring-2 ring-white">
+                <Check className="h-2.5 w-2.5 text-white" strokeWidth={3.5} />
+              </span>
+            )}
+          </span>
+          <span
+            className={cn(
+              'flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+              card.kind === 'character' ? 'bg-[#eef2ff] text-[#4c6ef5]' : 'bg-[#fff4e8] text-[#d9822b]',
+            )}
+          >
+            {card.kind === 'character' ? <Bot className="h-2.5 w-2.5" /> : <UserRound className="h-2.5 w-2.5" />}
+            {card.kind === 'character' ? '角色' : '人设'}
+          </span>
         </div>
-      )}
 
-      {active && (
-        <span className="absolute right-2 top-2 flex items-center gap-0.5 rounded-full bg-[#007AFF] px-1.5 py-0.5 text-[10px] font-medium text-white">
-          <Check className="h-2.5 w-2.5" strokeWidth={3} /> 使用中
-        </span>
-      )}
-    </button>
+        <p className="mt-2 truncate text-[14px] font-semibold text-[#000000]">{card.name}</p>
+        <p className="mt-0.5 line-clamp-2 min-h-[32px] text-[11px] leading-4 text-[#8e8e93]">
+          {card.intro || card.description || '还没有简介'}
+        </p>
+
+        {card.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {card.tags.slice(0, 3).map((t) => (
+              <span key={t} className="rounded bg-black/[0.05] px-1.5 py-0.5 text-[10px] text-[#8e8e93]">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </button>
+
+      {/* 更多操作：进预览层做编辑/删除/看详情 */}
+      <button
+        type="button"
+        onClick={onMore}
+        aria-label={`${card.name} 更多操作`}
+        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[#8e8e93] transition hover:bg-black/[0.06] active:bg-black/10"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 
@@ -613,7 +626,21 @@ export function CardsPage({
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
             {filtered.map((c) => (
-              <CardTile key={c.id} card={c} onOpen={() => setPreview(c.id)} />
+              <CardTile
+                key={c.id}
+                card={c}
+                onOpen={() => {
+                  // 角色卡：点卡片直接进聊天（chatbox）；人设卡：进预览层「设为我的」
+                  if (c.kind === 'character') {
+                    const contact = contacts.find((ct) => ct.characterId === c.id);
+                    if (contact) onCreateChat(contact.id);
+                    else setPreview(c.id);
+                  } else {
+                    setPreview(c.id);
+                  }
+                }}
+                onMore={() => setPreview(c.id)}
+              />
             ))}
           </div>
         )}

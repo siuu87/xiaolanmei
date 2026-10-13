@@ -107,7 +107,7 @@ function TypingDots() {
 
 /* ============================ 会话列表页 ============================ */
 
-export function SessionsPage({ onOpen, onCreateGroup }: { onOpen: (id: string) => void; onCreateGroup: () => void }) {
+export function SessionsPage({ onOpen, onCompose }: { onOpen: (id: string) => void; onCompose: () => void }) {
   const sessions = usePhoneStore((s) => s.sessions);
   const togglePin = usePhoneStore((s) => s.togglePin);
   const removeSession = usePhoneStore((s) => s.removeSession);
@@ -131,8 +131,8 @@ export function SessionsPage({ onOpen, onCreateGroup }: { onOpen: (id: string) =
           right={
             <button
               type="button"
-              onClick={onCreateGroup}
-              aria-label="发起群聊"
+              onClick={onCompose}
+              aria-label="发起聊天"
               className="flex h-8 w-8 items-center justify-center rounded-full text-[#007AFF] transition active:bg-black/10"
             >
               <Plus className="h-5 w-5" strokeWidth={2.4} />
@@ -157,8 +157,8 @@ export function SessionsPage({ onOpen, onCreateGroup }: { onOpen: (id: string) =
           <EmptyState
             icon={<MessageSquarePlus className="h-9 w-9" />}
             title={query ? '没有匹配的会话' : '还没有信息'}
-            desc={query ? '换个关键词试试' : '去通讯录找个人聊聊，或点右上角发起群聊'}
-            action={!query ? { label: '发起群聊', onClick: onCreateGroup } : undefined}
+            desc={query ? '换个关键词试试' : '去通讯录找个人聊聊，或点右上角发起聊天'}
+            action={!query ? { label: '发起聊天', onClick: onCompose } : undefined}
           />
         ) : (
           sorted.map((s) => (
@@ -437,7 +437,7 @@ export function ContactsPage({
           <button
             type="button"
             onClick={onToggleBuild}
-            aria-label={buildMode ? '完成' : '发起群聊'}
+            aria-label={buildMode ? '完成' : '发起聊天'}
             className={cn(
               'flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[13px] transition active:bg-black/10',
               buildMode ? 'font-semibold text-[#007AFF]' : 'text-[#000000]',
@@ -504,14 +504,27 @@ export function ContactsPage({
           <button
             type="button"
             onClick={onToggleBuild}
-            disabled={selected.length < 2}
+            disabled={selected.length === 0}
             className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#007AFF] text-[14px] font-medium text-white transition active:scale-[0.99] disabled:bg-[#C7C7CC]"
           >
-            <Users className="h-4 w-4" />
-            发起群聊{selected.length > 0 ? `（${selected.length}）` : ''}
+            {selected.length >= 2 ? (
+              <>
+                <Users className="h-4 w-4" />
+                发起群聊（{selected.length}）
+              </>
+            ) : (
+              <>
+                <MessageSquarePlus className="h-4 w-4" />
+                发起聊天
+              </>
+            )}
           </button>
           <p className="mt-1.5 text-center text-[11px] text-[#8e8e93]">
-            {selected.length < 2 ? '至少选择 2 位联系人' : `已选择：${selected.map((id) => contacts.find((c) => c.id === id)?.name).filter(Boolean).join('、')}`}
+            {selected.length === 0
+              ? '选择 1 位联系人开始私聊，2 位及以上创建群聊'
+              : selected.length === 1
+                ? `将与「${contacts.find((c) => c.id === selected[0])?.name ?? ''}」私聊`
+                : `已选择：${selected.map((id) => contacts.find((c) => c.id === id)?.name).filter(Boolean).join('、')}`}
           </p>
         </div>
       )}

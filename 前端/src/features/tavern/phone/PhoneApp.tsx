@@ -98,8 +98,8 @@ export function PhoneApp({
     [contacts, openSingleSession, push],
   );
 
-  /** 从会话列表发起群聊：切到通讯录并进入建群模式 */
-  const startGroupFlow = useCallback(() => {
+  /** 从会话列表发起新聊天：切到通讯录并进入选人模式（1 人私聊 / 2+ 群聊） */
+  const startComposeFlow = useCallback(() => {
     setBuildMode(true);
     setCheckedIds([]);
     setTab('contacts');
@@ -107,16 +107,22 @@ export function PhoneApp({
     dirRef.current = 1;
   }, []);
 
-  /** 通讯录「完成」：勾选 ≥2 人则进入建群向导 */
-  const finishGroupPick = useCallback(() => {
+  /** 通讯录选人「完成」：勾选 1 人 → 私聊；≥2 人 → 建群向导 */
+  const finishCompose = useCallback(() => {
     if (checkedIds.length >= 2) {
       push({ name: 'group-setup', memberIds: checkedIds });
       setBuildMode(false);
+      setCheckedIds([]);
+    } else if (checkedIds.length === 1) {
+      setBuildMode(false);
+      setCheckedIds([]);
+      openContactChat(checkedIds[0]);
+      setTab('sessions');
     } else {
       setBuildMode(false);
       setCheckedIds([]);
     }
-  }, [checkedIds, push]);
+  }, [checkedIds, push, openContactChat]);
 
   const badges = useMemo(
     () => ({ sessions: sessions.reduce((n, s) => n + (s.unread > 0 ? 1 : 0), 0) }),
@@ -127,7 +133,7 @@ export function PhoneApp({
 
   const mainPage = (() => {
     if (tab === 'sessions') {
-      return <SessionsPage onOpen={openChat} onCreateGroup={startGroupFlow} />;
+      return <SessionsPage onOpen={openChat} onCompose={startComposeFlow} />;
     }
     if (tab === 'contacts') {
       return (
@@ -136,7 +142,7 @@ export function PhoneApp({
           buildMode={buildMode}
           checkedIds={checkedIds}
           onCheckedChange={setCheckedIds}
-          onToggleBuild={() => (buildMode ? finishGroupPick() : (setBuildMode(true), setCheckedIds([])))}
+          onToggleBuild={() => (buildMode ? finishCompose() : (setBuildMode(true), setCheckedIds([])))}
         />
       );
     }
