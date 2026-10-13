@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
 import { HomePage } from '@/features/home/HomePage';
-import { ChatPage } from '@/features/chat/ChatPage';
 import { StarrySkyPage } from '@/features/sky/StarrySkyPage';
 import { FoodPage } from '@/features/sky/FoodPage';
 import { FoodDetailPage } from '@/features/sky/FoodDetailPage';
@@ -17,19 +16,24 @@ import { NotesPage } from '@/features/notes/NotesPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { MemoHomePage } from '@/features/memo/MemoHomePage';
 
+/** 聊天是底座常驻层（AppLayout 里直接挂），路由上留个空位只为给个 URL */
+const Noop = () => null;
+
 /**
- * 路由表：底部 4 个 Tab = 首页 / 聊天 / 星空 / 我。
- * 星空是「一起读」书架主页，「今天吃什么」收成小入口（正餐 / 甜品合并）。
- * 其余（日记本 / 纪念日 / 蓝莓信箱）作为详情子页，从首页进入，不进底部导航。
- * MCP / 世界书 / 编程 / 同步 / 记忆 已并入聊天抽屉或「我」页。
+ * 路由表（双层结构）：
+ * - `/chat` 是主聊天流，默认进入；AppLayout 把它作为常驻底座，这里渲染空。
+ * - 其余路由都是「覆盖层」，叠在聊天上面，一键返回即回到对话（聊天不重载）。
+ * - `/tavern`（酒馆小手机）例外：整页沉浸替换，不挂聊天底座。
+ * - `/home` 保留旧首页作为备用路由。
  */
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: 'chat', element: <ChatPage /> },
+      { index: true, element: <Navigate to="/chat" replace /> },
+      { path: 'chat', element: <Noop /> },
+      { path: 'home', element: <HomePage /> },
       { path: 'sky', element: <StarrySkyPage /> },
       // 星空里的功能星（非 Tab）
       { path: 'food', element: <FoodPage /> },

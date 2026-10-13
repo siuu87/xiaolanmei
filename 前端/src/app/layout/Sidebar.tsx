@@ -8,10 +8,14 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-// 导航配置：4 个核心 Tab = 首页 / 聊天 / 星空 / 我
+/**
+ * 导航配置（桌面左侧常驻栏）。
+ * 移动端不再有底部 Tab——那里改成主抽屉（AppLayout → Drawer）。
+ * 聊天放第一个：它是默认视图；旧首页降级为备用入口 /home。
+ */
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: '首页', icon: Home },
   { to: '/chat', label: '聊天', icon: MessageSquare },
+  { to: '/home', label: '首页', icon: Home },
   { to: '/sky', label: '星空', icon: Sparkles },
   { to: '/settings', label: '我', icon: Settings },
 ];
@@ -45,26 +49,11 @@ export function Sidebar() {
   );
 }
 
-/** 手机底部导航（横向） */
+/**
+ * 手机底部导航已移除（S5）：改由主抽屉承担导航，释放纵向空间。
+ * 保留这个空实现只为兼容旧引用，不要再往里加东西。
+ * @deprecated
+ */
 export function BottomNav() {
-  return (
-    <div className="flex items-center justify-around py-1">
-      {NAV_ITEMS.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.to === '/'}
-          className={({ isActive }) =>
-            cn(
-              'flex flex-col items-center gap-0.5 rounded-md px-4 py-1.5 text-xs transition-colors',
-              isActive ? 'text-primary' : 'text-muted-foreground',
-            )
-          }
-        >
-          <item.icon className="h-5 w-5" />
-          {item.label}
-        </NavLink>
-      ))}
-    </div>
-  );
+  return null;
 }
