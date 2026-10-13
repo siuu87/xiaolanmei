@@ -215,12 +215,13 @@ function BubbleAvatar({ mine }: { mine: boolean }) {
     <span
       data-testid={mine ? 'bubble-avatar-me' : 'bubble-avatar-partner'}
       className={cn(
-        'mb-[18px] flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-chat-pill-fg',
-        mine ? 'bg-chat-line' : 'bg-chat-pill shadow-sm',
+        // 参考图里小人「站在白纸上」，不该有阴影；两边统一一层很淡的中性底就够了。
+        // 不再用 mb-[18px]——那是旧的「整体底部对齐」遗留，现在头像对齐气泡顶部。
+        'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-chat-line/60 text-chat-pill-fg',
       )}
     >
       {value ? (
-        <AvatarContent value={value} fallback={mine ? '🫐' : '🐰'} className="text-[17px]" />
+        <AvatarContent value={value} fallback={mine ? '🫐' : '🐰'} className="text-[19px]" />
       ) : mine ? (
         <User className="h-4 w-4" />
       ) : (
@@ -230,24 +231,62 @@ function BubbleAvatar({ mine }: { mine: boolean }) {
   );
 }
 
-/** 气泡上方的分组时间戳（参考图那行「● 6/30 00:10:50」） */
-function MsgStamp({ ts, mine }: { ts?: number; mine: boolean }) {
+/**
+ * 分组时间戳（参考图那行「03/26 23:20」）。
+ *
+ * 关键：它**不是**独立一行，而是跟在气泡**内侧**（你那条在气泡左边、TA 那条在右边），
+ * 并且和气泡底部对齐——父级 `items-end` 负责底对齐，所以这里只需 `shrink-0`。
+ */
+function InlineStamp({ ts }: { ts?: number }) {
   const d = ts ? new Date(ts) : null;
   if (!d) return null;
-  const text = `${d.getMonth() + 1}/${d.getDate()} ${d
-    .getHours()
-    .toString()
-    .padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d
-    .getSeconds()
-    .toString()
-    .padStart(2, '0')}`;
+  const p = (n: number) => n.toString().padStart(2, '0');
   return (
-    <div
+    <span
       data-testid="msg-stamp"
-      className={cn('flex items-center gap-1.5 px-1 pb-1 text-[11px] text-chat-meta', mine && 'flex-row-reverse')}
+      className="shrink-0 self-end pb-0.5 text-[11px] tabular-nums text-chat-meta"
     >
-      <span className="h-1 w-1 shrink-0 rounded-full bg-current" aria-hidden />
-      <span>{text}</span>
+      {`${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
+    </span>
+  );
+}
+
+/**
+ * 一条消息的行容器（参考图那套排版）：
+ *
+ *     [头像] [气泡][时间戳]      ← TA 的（我们的 `flex-row`）
+ *     [时间戳][气泡] [头像]      ← 我的（`flex-row-reverse` 整体镜像）
+ *
+ * 头像与气泡**顶部**对齐，时间戳贴气泡**内侧**并与气泡**底部**对齐。
+ * 时间戳做成气泡行的兄弟节点而不是外层列里的独立行，就是为了让它横向落在气泡旁边。
+ */
+function MsgRow({
+  mine,
+  stamp,
+  above,
+  below,
+  children,
+}: {
+  mine: boolean;
+  stamp?: React.ReactNode;
+  /** 气泡**上方**的整宽内容（引用卡） */
+  above?: React.ReactNode;
+  /** 气泡**下方**的内容（内心独白） */
+  below?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn('flex items-start gap-2', mine ? 'flex-row-reverse' : 'flex-row')}>
+      <BubbleAvatar mine={mine} />
+      <div className={cn('flex min-w-0 max-w-[78%] flex-col', mine ? 'items-end' : 'items-start')}>
+        {above}
+        <div className="flex min-w-0 items-end gap-2">
+          {mine ? stamp : null}
+          {children}
+          {mine ? null : stamp}
+        </div>
+        {below}
+      </div>
     </div>
   );
 }
@@ -406,29 +445,128 @@ function isSameDay(a?: number, b?: number): boolean {
   );
 }
 
-/** 思考链入口胶囊：三个圆点（思考中弹动，完成后 ✓）+ 文案 */
-function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
+/**
+ * 思考链入口（内联版）：三个圆点（思考中弹动，完成后 ✓）。
+ *
+ * 它不再是气泡上方独立一行，而是**接在正文第一句话之后、同一段里**（见 `AssistantBody`）。
+ * 所以：① 必须是 `inline-flex` + `align-middle` 才能跟着文字基线走；
+ * ② 必须**足够窄**——早先沿用「Thought process」那种大胶囊有 104px 宽，
+ *   在 420px 手机上接在首句后面根本放不下，会被挤到第二行行首，看起来又变回独立一行了。
+ *   这里收成「✓ 思考链」约 60px，才能真正咬在首句后面。
+ */
+function ThoughtChip({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
+      data-testid="thought-entry"
+      title="思考链"
+      aria-label="查看思考链"
       onClick={onClick}
-      className="mb-1.5 inline-flex items-center gap-2 rounded-full border border-chat-line bg-chat-pill px-3 py-1 text-xs text-chat-pill-fg shadow-sm transition hover:bg-chat-line/60"
+      className={cn(
+        'mx-1 inline-flex translate-y-[-1px] items-center gap-[3px] rounded-full px-1.5 py-[2px]',
+        'align-middle text-[11px] leading-none opacity-75 transition',
+        // 气泡底色可能是浅蓝也可能是浅灰，用「压一层黑」而不写死底色，两套主题都不会撞
+        'bg-black/[0.08] hover:bg-black/[0.14] dark:bg-white/[0.14] dark:hover:bg-white/[0.22]',
+      )}
     >
       {active ? (
-        <span className="flex items-center gap-1">
-          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
-          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
-          <span className="think-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+        <span className="flex items-center gap-[3px]">
+          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '0ms' }} />
+          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '150ms' }} />
+          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '300ms' }} />
         </span>
       ) : (
-        <Check className="h-3.5 w-3.5 text-primary" />
+        <Check className="h-3 w-3 shrink-0" />
       )}
-      <span>Thought process</span>
+      <span>思考链</span>
     </button>
   );
 }
 
-/** Claude 风「Thought process」弹窗：白色大圆角卡片 + 半透明灰蒙版 + 左上角黑色× */
+/** 正文以这些块级语法开头时，切句会把结构切坏——这时不内联，退回「胶囊在正文之前」 */
+const BLOCK_START = /^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s|```|\|)/;
+
+/**
+ * 把正文切成「第一句」和「其余」。
+ *
+ * 切点取第一个句末标点（。！？!?…）或第一个换行；没有句末标点时整段算第一句。
+ * 返回 `null` 表示**别切**（正文以块级 markdown 开头），调用方走降级分支。
+ */
+function splitFirstSentence(text: string): { head: string; tail: string } | null {
+  if (!text.trim()) return null;
+  if (BLOCK_START.test(text)) return null;
+  const m = /[。！？!?…]|\n/.exec(text);
+  if (!m) return { head: text, tail: '' };
+  const end = m[0] === '\n' ? m.index : m.index + 1;
+  return { head: text.slice(0, end), tail: text.slice(end) };
+}
+
+/** 「其余」里还有没有块级结构：有就必须另起段落，没有就跟首句连在同一段里 */
+function hasBlockStart(text: string): boolean {
+  return BLOCK_START.test(text) || /\n\s*\n/.test(text);
+}
+
+/**
+ * AI 正文（含思考链）。
+ *
+ * 思考链的落点规则（用户要求）：**只在「回复之后的第一句」上**——也就是接在正文第一句
+ * 后面、和第一句同一段；正文剩下的话继续跟在它后面（同段）或另起段落（有块级结构时）。
+ * 三种降级：① 还没出正文 → 胶囊单独站着（配「思考中…」）；② 没思考链 → 纯正文；
+ * ③ 正文以块级 markdown 开头 → 胶囊回到正文之前，不硬切。
+ */
+function AssistantBody({
+  content,
+  reasoning,
+  streaming,
+  onOpenThought,
+}: {
+  content: string;
+  reasoning?: string;
+  streaming: boolean;
+  onOpenThought: () => void;
+}) {
+  if (!content) {
+    return (
+      <>
+        {reasoning ? (
+          <span className="block">
+            <ThoughtChip active={streaming} onClick={onOpenThought} />
+          </span>
+        ) : null}
+        {streaming && !reasoning ? <span className="text-chat-meta">思考中…</span> : null}
+      </>
+    );
+  }
+
+  if (!reasoning) return <Markdown>{content}</Markdown>;
+
+  const split = splitFirstSentence(content);
+  if (!split) {
+    return (
+      <>
+        <span className="mb-1.5 block">
+          <ThoughtChip active={false} onClick={onOpenThought} />
+        </span>
+        <Markdown>{content}</Markdown>
+      </>
+    );
+  }
+
+  const { head, tail } = split;
+  const tailInline = !!tail && !hasBlockStart(tail);
+  return (
+    <>
+      <span className="block">
+        <Markdown inline>{head}</Markdown>
+        <ThoughtChip active={false} onClick={onOpenThought} />
+        {tailInline ? <Markdown inline>{tail}</Markdown> : null}
+      </span>
+      {!tailInline && tail ? <Markdown>{tail}</Markdown> : null}
+    </>
+  );
+}
+
+/** 思考链弹窗：白色大圆角卡片 + 半透明灰蒙版 + 左上角黑色× */
 function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -443,7 +581,7 @@ function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () =
           >
             <X className="h-5 w-5" />
           </button>
-          <h2 className="text-base font-semibold text-foreground">Thought process</h2>
+          <h2 className="text-base font-semibold text-foreground">思考链</h2>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{reasoning}</p>
@@ -1012,8 +1150,12 @@ export function ChatPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-chat-bg text-foreground">
-      {/* 顶栏：暖奶油底 + 一排白色圆形药丸按钮（参考图那套语言） */}
-      <div className="flex shrink-0 items-center gap-2 bg-chat-bg px-3 py-2.5">
+      {/* 顶栏：纯白底 + 一排白色圆形药丸按钮（参考图那套语言）。
+          底和栏现在都是白的，所以靠这条 1px 描边分界。 */}
+      <div
+        data-testid="chat-topbar"
+        className="flex shrink-0 items-center gap-2 border-b border-chat-line bg-chat-bar px-3 py-2.5"
+      >
         {/* 移动端：汉堡 → 主抽屉（桌面有左侧常驻栏，不给重复入口） */}
         <button
           type="button"
@@ -1100,20 +1242,16 @@ export function ChatPage() {
           <>
             {/* 顶部居中时间戳 */}
             <DateDivider label={`${fmtDateLabel(Date.now())} · ${fmtTime(Date.now())}`} />
-            <div className="flex items-end gap-2">
-              <BubbleAvatar mine={false} />
-              <div className="flex min-w-0 max-w-[78%] flex-col items-start">
-                <MsgStamp ts={Date.now()} mine={false} />
-                <div
-                  className="rounded-[18px] bg-chat-ai px-3.5 py-2.5 text-[15px] leading-6 text-chat-ai-fg shadow-sm"
-                  style={
-                    { '--foreground': 'var(--chat-ai-fg)', '--muted-foreground': 'var(--chat-meta)' } as React.CSSProperties
-                  }
-                >
-                  <Markdown>{WELCOME_TEXT}</Markdown>
-                </div>
+            <MsgRow mine={false} stamp={<InlineStamp ts={Date.now()} />}>
+              <div
+                className="rounded-[18px] bg-chat-ai px-4 py-2.5 text-[15px] leading-6 text-chat-ai-fg"
+                style={
+                  { '--foreground': 'var(--chat-ai-fg)', '--muted-foreground': 'var(--chat-meta)' } as React.CSSProperties
+                }
+              >
+                <Markdown>{WELCOME_TEXT}</Markdown>
               </div>
-            </div>
+            </MsgRow>
             {/* 空会话时没有 ⋯ 菜单，这里补一个入口，否则新形态预览没人点得到 */}
             <button
               type="button"
@@ -1152,12 +1290,9 @@ export function ChatPage() {
                 {needDate && (
                   <DateDivider label={`${fmtDateLabel(m.createdAt)} · ${fmtTime(m.createdAt)}`} />
                 )}
-                {/* 消息行：你=右侧藕粉气泡，TA=左侧白气泡；统一 18px 圆角 */}
+                {/* 消息行：参考图排版——头像对齐气泡顶部、时间戳贴气泡内侧且底对齐 */}
                 <div
-                  className={cn(
-                    'mb-2 flex items-end gap-2',
-                    m.role === 'user' ? 'flex-row-reverse' : 'flex-row',
-                  )}
+                  className="mb-2"
                   {...(!isEditing
                     ? {
                         onPointerDown: () => startPress(m.id),
@@ -1168,17 +1303,12 @@ export function ChatPage() {
                       }
                     : {})}
                 >
-                  <BubbleAvatar mine={m.role === 'user'} />
-                  <div className={cn('flex min-w-0 max-w-[78%] flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
-                    {needStamp && <MsgStamp ts={m.createdAt} mine={m.role === 'user'} />}
-                    {m.role === 'assistant' && m.reasoning && (
-                      <ThoughtEntry
-                        active={m.status === 'streaming' && !m.content}
-                        onClick={() => setThoughtReasoning(m.reasoning ?? '')}
-                      />
-                    )}
-                    {/* 可折叠引用卡：悬在气泡上方 */}
-                    {m.quote && <QuoteCard label={m.quote.label} />}
+                  <MsgRow
+                    mine={m.role === 'user'}
+                    stamp={needStamp ? <InlineStamp ts={m.createdAt} /> : null}
+                    above={m.quote ? <QuoteCard label={m.quote.label} /> : null}
+                    below={m.inner ? <InnerNote text={m.inner} /> : null}
+                  >
                     {/* 通话记录卡：不是气泡，是一张卡 */}
                     {m.call ? (
                       <CallRecordCard call={m.call} />
@@ -1187,18 +1317,18 @@ export function ChatPage() {
                       className={cn(
                         'text-[15px] leading-6',
                         !isEditing && 'select-none',
-                        'rounded-[18px] px-3.5 py-2.5',
+                        'rounded-[18px] px-4 py-2.5',
                         m.role === 'user'
-                          // 己方：藕粉底、深字
+                          // 己方：浅蓝气泡、深墨字
                           ? 'whitespace-pre-wrap bg-chat-me text-chat-me-fg'
-                          // 对方：纯白底、深字
-                          : 'bg-chat-ai text-chat-ai-fg shadow-sm',
-                        m.sticker && 'bg-transparent p-0 shadow-none',
+                          // 对方：浅灰气泡、近黑字
+                          : 'bg-chat-ai text-chat-ai-fg',
+                        m.sticker && 'bg-transparent p-0',
                         // 错误仍保持气泡形状，只是把字换成警示红
                         m.status === 'error' && m.role === 'assistant' && 'text-destructive',
                       )}
                       // 气泡内局部覆盖主题变量：Markdown 里的 text-foreground / text-muted-foreground
-                      // 走的是 CSS 变量，不跟着气泡底色走，正文在藕粉/白底上就会看不清。
+                      // 走的是 CSS 变量，不跟着气泡底色走，正文在蓝/灰底上就会看不清。
                       style={
                         m.sticker
                           ? undefined
@@ -1247,12 +1377,12 @@ export function ChatPage() {
                       ) : m.voiceMs ? (
                         <VoiceBubble ms={m.voiceMs} text={m.content} />
                       ) : m.role === 'assistant' ? (
-                        <>
-                          {m.status === 'streaming' && !m.content && !m.reasoning && (
-                            <span className="text-chat-meta">思考中…</span>
-                          )}
-                          {m.content && <Markdown>{m.content}</Markdown>}
-                        </>
+                        <AssistantBody
+                          content={m.content}
+                          reasoning={m.reasoning}
+                          streaming={m.status === 'streaming'}
+                          onOpenThought={() => setThoughtReasoning(m.reasoning ?? '')}
+                        />
                       ) : m.sticker ? (
                         <StickerBubble emoji={m.sticker} />
                       ) : (
@@ -1274,9 +1404,7 @@ export function ChatPage() {
                       )}
                     </div>
                     )}
-                    {/* 内心独白注解：气泡下方那行灰色斜体小字 */}
-                    {m.inner && <InnerNote text={m.inner} />}
-                  </div>
+                  </MsgRow>
                 </div>
 
                 {/* 已记入备忘录提示 */}
@@ -1441,7 +1569,7 @@ export function ChatPage() {
         {shapePreview && (
           <div
             data-testid="shape-preview"
-            className="mt-5 rounded-2xl border border-dashed border-chat-line bg-chat-bar/70 p-3"
+            className="mt-5 rounded-2xl border border-dashed border-chat-line bg-chat-line/20 p-3"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-[11px] font-medium text-chat-meta">
@@ -1457,34 +1585,26 @@ export function ChatPage() {
             </div>
             <div className="flex flex-col">
               {SHAPE_SAMPLES.map((s) => (
-                <div
+                <MsgRow
                   key={s.id}
-                  className={cn('flex items-end gap-2', s.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
+                  mine={s.role === 'user'}
+                  stamp={<InlineStamp ts={Date.now() - s.ago} />}
+                  above={s.quote ? <QuoteCard label={s.quote.label} /> : null}
+                  below={s.inner ? <InnerNote text={s.inner} /> : null}
                 >
-                  <BubbleAvatar mine={s.role === 'user'} />
-                  <div
-                    className={cn(
-                      'flex min-w-0 max-w-[78%] flex-col',
-                      s.role === 'user' ? 'items-end' : 'items-start',
-                    )}
-                  >
-                    <MsgStamp ts={Date.now() - s.ago} mine={s.role === 'user'} />
-                    {s.quote && <QuoteCard label={s.quote.label} />}
-                    {s.call ? (
-                      <CallRecordCard call={s.call} />
-                    ) : (
-                      <div
-                        className={cn(
-                          'rounded-[18px] px-3.5 py-2.5 text-[15px] leading-6',
-                          s.role === 'user' ? 'bg-chat-me text-chat-me-fg' : 'bg-chat-ai text-chat-ai-fg shadow-sm',
-                        )}
-                      >
-                        {s.voiceMs ? <VoiceBubble ms={s.voiceMs} text={s.content} /> : s.content}
-                      </div>
-                    )}
-                    {s.inner && <InnerNote text={s.inner} />}
-                  </div>
-                </div>
+                  {s.call ? (
+                    <CallRecordCard call={s.call} />
+                  ) : (
+                    <div
+                      className={cn(
+                        'rounded-[18px] px-4 py-2.5 text-[15px] leading-6',
+                        s.role === 'user' ? 'bg-chat-me text-chat-me-fg' : 'bg-chat-ai text-chat-ai-fg',
+                      )}
+                    >
+                      {s.voiceMs ? <VoiceBubble ms={s.voiceMs} text={s.content} /> : s.content}
+                    </div>
+                  )}
+                </MsgRow>
               ))}
             </div>
           </div>
@@ -1509,7 +1629,10 @@ export function ChatPage() {
       </div>
 
       {/* 输入区：暖奶白底一条（+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 深色发送圆钮） */}
-      <div className="shrink-0 bg-chat-bar px-4 pb-3 pt-3">
+      <div
+        data-testid="chat-input-bar"
+        className="shrink-0 border-t border-chat-line bg-chat-bar px-4 pb-3 pt-3"
+      >
         {activeSkills.length > 0 && (
           <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
             {activeSkills.map((s) => (

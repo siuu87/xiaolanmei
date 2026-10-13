@@ -61,10 +61,26 @@ const components: Components = {
   },
 };
 
+/**
+ * 内联档：把段落标签换成 `<span>`，让这段 markdown 变成**行内流**。
+ *
+ * 用在「思考链胶囊要接在正文第一句后面、同一段里」这种场景：只有把首句渲染成行内节点，
+ * 紧跟其后的兄弟元素才会落在同一行而不是另起一段。代码块之类块级内容仍会撑开，所以
+ * 调用方要先确保传进来的片段不含块级语法。
+ */
+const inlineComponents: Components = {
+  ...components,
+  p: ({ children }) => <span className="whitespace-pre-wrap">{children}</span>,
+};
+
 /** 消息 Markdown 渲染（GFM + 代码高亮 + 复制） */
-export function Markdown({ children }: { children: string }) {
+export function Markdown({ children, inline = false }: { children: string; inline?: boolean }) {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={components}>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeHighlight]}
+      components={inline ? inlineComponents : components}
+    >
       {children}
     </ReactMarkdown>
   );
