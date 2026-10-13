@@ -453,16 +453,17 @@ function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () =
   );
 }
 
-/** 附件面板里的单个入口（图标 + 文案） */
+/**
+ * 底部面板里的单个入口（微信式：白色圆角方块 + 方块下方一行小字）。
+ * `[&_svg]` 是为了不用挨个改 4 个调用点的图标尺寸。
+ */
 function AttachButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs text-chat-pill-fg transition hover:bg-chat-quote"
-    >
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-chat-quote text-chat-accent">{icon}</span>
-      <span>{label}</span>
+    <button type="button" onClick={onClick} aria-label={label} className="group flex flex-col items-center gap-1.5 py-1">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-chat-pill text-chat-pill-fg shadow-sm transition group-hover:bg-chat-line group-active:scale-95 [&_svg]:h-6 [&_svg]:w-6">
+        {icon}
+      </span>
+      <span className="text-[11px] text-chat-meta">{label}</span>
     </button>
   );
 }
@@ -614,16 +615,23 @@ export function ChatPage() {
   };
 
   /**
-   * 点开消息里的链接 → 交给应用内浏览器，而不是把整个 App 跳走。
+   * 点消息区：链接交给应用内浏览器；顺手把底部面板收起来（微信点空白也是收面板）。
    * 用容器级代理而不是改 Markdown 组件：改一处就能覆盖所有 <a>。
    */
   const onListClick = (e: React.MouseEvent) => {
     const a = (e.target as HTMLElement).closest?.('a');
-    if (!a) return;
-    const href = a.getAttribute('href');
-    if (!href) return;
-    e.preventDefault();
-    setBrowserUrl(href);
+    if (a) {
+      const href = a.getAttribute('href');
+      if (href) {
+        e.preventDefault();
+        setBrowserUrl(href);
+      }
+      return;
+    }
+    if (attachOpen || stickerOpen) {
+      setAttachOpen(false);
+      setStickerOpen(false);
+    }
   };
 
   // 点菜单外任意处关闭
@@ -1501,7 +1509,7 @@ export function ChatPage() {
       </div>
 
       {/* 输入区：暖奶白底一条（+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 深色发送圆钮） */}
-      <div className="shrink-0 bg-chat-bar px-4 pb-4 pt-3">
+      <div className="shrink-0 bg-chat-bar px-4 pb-3 pt-3">
         {activeSkills.length > 0 && (
           <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
             {activeSkills.map((s) => (
@@ -1571,37 +1579,14 @@ export function ChatPage() {
           </div>
         )}
         <div className="mx-auto w-full max-w-3xl">
-          {attachOpen && (
-            <div className="mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-chat-line bg-chat-pill p-2 shadow-lg">
-              <AttachButton
-                icon={<Image className="h-5 w-5" />}
-                label="图片"
-                onClick={() => fileRef.current?.click()}
-              />
-              <AttachButton
-                icon={<Camera className="h-5 w-5" />}
-                label="拍照"
-                onClick={() => cameraRef.current?.click()}
-              />
-              <AttachButton
-                icon={<FileText className="h-5 w-5" />}
-                label="文件"
-                onClick={() => fileDocRef.current?.click()}
-              />
-              <AttachButton
-                icon={<Smile className="h-5 w-5" />}
-                label="表情包"
-                onClick={() => {
-                  setAttachOpen(false);
-                  setStickerOpen(true);
-                }}
-              />
-            </div>
-          )}
           <div className="flex items-end gap-2">
             <button
               type="button"
-              onClick={() => setAttachOpen((v) => !v)}
+              onClick={() => {
+                // 微信：两个面板互斥，再点一次收起
+                setAttachOpen((v) => !v);
+                setStickerOpen(false);
+              }}
               aria-label="添加附件"
               title="添加附件"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
@@ -1656,6 +1641,11 @@ export function ChatPage() {
                 data-testid="chat-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onFocus={() => {
+                  // 微信：一聚焦输入框就收面板（那边是弹键盘，这边没有键盘概念）
+                  setAttachOpen(false);
+                  setStickerOpen(false);
+                }}
                 onKeyDown={(e) => {
                   // 输入法合成中按回车是确认候选词，不应触发发送
                   if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -1664,13 +1654,20 @@ export function ChatPage() {
                 placeholder={replyToId ? '回复这条消息…' : 'Message...'}
                 className="h-8 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
               />
-              {/* 表情包 */}
+              {/* 表情包（在输入框旁，点了面板向下展开） */}
               <button
                 type="button"
-                onClick={() => setStickerOpen(true)}
+                onClick={() => {
+                  setStickerOpen((v) => !v);
+                  setAttachOpen(false);
+                }}
                 aria-label="表情包"
+                aria-expanded={stickerOpen}
                 title="表情包"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:text-chat-pill-fg"
+                className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition',
+                  stickerOpen ? 'text-chat-accent' : 'text-chat-meta hover:text-chat-pill-fg',
+                )}
               >
                 <Smile className="h-[18px] w-[18px]" />
               </button>
@@ -1709,20 +1706,61 @@ export function ChatPage() {
         </div>
       </div>
 
+      {/* ===== 微信式底部面板：`+` 与表情包都**往下**长，铺满宽度 =====
+          两个面板共用同一个固定高度，来回切不会把消息区顶得一跳一跳。
+          内容再收进 max-w-3xl 跟输入行对齐（桌面端不会把方块甩到天边）。 */}
+      {(attachOpen || stickerOpen) && (
+        <div
+          data-testid="chat-bottom-panel"
+          data-panel={attachOpen ? 'attach' : 'sticker'}
+          className="h-64 shrink-0 border-t border-chat-line bg-chat-bg pb-[env(safe-area-inset-bottom)]"
+        >
+          <div className="mx-auto h-full w-full max-w-3xl">
+            {attachOpen ? (
+              /* w-fit：入口方块是定尺的，别让桌面端的 4 等分把间距拉爆 */
+              <div className="grid w-fit grid-cols-4 gap-x-1 gap-y-2 p-3" data-testid="attach-panel">
+                <AttachButton
+                  icon={<Image className="h-5 w-5" />}
+                  label="图片"
+                  onClick={() => fileRef.current?.click()}
+                />
+                <AttachButton
+                  icon={<Camera className="h-5 w-5" />}
+                  label="拍照"
+                  onClick={() => cameraRef.current?.click()}
+                />
+                <AttachButton
+                  icon={<FileText className="h-5 w-5" />}
+                  label="文件"
+                  onClick={() => fileDocRef.current?.click()}
+                />
+                <AttachButton
+                  icon={<Phone className="h-5 w-5" />}
+                  label="语音通话"
+                  onClick={() => {
+                    setAttachOpen(false);
+                    setCallOpen(true);
+                  }}
+                />
+                <AttachButton
+                  icon={<Smile className="h-5 w-5" />}
+                  label="表情包"
+                  onClick={() => {
+                    setAttachOpen(false);
+                    setStickerOpen(true);
+                  }}
+                />
+              </div>
+            ) : (
+              <StickerPanel onPick={(emoji) => void sendSticker(emoji)} />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 微信式全屏搜索 */}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <ChatDrawer open={toolboxOpen} onClose={closeToolbox} />
-
-      {/* 表情包面板 */}
-      {stickerOpen && (
-        <StickerPanel
-          onPick={(emoji) => {
-            setStickerOpen(false);
-            void sendSticker(emoji);
-          }}
-          onClose={() => setStickerOpen(false)}
-        />
-      )}
 
       {/* 语音通话（占位界面，后续接 WebRTC） */}
       {callOpen && (

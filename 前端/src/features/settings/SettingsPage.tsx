@@ -109,7 +109,13 @@ export function SettingsPage() {
   const periodRecords = usePeriodStore((s) => s.records);
   const periodSettings = usePeriodStore((s) => s.settings);
 
-  const [expanded, setExpanded] = useState<string | null>(null);
+  /**
+   * 展开的分区。初值读 `?open=<key>`：聊天页表情包面板的齿轮跳过来会带上
+   * `?open=stickers`，这样落地就是展开好的那一栏，不用再自己找。
+   */
+  const [expanded, setExpanded] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('open'),
+  );
   const toggle = (key: string) => setExpanded((e) => (e === key ? null : key));
 
   const [memos, setMemos] = useState<MemoDTO[]>([]);
