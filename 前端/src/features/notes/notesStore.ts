@@ -1,14 +1,14 @@
 import { create } from 'zustand';
-import { listNotes, createNote, deleteNote, generateNote } from '@/lib/api/home';
+import { listNotes, createNote, deleteNote } from '@/lib/api/home';
 import { newId } from '@/lib/id';
-import { INSPIRATION_QUOTES, dateKey, type InspirationNote } from './notesData';
+import type { InspirationNote } from './notesData';
 
 interface NotesState {
-  notes: InspirationNote[]; // 全部历史便签，新→旧
+  notes: InspirationNote[]; // 全部来信，新→旧
   loaded: boolean;
   readIds: string[]; // 已拆开读过的（全部页里显示成展开的信纸）
   load: () => Promise<void>;
-  generateToday: () => Promise<void>; // 每日首次打开触发，幂等
+  addNote: (content: string) => Promise<void>; // 手动补一封（导入/兜底用）
   removeNote: (id: string) => void;
   markRead: (id: string) => void;
 }
@@ -34,28 +34,12 @@ function saveReadIds(ids: string[]) {
   }
 }
 
-/** 尽量挑一条还没用过的本地文案（兜底） */
-function pickFallback(notes: InspirationNote[]): string {
-  const used = new Set(notes.map((n) => n.content));
-  const fresh = INSPIRATION_QUOTES.filter((q) => !used.has(q));
-  const pool = fresh.length ? fresh : INSPIRATION_QUOTES;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-/** 今日是否已生成过（按 createdAt 的本地日期判断） */
-function hasToday(notes: InspirationNote[]): boolean {
-  const today = dateKey();
-  return notes.some((n) => dateKey(new Date(n.createdAt)) === today);
-}
-
-// 生成进行中的标志，避免并发重复生成
-let generating = false;
-
 /**
- * 灵感便签 store：
- * - 写穿后端（notes 表），刷新不丢历史；
- * - 每日首次打开自动生成一条（当天只一条，幂等）；
- * - 优先后端 AI 生成；失败/未配置则退回内置文案库。
+ * 深夜来信 store：前端**只负责取信，不再负责写信**。
+ *
+ * 信是后端 `mailScheduler` 不定时抓的（20~50 分钟摇一次号，一天最多 6 封），
+ * 落到 notes 表；前端这边定时把新到的信拉回来 —— 所以开着页面不动，
+ * 也可能忽然多出一封新的，这才是「不定时收到信」该有的样子。
  */
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
@@ -70,22 +54,15 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
   },
 
-  generateToday: async () => {
-    if (generating) return;
-    if (hasToday(get().notes)) return;
-    generating = true;
+  addNote: async (content) => {
+    const text = content.trim();
+    if (!text) return;
+    const note: InspirationNote = { id: newId(), content: text, createdAt: Date.now() };
+    set((s) => ({ notes: [note, ...s.notes] }));
     try {
-      let content: string;
-      try {
-        content = (await generateNote()).content;
-      } catch {
-        content = pickFallback(get().notes);
-      }
-      const note: InspirationNote = { id: newId(), content, createdAt: Date.now() };
-      set((s) => ({ notes: [note, ...s.notes] }));
-      void createNote(note).catch(() => {});
-    } finally {
-      generating = false;
+      await createNote(note);
+    } catch {
+      /* 写不进后端就先留在本地，下次 load 以服务端为准 */
     }
   },
 
@@ -102,3 +79,20 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     saveReadIds(next);
   },
 }));
+
+/**
+ * 后台收信：挂载时立刻取一次，之后每 60 秒 + 窗口重新聚焦时再取。
+ * AI 什么时候写信由后端决定，前端只保证信一落地就能看见。
+ */
+export function startMailRefresh(intervalMs = 60_000): () => void {
+  const tick = () => {
+    void useNotesStore.getState().load();
+  };
+  tick();
+  const timer = window.setInterval(tick, intervalMs);
+  window.addEventListener('focus', tick);
+  return () => {
+    window.clearInterval(timer);
+    window.removeEventListener('focus', tick);
+  };
+}

@@ -1,0 +1,57 @@
+import { useNavigate } from 'react-router-dom';
+import { Tv, Headphones, BookOpen, ChevronRight, type LucideIcon } from 'lucide-react';
+import { StarBackdrop } from './StarBackdrop';
+
+interface TogetherBlock {
+  key: string;
+  label: string;
+  hint: string;
+  to: string;
+  icon: LucideIcon;
+}
+
+const BLOCKS: TogetherBlock[] = [
+  { key: 'watch', label: 'watch', hint: '电视 · 片单', to: '/watch', icon: Tv },
+  { key: 'listen', label: 'listen', hint: '进入一起听', to: '/listen', icon: Headphones },
+  { key: 'read', label: 'read', hint: '书架 · 管理', to: '/library', icon: BookOpen },
+];
+
+/**
+ * together：原「星空与共度」的新主页，三个分块 watch / listen / read，
+ * 每个分块点进去都是一个独立的新页面。
+ */
+export function TogetherPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="relative min-h-full bg-[#070b1a] text-slate-200">
+      <StarBackdrop />
+      <div className="relative mx-auto w-full max-w-md px-4 py-8">
+        <header className="mb-8 text-center">
+          <p className="text-[10px] tracking-[0.4em] text-slate-400/80">TOGETHER</p>
+          <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-slate-100">together</h1>
+        </header>
+
+        <div className="space-y-3">
+          {BLOCKS.map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              onClick={() => navigate(b.to)}
+              className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.08]"
+            >
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-amber-300 transition group-hover:scale-105">
+                <b.icon className="h-7 w-7" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-medium tracking-wide text-slate-100">{b.label}</span>
+                <span className="mt-1 block text-[11px] text-slate-400">{b.hint}</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-slate-300" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

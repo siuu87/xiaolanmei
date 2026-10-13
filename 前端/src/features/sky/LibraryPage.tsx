@@ -301,7 +301,7 @@ export function LibraryPage() {
   };
 
   const title = view === 'home' ? 'READ' : view === 'shelf' ? '书架' : '正在读';
-  const back = () => (view === 'home' ? navigate('/sky') : setView('home'));
+  const back = () => (view === 'home' ? navigate('/chat') : setView('home'));
 
   return (
     <div className="relative min-h-full bg-[#121212] pb-16 text-[#E0E0E0]">

@@ -53,7 +53,7 @@ export function MemoHomePage() {
       <div className="flex items-center gap-2 px-4">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/chat')}
           aria-label="返回"
           className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
         >

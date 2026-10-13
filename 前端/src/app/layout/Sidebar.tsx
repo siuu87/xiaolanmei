@@ -16,7 +16,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/chat', label: '聊天', icon: MessageSquare },
   { to: '/home', label: '首页', icon: Home },
-  { to: '/sky', label: '星空', icon: Sparkles },
+  { to: '/together', label: 'together', icon: Sparkles },
   { to: '/settings', label: '我', icon: Settings },
 ];
 

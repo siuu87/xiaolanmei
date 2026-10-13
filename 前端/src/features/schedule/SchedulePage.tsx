@@ -35,7 +35,7 @@ export function SchedulePage() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/chat')}
           aria-label="返回"
           className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
         >

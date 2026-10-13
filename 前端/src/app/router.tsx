@@ -1,7 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
 import { HomePage } from '@/features/home/HomePage';
-import { StarrySkyPage } from '@/features/sky/StarrySkyPage';
+import { TogetherPage } from '@/features/sky/TogetherPage';
+import { WatchTogetherPage } from '@/features/sky/WatchTogetherPage';
 import { FoodPage } from '@/features/sky/FoodPage';
 import { FoodDetailPage } from '@/features/sky/FoodDetailPage';
 import { ReadPage } from '@/features/sky/ReadPage';
@@ -34,8 +35,11 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/chat" replace /> },
       { path: 'chat', element: <Noop /> },
       { path: 'home', element: <HomePage /> },
-      { path: 'sky', element: <StarrySkyPage /> },
-      // 星空里的功能星（非 Tab）
+      { path: 'together', element: <TogetherPage /> },
+      { path: 'watch', element: <WatchTogetherPage /> },
+      // 旧「星空」地址重定向到 together，避免旧链接失效
+      { path: 'sky', element: <Navigate to="/together" replace /> },
+      // together 里的功能星（非 Tab）
       { path: 'food', element: <FoodPage /> },
       { path: 'food/:id', element: <FoodDetailPage /> },
       { path: 'read', element: <ReadPage /> },

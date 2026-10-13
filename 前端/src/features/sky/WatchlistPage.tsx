@@ -34,7 +34,7 @@ function intervalLabel(m: number): string {
   return m < 60 ? `${m} 分钟` : `${m / 60} 小时`;
 }
 
-export function WatchlistPage({ onClose }: { onClose: () => void }) {
+export function WatchlistPage({ onClose, inline = false }: { onClose?: () => void; inline?: boolean }) {
   const items = useWatchListStore((s) => s.items);
   const load = useWatchListStore((s) => s.load);
   const update = useWatchListStore((s) => s.update);
@@ -77,31 +77,8 @@ export function WatchlistPage({ onClose }: { onClose: () => void }) {
     if (editing === it.id) setEditing(null);
   };
 
-  return (
-    <motion.div
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
-      transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-      className="fixed inset-0 z-[60] flex flex-col bg-[#0d1017]"
-    >
-      {/* 顶栏 */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 px-3">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="返回"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-medium text-slate-100">片单</p>
-          <p className="truncate text-[10px] text-slate-500">共 {items.length} 条 · 自动检索{settings.enabled ? '已开启' : '已关闭'}</p>
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+  const body = (
+    <>
         {/* ---------------- 自动检索 ---------------- */}
         <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
           <div className="flex items-center justify-between">
@@ -364,7 +341,38 @@ export function WatchlistPage({ onClose }: { onClose: () => void }) {
             })}
           </ul>
         )}
+    </>
+  );
+
+  if (inline) {
+    return <div className="flex flex-col">{body}</div>;
+  }
+
+  return (
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+      className="fixed inset-0 z-[60] flex flex-col bg-[#0d1017]"
+    >
+      {/* 顶栏 */}
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 px-3">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="返回"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-medium text-slate-100">片单</p>
+          <p className="truncate text-[10px] text-slate-500">共 {items.length} 条 · 自动检索{settings.enabled ? '已开启' : '已关闭'}</p>
+        </div>
       </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">{body}</div>
     </motion.div>
   );
 }

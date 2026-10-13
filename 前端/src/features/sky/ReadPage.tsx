@@ -29,7 +29,7 @@ export function ReadPage() {
         <header className="mb-6 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate('/sky')}
+            onClick={() => navigate('/chat')}
             aria-label="返回"
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
           >

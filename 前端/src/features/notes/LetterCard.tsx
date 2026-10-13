@@ -223,11 +223,18 @@ export function LetterSwiper({
     <div data-testid="mail-swiper">
       <div
         onScroll={onScroll}
+        // 抽屉的「左滑关闭」和这里翻信是同一个手势：标记一下，让边缘手势把手让出来
+        data-no-drawer-swipe
         className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         data-testid="mail-scroller"
       >
         {list.map((n, i) => (
-          <div key={n.id} className="w-[78%] shrink-0 snap-center" data-testid="mail-slide" data-slide-index={i}>
+          <div
+            key={n.id}
+            className="w-[78%] shrink-0 snap-center"
+            data-testid="mail-slide"
+            data-slide-index={i}
+          >
             <DailyLetterCard note={n} unread={!readIds.includes(n.id)} onClick={() => onOpen(n.id)} />
           </div>
         ))}

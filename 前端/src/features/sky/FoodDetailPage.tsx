@@ -63,7 +63,7 @@ export function FoodDetailPage() {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate('/food')}
+          onClick={() => navigate('/chat')}
           aria-label="返回"
           className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
         >

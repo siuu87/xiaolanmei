@@ -370,7 +370,7 @@ function ItemForm({
 
 /* --------------------------------- 电视机主体 --------------------------------- */
 
-export function WatchlistTV() {
+export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boolean }) {
   const items = useWatchListStore((s) => s.items);
   const load = useWatchListStore((s) => s.load);
   const add = useWatchListStore((s) => s.add);
@@ -640,16 +640,18 @@ export function WatchlistTV() {
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
-            {/* 三个点：点进片单页面（自动检索开关 + 条目管理） */}
-            <button
-              type="button"
-              onClick={() => setPageOpen(true)}
-              aria-label="更多"
-              title="片单"
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-amber-100/80 ring-1 ring-white/10 transition hover:bg-black/55 hover:text-[#C9A96A]"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
+            {/* 三个点：点进片单页面（自动检索开关 + 条目管理）；结合页已把片单平铺在下方，这里收起 */}
+            {!hidePageButton && (
+              <button
+                type="button"
+                onClick={() => setPageOpen(true)}
+                aria-label="更多"
+                title="片单"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-amber-100/80 ring-1 ring-white/10 transition hover:bg-black/55 hover:text-[#C9A96A]"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            )}
             <Speaker />
             <Knob size={26} angle={-30} label="CH" />
             <Knob size={22} angle={40} label="VOL" />

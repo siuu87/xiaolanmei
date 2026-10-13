@@ -5,7 +5,7 @@ import { useDiaryStore } from './features/diary/diaryStore';
 import { useTodoStore } from './features/home/todoStore';
 import { useMemorialStore } from './features/home/memorialStore';
 import { usePeriodStore } from './features/home/periodStore';
-import { useNotesStore } from './features/notes/notesStore';
+import { startMailRefresh } from './features/notes/notesStore';
 import { useStationStore } from './stores/stationStore';
 import { useStickerStore } from './stores/stickerStore';
 import { useTimetableStore } from './features/schedule/timetableStore';
@@ -21,13 +21,14 @@ export default function App() {
   useEffect(() => startAutoScanScheduler(), []);
   // AI 的心情：一天之内挑个不固定的时刻自动抓一次（与当前在哪个页面无关）
   useEffect(() => startAiMoodScheduler(), []);
+  // 深夜来信：信由后端不定时抓取，前端定时把新到的取回来（与当前在哪个页面无关）
+  useEffect(() => startMailRefresh(), []);
 
   useEffect(() => {
     void useDiaryStore.getState().load();
     void useTodoStore.getState().load();
     void useMemorialStore.getState().load();
     void usePeriodStore.getState().load();
-    void useNotesStore.getState().load();
     void useStationStore.getState().load();
     void useStickerStore.getState().load();
     void useTimetableStore.getState().load();

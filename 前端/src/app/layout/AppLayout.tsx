@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
 import { useAppStore, ACCENT_HSL } from '@/stores/appStore';
 import { useImmersiveStore } from '@/stores/immersiveStore';
 import { useShellStore } from '@/stores/shellStore';
@@ -94,20 +93,6 @@ export function AppLayout() {
         >
           <Outlet />
         </main>
-
-        {/* 覆盖层里的一键回对话（沉浸替换页、阅读页本身不需要） */}
-        {!onChat && !fullReplace && !letterId && (
-          <button
-            type="button"
-            onClick={() => navigate('/chat')}
-            aria-label="回到对话"
-            data-testid="back-to-chat"
-            className="fixed bottom-5 right-4 z-[1100] flex items-center gap-1 rounded-full border border-white/15 bg-[#141a2b]/95 px-3 py-2 text-[12px] text-[#dfe4ef] shadow-lg backdrop-blur transition hover:bg-[#1b2338]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            回到对话
-          </button>
-        )}
       </div>
 
       {/* 移动端抽屉 */}

@@ -2,7 +2,7 @@
  * 主抽屉内容：A 伴侣档案卡 / B 日常生活看板 / C 模块卡 / D 底部固定栏
  *
  * 原则：这里只做「收纳与排版」，所有业务卡片都是直接复用现有组件
- * （CalendarCard / TodoCard / InspirationNoteCard / AppearanceSection），
+ * （CalendarCard / TodoCard / LetterInboxCard / AppearanceSection），
  * 不复制逻辑、不改它们的内部实现——所以抽屉挂上去，原页面该怎样还怎样。
  */
 import { useMemo, useState } from 'react';
@@ -11,10 +11,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarDays,
   ChevronDown,
-  Clapperboard,
+  ChevronRight,
+  Tv,
   BookOpen,
   Headphones,
-  Library,
   Phone,
   Utensils,
   NotebookPen,
@@ -22,16 +22,17 @@ import {
   GraduationCap,
   Puzzle,
   Star,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { useShellStore } from '@/stores/shellStore';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
-import { FolderDropZone } from '@/features/importer/FolderDropZone';
-import { InspirationNoteCard } from '@/features/notes/InspirationNoteCard';
+import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
+import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
 
 /* ---------------------------- A. 伴侣档案卡 ---------------------------- */
 
@@ -88,15 +89,14 @@ export function DailyBoard() {
         {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
         <CalendarCard />
         <TodoCard />
-        {/* Token 和文件夹导入并排，一半一半 */}
+        {/* Token 与收信匣并排，一半一半 */}
         <div className="grid grid-cols-2 gap-3">
           <div data-testid="token-capsule">
             <TokenCard />
           </div>
-          <FolderDropZone />
+          {/* 深夜来信 · 收信匣：一封信 + 原地展开 + 左右换信 */}
+          <LetterInboxCard />
         </div>
-        {/* 蓝莓信箱：仿文件夹卡片列表，单独占一行（半格放不下按月份归档的文件夹） */}
-        <InspirationNoteCard />
       </div>
     </section>
   );
@@ -108,7 +108,7 @@ interface ModuleEntry {
   to: string;
   label: string;
   hint?: string;
-  icon: typeof Clapperboard;
+  icon: LucideIcon;
 }
 
 interface ModuleGroup {
@@ -119,13 +119,12 @@ interface ModuleGroup {
 
 const MODULE_GROUPS: ModuleGroup[] = [
   {
-    title: '星空与共度',
+    title: 'together',
     icon: Star,
     entries: [
-      { to: '/sky', label: '放映厅 · 音乐', hint: '片单 TV / 黑胶', icon: Clapperboard },
-      { to: '/listen', label: '一起听 · 听书', icon: Headphones },
-      { to: '/read', label: '一起读 · 书架', icon: BookOpen },
-      { to: '/library', label: '书库', icon: Library },
+      { to: '/watch', label: 'watch', hint: '电视 · 片单', icon: Tv },
+      { to: '/listen', label: 'listen', hint: '进入一起听', icon: Headphones },
+      { to: '/library', label: 'read', hint: '书架 · 管理', icon: BookOpen },
     ],
   },
   {
@@ -155,9 +154,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
 export function ModuleCards() {
   const navigate = useNavigate();
   const closeDrawer = useShellStore((s) => s.closeDrawer);
-  const openToolbox = useShellStore((s) => s.openToolbox);
   // 手风琴：同时只展开一个分组，点已展开的收起
   const [expanded, setExpanded] = useState<string | null>(null);
+  // 工具箱内部的子项（插件/角色/…），独立于分组手风琴
+  const [toolboxSection, setToolboxSection] = useState<string | null>(null);
 
   const go = (to: string) => {
     closeDrawer();
@@ -172,65 +172,115 @@ export function ModuleCards() {
       <div className="space-y-2.5">
         {MODULE_GROUPS.map((g) => {
           const open = expanded === g.title;
+          // 只有一项的分组（如酒馆小手机）不再展开：直接点分组头进入
+          const direct = g.entries.length === 1;
           return (
             <div key={g.title} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151b2b]">
-              {/* 分组头：尺寸和下面的「工具箱」按键完全一致 */}
+              {/* 分组头：尺寸和下面的「工具箱」按键完全一致；单项分组点击即进入 */}
               <button
                 type="button"
-                onClick={() => setExpanded(open ? null : g.title)}
-                aria-expanded={open}
+                onClick={() => (direct ? go(g.entries[0].to) : setExpanded(open ? null : g.title))}
+                aria-expanded={direct ? undefined : open}
                 data-testid={`module-group-${g.title}`}
                 className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
               >
                 <g.icon className="h-4 w-4 text-[#9aa3b8]" />
                 <span className="text-[12px] font-medium text-[#dfe4ef]">{g.title}</span>
-                <span className="ml-auto text-[10px] text-[#6b7488]">{g.entries.length} 项</span>
-                <ChevronDown
-                  className={cn('h-4 w-4 shrink-0 text-[#6b7488] transition-transform', open && 'rotate-180')}
-                />
+                <span className="ml-auto text-[10px] text-[#6b7488]">{direct ? '进入' : `${g.entries.length} 项`}</span>
+                {direct ? (
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[#6b7488]" />
+                ) : (
+                  <ChevronDown
+                    className={cn('h-4 w-4 shrink-0 text-[#6b7488] transition-transform', open && 'rotate-180')}
+                  />
+                )}
               </button>
 
-              {/* 扩展条：点开才展开 */}
-              <AnimatePresence initial={false}>
-                {open && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: 'easeOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-2 gap-1.5 border-t border-white/[0.06] px-2.5 py-2.5">
-                      {g.entries.map((e) => (
-                        <button
-                          key={e.to + e.label}
-                          type="button"
-                          onClick={() => go(e.to)}
-                          className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-white/[0.06]"
-                        >
-                          <e.icon className="h-4 w-4 text-[#9aa3b8]" />
-                          <span className="text-[12px] font-medium leading-tight text-[#dfe4ef]">{e.label}</span>
-                          {e.hint && <span className="text-[10px] leading-tight text-[#6b7488]">{e.hint}</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* 扩展条：点开才展开（单项分组不渲染） */}
+              {!direct && (
+                <AnimatePresence initial={false}>
+                  {open && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: 'easeOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-2 gap-1.5 border-t border-white/[0.06] px-2.5 py-2.5">
+                        {g.entries.map((e) => (
+                          <button
+                            key={e.to + e.label}
+                            type="button"
+                            onClick={() => go(e.to)}
+                            className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-white/[0.06]"
+                          >
+                            <e.icon className="h-4 w-4 text-[#9aa3b8]" />
+                            <span className="text-[12px] font-medium leading-tight text-[#dfe4ef]">{e.label}</span>
+                            {e.hint && <span className="text-[10px] leading-tight text-[#6b7488]">{e.hint}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              )}
             </div>
           );
         })}
 
-        {/* 原聊天「工具箱」（插件 / 角色 / 世界书 / 工作区 / 技能）收在这里，功能一个不少 */}
-        <button
-          type="button"
-          onClick={openToolbox}
-          className="flex w-full items-center gap-2 rounded-2xl border border-white/[0.08] bg-[#151b2b] px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
-        >
-          <Puzzle className="h-4 w-4 text-[#9aa3b8]" />
-          <span className="text-[12px] font-medium text-[#dfe4ef]">工具箱</span>
-          <span className="ml-auto text-[10px] text-[#6b7488]">插件 / 角色 / 世界书 / 工作区 / 技能</span>
-        </button>
+        {/* 工具箱：插件 / 角色 / 世界书 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板） */}
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151b2b]">
+          <button
+            type="button"
+            onClick={() => setExpanded(expanded === 'toolbox' ? null : 'toolbox')}
+            aria-expanded={expanded === 'toolbox'}
+            data-testid="module-group-toolbox"
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
+          >
+            <Puzzle className="h-4 w-4 text-[#9aa3b8]" />
+            <span className="text-[12px] font-medium text-[#dfe4ef]">工具箱</span>
+            <span className="ml-auto text-[10px] text-[#6b7488]">{TOOLBOX_SECTIONS.length} 项</span>
+            <ChevronDown
+              className={cn('h-4 w-4 shrink-0 text-[#6b7488] transition-transform', expanded === 'toolbox' && 'rotate-180')}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {expanded === 'toolbox' && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-2 border-t border-white/[0.06] p-2.5">
+                  {TOOLBOX_SECTIONS.map((s) => {
+                    const isOpen = toolboxSection === s.key;
+                    return (
+                      <div key={s.key} className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.03]">
+                        <button
+                          type="button"
+                          onClick={() => setToolboxSection(isOpen ? null : s.key)}
+                          aria-expanded={isOpen}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.06]"
+                        >
+                          <s.icon className="h-4 w-4 shrink-0 text-[#9aa3b8]" />
+                          <span className="text-[12px] font-medium text-[#dfe4ef]">{s.label}</span>
+                          <ChevronDown
+                            className={cn('ml-auto h-4 w-4 shrink-0 text-[#6b7488] transition-transform', isOpen && 'rotate-180')}
+                          />
+                        </button>
+                        {isOpen && <div className="border-t border-white/[0.06] p-3">{s.render()}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </section>
   );

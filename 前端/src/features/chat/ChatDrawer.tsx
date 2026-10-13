@@ -1,25 +1,11 @@
 import { useEffect, useState } from 'react';
-import { X, Puzzle, User, BookOpen, FolderTree, ChevronDown, Sparkles } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { McpPage } from '@/features/mcp/McpPage';
-import { PromptsPanel } from '@/features/prompts/PromptsPanel';
-import { WorldbookPanel } from '@/features/worldbook/WorldbookPanel';
-import { WorkspacePanel } from '@/features/code/WorkspacePanel';
-import { SkillsPanel } from '@/features/skills/SkillsPanel';
-
-type SectionKey = 'plugins' | 'role' | 'worldbook' | 'workspace' | 'skills';
-
-const SECTIONS: { key: SectionKey; label: string; icon: typeof Puzzle }[] = [
-  { key: 'plugins', label: '插件', icon: Puzzle },
-  { key: 'role', label: '角色', icon: User },
-  { key: 'worldbook', label: '世界书', icon: BookOpen },
-  { key: 'workspace', label: '工作区', icon: FolderTree },
-  { key: 'skills', label: '技能', icon: Sparkles },
-];
+import { TOOLBOX_SECTIONS } from './toolboxSections';
 
 /** 聊天页左侧抽屉：插件 / 角色 / 世界书 / 工作区，点击展开折叠菜单 */
 export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [expanded, setExpanded] = useState<SectionKey | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -49,7 +35,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-          {SECTIONS.map((s) => {
+          {TOOLBOX_SECTIONS.map((s) => {
             const isOpen = expanded === s.key;
             return (
               <div key={s.key} className="overflow-hidden rounded-xl border border-border/60 bg-white/[0.03] backdrop-blur-sm dark:bg-white/[0.03]">
@@ -69,11 +55,7 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </button>
                 {isOpen && (
                   <div className="border-t border-border/60 p-3">
-                    {s.key === 'plugins' && <McpPage />}
-                    {s.key === 'role' && <PromptsPanel />}
-                    {s.key === 'worldbook' && <WorldbookPanel />}
-                    {s.key === 'workspace' && <WorkspacePanel />}
-                    {s.key === 'skills' && <SkillsPanel collapsible={false} />}
+                    {s.render()}
                   </div>
                 )}
               </div>

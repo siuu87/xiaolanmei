@@ -109,7 +109,7 @@ export function TavernPage() {
       <div className="relative flex h-full min-h-full flex-col bg-[#070b1a] text-slate-200">
         <StarBackdrop />
         <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
-          <PhoneApp onExit={() => navigate('/sky')} onOpenConfig={() => setView('config')} />
+          <PhoneApp onExit={() => navigate('/chat')} onOpenConfig={() => setView('config')} />
         </div>
       </div>
     );

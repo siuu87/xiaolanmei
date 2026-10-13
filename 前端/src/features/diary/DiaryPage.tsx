@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { diaryDayKey, dayKeyToDate, AUTHOR_LABEL, AUTHOR_CLASS } from './diaryData';
 import { useDiaryStore } from './diaryStore';
@@ -16,6 +16,7 @@ function todayDate(): string {
 }
 
 export function DiaryPage() {
+  const navigate = useNavigate();
   const entries = useDiaryStore((s) => s.entries);
   const [searchParams] = useSearchParams();
   const dateParam = searchParams.get('date');
@@ -49,8 +50,16 @@ export function DiaryPage() {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-serif text-xs text-muted-foreground">DIARY · 日记本</h1>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/chat')}
+          aria-label="返回"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <h1 className="flex-1 font-serif text-xs text-muted-foreground">DIARY · 日记本</h1>
         <button
           type="button"
           onClick={() => setEditing({ date: todayDate() })}

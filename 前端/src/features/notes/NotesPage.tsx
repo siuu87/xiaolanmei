@@ -11,14 +11,12 @@ import { LetterSwiper } from './LetterCard';
 export function NotesPage() {
   const navigate = useNavigate();
   const notes = useNotesStore((s) => s.notes);
-  const loaded = useNotesStore((s) => s.loaded);
   const readIds = useNotesStore((s) => s.readIds);
   const load = useNotesStore((s) => s.load);
-  const generateToday = useNotesStore((s) => s.generateToday);
 
+  // 信由后端不定时抓取，这里只保证进来时是最新的
   useEffect(() => {
-    if (!loaded) void load();
-    generateToday();
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -27,13 +25,13 @@ export function NotesPage() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/chat')}
           aria-label="返回"
           className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="font-serif text-xs text-muted-foreground">MAILBOX · 蓝莓信箱</h1>
+        <h1 className="font-serif text-xs text-muted-foreground">MAILBOX · 深夜来信</h1>
       </div>
 
       <div className="mt-4">

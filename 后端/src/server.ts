@@ -43,6 +43,7 @@ import { dishRoutes } from './routes/dishes.js';
 import { tavernRoutes } from './routes/tavern.js';
 import { phoneRoutes } from './routes/phone.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
+import { startMailScheduler } from './services/mailScheduler.js';
 
 async function main(): Promise<void> {
   // 初始化数据库（建表，幂等）
@@ -72,6 +73,9 @@ async function main(): Promise<void> {
   await app.register(agentRoutes, { prefix: '/api' });
   await app.register(syncRoutes, { prefix: '/api' });
   await app.register(uploadRoutes, { prefix: '/api' });
+
+  // 深夜来信：AI 不定时抓取（启动后自己跑，失败静默重试）
+  startMailScheduler();
   await app.register(tokenStatsRoutes, { prefix: '/api' });
   await app.register(billingRoutes, { prefix: '/api' });
   await app.register(diaryRoutes, { prefix: '/api' });
