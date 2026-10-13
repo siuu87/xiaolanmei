@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useShellStore } from '@/stores/shellStore';
 import { useNotesStore } from './notesStore';
-import { FolderCardList } from './LetterFolder';
+import { LetterSwiper } from './LetterCard';
 
 /**
  * 蓝莓信箱卡片（独立组件，不依赖首页布局）。
  * - 每日首次打开自动生成一条（幂等、静默）；
- * - 卡片里是**堆叠信件文件夹**：每个文件夹内部就是几张错落叠在一起的信；
- * - 点文件夹平滑展开，展开后左右滑动切换信件，点单张放大看全文；
- * - 点某张信 → 进它自己的阅读页 `/letter/:id`（叠在抽屉之上，点空白收起）；
+ * - 卡片流 = 「深夜来信 Live」Daily Card 横向滑动，一张卡片一封来信；
+ * - 点任意一张 → 沉浸式全屏信件阅读器 `/letter/:id`（叠在抽屉之上，点空白收起）；
  * - 点头部「全部」→ 全部来信页（抽屉会盖住覆盖层，进列表前必须先收起它）。
  */
 export function InspirationNoteCard() {
@@ -44,14 +43,13 @@ export function InspirationNoteCard() {
         </span>
       </button>
 
-      {/* 抽屉里地方小：只放最近两个月的文件夹，每个文件夹也只堆 5 张 */}
+      {/* 抽屉里地方小，只放最近 5 封 */}
       <div className="mt-2.5">
-        <FolderCardList
+        <LetterSwiper
           notes={notes}
           readIds={readIds}
           onOpen={(id) => navigate(`/letter/${id}`)}
-          maxFolders={2}
-          maxSlips={5}
+          maxLetters={5}
           emptyHint="还没有来信"
         />
       </div>

@@ -54,6 +54,8 @@ export default {
       fontFamily: {
         sans: ['Playfair Digits', 'Inter', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
         serif: ['"Playfair Display"', 'Georgia', '"Times New Roman"', 'serif'],
+        // 信箱「深夜来信 Live」卡片专用：复古优雅的衬线体
+        letter: ['"Averia Serif Libre"', '"Playfair Display"', 'Georgia', 'serif'],
       },
     },
   },

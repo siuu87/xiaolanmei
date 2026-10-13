@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useNotesStore } from './notesStore';
-import { FolderCardList } from './LetterFolder';
+import { LetterSwiper } from './LetterCard';
 
 /**
- * 全部来信（独立页）：同样是按月份归档的堆叠信件文件夹，只是不限制数量。
- * 点文件夹展开 → 左右滑动切换信件 → 点单张放大看全文。
+ * 全部来信（独立页）：同一套「深夜来信 Live」Daily Card 横向卡片流。
+ * 滑动翻阅，点任意一张进沉浸式全屏阅读器 `/letter/:id`。
  */
 export function NotesPage() {
   const navigate = useNavigate();
@@ -37,11 +37,11 @@ export function NotesPage() {
       </div>
 
       <div className="mt-4">
-        <FolderCardList
+        <LetterSwiper
           notes={notes}
           readIds={readIds}
           onOpen={(id) => navigate(`/letter/${id}`)}
-          maxSlips={30}
+          maxLetters={30}
         />
       </div>
     </div>
