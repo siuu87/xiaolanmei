@@ -59,6 +59,25 @@
     --ring: 350 60% 62%;
     --bubble-ai: 210 100% 89%;
     --bubble-me: 0 0% 100%;
+    /* ===== chat 页专用（浅色 = 参考图那套暖白 + 玫瑰）=====
+       单独一组而不是复用 --card/--background：聊天页要的是「奶油纸 + 藕粉气泡」，
+       和通用卡片语义不完全一样，拆开才能在深浅两套里各自调。 */
+    --chat-bg: 40 28% 95%;           /* 页面底：暖奶油纸 */
+    --chat-bar: 40 36% 98%;          /* 顶栏 / 输入栏底：比页面更亮一档 */
+    --chat-pill: 0 0% 100%;          /* 白色药丸按钮 */
+    --chat-pill-fg: 30 12% 32%;      /* 药丸里的图标色 */
+    --chat-line: 36 22% 89%;         /* 细线 / 描边 / 分隔 */
+    --chat-me: 9 54% 90%;            /* 我的气泡：藕粉 */
+    --chat-me-fg: 9 24% 25%;
+    --chat-ai: 0 0% 100%;            /* TA 的气泡：纯白 */
+    --chat-ai-fg: 30 12% 20%;
+    --chat-meta: 33 8% 60%;          /* 时间戳 / 居中日期 / 次要文字 */
+    --chat-quote: 42 56% 94%;        /* 引用卡奶油底 */
+    --chat-quote-line: 38 40% 83%;   /* 引用卡描边 */
+    --chat-accent: 6 42% 63%;        /* 玫瑰强调：选中日 / 圆点 / 发送键 */
+    --chat-accent-fg: 0 0% 100%;
+    --chat-call-in: 148 38% 44%;     /* 接听绿 */
+    --chat-call-out: 0 62% 57%;      /* 拒绝红 */
     --radius: 1rem;
   }
 
@@ -84,6 +103,23 @@
     --ring: 214 70% 60%;
     --bubble-ai: 240 2% 18%;
     --bubble-me: 240 2% 23%;
+    /* chat 页暗色版：结构与浅色完全一致，只把颜色换成深色一档 */
+    --chat-bg: 30 18% 10%;
+    --chat-bar: 30 16% 13%;
+    --chat-pill: 30 13% 18%;
+    --chat-pill-fg: 35 20% 82%;
+    --chat-line: 30 12% 22%;
+    --chat-me: 350 24% 28%;
+    --chat-me-fg: 20 30% 94%;
+    --chat-ai: 30 14% 16%;
+    --chat-ai-fg: 35 24% 88%;
+    --chat-meta: 35 10% 54%;
+    --chat-quote: 32 18% 15%;
+    --chat-quote-line: 32 16% 26%;
+    --chat-accent: 348 38% 60%;
+    --chat-accent-fg: 0 0% 100%;
+    --chat-call-in: 148 34% 40%;
+    --chat-call-out: 0 55% 52%;
   }
 }
 
@@ -152,11 +188,12 @@
   display: none;
 }
 
-/* 极细纵向滚动条：侧边栏（抽屉）这种窄容器用，避免默认 ~15px 的粗条占宽。
+/* 极细纵向滚动条：侧边栏（抽屉）/ 聊天列表这种窄容器用，避免默认 ~15px 的粗条占宽。
    坑（实测 Chrome 154 headful）：标准属性 scrollbar-width 会**覆盖** ::-webkit-scrollbar 的宽度——
      默认 15px ／ scrollbar-width:thin 10px ／ ::-webkit-scrollbar{width:4px} 4px
      两者同时写会退化成 10px。
-   所以标准属性只放进「不认识 ::-webkit-scrollbar」的浏览器（Firefox）兜底。 */
+   所以标准属性只放进「不认识 ::-webkit-scrollbar」的浏览器（Firefox）兜底。
+   颜色走 --foreground 加透明度：浅色主题是深灰条、深色主题是浅灰条，两边都看得见。 */
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -166,15 +203,15 @@
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: hsl(var(--foreground) / 0.18);
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.32);
+  background: hsl(var(--foreground) / 0.34);
 }
 @supports not selector(::-webkit-scrollbar) {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
   }
 }
 

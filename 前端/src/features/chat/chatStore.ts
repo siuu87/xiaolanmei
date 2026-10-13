@@ -11,6 +11,25 @@ export interface ChatImage {
   mime?: string;
 }
 
+/**
+ * 语音消息时长（毫秒）。参考图里语音气泡要显示 mm:ss，
+ * 但后端只存 meta JSON，所以和 images/sticker/reasoning 一样走 meta 往返。
+ */
+export interface ChatQuote {
+  /** 引用卡里的那行斜体标题（参考图里是「Inside」） */
+  label: string;
+}
+
+/** 通话记录卡：接听 / 拒接 / 未接来电（已回拨） */
+export type CallRecordState = 'answered' | 'declined' | 'missed';
+
+export interface ChatCall {
+  kind: 'voice' | 'video';
+  state: CallRecordState;
+  /** 已接通时的通话时长（秒） */
+  seconds?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -20,7 +39,15 @@ export interface ChatMessage {
   images?: ChatImage[];
   sticker?: string; // 表情包贴图（emoji key；content 同步存 emoji 供模型理解）
   reasoning?: string; // 思考链：模型的推理内容（阶段 12），仅展示不回传模型
-  createdAt?: number; // 发送时间戳（气泡下方时间）
+  createdAt?: number; // 发送时间戳（气泡上方时间戳）
+  /** 可折叠引用卡（参考图的 ❝ + 竖线 + 标题 + 折叠箭头） */
+  quote?: ChatQuote;
+  /** 内心独白注解：气泡下方那行灰色斜体小字（参考图的「写了内心」） */
+  inner?: string;
+  /** 语音消息时长（毫秒）；有值就渲染成「▶ 波形 mm:ss ⤓」气泡 */
+  voiceMs?: number;
+  /** 通话记录卡；有值就渲染成卡片而不是气泡 */
+  call?: ChatCall;
 }
 
 export interface Conversation {
@@ -36,43 +63,66 @@ export function uid(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** 从消息 meta JSON 解析图片引用 + 贴图 + 思考链（持久化只存 url/name/mime，不存 base64） */
-function parseMeta(meta?: string | null): { images: ChatImage[]; sticker?: string; reasoning?: string } {
-  if (!meta) return { images: [] };
+/** meta JSON 里能往返的所有可选字段（除 images 外都是标量） */
+interface MessageMeta {
+  images?: { url: string; name?: string; mime?: string }[];
+  sticker?: string;
+  reasoning?: string;
+  quote?: ChatQuote;
+  inner?: string;
+  voiceMs?: number;
+  call?: ChatCall;
+}
+
+/** 从消息 meta JSON 解析图片引用 + 贴图 + 思考链 + 参考图里的新形态 */
+function parseMeta(meta?: string | null): Omit<ChatMessage, 'id' | 'role' | 'content' | 'parentId' | 'status' | 'createdAt'> {
+  const empty = { images: [] as ChatImage[] };
+  if (!meta) return empty;
   try {
-    const obj = JSON.parse(meta) as {
-      images?: { url: string; name?: string; mime?: string }[];
-      sticker?: string;
-      reasoning?: string;
-    };
+    const obj = JSON.parse(meta) as MessageMeta;
     const images = Array.isArray(obj.images)
       ? obj.images
           .filter((i) => i && typeof i.url === 'string')
           .map((i) => ({ url: i.url, name: i.name, mime: i.mime }))
       : [];
+    const call =
+      obj.call && typeof obj.call === 'object' && obj.call.kind
+        ? obj.call
+        : undefined;
     return {
       images,
       sticker: typeof obj.sticker === 'string' ? obj.sticker : undefined,
       reasoning: typeof obj.reasoning === 'string' ? obj.reasoning : undefined,
+      quote: obj.quote && typeof obj.quote.label === 'string' ? obj.quote : undefined,
+      inner: typeof obj.inner === 'string' && obj.inner.trim() ? obj.inner : undefined,
+      voiceMs: typeof obj.voiceMs === 'number' && obj.voiceMs > 0 ? obj.voiceMs : undefined,
+      call,
     };
   } catch {
-    return { images: [] };
+    return empty;
   }
 }
 
-/** 把图片引用 / 贴图 / 思考链序列化进消息 meta（丢弃 base64，只留后端 URL） */
-function serializeMeta(msg: { images?: ChatImage[]; sticker?: string; reasoning?: string }): string | null {
+/** 把图片引用 / 贴图 / 思考链 / 新形态序列化进消息 meta（丢弃 base64，只留后端 URL） */
+function serializeMeta(msg: Partial<ChatMessage>): string | null {
   const images =
     msg.images && msg.images.length
       ? msg.images.map((i) => ({ url: i.url, name: i.name, mime: i.mime }))
       : undefined;
   const reasoning = msg.reasoning && msg.reasoning.trim() ? msg.reasoning : undefined;
-  if (!images && !msg.sticker && !reasoning) return null;
+  const inner = msg.inner && msg.inner.trim() ? msg.inner : undefined;
+  const hasAny =
+    !!images || !!msg.sticker || !!reasoning || !!msg.quote || !!inner || !!msg.voiceMs || !!msg.call;
+  if (!hasAny) return null;
   return JSON.stringify({
     ...(images ? { images } : {}),
     ...(msg.sticker ? { sticker: msg.sticker } : {}),
     ...(reasoning ? { reasoning } : {}),
-  });
+    ...(msg.quote ? { quote: msg.quote } : {}),
+    ...(inner ? { inner } : {}),
+    ...(msg.voiceMs ? { voiceMs: msg.voiceMs } : {}),
+    ...(msg.call ? { call: msg.call } : {}),
+  } satisfies MessageMeta);
 }
 
 // ---- 纯函数：树形派生 ----
@@ -187,9 +237,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               content: m.content,
               parentId: m.parentId,
               status: (m.status ?? 'done') as MessageStatus,
-              images: meta.images,
-              sticker: meta.sticker,
-              reasoning: meta.reasoning,
+              ...meta,
               createdAt: m.createdAt,
             };
           }),

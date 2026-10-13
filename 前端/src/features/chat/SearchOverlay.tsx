@@ -31,7 +31,7 @@ function saveRecent(list: string[]): void {
   }
 }
 
-/** 结果片段：截断 + 命中关键词高亮（微信绿）。 */
+/** 结果片段：截断 + 命中关键词高亮（玫瑰色，跟 chat 页强调色一套）。 */
 function Snippet({ text, q }: { text: string; q?: string }) {
   const needle = q?.trim() ?? '';
   const idx = needle ? text.toLowerCase().indexOf(needle.toLowerCase()) : -1;
@@ -52,7 +52,7 @@ function Snippet({ text, q }: { text: string; q?: string }) {
     <span>
       {pre}
       {slice.slice(0, relIdx)}
-      <mark className="bg-transparent font-semibold text-[#07C160]">
+      <mark className="bg-transparent font-semibold text-chat-accent">
         {slice.slice(relIdx, relIdx + needle.length)}
       </mark>
       {slice.slice(relIdx + needle.length)}
@@ -168,33 +168,34 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div className="fixed inset-0 z-50 flex flex-col bg-chat-bg" data-testid="search-overlay">
       {/* 顶部搜索栏：返回 + 输入框 + 搜索 */}
-      <div className="flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-2">
+      <div className="flex shrink-0 items-center gap-2 bg-chat-bg px-3 py-2.5">
         <button
           type="button"
           onClick={close}
           aria-label="返回"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-foreground/80 transition hover:bg-muted"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition active:scale-95"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-muted/60 px-3">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[19px] bg-chat-pill px-3 shadow-sm">
+          <Search className="h-4 w-4 shrink-0 text-chat-meta" />
           <input
             autoFocus
+            data-testid="search-input"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void runSearch()}
             placeholder="搜索"
-            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-chat-meta"
           />
           {q && (
             <button
               type="button"
               onClick={() => setQ('')}
               aria-label="清空关键词"
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted-foreground/20 text-muted-foreground hover:text-foreground"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-chat-line text-chat-meta hover:text-foreground"
             >
               <X className="h-3 w-3" />
             </button>
@@ -203,22 +204,24 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
         <button
           type="button"
           onClick={() => void runSearch()}
-          className="shrink-0 px-2 text-sm font-medium text-primary"
+          className="shrink-0 px-2 text-sm font-medium text-chat-accent"
         >
           搜索
         </button>
       </div>
 
       {/* 筛选条件：日期（日历热力图）+ 图片 */}
-      <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 px-3 py-2">
+      <div className="flex shrink-0 flex-col gap-2 bg-chat-bg px-3 py-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setCalendarOpen((v) => !v)}
             aria-label="按日期"
             className={cn(
-              'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm transition',
-              date || calendarOpen ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-foreground/80',
+              'flex h-8 items-center gap-1.5 rounded-full px-3 text-sm transition',
+              date || calendarOpen
+                ? 'bg-chat-accent/15 text-chat-accent'
+                : 'bg-chat-pill text-chat-pill-fg shadow-sm',
             )}
           >
             <CalendarDays className="h-4 w-4" />
@@ -229,7 +232,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
               type="button"
               onClick={() => setDate('')}
               aria-label="清除日期"
-              className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-chat-meta transition hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -239,8 +242,8 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             onClick={() => setHasImage((v) => !v)}
             aria-label="仅看图片"
             className={cn(
-              'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm transition',
-              hasImage ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-foreground/80',
+              'flex h-8 items-center gap-1.5 rounded-full px-3 text-sm transition',
+              hasImage ? 'bg-chat-accent/15 text-chat-accent' : 'bg-chat-pill text-chat-pill-fg shadow-sm',
             )}
           >
             <ImageIcon className="h-4 w-4" />
@@ -251,30 +254,28 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
         {calendarOpen && (
           <ChatCalendar
             value={date}
-            onChange={(d) => {
-              setDate(d ?? '');
-              setCalendarOpen(false);
-            }}
+            onChange={(d) => setDate(d ?? '')}
+            onConfirm={() => setCalendarOpen(false)}
           />
         )}
       </div>
 
       {/* 内容区 */}
       {!hasFilter ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           {recent.length === 0 ? (
-            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-chat-meta">
               输入关键词，或按日期 / 图片搜索聊天记录
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between px-4 py-2">
-                <span className="text-xs text-muted-foreground">最近搜索</span>
+                <span className="text-xs text-chat-meta">最近搜索</span>
                 <button
                   type="button"
                   onClick={clearRecent}
                   aria-label="清空最近搜索"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/60 transition hover:text-foreground"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-chat-meta transition hover:text-foreground"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -284,9 +285,9 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
                   key={term}
                   type="button"
                   onClick={() => pickRecent(term)}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground/90 transition hover:bg-muted/50"
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-foreground/90 transition hover:bg-chat-pill/70"
                 >
-                  <Clock className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                  <Clock className="h-4 w-4 shrink-0 text-chat-meta" />
                   <span className="truncate">{term}</span>
                 </button>
               ))}
@@ -294,24 +295,26 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           )}
         </div>
       ) : loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">搜索中…</div>
+        <div className="flex flex-1 items-center justify-center text-sm text-chat-meta">搜索中…</div>
       ) : searched && results.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">没有匹配的记录</div>
+        <div className="flex flex-1 items-center justify-center text-sm text-chat-meta">没有匹配的记录</div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="px-4 py-2 text-xs text-muted-foreground">聊天记录 · 共 {results.length} 条</div>
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+          <div className="px-4 py-2 text-xs text-chat-meta">聊天记录 · 共 {results.length} 条</div>
           {results.map((r) => (
             <button
               key={r.id}
               type="button"
               onClick={() => jump(r)}
-              className="flex w-full flex-col gap-1 border-b border-border/40 px-4 py-3 text-left transition hover:bg-muted/40"
+              className="flex w-full flex-col gap-1 border-b border-chat-line/60 px-4 py-3 text-left transition hover:bg-chat-pill/70"
             >
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-chat-meta">
                 <span
                   className={cn(
-                    'rounded px-1.5 py-0.5 text-[10px]',
-                    r.role === 'assistant' ? 'bg-primary/15 text-primary' : 'bg-muted text-foreground/70',
+                    'rounded-full px-2 py-0.5 text-[10px]',
+                    r.role === 'assistant'
+                      ? 'bg-chat-accent/15 text-chat-accent'
+                      : 'bg-chat-line text-chat-pill-fg',
                   )}
                 >
                   {r.role === 'assistant' ? '小蓝莓' : '我'}

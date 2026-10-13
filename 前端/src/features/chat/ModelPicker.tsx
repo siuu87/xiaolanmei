@@ -38,14 +38,14 @@ export function ModelPicker({ stationId, model, onChange }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         title="选择模型"
-        className="flex h-7 items-center gap-1.5 rounded-full bg-muted px-3 text-xs text-foreground transition hover:bg-secondary"
+        className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-chat-quote px-2.5 text-xs text-chat-pill-fg transition hover:bg-chat-line"
       >
         <span className="max-w-28 truncate">{label}</span>
         <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 max-h-72 w-56 overflow-y-auto rounded-xl border border-border/60 bg-popover/95 p-1 shadow-lg backdrop-blur-xl">
+        <div className="absolute bottom-full right-0 z-20 mb-1 max-h-72 w-56 overflow-y-auto scrollbar-thin rounded-xl border border-chat-line bg-popover/95 p-1 shadow-lg backdrop-blur-xl">
           <button
             type="button"
             onClick={() => pick(null, null)}

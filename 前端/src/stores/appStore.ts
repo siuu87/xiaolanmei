@@ -36,7 +36,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: 'light',
       numFont: 'serif',
       accent: 'blue',
       setTheme: (theme) => set({ theme }),
@@ -45,13 +45,19 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'blueberry.app',
-      version: 2,
-      migrate: (persisted) => {
+      version: 3,
+      migrate: (persisted, from) => {
         // 清理旧版手动填的 tokenBudget / accountBalance（余额已改为后端自动查询，不再本地存）
         const s = (persisted ?? {}) as Record<string, unknown>;
         const next: Record<string, unknown> = { ...s };
         delete next.tokenBudget;
         delete next.accountBalance;
+        /**
+         * v3：全局默认主题由深色改为浅色（chat 页按参考图做了暖白改造）。
+         * 只改默认值没用——老用户 localStorage 里存着 theme:'dark'，会被持久化覆盖回去，
+         * 所以在这里显式改一次；之后用户自己切回深色仍然会被尊重（不会再动）。
+         */
+        if ((from ?? 0) < 3) next.theme = 'light';
         return next as unknown as AppState;
       },
     },

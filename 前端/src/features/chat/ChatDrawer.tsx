@@ -21,8 +21,9 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <div className="fixed inset-0 z-50" data-testid="chat-drawer">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-y-0 left-0 flex w-full max-w-lg flex-col border-r border-white/10 bg-background/70 shadow-2xl backdrop-blur-2xl dark:border-white/10">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border/50 px-4 py-3">
+      {/* 面板走「点开 = 整页纯色」：不透明、不毛玻璃，跟主抽屉一个规范 */}
+      <div className="absolute inset-y-0 left-0 flex w-full max-w-lg flex-col border-r border-border bg-background shadow-2xl">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-4 py-3">
           <span className="text-sm font-semibold">工具箱</span>
           <button
             type="button"
@@ -34,11 +35,11 @@ export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto scrollbar-thin p-3">
           {TOOLBOX_SECTIONS.map((s) => {
             const isOpen = expanded === s.key;
             return (
-              <div key={s.key} className="overflow-hidden rounded-xl border border-border/60 bg-white/[0.03] backdrop-blur-sm dark:bg-white/[0.03]">
+              <div key={s.key} className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
                 <button
                   type="button"
                   onClick={() => setExpanded(isOpen ? null : s.key)}
