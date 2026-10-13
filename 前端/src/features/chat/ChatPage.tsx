@@ -47,6 +47,7 @@ import {
   type ChatImage,
 } from './chatStore';
 import { Markdown } from '@/components/Markdown';
+import { AvatarContent } from '@/components/AvatarContent';
 import { SearchOverlay } from './SearchOverlay';
 import { ChatDrawer } from './ChatDrawer';
 import { ModelPicker } from './ModelPicker';
@@ -199,14 +200,14 @@ function BubbleAvatar({ mine }: { mine: boolean }) {
     <span
       data-testid={mine ? 'bubble-avatar-me' : 'bubble-avatar-partner'}
       className={cn(
-        'mb-[18px] flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white',
+        'mb-[18px] flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-white',
         mine ? 'bg-[#8e8e93]' : 'bg-[#007AFF]',
       )}
     >
       {mine ? (
         <User className="h-4 w-4" />
       ) : partnerAvatar ? (
-        <span className="text-[17px] leading-none">{partnerAvatar}</span>
+        <AvatarContent value={partnerAvatar} fallback="🐰" className="text-[17px]" />
       ) : (
         <ClaudeMark className="h-4 w-4" />
       )}
