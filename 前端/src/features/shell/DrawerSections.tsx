@@ -21,7 +21,6 @@ import {
   Cake,
   GraduationCap,
   Puzzle,
-  Sparkles,
   Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,34 +34,42 @@ import { LOVE_START, loveDays } from './loveDays';
 
 /* ---------------------------- A. 伴侣档案卡 ---------------------------- */
 
+/**
+ * 纪念日块（日历正上方）：两个人的头像挨着，下面一个更大的「在一起 N 天」数字。
+ * 不要边框、不要名字——就放纪念日这一件事。
+ */
 export function ProfileHeader() {
-  const { name, avatar, partnerAvatar } = useProfileStore();
+  const { avatar, partnerAvatar } = useProfileStore();
   const days = useMemo(() => loveDays(), []);
 
   return (
-    <div className="shrink-0 px-4 pb-3 pt-4">
-      {/* 纪念日卡：不要边框（用户要求），靠渐变本身和下面的内容区分层次 */}
-      <div className="rounded-2xl bg-gradient-to-br from-[#1b2440] to-[#141a2c] p-3.5">
-        <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-2xl">
+    <div className="shrink-0 px-4 pb-3 pt-4" data-testid="anniversary-block">
+      <div className="flex flex-col items-center">
+        {/* 两个人的头像挨着 */}
+        <div className="flex items-center gap-1.5">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-[22px]">
             {avatar || '🫐'}
           </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-semibold text-[#e8ecf6]">{name || '小蓝莓'}</p>
-            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#8b93a7]">
-              <Sparkles className="h-3 w-3 text-primary" />
-              在一起
-              <span className="font-medium text-primary" data-testid="love-days">
-                {days}
-              </span>
-              天
-              <span className="ml-0.5 opacity-60">
-                （{LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起）
-              </span>
-            </p>
-          </div>
-          <span className="shrink-0 text-xl">{partnerAvatar || '🐰'}</span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#5b3f6e] to-[#7a4a63] text-[22px]">
+            {partnerAvatar || '🐰'}
+          </span>
         </div>
+
+        {/* 在一起 N 天：数字给到 32px，一眼看到 */}
+        <div className="mt-2.5 flex items-baseline gap-1.5">
+          <span className="text-[12px] text-[#8b93a7]">在一起</span>
+          <span
+            data-testid="love-days"
+            className="font-serif text-[32px] font-semibold leading-none text-[#e8ecf6]"
+          >
+            {days}
+          </span>
+          <span className="text-[12px] text-[#8b93a7]">天</span>
+        </div>
+
+        <span className="mt-1 text-[10px] text-[#6b7488]">
+          {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
+        </span>
       </div>
     </div>
   );
