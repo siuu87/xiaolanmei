@@ -5,10 +5,12 @@
  * （CalendarCard / TodoCard / InspirationNoteCard / AppearanceSection），
  * 不复制逻辑、不改它们的内部实现——所以抽屉挂上去，原页面该怎样还怎样。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarDays,
+  ChevronDown,
   Clapperboard,
   BookOpen,
   Headphones,
@@ -28,39 +30,19 @@ import { useShellStore } from '@/stores/shellStore';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
 import { InspirationNoteCard } from '@/features/notes/InspirationNoteCard';
-import { getTokenStats } from '@/lib/api/token';
+import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
-
-function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
-}
 
 /* ---------------------------- A. 伴侣档案卡 ---------------------------- */
 
 export function ProfileHeader() {
   const { name, avatar, partnerAvatar } = useProfileStore();
   const days = useMemo(() => loveDays(), []);
-  const [tokens, setTokens] = useState<number | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    void getTokenStats(0)
-      .then((s) => {
-        if (alive) setTokens(s.totals?.total ?? 0);
-      })
-      .catch(() => {
-        /* 拉不到就显示占位，不打扰抽屉 */
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   return (
     <div className="shrink-0 px-4 pb-3 pt-4">
-      <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#1b2440] to-[#141a2c] p-3.5">
+      {/* 纪念日卡：不要边框（用户要求），靠渐变本身和下面的内容区分层次 */}
+      <div className="rounded-2xl bg-gradient-to-br from-[#1b2440] to-[#141a2c] p-3.5">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-2xl">
             {avatar || '🫐'}
@@ -81,19 +63,6 @@ export function ProfileHeader() {
           </div>
           <span className="shrink-0 text-xl">{partnerAvatar || '🐰'}</span>
         </div>
-
-        {/* Token 消耗胶囊 */}
-        <div className="mt-3 flex items-center gap-2">
-          <span
-            className="rounded-full border border-white/[0.08] bg-black/25 px-2.5 py-1 text-[11px] text-[#a8b0c4]"
-            data-testid="token-capsule"
-          >
-            Token {tokens === null ? '—' : fmtNum(tokens)}
-          </span>
-          <span className="rounded-full border border-white/[0.08] bg-black/25 px-2.5 py-1 text-[11px] text-[#a8b0c4]">
-            模型通道
-          </span>
-        </div>
       </div>
     </div>
   );
@@ -111,7 +80,13 @@ export function DailyBoard() {
         {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
         <CalendarCard />
         <TodoCard />
-        <InspirationNoteCard />
+        {/* Token 和信箱并排，一半一半（跟旧首页那排一样） */}
+        <div className="grid grid-cols-2 gap-3">
+          <div data-testid="token-capsule">
+            <TokenCard />
+          </div>
+          <InspirationNoteCard />
+        </div>
       </div>
     </section>
   );
@@ -171,6 +146,8 @@ export function ModuleCards() {
   const navigate = useNavigate();
   const closeDrawer = useShellStore((s) => s.closeDrawer);
   const openToolbox = useShellStore((s) => s.openToolbox);
+  // 手风琴：同时只展开一个分组，点已展开的收起
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const go = (to: string) => {
     closeDrawer();
@@ -183,28 +160,56 @@ export function ModuleCards() {
         模块
       </h3>
       <div className="space-y-2.5">
-        {MODULE_GROUPS.map((g) => (
-          <div key={g.title} className="rounded-2xl border border-white/[0.08] bg-[#151b2b] p-2.5">
-            <div className="mb-1.5 flex items-center gap-1.5 px-1">
-              <g.icon className="h-3 w-3 text-primary" />
-              <span className="text-[12px] font-medium text-[#c3cad9]">{g.title}</span>
+        {MODULE_GROUPS.map((g) => {
+          const open = expanded === g.title;
+          return (
+            <div key={g.title} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151b2b]">
+              {/* 分组头：尺寸和下面的「工具箱」按键完全一致 */}
+              <button
+                type="button"
+                onClick={() => setExpanded(open ? null : g.title)}
+                aria-expanded={open}
+                data-testid={`module-group-${g.title}`}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
+              >
+                <g.icon className="h-4 w-4 text-[#9aa3b8]" />
+                <span className="text-[12px] font-medium text-[#dfe4ef]">{g.title}</span>
+                <span className="ml-auto text-[10px] text-[#6b7488]">{g.entries.length} 项</span>
+                <ChevronDown
+                  className={cn('h-4 w-4 shrink-0 text-[#6b7488] transition-transform', open && 'rotate-180')}
+                />
+              </button>
+
+              {/* 扩展条：点开才展开 */}
+              <AnimatePresence initial={false}>
+                {open && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 gap-1.5 border-t border-white/[0.06] px-2.5 py-2.5">
+                      {g.entries.map((e) => (
+                        <button
+                          key={e.to + e.label}
+                          type="button"
+                          onClick={() => go(e.to)}
+                          className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-white/[0.06]"
+                        >
+                          <e.icon className="h-4 w-4 text-[#9aa3b8]" />
+                          <span className="text-[12px] font-medium leading-tight text-[#dfe4ef]">{e.label}</span>
+                          {e.hint && <span className="text-[10px] leading-tight text-[#6b7488]">{e.hint}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {g.entries.map((e) => (
-                <button
-                  key={e.to + e.label}
-                  type="button"
-                  onClick={() => go(e.to)}
-                  className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-white/[0.06]"
-                >
-                  <e.icon className="h-4 w-4 text-[#9aa3b8]" />
-                  <span className="text-[12px] font-medium leading-tight text-[#dfe4ef]">{e.label}</span>
-                  {e.hint && <span className="text-[10px] leading-tight text-[#6b7488]">{e.hint}</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* 原聊天「工具箱」（插件 / 角色 / 世界书 / 工作区 / 技能）收在这里，功能一个不少 */}
         <button
