@@ -100,6 +100,79 @@ function clearDefault(excludeId?: string): void {
   }
 }
 
+/* ----------------------------- 自动拉取模型列表 ----------------------------- */
+
+/**
+ * 从站子自己的接口拉模型列表（OpenAI 兼容 GET {baseUrl}/models）。
+ *
+ * - 候选地址：baseUrl 以 /v1 结尾就只试 `{base}/models`（避免 …/v1/v1/models），
+ *   否则依次试 `{base}/models` 和 `{base}/v1/models`（用户常把 /v1 省掉）。
+ * - 兼容三种返回：`{data:[{id}]}`（OpenAI 标准）/ 裸数组 / `{models:[…]}`；
+ *   条目取 id，退化取 name。
+ * - 鉴权：站子的 apiKey（Bearer；同时带 api-key 头， Azure 系也能用）。
+ * - 单机应用，站子本来就是用户自己配的可信地址；超时 12s，失败带回每个候选的原因。
+ */
+function extractModelIds(text: string): string[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  const pick = (x: unknown): string | null => {
+    if (typeof x === 'string') return x;
+    if (x && typeof x === 'object') {
+      const o = x as Record<string, unknown>;
+      if (typeof o.id === 'string') return o.id;
+      if (typeof o.name === 'string') return o.name;
+    }
+    return null;
+  };
+  let arr: unknown[] = [];
+  if (Array.isArray(data)) arr = data;
+  else if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>;
+    if (Array.isArray(d.data)) arr = d.data;
+    else if (Array.isArray(d.models)) arr = d.models;
+    else if (Array.isArray(d.body)) arr = d.body;
+  }
+  const out: string[] = [];
+  for (const x of arr) {
+    const id = pick(x);
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+async function fetchModelsFromStation(baseUrl: string, apiKey: string): Promise<string[]> {
+  const base = baseUrl.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(base)) throw new Error('baseUrl 要以 http(s):// 开头');
+  const candidates = /\/v1$/i.test(base) ? [`${base}/models`] : [`${base}/models`, `${base}/v1/models`];
+  const tried: string[] = [];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'blueberry-station-fetch',
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}`, 'api-key': apiKey } : {}),
+        },
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!res.ok) {
+        tried.push(`${url} → HTTP ${res.status}`);
+        continue;
+      }
+      const ids = extractModelIds(await res.text());
+      if (ids.length) return ids;
+      tried.push(`${url} → 返回里解析不出模型列表`);
+    } catch (e) {
+      tried.push(`${url} → ${(e as Error).message}`);
+    }
+  }
+  throw new Error(tried.join('；') || '未知错误');
+}
+
 export async function stationsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/stations', async () => listStations().map(toDTO));
 
@@ -177,5 +250,39 @@ export async function stationsRoutes(app: FastifyInstance): Promise<void> {
     const ts = now();
     db.update(stations).set({ deletedAt: ts, updatedAt: ts }).where(eq(stations.id, id)).run();
     return { ok: true };
+  });
+
+  /**
+   * 自动拉取模型列表：{ id } 用库里站子的 baseUrl+Key（Key 留空编辑态也能拉），
+   * 或直接传 { baseUrl, apiKey }（还没保存的新站子先试拉）。
+   * 只返回列表，不落库——前端合并进表单，用户点保存才持久化。
+   */
+  app.post('/stations/fetch-models', async (req, reply) => {
+    const body = (req.body ?? {}) as { id?: string; baseUrl?: string; apiKey?: string };
+    let baseUrl = body.baseUrl?.trim();
+    let apiKey = body.apiKey?.trim() ?? '';
+    if (body.id) {
+      const st = listStations().find((s) => s.id === body.id);
+      if (!st) {
+        reply.code(404).send({ message: '站子不存在' });
+        return;
+      }
+      baseUrl = baseUrl || st.baseUrl;
+      apiKey = apiKey || (st.apiKey ?? '');
+    }
+    if (!baseUrl) {
+      reply.code(400).send({ message: 'baseUrl 必填（或传已保存站子的 id）' });
+      return;
+    }
+    try {
+      const models = await fetchModelsFromStation(baseUrl, apiKey);
+      if (!models.length) {
+        reply.code(502).send({ message: '接口通了但没解析出模型列表' });
+        return;
+      }
+      return { models };
+    } catch (e) {
+      reply.code(502).send({ message: `拉取失败：${(e as Error).message}` });
+    }
   });
 }

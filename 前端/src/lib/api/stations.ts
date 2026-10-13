@@ -30,3 +30,13 @@ export const patchStation = (id: string, patch: Partial<StationInput>) =>
 
 export const deleteStation = (id: string) =>
   request<{ ok: true }>(`/api/stations/${id}`, { method: 'DELETE' });
+
+/**
+ * 自动拉取站子的模型列表（后端打 {baseUrl}/models，OpenAI 兼容格式）。
+ * 传 id 用库里存的 baseUrl+Key；新站子没保存时直接传 baseUrl/apiKey。
+ */
+export const fetchStationModels = (input: { id?: string; baseUrl?: string; apiKey?: string }) =>
+  request<{ models: string[] }>('/api/stations/fetch-models', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });

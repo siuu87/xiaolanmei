@@ -15,6 +15,7 @@ import {
   Moon,
   Pencil,
   Plus,
+  RefreshCw,
   SlidersHorizontal,
   Smile,
   Sparkles,
@@ -26,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { getSettings, updateSettings } from '@/lib/api/settings';
 import { useStationStore } from '@/stores/stationStore';
+import { fetchStationModels } from '@/lib/api/stations';
 import type { Station } from '@/lib/api/stations';
 import { MemoryPanel } from '@/features/memory/MemoryPage';
 import { SyncPanel } from '@/features/sync/SyncPage';
@@ -119,6 +121,8 @@ export function SettingsPage() {
 
   const [editing, setEditing] = useState<{ id?: string } | null>(null);
   const [sf, setSf] = useState<StationFormState>({ name: '', baseUrl: '', apiKey: '', models: '' });
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchModelsMsg, setFetchModelsMsg] = useState('');
 
   useEffect(() => {
     getSettings()
@@ -163,14 +167,48 @@ export function SettingsPage() {
   const openAdd = () => {
     setEditing({});
     setSf({ name: '', baseUrl: '', apiKey: '', models: '' });
+    setFetchModelsMsg('');
   };
   const openEdit = (s: Station) => {
     setEditing({ id: s.id });
     setSf({ name: s.name, baseUrl: s.baseUrl, apiKey: '', models: s.models.join(', ') });
+    setFetchModelsMsg('');
   };
-  const closeEditor = () => setEditing(null);
+  const closeEditor = () => {
+    setEditing(null);
+    setFetchModelsMsg('');
+  };
   const setS = <K extends keyof StationFormState>(key: K, value: string) =>
     setSf((f) => ({ ...f, [key]: value }));
+
+  /** 自动拉取：打站子自己的 /models，拉到的合并进表单（已有在前，新的去重追加），点保存才落库 */
+  const pullModels = async () => {
+    const baseUrl = sf.baseUrl.trim();
+    if (!baseUrl) {
+      setFetchModelsMsg('先填 Base URL');
+      return;
+    }
+    setFetchingModels(true);
+    setFetchModelsMsg('');
+    try {
+      const { models } = await fetchStationModels({
+        id: editing?.id,
+        baseUrl,
+        apiKey: sf.apiKey.trim() || undefined, // 编辑已存站子时留空 → 后端用库里的 Key
+      });
+      const cur = sf.models
+        .split(/[,，\n]/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const added = models.filter((m) => !cur.includes(m));
+      setS('models', [...cur, ...added].join(', '));
+      setFetchModelsMsg(`拉到 ${models.length} 个${added.length ? `，新增 ${added.length} 个` : '，没有新模型'}`);
+    } catch (e) {
+      setFetchModelsMsg((e as Error).message);
+    } finally {
+      setFetchingModels(false);
+    }
+  };
 
   const saveStation = async () => {
     const sName = sf.name.trim();
@@ -575,7 +613,23 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">模型列表（逗号或换行分隔）</label>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="block text-xs text-muted-foreground">模型列表（逗号或换行分隔）</label>
+                    <button
+                      type="button"
+                      onClick={() => void pullModels()}
+                      disabled={fetchingModels}
+                      title="从站子接口自动拉取模型列表（GET {Base URL}/models）"
+                      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                    >
+                      {fetchingModels ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      自动拉取
+                    </button>
+                  </div>
                   <textarea
                     value={sf.models}
                     onChange={(e) => setS('models', e.target.value)}
@@ -583,6 +637,9 @@ export function SettingsPage() {
                     rows={2}
                     className={cn(inputCls, 'resize-none')}
                   />
+                  {fetchModelsMsg && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">{fetchModelsMsg}</p>
+                  )}
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={closeEditor}>
