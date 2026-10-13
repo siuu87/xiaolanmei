@@ -23,7 +23,7 @@ function weekdayInitialOf(y: number, m: number, d: number): string {
 export interface CalendarDayDecoration {
   moodColors?: string[]; // 心情圆点颜色（我、TA）
   period?: 'solid' | 'predicted'; // 经期实心 / 预测虚环
-  memorial?: boolean; // 纪念日金线
+  memorial?: boolean; // 纪念日：日期数字着琥珀色（不在下面标点）
   /** 手机日历那套右上角角标：休 = 休息/放假，班 = 调休补班（只标法定节假日和补班日，普通周末不标） */
   workFlag?: '休' | '班';
   label?: string; // 节日/节气名称（标注文本）
@@ -60,15 +60,12 @@ function labelTextClass(kind?: 'holiday' | 'term' | 'festival'): string {
   }
 }
 
-/** 展开态网格里的标注：金/绿线 + 心情圆点 + 日程小方块（固定三行，保证行对齐；经期已挪到数字上） */
+/** 展开态网格里的标注：心情圆点 + 日程小方块（固定两行，保证行对齐；经期/纪念日已挪到数字上） */
 function DayMarkers({ dec }: { dec?: CalendarDayDecoration }) {
   const moodColors = dec?.moodColors ?? [];
   const scheduleColors = (dec?.scheduleColors ?? []).slice(0, 3);
   return (
     <>
-      <span className="flex h-1 flex-col items-center justify-center gap-px">
-        {dec?.memorial && <span className="h-0.5 w-6 rounded-full bg-amber-400" />}
-      </span>
       <span className="flex h-1.5 items-center gap-0.5">
         {moodColors.map((c, i) => (
           <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c }} />
@@ -83,14 +80,13 @@ function DayMarkers({ dec }: { dec?: CalendarDayDecoration }) {
   );
 }
 
-/** 收起态胶囊里的标注：全部缩成小圆点（经期已挪到数字上）；日程用小块区分 */
+/** 收起态胶囊里的标注：全部缩成小圆点（经期/纪念日已挪到数字上）；日程用小块区分 */
 function CompactDots({ dec }: { dec?: CalendarDayDecoration }) {
   return (
     <span className="flex h-1 items-center gap-0.5">
       {dec?.moodColors?.map((c, i) => (
         <span key={`m${i}`} className="h-1 w-1 rounded-full" style={{ backgroundColor: c }} />
       ))}
-      {dec?.memorial && <span className="h-1 w-1 rounded-full bg-amber-400" />}
       {(dec?.scheduleColors ?? []).slice(0, 3).map((c, i) => (
         <span key={`s${i}`} className="h-1 w-1 rounded-[1px]" style={{ backgroundColor: c }} />
       ))}
@@ -287,6 +283,8 @@ export function CollapsibleCalendar({
                         'leading-none',
                         isToday && !selected && 'text-primary',
                         dec?.period === 'solid' && 'text-rose-400',
+                        // 纪念日：数字着琥珀色（不在下面标点）；选中/经期实心优先
+                        dec?.memorial && dec?.period !== 'solid' && !selected && 'text-amber-400',
                         dec?.period === 'predicted' &&
                           'flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-rose-400',
                       )}
@@ -332,9 +330,13 @@ export function CollapsibleCalendar({
                         ? 'bg-primary text-primary-foreground shadow-[0_2px_6px_rgba(0,0,0,0.25)]'
                         : dec?.period === 'solid'
                           ? 'text-rose-400'
-                          : isToday
-                            ? 'bg-primary/20 text-primary ring-2 ring-primary'
-                            : 'text-[#e2e8f0] hover:bg-[#22304a]',
+                          : dec?.memorial
+                            ? 'text-amber-400'
+                            : isToday
+                              ? 'bg-primary/20 text-primary ring-2 ring-primary'
+                              : 'text-[#e2e8f0] hover:bg-[#22304a]',
+                      // 今天的底/环照旧给（纪念日只改字色，不抢今天的视觉身份）
+                      isToday && !selected && 'bg-primary/20 ring-2 ring-primary',
                       dec?.period === 'predicted' && 'ring-2 ring-rose-400',
                     )}
                   >

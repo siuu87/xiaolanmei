@@ -118,7 +118,7 @@ export function CalendarCard() {
     setSelectedDate((prev) => (prev === date ? null : date));
   };
 
-  // 日历每天的标注：心情圆点 + 经期圆点 + 纪念日金线 + 放假日绿线 + 节日/节气名称
+  // 日历每天的标注：心情圆点 + 经期数字色 + 纪念日数字色 + 放假日角标 + 节日/节气名称
   const next = predictNextStart(records, settings);
   const periodSummaryText = periodSummary(records, settings);
   const dayDecoration = (iso: string): CalendarDayDecoration | undefined => {
