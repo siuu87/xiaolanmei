@@ -48,6 +48,8 @@ export const router = createBrowserRouter([
       { path: 'diary', element: <DiaryPage /> },
       { path: 'memorial', element: <MemorialPage /> },
       { path: 'notes', element: <NotesPage /> },
+      // 一封来信的独立阅读页：内容由 AppLayout 叠在侧边栏之上（这里渲染空）
+      { path: 'letter/:id', element: <Noop /> },
       { path: 'schedule', element: <SchedulePage /> },
       { path: 'memo', element: <MemoHomePage /> },
       // 兜底：未知路径（含已移除的旧路由）回到首页，避免客户端 404

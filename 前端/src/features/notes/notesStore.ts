@@ -6,9 +6,32 @@ import { INSPIRATION_QUOTES, dateKey, type InspirationNote } from './notesData';
 interface NotesState {
   notes: InspirationNote[]; // 全部历史便签，新→旧
   loaded: boolean;
+  readIds: string[]; // 已拆开读过的（全部页里显示成展开的信纸）
   load: () => Promise<void>;
   generateToday: () => Promise<void>; // 每日首次打开触发，幂等
   removeNote: (id: string) => void;
+  markRead: (id: string) => void;
+}
+
+/** 已读只跟这台设备有关，不值得上后端——localStorage 够了 */
+const READ_KEY = 'blueberry.notes.read';
+
+function loadReadIds(): string[] {
+  try {
+    const raw = localStorage.getItem(READ_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveReadIds(ids: string[]) {
+  try {
+    localStorage.setItem(READ_KEY, JSON.stringify(ids));
+  } catch {
+    /* 隐私模式下写不了就算了，不影响读信 */
+  }
 }
 
 /** 尽量挑一条还没用过的本地文案（兜底） */
@@ -37,6 +60,7 @@ let generating = false;
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   loaded: false,
+  readIds: loadReadIds(),
 
   load: async () => {
     try {
@@ -68,5 +92,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   removeNote: (id) => {
     set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
     void deleteNote(id).catch(() => {});
+  },
+
+  markRead: (id) => {
+    const cur = get().readIds;
+    if (cur.includes(id)) return;
+    const next = [id, ...cur];
+    set({ readIds: next });
+    saveReadIds(next);
   },
 }));

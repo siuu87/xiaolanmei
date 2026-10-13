@@ -1,35 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ChevronRight } from 'lucide-react';
+import { useShellStore } from '@/stores/shellStore';
 import { useNotesStore } from './notesStore';
-import { NOTE_AUTHOR, formatNoteDate } from './notesData';
-import { LetterModal } from './LetterModal';
+import { LetterEnvelope } from './LetterArt';
 
-const SWIPE_THRESHOLD = 70;
-
-/** 滑动切换的方向变体：enter/exit 用同一 direction 推算出相反位移 */
-const variants = {
-  enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
-};
+/** 抽屉里一次摆几封 */
+const VISIBLE = 3;
 
 /**
  * 蓝莓信箱卡片（独立组件，不依赖首页布局）。
  * - 每日首次打开自动生成一条（幂等、静默）；
- * - 多封来信左右滑动或点两侧箭头切换浏览；
- * - 点信封 → 展开成一整张信纸；点头部「全部」→ 全部来信页。
+ * - 卡片里是**一摞压扁的朴素信封**（只露日期，内容不显示）；
+ * - 点某一封 → 进它自己的阅读页 `/letter/:id`（叠在抽屉之上，点空白收起）；
+ * - 点头部「全部」→ 全部来信页。
  */
 export function InspirationNoteCard() {
   const navigate = useNavigate();
+  const closeDrawer = useShellStore((s) => s.closeDrawer);
   const notes = useNotesStore((s) => s.notes);
   const generateToday = useNotesStore((s) => s.generateToday);
-
-  const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
-  const [previewOpen, setPreviewOpen] = useState(false);
 
   // 每日首次打开触发（store 内幂等，不会重复生成）
   useEffect(() => {
@@ -37,29 +27,18 @@ export function InspirationNoteCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 只展示最近 5 条
-  const recentNotes = notes.slice(0, 5);
-  const count = recentNotes.length;
-  const clamped = count ? Math.min(index, count - 1) : 0;
-  const note = count ? recentNotes[clamped] : null;
-
-  const paginate = (dir: 1 | -1) => {
-    if (count <= 1) return;
-    setDirection(dir);
-    setIndex((i) => (i + dir + count) % count);
-  };
-
-  const onDragEnd = (_e: unknown, info: PanInfo) => {
-    if (info.offset.x < -SWIPE_THRESHOLD) paginate(1);
-    else if (info.offset.x > SWIPE_THRESHOLD) paginate(-1);
-  };
+  const list = notes.slice(0, VISIBLE);
+  const rest = notes.length - list.length;
 
   return (
     <div className="glass relative z-10 flex flex-col p-2">
-      {/* 头部：标题 + 全部入口（点击进全部便签页） */}
+      {/* 头部：标题 + 全部入口（抽屉会盖住覆盖层，进列表前必须先收起它） */}
       <button
         type="button"
-        onClick={() => navigate('/notes')}
+        onClick={() => {
+          closeDrawer();
+          navigate('/notes');
+        }}
         className="flex w-full items-center justify-between text-left"
       >
         <h2 className="font-serif text-xs text-muted-foreground">蓝莓信箱</h2>
@@ -69,99 +48,22 @@ export function InspirationNoteCard() {
         </span>
       </button>
 
-      {/* 信封占满整列宽度，两侧箭头悬浮在信封边缘上 */}
-      <div className="relative mt-4 flex-1">
-        <AnimatePresence mode="wait" custom={direction} initial={false}>
-          {note ? (
-            <motion.button
-              key={note.id}
-              type="button"
-              custom={direction}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{
-                x: { type: 'spring', stiffness: 320, damping: 30 },
-                opacity: { duration: 0.16 },
-              }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={1}
-              onDragEnd={onDragEnd}
-              onClick={() => setPreviewOpen(true)}
-              data-testid="letter-envelope"
-              className="relative flex h-full w-full flex-col justify-between overflow-hidden rounded-md bg-gradient-to-b from-[#f7f1e6] to-[#ebe1cf] px-6 pb-2.5 pt-8 text-left text-[#4a4034] shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
-            >
-              {/* 信封封盖：顶部三角 */}
-              <svg
-                viewBox="0 0 100 26"
-                preserveAspectRatio="none"
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-7 w-full"
-              >
-                <path d="M0 0 H100 L50 26 Z" fill="#e0d4bf" />
-                <path d="M0 0 H100 L50 26 Z" fill="none" stroke="#cdbfa6" strokeWidth="0.8" />
-              </svg>
-              {/* 火漆印 */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute left-1/2 top-5 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-[#a8443c] text-[8px] shadow-sm"
-              >
-                🫐
-              </span>
-
-              <p className="line-clamp-3 text-[11px] leading-[17px]">{note.content}</p>
-              <div className="mt-1.5 flex flex-col items-end gap-0.5">
-                <span className="text-[9px] text-[#8a7f6d]">{formatNoteDate(note.createdAt)}</span>
-                <span className="text-[9px] text-[#6f6555]">{NOTE_AUTHOR}</span>
-              </div>
-            </motion.button>
-          ) : (
-            <div className="flex h-full items-center justify-center rounded-md border border-dashed border-white/10 text-xs text-muted-foreground/50">
-              生成中…
-            </div>
-          )}
-        </AnimatePresence>
-
-        {count > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={() => paginate(-1)}
-              aria-label="上一张"
-              className="absolute left-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/70 text-slate-600 shadow-sm transition hover:bg-white"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => paginate(1)}
-              aria-label="下一张"
-              className="absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/70 text-slate-600 shadow-sm transition hover:bg-white"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </>
+      {/* 一摞信封：高度压缩，内容不显示 */}
+      <div className="mt-2.5 flex flex-col gap-1.5" data-testid="envelope-stack">
+        {list.length === 0 ? (
+          <div className="flex h-10 items-center justify-center rounded-[3px] border border-dashed border-white/10 text-[10px] text-muted-foreground/50">
+            还没有来信
+          </div>
+        ) : (
+          list.map((n) => (
+            <LetterEnvelope key={n.id} note={n} onClick={() => navigate(`/letter/${n.id}`)} />
+          ))
         )}
       </div>
 
-      {/* 页码指示 */}
-      {count > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-1">
-          {recentNotes.map((n, i) => (
-            <span
-              key={n.id}
-              className={cn(
-                'h-1 rounded-full transition-all',
-                i === clamped ? 'w-3 bg-primary' : 'w-1 bg-muted-foreground/30',
-              )}
-            />
-          ))}
-        </div>
+      {rest > 0 && (
+        <p className="mt-1.5 text-center text-[9px] text-muted-foreground/50">还有 {rest} 封</p>
       )}
-
-      <LetterModal note={previewOpen ? note : null} onClose={() => setPreviewOpen(false)} />
     </div>
   );
 }

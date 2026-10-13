@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { useAppStore, ACCENT_HSL } from '@/stores/appStore';
 import { useImmersiveStore } from '@/stores/immersiveStore';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { ChatPage } from '@/features/chat/ChatPage';
 import { Drawer } from '@/features/shell/Drawer';
+import { LetterReaderLayer } from '@/features/notes/LetterReaderLayer';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
 
 /**
@@ -35,6 +37,16 @@ export function AppLayout() {
   const onChat = location.pathname === '/chat';
   // 整页沉浸替换（不挂聊天底座）
   const fullReplace = location.pathname.startsWith('/tavern');
+  // 一封来信的阅读页：路由上渲染空，实际由下面这层叠在侧边栏之上
+  const letterId = location.pathname.startsWith('/letter/')
+    ? decodeURIComponent(location.pathname.slice('/letter/'.length))
+    : null;
+
+  // 关信件页 = 原路返回；直达进来没有上一条历史，就退到信箱列表
+  const closeLetter = () => {
+    if (location.key && location.key !== 'default') navigate(-1);
+    else navigate('/notes');
+  };
 
   useEdgeSwipe(openDrawer, !immersive && !fullReplace);
 
@@ -72,19 +84,19 @@ export function AppLayout() {
           </div>
         )}
 
-        {/* 第二层：覆盖层路由 */}
+        {/* 第二层：覆盖层路由（阅读页时它也是空的，同样要穿透） */}
         <main
           className={cn(
             'h-full overflow-y-auto',
             !fullReplace && 'absolute inset-0',
-            onChat && !fullReplace && 'pointer-events-none',
+            (onChat || !!letterId) && !fullReplace && 'pointer-events-none',
           )}
         >
           <Outlet />
         </main>
 
-        {/* 覆盖层里的一键回对话（沉浸替换页不需要） */}
-        {!onChat && !fullReplace && (
+        {/* 覆盖层里的一键回对话（沉浸替换页、阅读页本身不需要） */}
+        {!onChat && !fullReplace && !letterId && (
           <button
             type="button"
             onClick={() => navigate('/chat')}
@@ -100,6 +112,12 @@ export function AppLayout() {
 
       {/* 移动端抽屉 */}
       {!immersive && <Drawer />}
+
+      {/* 一封来信的阅读页：叠在抽屉之上，点空白收起。
+          挂在这里而不是 Outlet，是为了让 AnimatePresence 有机会播收起动画。 */}
+      <AnimatePresence>
+        {letterId && <LetterReaderLayer key={letterId} id={letterId} onClose={closeLetter} />}
+      </AnimatePresence>
     </div>
   );
 }
