@@ -17,3 +17,6 @@ data/
 
 # 本地工作数据（Agent 记忆/日志），不进版本库
 .workbuddy/
+
+# 组件临时预览页（frontend/preview-*.html），只给本地冒烟看效果
+前端/preview-*.html
