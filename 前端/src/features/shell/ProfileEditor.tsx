@@ -139,7 +139,10 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
           <span className="h-8 w-8 shrink-0" aria-hidden />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div
+          data-testid="profile-scroll"
+          className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+        >
           {/* ---- 头像区块 ---- */}
           <AvatarBlock target={target} value={avatar} onChange={setAvatar} />
 

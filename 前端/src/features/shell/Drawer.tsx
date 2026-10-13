@@ -71,8 +71,11 @@ export function Drawer() {
                 </button>
               </div>
 
-              {/* 垂直滚动卡片流 */}
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+              {/* 垂直滚动卡片流：细滚动条，别让默认粗条吃掉侧边栏宽度 */}
+              <div
+                data-testid="drawer-scroll"
+                className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 pr-1.5"
+              >
                 <ProfileHeader />
                 <DailyBoard />
                 <ModuleCards />
@@ -108,7 +111,10 @@ export function Drawer() {
                 <p className="flex-1 text-center text-[15px] font-semibold text-[#e8ecf6]">外观与全局配置</p>
                 <span className="h-8 w-8 shrink-0" aria-hidden />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+              <div
+                data-testid="appearance-scroll"
+                className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 py-3"
+              >
                 <AppearanceSection />
               </div>
             </motion.div>

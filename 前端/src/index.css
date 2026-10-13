@@ -152,6 +152,32 @@
   display: none;
 }
 
+/* 极细纵向滚动条：侧边栏（抽屉）这种窄容器用，避免默认 ~15px 的粗条占宽。
+   坑（实测 Chrome 154 headful）：标准属性 scrollbar-width 会**覆盖** ::-webkit-scrollbar 的宽度——
+     默认 15px ／ scrollbar-width:thin 10px ／ ::-webkit-scrollbar{width:4px} 4px
+     两者同时写会退化成 10px。
+   所以标准属性只放进「不认识 ::-webkit-scrollbar」的浏览器（Firefox）兜底。 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+@supports not selector(::-webkit-scrollbar) {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+}
+
 /* ===== 播放器极细进度条（黑金） ===== */
 .player-range {
   -webkit-appearance: none;
