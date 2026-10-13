@@ -66,6 +66,12 @@ export function useSwipeToClose(onClose: () => void, enabled = true): void {
 
     const onDown = (e: PointerEvent) => {
       if (!e.isPrimary || e.button !== 0) return;
+      // 页面里有自己的横向滑动（比如信箱里的信件堆叠）时，把手势让给它
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('[data-no-drawer-swipe]')) {
+        tracking = false;
+        return;
+      }
       tracking = true;
       startX = e.clientX;
       startY = e.clientY;

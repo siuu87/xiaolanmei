@@ -1,24 +1,25 @@
-import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Folder, FolderOpen } from 'lucide-react';
+import { useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { motion, type PanInfo } from 'framer-motion';
+import { ChevronDown, ChevronLeft, ChevronRight, Folder, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatNoteDate, type InspirationNote } from './notesData';
 
 /**
- * 仿文件夹样式的来信归档（纯展示，无真实文件读取）
+ * 堆叠信件文件夹卡片（纯 UI，不读取任何本地真实文件）
  *
- * - 卡片外观 = 文件夹投放框：左上角一个小 tab 凸起 + 下方的框体；
- * - hover 柔和动效：整卡微上浮 1px、底色提亮、阴影加深（200ms）；
- * - 点击平滑展开/收起，展开后里面是 AI 写的小纸条；
- * - 多个文件夹按月份归档，组成记录列表；
- * - 极简毛玻璃：白 3.5% 底 + backdrop-blur-md + 8% 细边，不抢主界面的戏。
+ * - 外层卡片：简约文件夹样式，毛玻璃、圆角、低饱和配色；
+ * - 卡片内部是**堆叠的信件**：好几张信错落叠在一起，露出边缘层次感；
+ * - 点击卡片平滑展开面板，再点收起；
+ * - 展开后同一摞信支持左右滑动切换，单张点击放大查看全文；
+ * - hover 整卡轻微上浮提亮，柔和过渡；
+ * - 多个文件夹按月份归档组成列表，每个文件夹里存多封信。
  *
- * 只服务信箱这一个模块，不依赖任何页面布局，也不改其他页面。
+ * 只服务信箱这一个模块，不依赖页面布局，也不改其他页面。
  */
 
 /* ------------------------------ 归档 ------------------------------ */
 
-interface FolderGroup {
+export interface FolderGroup {
   key: string; // YYYY-MM
   title: string; // 2026年10月
   notes: InspirationNote[]; // 新→旧
@@ -35,7 +36,7 @@ function monthTitle(key: string): string {
 }
 
 /** 按月份归档，新月份在前；同月内新的在前 */
-function groupByMonth(notes: InspirationNote[]): FolderGroup[] {
+export function groupByMonth(notes: InspirationNote[]): FolderGroup[] {
   const map = new Map<string, InspirationNote[]>();
   for (const n of notes) {
     const k = monthKey(n.createdAt);
@@ -52,137 +53,296 @@ function groupByMonth(notes: InspirationNote[]): FolderGroup[] {
     }));
 }
 
-/* ------------------------------ 小纸条 ------------------------------ */
+/* ------------------------------ 一封信 ------------------------------ */
 
-/** 文件夹里的一张 AI 小纸条：米白纸片，未读的右上角点一个小圆点 */
-function NoteSlip({
+/** 低饱和信封：米白纸片 + 一道 V 形封盖线，干净柔和，不加多余装饰 */
+export function EnvelopeFace({
   note,
-  unread,
-  onOpen,
+  showBody,
+  className,
 }: {
   note: InspirationNote;
-  unread: boolean;
-  onOpen: () => void;
+  showBody: boolean;
+  className?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`打开 ${formatNoteDate(note.createdAt)} 的来信`}
-      data-testid="note-slip"
-      data-note-id={note.id}
+    <div
       className={cn(
-        'block w-full rounded-[4px] px-2 py-1.5 text-left',
-        'bg-gradient-to-b from-[#fbf7ef] to-[#f1e9d7] text-[#4a4034]',
-        'shadow-[0_2px_6px_rgba(0,0,0,0.22)] transition duration-200',
-        'hover:-translate-y-[1px] hover:shadow-[0_4px_10px_rgba(0,0,0,0.28)] active:scale-[0.99]',
+        'relative flex h-full w-full flex-col overflow-hidden rounded-[7px]',
+        'bg-gradient-to-b from-[#f2ece1] to-[#e4dbc9] text-[#4a4034]',
+        'shadow-[0_5px_16px_rgba(0,0,0,0.24)] ring-1 ring-black/[0.05]',
+        className,
       )}
     >
-      <span className="line-clamp-2 block text-[10px] leading-[15px]">{note.content}</span>
-      <span className="mt-1 flex items-center justify-end gap-1">
-        {unread && (
-          <span
-            aria-label="未读"
-            className="mr-auto block h-1 w-1 rounded-full bg-primary"
-            data-testid="note-slip-unread"
-          />
+      {/* V 形封盖线 */}
+      <svg
+        viewBox="0 0 100 44"
+        preserveAspectRatio="none"
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[40%] w-full"
+      >
+        <path d="M0 0 L50 44 L100 0 Z" fill="#ddd2bc" />
+        <path
+          d="M0 0 L50 44 L100 0 Z"
+          fill="none"
+          stroke="#c7bba1"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      {showBody ? (
+        <div className="relative z-10 flex h-full flex-col p-3 pt-[48%]">
+          <p className="line-clamp-3 text-[11px] leading-[17px]">{note.content}</p>
+          <span className="mt-auto text-right text-[9px] text-[#8a7f6d]">
+            {formatNoteDate(note.createdAt)}
+          </span>
+        </div>
+      ) : (
+        <span className="relative z-10 mt-auto block p-2 text-right text-[8px] text-[#9a8f7c]">
+          {formatNoteDate(note.createdAt)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------ 堆叠 + 滑动 ------------------------------ */
+
+const SWIPE = 46; // 拖过这个距离算翻一封信
+/** 收起态：小尺寸一摞；展开态：变大、当前张显示正文 */
+const BOX = { closed: 96, open: 200 };
+const CARD = { closedW: 96, closedH: 78, openW: 176, openH: 172 };
+
+/**
+ * 一摞信：错落叠放，露出边缘层次。
+ * `expanded` 时整摞变大、当前信显示正文、且可以左右拖动 / 点箭头切换。
+ */
+function LetterStack({
+  notes,
+  index,
+  onIndex,
+  expanded,
+  onOpen,
+  unreadIds,
+}: {
+  notes: InspirationNote[];
+  index: number;
+  onIndex: (i: number) => void;
+  expanded: boolean;
+  onOpen: (id: string) => void;
+  unreadIds: string[];
+}) {
+  const cur = Math.min(index, notes.length - 1);
+  const go = (d: number) => onIndex(Math.max(0, Math.min(notes.length - 1, cur + d)));
+
+  const onDragEnd = (_e: unknown, info: PanInfo) => {
+    if (info.offset.x < -SWIPE) go(1);
+    else if (info.offset.x > SWIPE) go(-1);
+  };
+
+  // 拖完手一松浏览器还会补一个 click，靠「按下→抬起位移」把它和真正的点击分开
+  const down = useRef<{ x: number; y: number } | null>(null);
+  const onPointerDown = (e: PointerEvent) => {
+    down.current = { x: e.clientX, y: e.clientY };
+  };
+  const clickOpen = (e: MouseEvent, id: string) => {
+    if (!expanded) return;
+    const p = down.current;
+    // detail === 0 是 element.click() 这类程序化点击，没有按下/抬起的位移可言，直接放行
+    const programmatic = e.detail === 0;
+    if (!programmatic && p && Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y) > 8) return;
+    onOpen(id);
+  };
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{ height: expanded ? BOX.open : BOX.closed }}
+      transition={{ duration: 0.26, ease: 'easeOut' }}
+      className="overflow-hidden"
+    >
+      <motion.div
+        drag={expanded ? 'x' : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.12}
+        onDragEnd={onDragEnd}
+        className={cn(
+          'relative flex h-full items-center justify-center',
+          expanded && notes.length > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         )}
-        <span className="text-[8px] text-[#8a7f6d]">{formatNoteDate(note.createdAt)}</span>
-      </span>
-    </button>
+        data-testid="letter-stack"
+        /* 这里是横向滑动区：抽屉的「左滑关闭」手势会跳过它，
+           否则在抽屉里左滑切信会顺手把抽屉一起关掉。 */
+        data-no-drawer-swipe
+      >
+        {notes.map((n, i) => {
+          const d = i - cur; // 相对当前张的位置：0=最前，>0=后面
+          const active = d === 0;
+          const unread = unreadIds.includes(n.id);
+
+          // 错落叠放：后面的依次往右下挪一点、转一点、缩一点、压在下面
+          const x = d * 8;
+          const y = d * 7;
+          const rotate = d * 6;
+          const scale = 1 - Math.min(Math.abs(d), 4) * 0.045;
+          const opacity = Math.abs(d) > 3 ? 0 : d < 0 ? 0.5 : 1;
+
+          return (
+            <motion.div
+              key={n.id}
+              className="absolute"
+              style={{ zIndex: expanded ? 30 - d : notes.length - i }}
+              initial={false}
+              animate={{ x, y, rotate, scale, opacity }}
+              transition={{
+                type: 'spring',
+                stiffness: 260,
+                damping: 28,
+                mass: 0.9,
+              }}
+              data-testid="letter-card"
+              data-active={active}
+            >
+              {active ? (
+                <button
+                  type="button"
+                  onPointerDown={onPointerDown}
+                  onClick={expanded ? (e) => clickOpen(e, n.id) : undefined}
+                  aria-label={`放大查看 ${formatNoteDate(n.createdAt)} 的来信`}
+                  data-testid="letter-card-active"
+                  data-note-id={n.id}
+                  className="block transition hover:brightness-[1.03]"
+                  style={{ width: expanded ? CARD.openW : CARD.closedW, height: expanded ? CARD.openH : CARD.closedH }}
+                >
+                  <EnvelopeFace note={n} showBody={expanded} />
+                  {unread && (
+                    <span
+                      aria-label="未读"
+                      data-testid="letter-card-unread"
+                      className="absolute right-1.5 top-1.5 block h-1.5 w-1.5 rounded-full bg-primary"
+                    />
+                  )}
+                </button>
+              ) : (
+                <div
+                  className="pointer-events-none"
+                  style={{ width: expanded ? CARD.openW : CARD.closedW, height: expanded ? CARD.openH : CARD.closedH }}
+                >
+                  <EnvelopeFace note={n} showBody={false} />
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
+      </motion.div>
+
+      {/* 展开态：左右切换箭头 + 页码 */}
+      {expanded && notes.length > 1 && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => go(-1)}
+            disabled={cur === 0}
+            aria-label="上一封"
+            data-testid="stack-prev"
+            className="absolute left-1 top-[-118px] z-40 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#141a2b]/80 text-[#dfe4ef] backdrop-blur transition hover:bg-[#1b2338] disabled:opacity-25"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => go(1)}
+            disabled={cur === notes.length - 1}
+            aria-label="下一封"
+            data-testid="stack-next"
+            className="absolute right-1 top-[-118px] z-40 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#141a2b]/80 text-[#dfe4ef] backdrop-blur transition hover:bg-[#1b2338] disabled:opacity-25"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <p className="pt-1 text-center text-[9px] text-[#6b7488]" data-testid="stack-pager">
+            {cur + 1} / {notes.length}
+          </p>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
 /* ------------------------------ 文件夹卡片 ------------------------------ */
 
-function FolderCard({
+export function FolderCard({
   group,
-  open,
-  onToggle,
   readIds,
-  onOpenNote,
-  hiddenCount = 0,
+  onOpen,
+  maxSlips,
+  defaultOpen = false,
 }: {
   group: FolderGroup;
-  open: boolean;
-  onToggle: () => void;
   readIds: string[];
-  onOpenNote: (id: string) => void;
-  hiddenCount?: number;
+  onOpen: (id: string) => void;
+  maxSlips?: number;
+  defaultOpen?: boolean;
 }) {
+  // null = 用户还没手动开合过，就按 defaultOpen 走；一旦动过就听用户的
+  const [manual, setManual] = useState<boolean | null>(null);
+  const open = manual ?? defaultOpen;
+  const [index, setIndex] = useState(0);
+
+  const notes = maxSlips ? group.notes.slice(0, maxSlips) : group.notes;
+  const hidden = group.notes.length - notes.length;
+  const unreadIds = notes.filter((n) => !readIds.includes(n.id)).map((n) => n.id);
+
   const Icon = open ? FolderOpen : Folder;
 
   return (
     <div
-      className="group relative pt-[7px] transition-transform duration-200 hover:-translate-y-[1px]"
+      className={cn(
+        'group relative overflow-hidden rounded-2xl border border-white/[0.08]',
+        'bg-white/[0.04] backdrop-blur-md transition-all duration-200',
+        'hover:-translate-y-[1px] hover:border-white/[0.14] hover:bg-white/[0.07]',
+        'hover:shadow-[0_8px_22px_rgba(0,0,0,0.28)]',
+      )}
       data-testid="letter-folder"
       data-folder-key={group.key}
+      data-open={open}
     >
-      {/* 文件夹的 tab 凸起 */}
-      <span
-        aria-hidden
-        data-testid="folder-tab"
-        className={cn(
-          'pointer-events-none absolute left-0 top-0 block h-[7px] w-[38%] rounded-t-[8px]',
-          'border border-b-0 border-white/[0.08] bg-white/[0.05] transition-colors duration-200',
-          'group-hover:bg-white/[0.09]',
-        )}
-      />
-
-      {/* 框体 */}
-      <div
-        className={cn(
-          'overflow-hidden rounded-b-xl rounded-tr-xl border border-white/[0.08]',
-          'bg-white/[0.035] backdrop-blur-md transition-all duration-200',
-          'group-hover:bg-white/[0.06] group-hover:shadow-[0_6px_18px_rgba(0,0,0,0.28)]',
-        )}
+      {/* 头部：点它展开 / 收起 */}
+      <button
+        type="button"
+        onClick={() => setManual(!open)}
+        aria-expanded={open}
+        data-testid="letter-folder-head"
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
       >
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          data-testid="letter-folder-head"
-          className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0 text-[#9aa3b8] transition-colors group-hover:text-[#c3cade]" />
-          <span className="truncate text-[11px] font-medium text-[#dfe4ef]">{group.title}</span>
-          <span className="ml-auto shrink-0 text-[9px] text-[#6b7488]">{group.notes.length} 封</span>
-          <ChevronDown
-            className={cn(
-              'h-3.5 w-3.5 shrink-0 text-[#6b7488] transition-transform duration-200',
-              open && 'rotate-180',
-            )}
-          />
-        </button>
-
-        <AnimatePresence initial={false}>
-          {open && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.24, ease: 'easeOut' }}
-              className="overflow-hidden"
-              data-testid="letter-folder-body"
-            >
-              <div className="space-y-1.5 border-t border-white/[0.06] px-2.5 py-2">
-                {group.notes.map((n) => (
-                  <NoteSlip
-                    key={n.id}
-                    note={n}
-                    unread={!readIds.includes(n.id)}
-                    onOpen={() => onOpenNote(n.id)}
-                  />
-                ))}
-                {hiddenCount > 0 && (
-                  <p className="pt-0.5 text-center text-[9px] text-[#6b7488]">
-                    还有 {hiddenCount} 张，去「全部」里翻
-                  </p>
-                )}
-              </div>
-            </motion.div>
+        <Icon className="h-4 w-4 shrink-0 text-[#9aa3b8] transition-colors group-hover:text-[#c3cade]" />
+        <span className="truncate text-[12px] font-medium text-[#dfe4ef]">{group.title}</span>
+        <span className="ml-auto shrink-0 text-[10px] text-[#6b7488]">{group.notes.length} 封</span>
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 text-[#6b7488] transition-transform duration-200',
+            open && 'rotate-180',
           )}
-        </AnimatePresence>
+        />
+      </button>
+
+      {/* 堆叠的信件：收起时是一小摞，展开后变大并可滑动切换 */}
+      <div
+        className="px-3 pb-2.5"
+        onClick={!open ? () => setManual(true) : undefined}
+        data-testid="letter-stack-wrap"
+      >
+        <LetterStack
+          notes={notes}
+          index={index}
+          onIndex={setIndex}
+          expanded={open}
+          onOpen={onOpen}
+          unreadIds={unreadIds}
+        />
+        {open && hidden > 0 && (
+          <p className="pt-1 text-center text-[9px] text-[#6b7488]">还有 {hidden} 封，去「全部」里翻</p>
+        )}
       </div>
     </div>
   );
@@ -191,41 +351,27 @@ function FolderCard({
 /* ------------------------------ 列表 ------------------------------ */
 
 /**
- * 一摞文件夹（记录列表）。
+ * 一摞文件夹小卡片（记录列表）。
  * - `maxFolders` 限制显示几个（抽屉里地方小，只放最近两个，其余走「全部」）；
- * - `maxSlips` 限制每个文件夹里露几张纸条（一个月几百封信全渲染会卡）；
- * - 默认展开最新那个月，一眼能看到 AI 写的纸条。
+ * - `maxSlips` 限制每个文件夹里堆几张（一个月几百封信全渲染会卡）。
  */
-export function LetterFolders({
+export function FolderCardList({
   notes,
   readIds,
-  onOpenNote,
+  onOpen,
   maxFolders,
   maxSlips,
   emptyHint = '还没有来信，稍后再来看看吧',
 }: {
   notes: InspirationNote[];
   readIds: string[];
-  onOpenNote: (id: string) => void;
+  onOpen: (id: string) => void;
   maxFolders?: number;
   maxSlips?: number;
   emptyHint?: string;
 }) {
   const groups = useMemo(() => groupByMonth(notes), [notes]);
   const shown = maxFolders ? groups.slice(0, maxFolders) : groups;
-
-  // 默认展开最新那个月。**不能写成 useState 初始值**——notes 是异步加载的，
-  // 首帧 groups 还是空的，初始值就永远停在空数组，之后数据到了也不展开。
-  // 所以用「null = 用户没动过，按默认（第一个）算」，用户一动才接管。
-  const [manual, setManual] = useState<string[] | null>(null);
-  const defaultOpen = useMemo(() => groups.slice(0, 1).map((g) => g.key), [groups]);
-  const openKeys = manual ?? defaultOpen;
-
-  const toggle = (key: string) =>
-    setManual(() => {
-      const base = manual ?? defaultOpen;
-      return base.includes(key) ? base.filter((k) => k !== key) : [...base, key];
-    });
 
   if (groups.length === 0) {
     return (
@@ -236,22 +382,17 @@ export function LetterFolders({
   }
 
   return (
-    <div className="flex flex-col gap-2" data-testid="letter-folder-list">
-      {shown.map((g) => {
-        const slips = maxSlips ? g.notes.slice(0, maxSlips) : g.notes;
-        const hidden = g.notes.length - slips.length;
-        return (
-          <FolderCard
-            key={g.key}
-            group={{ ...g, notes: slips }}
-            hiddenCount={hidden}
-            open={openKeys.includes(g.key)}
-            onToggle={() => toggle(g.key)}
-            readIds={readIds}
-            onOpenNote={onOpenNote}
-          />
-        );
-      })}
+    <div className="flex flex-col gap-2.5" data-testid="letter-folder-list">
+      {shown.map((g, i) => (
+        <FolderCard
+          key={g.key}
+          group={g}
+          readIds={readIds}
+          onOpen={onOpen}
+          maxSlips={maxSlips}
+          defaultOpen={i === 0}
+        />
+      ))}
     </div>
   );
 }

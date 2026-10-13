@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useNotesStore } from './notesStore';
-import { LetterFolders } from './LetterFolder';
+import { FolderCardList } from './LetterFolder';
 
 /**
- * 全部来信（独立页）：同样是按月份归档的文件夹列表，只是不限制数量。
- * 点文件夹展开看小纸条，点纸条进它自己的阅读页 `/letter/:id`。
+ * 全部来信（独立页）：同样是按月份归档的堆叠信件文件夹，只是不限制数量。
+ * 点文件夹展开 → 左右滑动切换信件 → 点单张放大看全文。
  */
 export function NotesPage() {
   const navigate = useNavigate();
@@ -37,10 +37,10 @@ export function NotesPage() {
       </div>
 
       <div className="mt-4">
-        <LetterFolders
+        <FolderCardList
           notes={notes}
           readIds={readIds}
-          onOpenNote={(id) => navigate(`/letter/${id}`)}
+          onOpen={(id) => navigate(`/letter/${id}`)}
           maxSlips={30}
         />
       </div>
