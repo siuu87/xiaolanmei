@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AvatarContent } from '@/components/AvatarContent';
 import { usePhoneStore } from './phoneStore';
 import { PhoneNavBar } from './PhoneShell';
 import type { ChatMessage, Contact, Session } from './types';
@@ -169,7 +170,11 @@ export function SessionsPage({ onOpen, onCompose }: { onOpen: (id: string) => vo
                 className="flex w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition active:bg-black/[0.04]"
               >
                 <span className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#dcdce0] to-[#c9c9cf] text-2xl">
-                  {s.kind === 'group' && !s.avatar ? <GroupAvatar session={s} /> : s.avatar || '💬'}
+                  {s.kind === 'group' && !s.avatar ? (
+                    <GroupAvatar session={s} />
+                  ) : (
+                    <AvatarContent value={s.avatar ?? ''} fallback="💬" />
+                  )}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col justify-center border-b border-black/[0.09] py-3">
                   <span className="flex items-center gap-1.5">
@@ -255,7 +260,7 @@ function GroupAvatar({ session }: { session: Session }) {
             members.length === 2 && i === 0 && 'row-span-2',
           )}
         >
-          {m.avatar || '🙂'}
+          <AvatarContent value={m.avatar ?? ''} fallback="🙂" />
         </span>
       ))}
     </span>
@@ -485,7 +490,7 @@ export function ContactsPage({
                   </span>
                 )}
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E9EB] text-2xl">
-                  {c.avatar || '🙂'}
+                  <AvatarContent value={c.avatar ?? ''} fallback="🙂" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium text-[#000000]">{c.name}</span>
@@ -644,7 +649,7 @@ export function GroupSetupPage({
             {members.map((m) => (
               <div key={m.id} className="relative flex flex-col items-center gap-1">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E9E9EB] text-2xl">
-                  {m.avatar || '🙂'}
+                  <AvatarContent value={m.avatar ?? ''} fallback="🙂" />
                 </span>
                 <span className="w-full truncate text-center text-[10px] text-[#8e8e93]">{m.name}</span>
                 <button
@@ -708,7 +713,7 @@ export function GroupSetupPage({
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E9EB] text-2xl">
-                    {c.avatar || '🙂'}
+                    <AvatarContent value={c.avatar ?? ''} fallback="🙂" />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[15px] text-[#000000]">{c.name}</span>
                 </button>
@@ -749,7 +754,7 @@ export function GroupInfoPage({ sessionId, onBack, onEdit }: { sessionId: string
           {members.map((m) => (
             <div key={m.id} className="flex flex-col items-center gap-1">
               <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E9E9EB] text-2xl">
-                {m.avatar || '🙂'}
+                <AvatarContent value={m.avatar ?? ''} fallback="🙂" />
               </span>
               <span className="w-full truncate text-center text-[10px] text-[#8e8e93]">{m.name}</span>
             </div>

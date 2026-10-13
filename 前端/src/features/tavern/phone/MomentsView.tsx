@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, MessageCircle, PenLine, Send, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AvatarContent } from '@/components/AvatarContent';
 import { usePhoneStore } from './phoneStore';
 import { PhoneNavBar } from './PhoneShell';
 import { EmptyState, PhoneDialog } from './ChatViews';
@@ -360,7 +361,7 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
           sorted.map((m) => (
             <div key={m.id} className="group flex gap-2.5 border-b border-black/[0.05] px-3 py-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#E9E9EB] text-xl">
-                {m.authorAvatar || '🙂'}
+                <AvatarContent value={m.authorAvatar ?? ''} fallback="🙂" className="rounded-md" />
               </span>
 
               <div className="min-w-0 flex-1">

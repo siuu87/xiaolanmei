@@ -5,14 +5,32 @@
  * 内部做二级细分：全部 / 角色卡 / 人设卡 / 按标签，支持卡片预览。
  * 新建的角色卡也会同步出现在「通讯录」里。
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, MessageCircle, MoreHorizontal, Pencil, Plus, Search, Settings, UserRound, Users, Bot, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ImagePlus,
+  Loader2,
+  MessageCircle,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Settings,
+  UserRound,
+  Users,
+  Bot,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePhoneStore } from './phoneStore';
 import { PhoneNavBar } from './PhoneShell';
 import { EmptyState, PhoneDialog } from './ChatViews';
 import { AVATAR_PRESETS } from './sampleData';
+import { AvatarContent } from '@/components/AvatarContent';
+import { uploadImage } from '@/lib/api/attachments';
 import type { CardFilter, PhoneCard } from './types';
 
 /* ---------------------------- 分类切换（二级细分） ---------------------------- */
@@ -95,11 +113,11 @@ function CardTile({ card, onOpen, onMore }: { card: PhoneCard; onOpen: () => voi
           <span className="relative shrink-0">
             <span
               className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-xl text-2xl',
+                'flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl text-2xl',
                 card.kind === 'character' ? 'bg-[#eef2ff]' : 'bg-[#fff4e8]',
               )}
             >
-              {card.avatar || (card.kind === 'character' ? '🤖' : '🙂')}
+              <AvatarContent value={card.avatar ?? ''} fallback={card.kind === 'character' ? '🤖' : '🙂'} />
             </span>
             {active && (
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#007AFF] ring-2 ring-white">
@@ -190,8 +208,8 @@ function CardPreview({
               : 'bg-gradient-to-b from-[#fff4e8] to-white',
           )}
         >
-          <span className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white text-5xl shadow-sm">
-            {card.avatar || (card.kind === 'character' ? '🤖' : '🙂')}
+          <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white text-5xl shadow-sm">
+            <AvatarContent value={card.avatar ?? ''} fallback={card.kind === 'character' ? '🤖' : '🙂'} />
           </span>
           <p className="text-[17px] font-semibold text-[#000000]">{card.name}</p>
           <span
@@ -300,6 +318,29 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
     systemPrompt: initial?.systemPrompt ?? '',
   });
   const [pick, setPick] = useState(false);
+  /** 开场白默认收起：没填过时先显示「暂无开场白 + 添加」按钮（对齐参考图二） */
+  const [showOpening, setShowOpening] = useState(!!(initial?.firstMessage ?? '').trim());
+  /** 参考图里没有的旧字段（标签/简介/场景/附加指令）收进这里，功能不丢 */
+  const [moreOpen, setMoreOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // 清掉，否则连着选同一张不会再触发 change
+    if (!file) return;
+    setUploading(true);
+    setUploadErr('');
+    try {
+      const up = await uploadImage(file);
+      setForm((f) => ({ ...f, avatar: up.url }));
+    } catch (ex) {
+      setUploadErr((ex as Error).message || '上传失败');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const save = () => {
     const name = form.name.trim();
@@ -324,86 +365,134 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
     onClose();
   };
 
-  const field = 'h-9 w-full rounded-lg bg-[#E9E9EB] px-3 text-[13px] text-[#000000] outline-none placeholder:text-[#8e8e93]';
+  const isChar = kind === 'character';
+  const hasImageAvatar = /^(\/|https?:)/.test(form.avatar.trim());
+  const title = initial
+    ? isChar
+      ? '编辑人物'
+      : '编辑面具'
+    : isChar
+      ? '新建人物'
+      : '新建面具';
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col bg-white">
-      <div className="flex h-11 shrink-0 items-center justify-between px-2">
+    <div className="absolute inset-0 z-40 flex flex-col bg-white" data-testid="card-editor">
+      {/* 顶栏：< 返回 + 居中标题（对齐参考图二） */}
+      <div className="flex h-11 shrink-0 items-center px-2">
         <button
           type="button"
           onClick={onClose}
-          aria-label="取消"
+          aria-label="返回"
+          data-testid="card-editor-back"
           className="flex h-8 w-8 items-center justify-center rounded-full text-[#3C3C43] active:bg-black/10"
         >
-          <X className="h-5 w-5" />
+          <ChevronLeft className="h-6 w-6" strokeWidth={2} />
         </button>
-        <span className="text-[15px] font-semibold text-[#000000]">{initial ? '编辑卡片' : '新建卡片'}</span>
-        <button
-          type="button"
-          disabled={!form.name.trim()}
-          onClick={save}
-          className={cn(
-            'flex h-8 items-center rounded-full px-3 text-[13px] font-medium transition',
-            form.name.trim() ? 'bg-[#007AFF] text-white active:scale-95' : 'bg-[#E9E9EB] text-[#8e8e93]',
-          )}
-        >
-          保存
-        </button>
+        <span data-testid="card-editor-title" className="flex-1 text-center text-[17px] font-semibold text-[#000000]">
+          {title}
+        </span>
+        <span className="h-8 w-8 shrink-0" aria-hidden />
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-6">
-        {/* 类型切换 */}
-        <div className="flex gap-2">
-          {(
-            [
-              { k: 'character' as const, label: '角色卡', icon: Bot, desc: 'AI 扮演' },
-              { k: 'persona' as const, label: '人设卡', icon: UserRound, desc: '我扮演' },
-            ]
-          ).map((o) => (
-            <button
-              key={o.k}
-              type="button"
-              onClick={() => setKind(o.k)}
-              className={cn(
-                'flex flex-1 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition',
-                kind === o.k ? 'border-[#007AFF] bg-[#007AFF]/8' : 'border-black/[0.08] bg-white',
-              )}
-            >
-              <o.icon className={cn('h-4 w-4', kind === o.k ? 'text-[#007AFF]' : 'text-[#8e8e93]')} />
-              <span>
-                <span className={cn('block text-[13px] font-medium', kind === o.k ? 'text-[#007AFF]' : 'text-[#000000]')}>
-                  {o.label}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">
+        {/* 类型切换（新建时选角色卡 / 面具） */}
+        {!initial && (
+          <div className="mb-3 flex gap-2">
+            {(
+              [
+                { k: 'character' as const, label: '角色卡', icon: Bot, desc: 'AI 扮演' },
+                { k: 'persona' as const, label: '面具', icon: UserRound, desc: '我扮演' },
+              ]
+            ).map((o) => (
+              <button
+                key={o.k}
+                type="button"
+                onClick={() => setKind(o.k)}
+                data-testid={`card-editor-kind-${o.k}`}
+                aria-pressed={kind === o.k}
+                className={cn(
+                  'flex flex-1 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition',
+                  kind === o.k ? 'border-[#007AFF] bg-[#007AFF]/8' : 'border-black/[0.08] bg-white',
+                )}
+              >
+                <o.icon className={cn('h-4 w-4', kind === o.k ? 'text-[#007AFF]' : 'text-[#8e8e93]')} />
+                <span>
+                  <span
+                    className={cn('block text-[13px] font-medium', kind === o.k ? 'text-[#007AFF]' : 'text-[#000000]')}
+                  >
+                    {o.label}
+                  </span>
+                  <span className="block text-[10px] text-[#8e8e93]">{o.desc}</span>
                 </span>
-                <span className="block text-[10px] text-[#8e8e93]">{o.desc}</span>
-              </span>
-            </button>
-          ))}
-        </div>
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* 头像 */}
-        <div>
-          <label className="mb-1 block text-[11px] text-[#8e8e93]">头像</label>
-          <div className="flex items-center gap-2">
+        {/* ---- 头像区块（参考图里是个描边卡片） ---- */}
+        <div className="rounded-2xl border border-black/[0.08] px-4 py-4">
+          <p className="text-center text-[13px] font-medium text-[#000000]">头像</p>
+
+          <div className="mt-3 flex justify-center">
+            <span
+              data-testid="card-editor-preview"
+              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#F2F2F7] text-[26px] font-medium text-[#8FA3D9]"
+            >
+              {hasImageAvatar ? (
+                <AvatarContent value={form.avatar} fallback={isChar ? '🤖' : '🙂'} />
+              ) : (
+                form.avatar || (form.name.trim() ? form.name.trim().slice(0, 1) : isChar ? 'A' : '我')
+              )}
+            </span>
+          </div>
+
+          <div className="mt-3.5 flex justify-center">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              data-testid="card-editor-upload"
+              className="flex w-full max-w-[240px] items-center justify-center gap-2 rounded-full border border-black/[0.1] bg-white py-2.5 text-[13px] text-[#000000] transition active:scale-[0.98] disabled:opacity-60"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              {uploading ? '上传中…' : '上传头像'}
+            </button>
+          </div>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            onChange={onPickFile}
+            data-testid="card-editor-file"
+            className="hidden"
+          />
+
+          {uploadErr && (
+            <p data-testid="card-editor-upload-error" className="mt-2 text-center text-[11px] text-[#FF3B30]">
+              {uploadErr}
+            </p>
+          )}
+
+          <div className="mt-2 text-center">
             <button
               type="button"
               onClick={() => setPick((v) => !v)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E9E9EB] text-2xl transition active:scale-95"
+              aria-expanded={pick}
+              data-testid="card-editor-emoji-toggle"
+              className="text-[11px] text-[#8e8e93] underline decoration-dotted underline-offset-2"
             >
-              {form.avatar || '＋'}
+              或用 emoji
             </button>
-            <input
-              value={form.avatar}
-              onChange={(e) => setForm((f) => ({ ...f, avatar: e.target.value }))}
-              placeholder="也可直接粘贴 emoji"
-              className={field}
-            />
           </div>
+
           {pick && (
-            <div className="mt-2 grid grid-cols-10 gap-1.5">
+            <div className="mt-2.5 grid grid-cols-10 gap-1.5" data-testid="card-editor-emoji-grid">
               {AVATAR_PRESETS.map((a) => (
                 <button
                   key={a}
                   type="button"
+                  data-testid={`card-avatar-option-${a}`}
                   onClick={() => {
                     setForm((f) => ({ ...f, avatar: a }));
                     setPick(false);
@@ -420,92 +509,168 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
           )}
         </div>
 
-        <div>
-          <label className="mb-1 block text-[11px] text-[#8e8e93]">名字</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="如 苏晚晴"
-            className={field}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-[11px] text-[#8e8e93]">标签（逗号分隔）</label>
-          <input
-            value={form.tags}
-            onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-            placeholder="温柔，学姐，深夜"
-            className={field}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-[11px] text-[#8e8e93]">一句话简介</label>
-          <input
-            value={form.intro}
-            onChange={(e) => setForm((f) => ({ ...f, intro: e.target.value }))}
-            placeholder={kind === 'character' ? '温柔体贴的学姐…' : '一个刚下班的普通人…'}
-            className={field}
-          />
-        </div>
-
-        {kind === 'character' && (
+        {/* ---- 字段：角色卡走参考图二，面具走参考图一 ---- */}
+        {isChar ? (
           <>
-            <Area
-              label="性格 / 详细设定"
+            <FieldLabel text="姓名" />
+            <input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="输入姓名"
+              data-testid="card-editor-name"
+              className={inputCls}
+            />
+
+            <FieldLabel text="人设" />
+            <textarea
               value={form.personality}
-              onChange={(v) => setForm((f) => ({ ...f, personality: v }))}
-              placeholder="性格、背景、说话方式…"
+              onChange={(e) => setForm((f) => ({ ...f, personality: e.target.value }))}
+              rows={5}
+              placeholder="输入人物设定"
+              data-testid="card-editor-personality"
+              className={cn(inputCls, 'resize-y leading-6')}
             />
-            <Area
-              label="场景"
-              value={form.scenario}
-              onChange={(v) => setForm((f) => ({ ...f, scenario: v }))}
-              placeholder="当前发生的场景…"
+
+            {/* 开场白（可选） */}
+            <p className="mt-4 text-[13px] font-medium text-[#000000]">
+              开场白<span className="text-[#8e8e93]">（可选）</span>
+            </p>
+            <p className="mt-1 text-[11px] leading-4 text-[#8e8e93]">
+              创建对话时可选择使用开场白，角色会按顺序发送每条消息
+            </p>
+            {showOpening ? (
+              <textarea
+                value={form.firstMessage}
+                onChange={(e) => setForm((f) => ({ ...f, firstMessage: e.target.value }))}
+                rows={4}
+                autoFocus
+                placeholder="进入对话时角色先说的话…"
+                data-testid="card-editor-opening"
+                className={cn(inputCls, 'mt-2 resize-y leading-6')}
+              />
+            ) : (
+              <>
+                <p className="mt-3 text-center text-[12px] text-[#8e8e93]">暂无开场白，点击下方按钮添加</p>
+                <button
+                  type="button"
+                  onClick={() => setShowOpening(true)}
+                  data-testid="card-editor-opening-add"
+                  className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#007AFF]/45 bg-[#007AFF]/[0.06] py-2.5 text-[13px] font-medium text-[#007AFF] transition active:scale-[0.98]"
+                >
+                  <Plus className="h-4 w-4" /> 添加开场白
+                </button>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <FieldLabel text="我的名称" />
+            <input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="例如：小明、学生、工作者"
+              data-testid="card-editor-name"
+              className={inputCls}
             />
-            <Area
-              label="开场白"
-              value={form.firstMessage}
-              onChange={(v) => setForm((f) => ({ ...f, firstMessage: v }))}
-              placeholder="进入对话时角色先说的话…"
-            />
-            <Area
-              label="附加指令（可选）"
-              value={form.systemPrompt}
-              onChange={(v) => setForm((f) => ({ ...f, systemPrompt: v }))}
-              placeholder="额外的规则…"
+
+            <FieldLabel text="我的描述" />
+            <textarea
+              value={form.intro}
+              onChange={(e) => setForm((f) => ({ ...f, intro: e.target.value }))}
+              rows={5}
+              placeholder="介绍一下自己…"
+              data-testid="card-editor-desc"
+              className={cn(inputCls, 'resize-y leading-6')}
             />
           </>
         )}
+
+        {/* 参考图里没有、但原来就有的字段：收进折叠，能力不丢 */}
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          aria-expanded={moreOpen}
+          data-testid="card-editor-more"
+          className="mt-5 flex w-full items-center justify-center gap-1 text-[12px] text-[#8e8e93]"
+        >
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', moreOpen && 'rotate-180')} />
+          更多设定（可选）
+        </button>
+
+        {moreOpen && (
+          <div className="mt-2 space-y-3 rounded-2xl border border-black/[0.08] px-3.5 py-3.5">
+            <div>
+              <label className="mb-1.5 block text-[12px] text-[#8e8e93]">标签（逗号分隔）</label>
+              <input
+                value={form.tags}
+                onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+                placeholder={isChar ? '温柔，学姐，深夜' : '我，普通人'}
+                className={inputCls}
+              />
+            </div>
+
+            {isChar && (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-[12px] text-[#8e8e93]">一句话简介</label>
+                  <input
+                    value={form.intro}
+                    onChange={(e) => setForm((f) => ({ ...f, intro: e.target.value }))}
+                    placeholder="温柔体贴的学姐…"
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[12px] text-[#8e8e93]">场景</label>
+                  <textarea
+                    value={form.scenario}
+                    onChange={(e) => setForm((f) => ({ ...f, scenario: e.target.value }))}
+                    rows={2}
+                    placeholder="当前发生的场景…"
+                    className={cn(inputCls, 'resize-y leading-6')}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[12px] text-[#8e8e93]">附加指令</label>
+                  <textarea
+                    value={form.systemPrompt}
+                    onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))}
+                    rows={2}
+                    placeholder="额外的规则…"
+                    className={cn(inputCls, 'resize-y leading-6')}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 底部保存（对齐参考图二的大按钮） */}
+      <div className="shrink-0 border-t border-black/[0.06] px-4 py-3">
+        <button
+          type="button"
+          disabled={!form.name.trim()}
+          onClick={save}
+          data-testid="card-editor-save"
+          className={cn(
+            'w-full rounded-2xl py-3 text-[15px] font-medium transition',
+            form.name.trim() ? 'bg-[#007AFF] text-white active:scale-[0.99]' : 'bg-[#E9E9EB] text-[#8e8e93]',
+          )}
+        >
+          保存
+        </button>
       </div>
     </div>
   );
 }
 
-function Area({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-[11px] text-[#8e8e93]">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={3}
-        placeholder={placeholder}
-        className="w-full resize-none rounded-lg bg-[#E9E9EB] px-3 py-2 text-[13px] leading-6 text-[#000000] outline-none placeholder:text-[#8e8e93]"
-      />
-    </div>
-  );
+/** 参考图的输入框：白底 + 浅灰描边 + 圆角（小手机整体就是浅色 iOS 风） */
+const inputCls =
+  'w-full rounded-[10px] border border-black/[0.12] bg-white px-3 py-2.5 text-[14px] leading-5 text-[#000000] outline-none placeholder:text-[#8e8e93] focus:border-[#007AFF]/60';
+
+function FieldLabel({ text }: { text: string }) {
+  return <p className="mt-4 mb-1.5 text-[13px] font-medium text-[#000000]">{text}</p>;
 }
 
 /* ============================== 卡片页 ============================== */
