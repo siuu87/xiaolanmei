@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, X, Sparkles, Dices, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Sparkles, Dices, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/PageShell';
 import { AppleEmoji } from '@/components/AppleEmoji';
 import { useDishStore } from './dishStore';
 import { MangoKick } from './MangoKick';
@@ -227,75 +228,70 @@ export function FoodPage() {
   const aiSystem = `你是一个「今天吃什么」整理助手。根据用户提供的信息（菜名/链接/描述），整理出一道菜品，只输出一个 JSON 对象，不要任何其它文字或 markdown。字段：name(名称)、type(从 meal/dessert 选一个，正餐=meal、甜品/饮品=dessert)、coverUrl(图片链接，可为空字符串)、description(一句话描述)、ingredients(数组，每项 {"name":"食材","amount":"用量","unit":"单位"}，如 {"name":"牛腩","amount":"500","unit":"g"})、steps(做法步骤字符串数组)、tags(标签数组，从 多囊友好/姨妈期推荐/治愈指数 选)、difficulty(难度 1-3 整数)、healingIndex(治愈指数 1-5 整数)。`;
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-6">
-      {/* 顶栏 */}
-      <div className="sticky top-0 z-20 -mx-4 border-b bg-background px-4 py-3">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/chat')}
-            aria-label="返回"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <h1 className="flex-1 text-xl font-semibold">今天吃什么</h1>
+    <PageShell
+      title="今天吃什么"
+      right={
+        <>
           <button
             type="button"
             onClick={() => setAiOpen(true)}
-            className="flex items-center gap-1 rounded-xl bg-amber-500/15 px-3 py-1.5 text-sm text-amber-500 transition hover:bg-amber-500/25 dark:text-amber-300"
+            className="flex shrink-0 items-center gap-1 rounded-xl bg-amber-500/15 px-3 py-1.5 text-sm text-amber-500 transition hover:bg-amber-500/25 dark:text-amber-300"
           >
             <Sparkles className="h-4 w-4" /> AI
           </button>
           <button
             type="button"
             onClick={openNew}
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90"
             aria-label="添加"
           >
             <Plus className="h-4 w-4" />
           </button>
-        </div>
+        </>
+      }
+      headerExtra={
+        <>
+          {/* Tab 切换 */}
+          <div className="mt-3 flex gap-1 rounded-full bg-muted p-1">
+            {DISH_TABS.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setTab(t.value)}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-1 rounded-full px-3 py-1.5 text-sm transition',
+                  tab === t.value ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <AppleEmoji emoji={t.emoji} className="h-4 w-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Tab 切换 */}
-        <div className="mt-3 flex gap-1 rounded-full bg-muted p-1">
-          {DISH_TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => setTab(t.value)}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-1 rounded-full px-3 py-1.5 text-sm transition',
-                tab === t.value ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <AppleEmoji emoji={t.emoji} className="h-4 w-4" />
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* 搜索 */}
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted/60 px-3">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-              if (e.key === 'Enter') onSearchEnter();
-            }}
-            placeholder="搜一道菜…（含芒果会被拦下 🥭）"
-            className="h-9 flex-1 bg-transparent text-sm outline-none"
-          />
-          {keyword && (
-            <button type="button" onClick={() => setKeyword('')} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
+          {/* 搜索 */}
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted/60 px-3">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (e.key === 'Enter') onSearchEnter();
+              }}
+              placeholder="搜一道菜…（含芒果会被拦下 🥭）"
+              className="h-9 flex-1 bg-transparent text-sm outline-none"
+            />
+            {keyword && (
+              <button type="button" onClick={() => setKeyword('')} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </>
+      }
+      bodyClassName="pt-4"
+    >
       {/* 抽签盲盒 */}
       <button
         type="button"
@@ -488,6 +484,6 @@ export function FoodPage() {
       )}
 
       <MangoKick trigger={kickTick} onClose={() => setKickTick(0)} />
-    </div>
+    </PageShell>
   );
 }

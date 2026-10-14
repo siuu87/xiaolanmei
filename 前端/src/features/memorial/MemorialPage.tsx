@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Pin } from 'lucide-react';
+import { Plus, X, Pin } from 'lucide-react';
+import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
 import {
   useMemorialStore,
@@ -166,7 +166,6 @@ function MemorialEditorModal({
 }
 
 export function MemorialPage() {
-  const navigate = useNavigate();
   const days = useMemorialStore((s) => s.days);
   const removeDay = useMemorialStore((s) => s.removeDay);
   const [adding, setAdding] = useState(false);
@@ -189,28 +188,21 @@ export function MemorialPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-6">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          aria-label="返回"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <h1 className="flex-1 font-serif text-xs text-muted-foreground">MEMORIAL · 纪念日</h1>
+    <PageShell
+      title="纪念日"
+      eyebrow="MEMORIAL"
+      right={
         <button
           type="button"
           onClick={() => setAdding(true)}
           aria-label="添加纪念日"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           <Plus className="h-4 w-4" />
         </button>
-      </div>
-
-      <div className="mt-3 space-y-3">
+      }
+    >
+      <div className="space-y-3">
         {sorted.length === 0 && (
           <div className="py-10 text-center text-xs text-muted-foreground/60">
             还没有纪念日，点右上角 + 记一个吧
@@ -270,6 +262,6 @@ export function MemorialPage() {
       </div>
 
       {(adding || editingDay) && <MemorialEditorModal editing={editingDay} onClose={close} />}
-    </div>
+    </PageShell>
   );
 }

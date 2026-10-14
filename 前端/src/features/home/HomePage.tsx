@@ -15,26 +15,28 @@ export function HomePage() {
   const pinnedDay = memorialDays.find((d) => d.pinned);
 
   return (
-    <div className="relative mx-auto w-full max-w-md px-4 py-6">
-      {/* 顶部环境光，营造呼吸感 */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/10 to-transparent" />
+    <div className="relative min-h-full bg-page-bg text-foreground">
+      <div className="relative mx-auto w-full max-w-md px-4 py-6">
+        {/* 顶部环境光，营造呼吸感 */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/10 to-transparent" />
 
-      <div className="relative space-y-4">
-        {/* 置顶区域：有置顶纪念日才显示，否则留空 */}
-        {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
-        <MoodCard />
-        <CalendarCard />
-        <PeriodHint />
-        <HealthIndicator />
-        <CourseCard />
-        <TodoCard />
-        <div className="grid grid-cols-2 gap-3">
-          <div data-testid="token-capsule">
-            <TokenCard />
+        <div className="relative space-y-4">
+          {/* 置顶区域：有置顶纪念日才显示，否则留空 */}
+          {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
+          <MoodCard />
+          <CalendarCard />
+          <PeriodHint />
+          <HealthIndicator />
+          <CourseCard />
+          <TodoCard />
+          <div className="grid grid-cols-2 gap-3">
+            <div data-testid="token-capsule">
+              <TokenCard />
+            </div>
+            <LetterInboxCard />
           </div>
-          <LetterInboxCard />
+          <FeatureGrid />
         </div>
-        <FeatureGrid />
       </div>
     </div>
   );

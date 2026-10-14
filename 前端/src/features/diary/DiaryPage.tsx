@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
 import { diaryDayKey, dayKeyToDate, AUTHOR_LABEL, AUTHOR_CLASS } from './diaryData';
 import { useDiaryStore } from './diaryStore';
@@ -16,7 +17,6 @@ function todayDate(): string {
 }
 
 export function DiaryPage() {
-  const navigate = useNavigate();
   const entries = useDiaryStore((s) => s.entries);
   const [searchParams] = useSearchParams();
   const dateParam = searchParams.get('date');
@@ -49,28 +49,21 @@ export function DiaryPage() {
   const openEntry = entries.find((d) => d.id === openId) ?? null;
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-6">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          aria-label="返回"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <h1 className="flex-1 font-serif text-xs text-muted-foreground">DIARY · 日记本</h1>
+    <PageShell
+      title="日记本"
+      eyebrow="DIARY"
+      right={
         <button
           type="button"
           onClick={() => setEditing({ date: todayDate() })}
           aria-label="写日记"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           <Plus className="h-4 w-4" />
         </button>
-      </div>
-
-      <div className="mt-3 space-y-4">
+      }
+    >
+      <div className="space-y-4">
         {entries.map((d) => {
           const [y, m, dd] = d.date.split('-').map(Number);
           return (
@@ -103,6 +96,6 @@ export function DiaryPage() {
 
       {openEntry && <DiaryModal entry={openEntry} onClose={() => setOpenId(null)} />}
       {editing && <DiaryEditorModal initialDate={editing.date} onClose={() => setEditing(null)} />}
-    </div>
+    </PageShell>
   );
 }

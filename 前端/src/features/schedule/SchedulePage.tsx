@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2 } from 'lucide-react';
+import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
 import { TimetableView } from './TimetableView';
 import {
@@ -15,7 +15,6 @@ import {
 
 /** 课程表：周次网格（周一~周日 × 节次），点空白添加、点课程编辑 */
 export function SchedulePage() {
-  const navigate = useNavigate();
   const [courseEditing, setCourseEditing] = useState<Course | null>(null);
   const [courseCreating, setCourseCreating] = useState<{ day: number; startPeriod: number } | null>(null);
 
@@ -30,32 +29,21 @@ export function SchedulePage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col px-4 py-6">
-      {/* 顶栏 */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          aria-label="返回"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <h1 className="text-lg font-bold">课程表</h1>
-        <div className="flex-1" />
+    <PageShell
+      title="课程表"
+      eyebrow="SCHEDULE"
+      size="lg"
+      right={
         <button
           type="button"
           onClick={() => openCourse()}
-          className="flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-sm text-primary-foreground transition hover:opacity-90"
+          className="flex shrink-0 items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-sm text-primary-foreground transition hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> 添加
         </button>
-      </div>
-
-      {/* 课程表 */}
-      <div className="mt-4">
-        <TimetableView onCreate={openCourse} onEdit={setCourseEditing} />
-      </div>
+      }
+    >
+      <TimetableView onCreate={openCourse} onEdit={setCourseEditing} />
 
       {(courseEditing || courseCreating) && (
         <CourseEditor
@@ -65,7 +53,7 @@ export function SchedulePage() {
           onClose={close}
         />
       )}
-    </div>
+    </PageShell>
   );
 }
 

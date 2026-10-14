@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { PageShell } from '@/components/PageShell';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { listMemos } from '@/lib/api/memo';
 import { UnfiledSection } from './UnfiledSection';
@@ -33,7 +32,6 @@ function OwnerTab({
 
 /** 备忘录首页：滑块切换「未分类 / 我 / 他」，默认未分类。 */
 export function MemoHomePage() {
-  const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>('unfiled');
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
@@ -49,24 +47,9 @@ export function MemoHomePage() {
   }, []);
 
   return (
-    <div className="mx-auto w-full max-w-md pb-28 pt-6">
-      <div className="flex items-center gap-2 px-4">
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          aria-label="返回"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <h1 className="font-serif text-xs text-muted-foreground">MEMO · 备忘录</h1>
-      </div>
-      <div className="px-4 pb-2 pt-6">
-        <h1 className="text-3xl font-bold">备忘录</h1>
-      </div>
-
+    <PageShell title="备忘录" eyebrow="MEMO" bodyClassName="px-0 pb-28 pt-0">
       {/* 三大分类滑块：未分类 / 我 / 他 */}
-      <div className="px-4 pt-2">
+      <div className="px-4 pt-1">
         <SegmentedControl<TabKey>
           segments={[
             { value: 'unfiled', label: '未分类' },
@@ -93,6 +76,6 @@ export function MemoHomePage() {
 
       {/* 已收录 Sheet（从文件夹小卡进入） */}
       <ArchivedSheet open={archivedOpen} onOpenChange={setArchivedOpen} />
-    </div>
+    </PageShell>
   );
 }

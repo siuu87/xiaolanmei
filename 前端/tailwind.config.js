@@ -40,6 +40,11 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        // 覆盖层页面统一底：所有二级页面都铺这一层不透明底（在 index.css 的 --page-* 里）
+        page: {
+          bg: 'hsl(var(--page-bg))',
+          line: 'hsl(var(--page-line))',
+        },
         // 阅读主题（一起读）：米白纸面 / 暗夜 / 墨色
         paper: '#FBF7F0',
         night: '#1A1A1F',

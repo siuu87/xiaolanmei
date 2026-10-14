@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, Lightbulb, Pencil } from 'lucide-react';
+import { ChevronDown, Lightbulb, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/PageShell';
 import { getDish, type Dish, type DishIngredient } from '@/lib/api/dishes';
 import { AppleEmoji } from '@/components/AppleEmoji';
 import { useDishStore } from './dishStore';
@@ -59,28 +60,20 @@ export function FoodDetailPage() {
   const triggerMango = () => setKick((t) => t + 1);
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-6">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          aria-label="返回"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <h1 className="flex-1 text-sm text-muted-foreground">{dish?.type === 'dessert' ? '治愈甜品' : '日常正餐'}</h1>
-        {dish && (
+    <PageShell
+      title={dish?.type === 'dessert' ? '治愈甜品' : '日常正餐'}
+      right={
+        dish && (
           <button
             type="button"
             onClick={() => navigate('/food')}
-            className="flex items-center gap-1 rounded-xl bg-muted px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted/80"
+            className="flex shrink-0 items-center gap-1 rounded-xl bg-muted px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted/80"
           >
             <Pencil className="h-3.5 w-3.5" /> 回列表编辑
           </button>
-        )}
-      </div>
-
+        )
+      }
+    >
       {!dish ? (
         <div className="py-20 text-center text-sm text-muted-foreground">加载中…</div>
       ) : (
@@ -159,6 +152,6 @@ export function FoodDetailPage() {
       )}
 
       <MangoKick trigger={kick} onClose={() => setKick(0)} />
-    </div>
+    </PageShell>
   );
 }
