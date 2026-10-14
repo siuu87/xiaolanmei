@@ -249,9 +249,9 @@ export function SettingsPage() {
   const recent = memos.slice(0, 3);
 
   return (
-    <div className="min-h-full bg-[#f2f2f7] pb-12 dark:bg-black">
+    <div className="min-h-full bg-page-bg pb-12">
       {/* 标题栏 */}
-      <div className="sticky top-0 z-10 bg-[#f2f2f7]/90 backdrop-blur dark:bg-black/90">
+      <div className="sticky top-0 z-10 bg-page-bg/90 backdrop-blur">
         <div className="relative flex items-center px-4 pt-6 pb-2">
           <button
             type="button"
@@ -259,7 +259,7 @@ export function SettingsPage() {
             aria-label="返回"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-900 transition hover:bg-black/5 dark:text-gray-100 dark:hover:bg-white/10"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="pointer-events-none absolute inset-x-0 text-center text-[17px] font-semibold text-gray-900 dark:text-gray-100">
             设置

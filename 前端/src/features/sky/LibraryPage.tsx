@@ -308,8 +308,13 @@ export function LibraryPage() {
       {/* 顶部 */}
       <header className="flex items-center justify-between px-5 pb-3 pt-6">
         <div className="flex items-center gap-2.5">
-          <button type="button" onClick={back} aria-label="返回" className="text-[#8A8A8A] transition hover:text-[#E0E0E0]">
-            <ArrowLeft className="h-5 w-5" />
+          <button
+            type="button"
+            onClick={back}
+            aria-label="返回"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8A8A8A] transition hover:bg-white/10 hover:text-[#E0E0E0]"
+          >
+            <ArrowLeft className="h-4 w-4" />
           </button>
           <h1 className="font-serif text-lg font-semibold tracking-wide text-[#E0E0E0]">{title}</h1>
         </div>

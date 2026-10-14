@@ -364,7 +364,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
           aria-label="返回"
           className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-medium text-slate-100">片单</p>

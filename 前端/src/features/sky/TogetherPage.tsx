@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Tv, Headphones, BookOpen, ChevronRight, type LucideIcon } from 'lucide-react';
+import { Tv, Headphones, BookOpen, ChevronRight, ArrowLeft, type LucideIcon } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
 
 interface TogetherBlock {
@@ -27,7 +27,16 @@ export function TogetherPage() {
     <div className="relative min-h-full bg-[#070b1a] text-slate-200">
       <StarBackdrop />
       <div className="relative mx-auto w-full max-w-md px-4 py-8">
-        <header className="mb-8 text-center">
+        <header className="relative mb-8 text-center">
+          {/* 全站唯一一个原本没有返回键的二级页：没有它就只能靠浏览器后退 */}
+          <button
+            type="button"
+            onClick={() => navigate('/chat')}
+            aria-label="返回"
+            className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           <p className="text-[10px] tracking-[0.4em] text-slate-400/80">TOGETHER</p>
           <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-slate-100">together</h1>
         </header>

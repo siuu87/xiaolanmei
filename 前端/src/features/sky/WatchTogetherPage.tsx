@@ -20,7 +20,7 @@ export function WatchTogetherPage() {
             aria-label="返回"
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-1 items-center justify-center gap-2">
             <Tv className="h-4 w-4 text-slate-400" />
