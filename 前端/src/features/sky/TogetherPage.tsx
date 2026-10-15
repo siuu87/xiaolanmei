@@ -1,5 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { Tv, Headphones, BookOpen, ChevronRight, ArrowLeft, type LucideIcon } from 'lucide-react';
+import {
+  Tv,
+  Headphones,
+  BookOpen,
+  Images,
+  NotebookPen,
+  ChevronRight,
+  ArrowLeft,
+  type LucideIcon,
+} from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
 
 interface TogetherBlock {
@@ -10,14 +19,25 @@ interface TogetherBlock {
   icon: LucideIcon;
 }
 
+/**
+ * together 的五个分块。
+ *
+ * 2026-10-16：`gallery`（相册 · 图像记忆）与 `diary`（日记本）按需求收拢到这里，
+ * 跟 watch / listen / read 并列 —— 这一页就是「两个人的回忆与生活记录中心」。
+ * 它们原来的入口（抽屉「生活小趣味」组、首页 FeatureGrid）已移除，但**路由没变**
+ * （`/gallery` `/diary`），所以旧链接照样能用。
+ * 标签沿用现有的小写英文风格（watch / listen / read），中文说明放 hint。
+ */
 const BLOCKS: TogetherBlock[] = [
   { key: 'watch', label: 'watch', hint: '电视 · 片单', to: '/watch', icon: Tv },
   { key: 'listen', label: 'listen', hint: '进入一起听', to: '/listen', icon: Headphones },
   { key: 'read', label: 'read', hint: '书架 · 管理', to: '/library', icon: BookOpen },
+  { key: 'gallery', label: 'gallery', hint: '相册 · 图像记忆', to: '/gallery', icon: Images },
+  { key: 'diary', label: 'diary', hint: '日记本 · 随手写', to: '/diary', icon: NotebookPen },
 ];
 
 /**
- * together：原「星空与共度」的新主页，三个分块 watch / listen / read，
+ * together：原「星空与共度」的新主页，五个分块，
  * 每个分块点进去都是一个独立的新页面。
  */
 export function TogetherPage() {

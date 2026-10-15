@@ -20,6 +20,7 @@ import {
   Puzzle,
   Globe,
   Phone,
+  Video,
   User,
   Plus,
   Image,
@@ -63,7 +64,8 @@ import { SearchOverlay } from './SearchOverlay';
 import { ChatDrawer } from './ChatDrawer';
 import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
-import { CallOverlay } from './CallOverlay';
+import { CallOverlay, type CallResult } from './CallOverlay';
+import { createCall, fmtDuration, type CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
 import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
@@ -595,13 +597,37 @@ function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () =
  * 底部面板里的单个入口（微信式：白色圆角方块 + 方块下方一行小字）。
  * `[&_svg]` 是为了不用挨个改 4 个调用点的图标尺寸。
  */
-function AttachButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+/**
+ * 「+」面板里的一张功能卡。
+ *
+ * 统一规格：单元格内**居中**、图标方块 h-14 w-14 定尺、圆角 2xl、标签 11px。
+ * 卡片宽度由父级等宽网格给（`w-full`），所以每格一样宽 —— 不要再在按钮上写死宽度。
+ * 触控反馈走整卡 `active:scale-95`（比只缩图标方块更跟手）。
+ */
+function AttachButton({
+  icon,
+  label,
+  onClick,
+  testid,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  testid?: string;
+}) {
   return (
-    <button type="button" onClick={onClick} aria-label={label} className="group flex flex-col items-center gap-1.5 py-1">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-chat-pill text-chat-pill-fg shadow-sm transition group-hover:bg-chat-line group-active:scale-95 [&_svg]:h-6 [&_svg]:w-6">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      data-testid={testid}
+      className="group flex w-full flex-col items-center gap-1.5 rounded-xl py-1 transition duration-150 active:scale-95"
+    >
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-chat-pill text-chat-pill-fg shadow-sm transition group-hover:bg-chat-line [&_svg]:h-6 [&_svg]:w-6">
         {icon}
       </span>
-      <span className="text-[11px] text-chat-meta">{label}</span>
+      <span className="text-[11px] leading-none text-chat-meta">{label}</span>
     </button>
   );
 }
@@ -671,7 +697,10 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
-  const [callOpen, setCallOpen] = useState(false);
+  /** 正在进行的通话类型（null = 没在通话）。语音/视频共用这一个浮层。 */
+  const [callKind, setCallKind] = useState<CallKind | null>(null);
+  /** 呼出时刻，挂断时作为 startedAt 落库 */
+  const callStartedRef = useRef(0);
   /** 应用内浏览器要打开的地址（null = 关闭） */
   const [browserUrl, setBrowserUrl] = useState<string | null>(null);
   /** 「新消息形态」预览开关：**只在本组件内存里**，不写库、不进模型上下文 */
@@ -966,6 +995,55 @@ export function ChatPage() {
     return { text: valid.length ? `\n\n[图片内容]：${valid.join('；')}` : '', direct: false };
   };
 
+  /** 发起通话：记下时刻（结算时用来算 startedAt），视频通话会一进去就请求摄像头 */
+  const startCall = (kind: CallKind) => {
+    callStartedRef.current = Date.now();
+    setCallKind(kind);
+  };
+
+  /**
+   * 挂断结算。两件事，都有意保留：
+   *   1. 写 `calls` 表 —— 时长的**唯一事实来源**，用于统计（这条路上不依赖消息）；
+   *   2. 往聊天流推一张内联卡片 —— 让「我们通过话」留在对话里、跟着分支走。
+   * 卡片上的 seconds 直接用本次结果，不回头查库，省一次往返。
+   * 落库失败也不该吞掉卡片：先记 console，卡片照发（消息本身有自己的持久化）。
+   */
+  const endCall = async (result: CallResult) => {
+    const kind = callKind ?? 'voice';
+    const startedAt = callStartedRef.current || Date.now();
+    setCallKind(null);
+
+    try {
+      await createCall({
+        kind,
+        state: result.state,
+        seconds: result.seconds,
+        conversationId: conversation?.id ?? null,
+        startedAt,
+        endedAt: Date.now(),
+      });
+    } catch (e) {
+      console.error('通话记录落库失败', e);
+    }
+
+    const conv = useChatStore.getState().conversation;
+    if (!conv) return;
+    const label = kind === 'video' ? '视频通话' : '语音通话';
+    await appendMessage({
+      id: uid(),
+      role: 'assistant',
+      // content 是给模型看的上下文（跟卡片上显示的不是一回事），别删
+      content:
+        result.state === 'answered'
+          ? `（${label} ${fmtDuration(result.seconds)}）`
+          : `（${label}未接通）`,
+      parentId: conv.activeMessageId,
+      status: 'done',
+      call: { kind, state: result.state, seconds: result.seconds },
+      createdAt: Date.now(),
+    });
+  };
+
   const send = async () => {
     const text = input.trim();
     if ((!text && pendingImages.length === 0) || busy) return;
@@ -1202,15 +1280,7 @@ export function ChatPage() {
         >
           <Search className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          onClick={() => setCallOpen(true)}
-          aria-label="语音通话"
-          title="语音通话"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
-        >
-          <Phone className="h-4 w-4" />
-        </button>
+        {/* 通话入口**不在这里**：按需求顶栏保持简洁，通话已收进输入框的「+」面板 */}
         {/* 移动端：⋮ → 工具箱（桌面已由 Puzzle 药丸承担，不给重复入口） */}
         <button
           type="button"
@@ -1712,6 +1782,7 @@ export function ChatPage() {
               }}
               aria-label="添加附件"
               title="添加附件"
+              data-testid="chat-attach"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
             >
               <Plus className="h-5 w-5" />
@@ -1840,8 +1911,13 @@ export function ChatPage() {
         >
           <div className="mx-auto h-full w-full max-w-3xl">
             {attachOpen ? (
-              /* w-fit：入口方块是定尺的，别让桌面端的 4 等分把间距拉爆 */
-              <div className="grid w-fit grid-cols-4 gap-x-1 gap-y-2 p-3" data-testid="attach-panel">
+              /* 等宽网格：4 列、每格同宽（卡片自身相对单元格居中）。
+                 `w-full` + `max-w-[340px]`：手机上铺满、桌面端封顶 —— 否则 max-w-3xl 里
+                 4 等分会把 56px 的方块甩得东一个西一个。 */
+              <div
+                className="grid w-full max-w-[340px] grid-cols-4 gap-x-1 gap-y-2.5 p-3"
+                data-testid="attach-panel"
+              >
                 <AttachButton
                   icon={<Image className="h-5 w-5" />}
                   label="图片"
@@ -1860,9 +1936,19 @@ export function ChatPage() {
                 <AttachButton
                   icon={<Phone className="h-5 w-5" />}
                   label="语音通话"
+                  testid="attach-call-voice"
                   onClick={() => {
                     setAttachOpen(false);
-                    setCallOpen(true);
+                    startCall('voice');
+                  }}
+                />
+                <AttachButton
+                  icon={<Video className="h-5 w-5" />}
+                  label="视频通话"
+                  testid="attach-call-video"
+                  onClick={() => {
+                    setAttachOpen(false);
+                    startCall('video');
                   }}
                 />
                 <AttachButton
@@ -1885,9 +1971,14 @@ export function ChatPage() {
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <ChatDrawer open={toolboxOpen} onClose={closeToolbox} />
 
-      {/* 语音通话（占位界面，后续接 WebRTC） */}
-      {callOpen && (
-        <CallOverlay name={partnerName || '小蓝莓'} avatar={partnerAvatar} onClose={() => setCallOpen(false)} />
+      {/* 通话浮层（语音 / 视频共用）。挂断 → endCall 落库 + 往聊天流推卡片 */}
+      {callKind && (
+        <CallOverlay
+          kind={callKind}
+          name={partnerName || '小蓝莓'}
+          avatar={partnerAvatar}
+          onEnd={(r) => void endCall(r)}
+        />
       )}
 
       {/* 应用内浏览器：点消息里的链接就走这里，不跳出 App */}

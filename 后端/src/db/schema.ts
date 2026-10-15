@@ -627,3 +627,44 @@ export const tavernPersonas = sqliteTable('tavern_personas', {
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
 });
+
+/**
+ * 通话记录：每次挂断写一行，同时前端会往聊天流推一条内联卡片消息。
+ *
+ * 两个地方都留痕是有意的：消息卡负责「在对话里看得见、能跟上下文并排」，
+ * 这张表负责「可统计」（时长合计、最近一次通话、按类型分组）。
+ * 数据单源仍是 SQLite。
+ */
+export const calls = sqliteTable('calls', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id'), // 归属会话（单会话模型下可空）
+  kind: text('kind').notNull().default('voice'), // voice | video
+  state: text('state').notNull().default('answered'), // answered | declined | missed
+  seconds: integer('seconds').notNull().default(0), // 接通时长（秒）
+  startedAt: integer('started_at'), // 呼出时刻
+  endedAt: integer('ended_at'), // 挂断时刻
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 相册条目（together → gallery）：本地优先的图片墙。
+ *
+ * `url` 指向 `POST /api/upload` 落盘的文件（`/api/files/<name>`），
+ * **不重复存图片本体**——上传通道只有一条。
+ * 标签存 JSON 字符串数组，跟其它表的 JSON 列一样。
+ */
+export const galleryItems = sqliteTable('gallery_items', {
+  id: text('id').primaryKey(),
+  url: text('url').notNull(),
+  name: text('name'),
+  mime: text('mime'),
+  note: text('note'), // 一句话说明（用户可以写，AI 以后也能写）
+  tags: text('tags'), // JSON: string[]
+  takenAt: integer('taken_at'), // 拍摄/记录时间，缺省用 createdAt
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});

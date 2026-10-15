@@ -103,6 +103,37 @@ CREATE TABLE IF NOT EXISTS style_rules (
   deleted_at INTEGER
 );
 
+-- 通话记录：每次挂断写一行。前端同时会往聊天流推一条内联卡片消息；
+-- 消息卡负责「在对话里看得见」，这张表负责「可统计」（时长合计 / 最近一次 / 按类型分组）。
+CREATE TABLE IF NOT EXISTS calls (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT,
+  kind TEXT NOT NULL DEFAULT 'voice',
+  state TEXT NOT NULL DEFAULT 'answered',
+  seconds INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER,
+  ended_at INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+-- 相册（together → gallery）：本地优先的图片墙。
+-- url 指向 POST /api/upload 落盘的文件，**不重复存图片本体**；tags 存 JSON 数组。
+CREATE TABLE IF NOT EXISTS gallery_items (
+  id TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  name TEXT,
+  mime TEXT,
+  note TEXT,
+  tags TEXT,
+  taken_at INTEGER,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS memories (
   id TEXT PRIMARY KEY,
   category TEXT NOT NULL,

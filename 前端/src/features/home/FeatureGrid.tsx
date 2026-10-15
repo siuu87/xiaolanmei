@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Heart, BookOpen, BookMarked, type LucideIcon } from 'lucide-react';
+import { Heart, BookMarked, type LucideIcon } from 'lucide-react';
 
 interface Feature {
   label: string;
@@ -7,10 +7,14 @@ interface Feature {
   path?: string;
 }
 
-// 底部辅助功能入口（纪念日 / 日记本 / 备忘录 → 详情页）
+/**
+ * 底部辅助功能入口。
+ *
+ * 2026-10-16：「日记本」按需求收进 together（那边跟相册一起做「回忆与生活记录中心」），
+ * 所以从这里移除 —— 要写日记去 together → diary。
+ */
 const FEATURES: Feature[] = [
   { label: '纪念日', icon: Heart, path: '/memorial' },
-  { label: '日记本', icon: BookOpen, path: '/diary' },
   { label: '备忘录', icon: BookMarked, path: '/memo' },
 ];
 
