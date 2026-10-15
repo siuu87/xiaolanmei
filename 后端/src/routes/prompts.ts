@@ -6,6 +6,7 @@ import { env } from '../config/env.js';
 import { newId, now } from '../utils/id.js';
 import { PERSONA_ANNIVERSARY_FALLBACK, PERSONA_DEFAULT_VARS } from '../persona/modules.js';
 import { seedPersonaModules } from '../persona/seed.js';
+import { enabledStyleRules } from './styleRules.js';
 
 /**
  * 恋爱起点，与前端 `features/shell/loveDays.ts` 的 `LOVE_START` 同源。
@@ -71,6 +72,13 @@ function parseVariables(raw: string | null): Record<string, string> | null {
  * 这样 `{{user_nickname}}` 无论写在模块一还是模块四，读到的都是同一个值——
  * 否则同一个槽位在多处声明，改一处不改另一处，提示词就会自相矛盾。
  * 同名 key 后者覆盖前者：所以每个 key 只许在一个模块里声明（见 persona/modules.ts）。
+ *
+ * **语言风格条目按位置插入**（「他的资料 → 语言风格与输出」里那批）：
+ * - `before` → 拼在角色设定正文**之前**
+ * - `middle` → 插在角色设定正文**正中**：n 个模块取第 ⌈n/2⌉ 个之后（n=5 时即模块三之后）
+ * - `after`  → 拼在角色设定正文**之后**
+ * 「中」按模块数对半切而不是按字符对半切，是为了让切点永远落在模块边界上，
+ * 不会把某条模块的正文拦腰截断。
  */
 export function buildSystemPrompt(model: string): string {
   const rows = db
@@ -88,7 +96,24 @@ export function buildSystemPrompt(model: string): string {
   for (const p of rows) {
     parts.push(renderVariables(p.content, shared, model));
   }
-  return parts.join('\n\n').trim();
+
+  const style = enabledStyleRules();
+  const render = (list: string[]) => list.map((c) => renderVariables(c, shared, model));
+
+  // 中点：模块数为 0 时切在 0（中段条目就落在最前），避免 slice 出负数
+  const cut = Math.ceil(parts.length / 2);
+  const blocks = [
+    render(style.before),
+    parts.slice(0, cut),
+    render(style.middle),
+    parts.slice(cut),
+    render(style.after),
+  ];
+  return blocks
+    .filter((b) => b.length)
+    .map((b) => b.join('\n\n'))
+    .join('\n\n')
+    .trim();
 }
 
 export async function promptRoutes(app: FastifyInstance): Promise<void> {

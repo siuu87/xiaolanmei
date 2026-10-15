@@ -88,6 +88,21 @@ CREATE TABLE IF NOT EXISTS worldbook (
   deleted_at INTEGER
 );
 
+-- 语言风格条目：「他的资料 → 语言风格与输出」里的可增删列表。
+-- position 决定它插进角色设定正文的位置（before 前 / middle 中 / after 后）。
+-- 与 worldbook 分开：worldbook 是世界观设定，走 buildWorldContext() 单独注入。
+CREATE TABLE IF NOT EXISTS style_rules (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  position TEXT NOT NULL DEFAULT 'after',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS memories (
   id TEXT PRIMARY KEY,
   category TEXT NOT NULL,

@@ -78,6 +78,25 @@ export const worldbook = sqliteTable('worldbook', {
   deletedAt: integer('deleted_at'),
 });
 
+/**
+ * 语言风格条目（「他的资料 → 语言风格与输出」里的可增删列表）。
+ *
+ * 与 `worldbook` 是**两回事**：worldbook 是世界观/设定，走 `buildWorldContext()` 单独一段注入；
+ * 这里的条目是「说话方式」的补充规则，由 `buildSystemPrompt()` 按 `position` 插进
+ * 五模块拼成的角色设定正文里（前 / 中 / 后）。
+ */
+export const styleRules = sqliteTable('style_rules', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  content: text('content').notNull(),
+  position: text('position').notNull().default('after'), // before | middle | after
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 export const memories = sqliteTable('memories', {
   id: text('id').primaryKey(),
   category: text('category').notNull(), // fact | event | relation

@@ -12,6 +12,7 @@ import { messageRoutes } from './routes/messages.js';
 import { searchRoutes } from './routes/search.js';
 import { promptRoutes } from './routes/prompts.js';
 import { worldbookRoutes } from './routes/worldbook.js';
+import { styleRuleRoutes } from './routes/styleRules.js';
 import { memoryRoutes } from './routes/memories.js';
 import { summaryRoutes } from './routes/summaries.js';
 import { settingsRoutes } from './routes/settings.js';
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
   await app.register(searchRoutes, { prefix: '/api' });
   await app.register(promptRoutes, { prefix: '/api' });
   await app.register(worldbookRoutes, { prefix: '/api' });
+  await app.register(styleRuleRoutes, { prefix: '/api' });
   await app.register(memoryRoutes, { prefix: '/api' });
   await app.register(summaryRoutes, { prefix: '/api' });
   await app.register(settingsRoutes, { prefix: '/api' });

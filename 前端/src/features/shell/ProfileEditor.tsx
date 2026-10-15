@@ -1,41 +1,44 @@
 /**
  * 人设编辑浮层：点抽屉「纪念日块」上的头像打开。
  *
- * 两套表单，字段按参考图来：
+ * 两套内容：
  * - 「我」（avatar-me）→ 头像 + 上传头像、我的名称、我的描述
- * - 「他」（avatar-partner）→ 头像 + 上传头像、姓名、人设、
- *   MiniMax 语音 ID、语音语速、语言设置（**不要开场白**，按需求去掉）
+ * - 「他」（avatar-partner）→ 头像 + 上传头像，以及**四个折叠页**：
+ *   1. 角色设定：姓名 / 人设 + 内置人设模块一、三、五
+ *   2. 语音与语言：MiniMax 语音 ID、语速、语言设置
+ *   3. 语言风格与输出：语言风格条目（类似世界书，可 + 新增、选前/中/后插入）+ 内置模块二
+ *   4. 备忘录：现有备忘录（AI 也会写）+ 内置模块四
  *
- * **2026-10-15：把工具箱的「角色」搬进来了。** 工具箱里那份 `PromptsPanel`
- * （注入对话 system 的人设模块）原本挂在工具箱里，跟「改角色」这件事分在两个地方。
- * 现在它作为「他」底下的第二个页签「角色设定」，跟姓名/人设/语音放在一起——
- * 点他的头像就能把「这个人是谁」一次改完。
- * 我（avatar-me）不显示这个页签：那份提示词是全局的、不属于「我」的资料。
+ * **2026-10-15 的两次改动**：先把工具箱的「角色」搬进来做成「资料 / 角色设定」页签，
+ * 随后按需求去掉页签、只留资料页，再把内容按主题折成上面四个折叠页 ——
+ * 所以这里**不再有页签**，页面标题恒为「我的资料 / 他的资料」。
  *
- * 配色注意：浮层是硬编码深色（`#0f1424`），而 `PromptsPanel` 是按浅色界面写的
- * （它原来待的工具箱是 `bg-background`/`bg-card`）。所以「角色设定」页签的滚动区
- * 换成统一的浅色页底 `bg-page-bg` —— 深色外壳 + 浅色内容，保持原组件一行不改。
+ * 配色：浮层外壳是硬编码深色 `#0f1424`，而内嵌面板（PromptsPanel / StyleRulesPanel /
+ * MemoSection）走的是主题 token。为了不出现「深色壳里塞浅色卡」，折叠页正文统一加
+ * `dark` 类把 token 局部降到深色一档（`index.css` 的 `.dark` 是普通类选择器，
+ * 套在子树上是合法的），于是整套内嵌面板自动变成深色，一行都不用改。
+ * 注意：MemoDetailDialog 是 portal 到 body 的，落在 `.dark` 之外，会跟随全局主题——这是有意的。
  *
  * 层级：抽屉是 z-[1200]，这里必须 portal 到 body 并压到它上面，否则被抽屉吃掉。
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, Check, ImagePlus, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, ImagePlus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { AvatarContent } from '@/components/AvatarContent';
 import { uploadImage } from '@/lib/api/attachments';
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
+import { StyleRulesPanel } from '@/features/prompts/StyleRulesPanel';
+import { MemoSection } from '@/features/memo/MemoSection';
 
 export type ProfileTarget = 'me' | 'partner';
 
-/** 「他」那页的两个页签 */
-type SheetTab = 'profile' | 'prompts';
-const PARTNER_TABS: { key: SheetTab; label: string }[] = [
-  { key: 'profile', label: '资料' },
-  { key: 'prompts', label: '角色设定' },
-];
+/** 内置人设模块按主题拆到哪一页（名字前缀匹配，见 persona/modules.ts） */
+const MODULES_PROFILE = ['模块一', '模块三', '模块五'];
+const MODULES_STYLE = ['模块二'];
+const MODULES_MEMO = ['模块四'];
 
 /** emoji 快选：收在「或挑一个 emoji」后面，默认不展开，免得抢了参考图的主视觉 */
 const EMOJI_OPTIONS: string[] = [
@@ -93,8 +96,6 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
   const [voiceId, setVoiceId] = useState(store.voiceId);
   const [speed, setSpeed] = useState(store.voiceSpeed);
   const [lang, setLang] = useState(store.voiceLanguage);
-  /** 「我」没有第二个页签，所以这个值对它永远用不上 */
-  const [tab, setTab] = useState<SheetTab>('profile');
 
   useEffect(() => {
     // 用 capture 阶段抢在抽屉之前：抽屉也在 window 上听 Esc，
@@ -151,51 +152,20 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
             data-testid="profile-editor-title"
             className="flex-1 text-center text-[15px] font-semibold text-[#e8ecf6]"
           >
-            {tab === 'prompts' ? '角色设定' : isMe ? '我的资料' : '他的资料'}
+            {isMe ? '我的资料' : '他的资料'}
           </p>
           <span className="h-8 w-8 shrink-0" aria-hidden />
         </div>
 
-        {/* 「他」多一个页签：资料 / 角色设定。我这边不显示（那份提示词是全局的） */}
-        {!isMe && (
-          <div className="flex shrink-0 gap-1.5 px-3 pb-2.5" data-testid="profile-editor-tabs">
-            {PARTNER_TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                aria-pressed={tab === t.key}
-                data-testid={`profile-editor-tab-${t.key}`}
-                className={cn(
-                  'flex-1 rounded-full py-1.5 text-[13px] transition',
-                  tab === t.key
-                    ? 'bg-white/[0.14] font-medium text-[#e8ecf6]'
-                    : 'text-[#8b93a7] hover:bg-white/[0.07] hover:text-[#c3cade]',
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {tab === 'prompts' ? (
-          <div
-            data-testid="profile-scroll"
-            className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain bg-page-bg"
-          >
-            <PromptsTab />
-          </div>
-        ) : (
         <div
           data-testid="profile-scroll"
           className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
         >
-          {/* ---- 头像区块 ---- */}
+          {/* ---- 头像区块（两套共用，放在折叠页外面当主视觉） ---- */}
           <AvatarBlock target={target} value={avatar} onChange={setAvatar} />
 
-          {/* ---- 我的：名称 + 描述 ---- */}
           {isMe ? (
+            /* ---- 我的：名称 + 描述 ---- */
             <>
               <Field label="我的名称" htmlFor="pe-name">
                 <input
@@ -220,136 +190,194 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
               </Field>
             </>
           ) : (
-            /* ---- 他：姓名 + 人设 + 语音（开场白按要求不做） ---- */
-            <>
-              <Field label="姓名" htmlFor="pe-pname">
-                <input
-                  id="pe-pname"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="输入姓名"
-                  data-testid="profile-editor-name"
-                  className={inputCls}
-                />
-              </Field>
-
-              <Field label="人设" htmlFor="pe-persona">
-                <textarea
-                  id="pe-persona"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={5}
-                  placeholder="输入人物设定"
-                  data-testid="profile-editor-persona"
-                  className={cn(inputCls, 'resize-y leading-6')}
-                />
-              </Field>
-
-              <Field
-                label="MiniMax 语音 ID（可选）"
-                hint="填写 Minimax 克隆语音的 voice_id，用于语音条、通话、陪伴模式"
-                htmlFor="pe-voice"
-              >
-                <input
-                  id="pe-voice"
-                  value={voiceId}
-                  onChange={(e) => setVoiceId(e.target.value)}
-                  placeholder="输入 MiniMax voice_id（例如：male-qn-qingse）"
-                  data-testid="profile-editor-voice-id"
-                  className={inputCls}
-                />
-                <p className="mt-1.5 text-[10px] text-[#6b7488]">
-                  💡 在 MiniMax 平台克隆声音后获取 voice_id
-                </p>
-              </Field>
-
-              <Field label="语音语速" htmlFor="pe-speed">
-                <div className="flex items-center gap-3" data-testid="profile-editor-speed-row">
+            /* ---- 他：四个折叠页 ---- */
+            <div className="mt-4 space-y-2.5" data-testid="profile-sections">
+              <FoldSection title="角色设定" testid="fold-profile" defaultOpen>
+                <Field label="姓名" htmlFor="pe-pname">
                   <input
-                    id="pe-speed"
-                    type="range"
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    value={speed}
-                    onChange={(e) => setSpeed(Number(e.target.value))}
-                    data-testid="profile-editor-speed"
-                    className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/[0.12] accent-[#7aa2ff]"
+                    id="pe-pname"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="输入姓名"
+                    data-testid="profile-editor-name"
+                    className={inputCls}
                   />
-                  <span
-                    data-testid="profile-editor-speed-value"
-                    className="w-11 shrink-0 text-right text-[12px] tabular-nums text-[#c3cade]"
-                  >
-                    {speed.toFixed(1)}x
-                  </span>
-                </div>
-                <p className="mt-1.5 text-[10px] text-[#6b7488]">调整角色语音播放的语速（0.5 倍 - 2.0 倍）</p>
-              </Field>
+                </Field>
 
-              <Field
-                label="语言设置（可选）"
-                hint="默认使用中文（普通话），如需调用其他语言，请选择对应语言以确保正确发音"
-                htmlFor="pe-lang"
-              >
-                <select
-                  id="pe-lang"
-                  value={lang}
-                  onChange={(e) => setLang(e.target.value)}
-                  data-testid="profile-editor-language"
-                  className={cn(inputCls, 'appearance-none')}
+                <Field label="人设" htmlFor="pe-persona">
+                  <textarea
+                    id="pe-persona"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={5}
+                    placeholder="输入人物设定"
+                    data-testid="profile-editor-persona"
+                    className={cn(inputCls, 'resize-y leading-6')}
+                  />
+                </Field>
+
+                <div className="mt-4">
+                  <PromptsPanel
+                    namePrefixes={MODULES_PROFILE}
+                    heading="内置人设模块"
+                    showPreview
+                  />
+                </div>
+              </FoldSection>
+
+              <FoldSection title="语音与语言" testid="fold-voice">
+                <Field
+                  label="MiniMax 语音 ID（可选）"
+                  hint="填写 Minimax 克隆语音的 voice_id，用于语音条、通话、陪伴模式"
+                  htmlFor="pe-voice"
                 >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.value} value={l.value} className="bg-[#151b2b]">
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </>
+                  <input
+                    id="pe-voice"
+                    value={voiceId}
+                    onChange={(e) => setVoiceId(e.target.value)}
+                    placeholder="输入 MiniMax voice_id（例如：male-qn-qingse）"
+                    data-testid="profile-editor-voice-id"
+                    className={inputCls}
+                  />
+                  <p className="mt-1.5 text-[10px] text-[#6b7488]">
+                    💡 在 MiniMax 平台克隆声音后获取 voice_id
+                  </p>
+                </Field>
+
+                <Field label="语音语速" htmlFor="pe-speed">
+                  <div className="flex items-center gap-3" data-testid="profile-editor-speed-row">
+                    <input
+                      id="pe-speed"
+                      type="range"
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                      value={speed}
+                      onChange={(e) => setSpeed(Number(e.target.value))}
+                      data-testid="profile-editor-speed"
+                      className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/[0.12] accent-[#7aa2ff]"
+                    />
+                    <span
+                      data-testid="profile-editor-speed-value"
+                      className="w-11 shrink-0 text-right text-[12px] tabular-nums text-[#c3cade]"
+                    >
+                      {speed.toFixed(1)}x
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-[#6b7488]">
+                    调整角色语音播放的语速（0.5 倍 - 2.0 倍）
+                  </p>
+                </Field>
+
+                <Field
+                  label="语言设置（可选）"
+                  hint="默认使用中文（普通话），如需调用其他语言，请选择对应语言以确保正确发音"
+                  htmlFor="pe-lang"
+                >
+                  <select
+                    id="pe-lang"
+                    value={lang}
+                    onChange={(e) => setLang(e.target.value)}
+                    data-testid="profile-editor-language"
+                    className={cn(inputCls, 'appearance-none')}
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.value} value={l.value} className="bg-[#151b2b]">
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </FoldSection>
+
+              <FoldSection title="语言风格与输出" testid="fold-style">
+                <StyleRulesPanel />
+                <div className="mt-3">
+                  <PromptsPanel
+                    namePrefixes={MODULES_STYLE}
+                    heading="内置人设模块"
+                    showPreview={false}
+                  />
+                </div>
+              </FoldSection>
+
+              <FoldSection title="备忘录" testid="fold-memo">
+                <MemoSection />
+                <div className="mt-3">
+                  <PromptsPanel
+                    namePrefixes={MODULES_MEMO}
+                    heading="内置人设模块"
+                    showPreview={false}
+                  />
+                </div>
+              </FoldSection>
+            </div>
           )}
         </div>
-        )}
 
-        {tab === 'prompts' ? (
-          /* 角色设定是即时保存的，底部不给「保存」按钮，免得误以为要点了才算 */
-          <div className="flex shrink-0 items-center justify-center border-t border-white/[0.08] px-4 py-3">
-            <p className="text-[11px] text-[#6b7488]">角色设定改完立即生效，无需保存</p>
-          </div>
-        ) : (
-          <div className="flex shrink-0 items-center border-t border-white/[0.08] px-4 py-3">
-            <button
-              type="button"
-              onClick={save}
-              data-testid="profile-editor-save"
-              className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[#7aa2ff] py-3 text-[15px] font-medium text-[#0b1020] transition hover:bg-[#8fb1ff]"
-            >
-              <Check className="h-4 w-4" /> 保存
-            </button>
-          </div>
-        )}
+        <div className="flex shrink-0 items-center border-t border-white/[0.08] px-4 py-3">
+          <button
+            type="button"
+            onClick={save}
+            data-testid="profile-editor-save"
+            className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[#7aa2ff] py-3 text-[15px] font-medium text-[#0b1020] transition hover:bg-[#8fb1ff]"
+          >
+            <Check className="h-4 w-4" /> 保存
+          </button>
+        </div>
       </motion.div>
     </div>
   );
 }
 
-/* ---------------------------- 「角色设定」页签 ---------------------------- */
+/* ---------------------------- 折叠页 ---------------------------- */
 
 /**
- * 就是把工具箱里那份 `PromptsPanel` 搬过来，前面加一句说明。
- * 面板自身按浅色界面写，所以外层是浅色页底（见 Sheet 里的 bg-page-bg）。
+ * 一个折叠页：标题行 + 展开后的正文。
+ *
+ * 正文加 `dark`：浮层外壳是深色，而里面的面板（人设模块 / 语言风格 / 备忘录）
+ * 都是按主题 token 写的。把 token 局部降到深色一档，它们就自动跟着变深色。
  */
-function PromptsTab() {
+function FoldSection({
+  title,
+  testid,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  testid: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="px-3 py-4" data-testid="profile-editor-prompts">
-      <p className="mb-3 rounded-xl border bg-card px-3 py-2 text-[11px] leading-4 text-muted-foreground">
-        这些模块按顺序注入每次对话的 system 提示词，改完立即生效，不用点保存。
-      </p>
-      <PromptsPanel />
-    </div>
+    <section
+      data-testid={testid}
+      data-open={open ? '1' : '0'}
+      className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        data-testid={`${testid}-toggle`}
+        className="flex w-full items-center gap-2 px-3.5 py-3 text-left transition hover:bg-white/[0.05]"
+      >
+        <span className="flex-1 text-[14px] font-medium text-[#dfe4ef]">{title}</span>
+        <ChevronDown
+          className={cn('h-4 w-4 shrink-0 text-[#8b93a7] transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && (
+        <div data-testid={`${testid}-body`} className="dark border-t border-white/[0.08] px-3.5 py-3.5">
+          {children}
+        </div>
+      )}
+    </section>
   );
 }
 
-/* ---------------------------- 头像区块（两套表单共用） ---------------------------- */
+/* ---------------------------- 头像区块（两套内容共用） ---------------------------- */
 
 function AvatarBlock({
   target,
@@ -491,7 +519,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-4">
+    <div className="mt-4 first:mt-0">
       <label htmlFor={htmlFor} className="block text-[13px] font-medium text-[#c3cade]">
         {label}
       </label>
