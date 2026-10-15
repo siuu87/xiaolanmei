@@ -67,7 +67,16 @@ function recentContents(limit = 20): string[] {
   }
 }
 
-/** 抓一封信回来（成功则落库；抓不到就用兜底文案顶上，别让信箱空着） */
+/**
+ * 抓一封信回来。
+ *
+ * 落库规则（2026-10-15 改）：
+ * - 模型正常 → 写 AI 写的信。
+ * - **模型连不上（没配 / 站子挂 / Key 错）→ 不写任何东西**，返回 `no_model`。
+ *   以前这种情况会用内置文案库顶上，结果是信箱里堆了一堆「看着像 AI 写的、
+ *   其实是罐头话」的信，用户会以为真收到了来信。宁可信箱空着。
+ * - 模型通了但返回空 → 仍用兜底文案顶（服务端抖动，属于极少数）。
+ */
 export async function fetchOneLetter(): Promise<{
   ok: boolean;
   id?: string;
@@ -88,7 +97,6 @@ export async function fetchOneLetter(): Promise<{
   let model = '';
   let usage: { input?: number; output?: number } | undefined;
   const started = now();
-  let aiReason = '';
 
   try {
     const cfg = getModelConfig();
@@ -107,13 +115,17 @@ export async function fetchOneLetter(): Promise<{
     content = (r.content ?? '').trim().replace(/^["「『]+|["」』]+$/g, '');
     usage = r.usage;
   } catch (err) {
-    // 模型没配 / 站子挂了：不刷错误日志，交给兜底文案，下一轮再试 AI
-    aiReason = (err as Error).message;
+    // 模型没配 / 站子不可达 / Key 不对 —— 全归到「配置问题」，**不写兜底文案**。
+    // 理由：用内置文案顶上去，信箱里就会出现一封「署名小蓝莓、其实没人写」的信，
+    // 用户会以为收到的是 AI 来信（实测就被这么误解过）。宁可信箱空着，也别给假信。
+    // 想恢复写信：把模型站配好、/api/chat/health 返回 ok 即可，无需改代码。
+    return { ok: false, reason: `no_model: ${(err as Error).message}` };
   }
 
   const recent = recentContents();
 
-  // AI 没写出来（没配模型 / 站子不可达 / 返回不是正文）→ 用内置文案库顶上
+  // 模型**通了但没吐出正文**（返回空、被过滤光）——这种是服务端抖动，仍然用兜底文案顶上，
+  // 不落库的只有「压根连不上模型」那一种情况。
   if (!content) {
     content = pickFallback(new Set(recent));
     model = 'fallback';
@@ -163,7 +175,7 @@ export async function fetchOneLetter(): Promise<{
     /* 清理失败不影响 */
   }
 
-  return { ok: true, id, via: model === 'fallback' ? 'fallback' : 'ai', reason: aiReason || undefined };
+  return { ok: true, id, via: model === 'fallback' ? 'fallback' : 'ai' };
 }
 
 /** 今天已经抓了几封 */
