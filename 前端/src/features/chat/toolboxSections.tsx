@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react';
-import { BookOpen, FolderTree, Puzzle, Sparkles, User, type LucideIcon } from 'lucide-react';
+import { BookOpen, FolderTree, Puzzle, Sparkles, type LucideIcon } from 'lucide-react';
 import { McpPage } from '@/features/mcp/McpPage';
-import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { WorldbookPanel } from '@/features/worldbook/WorldbookPanel';
 import { WorkspacePanel } from '@/features/code/WorkspacePanel';
 import { SkillsPanel } from '@/features/skills/SkillsPanel';
 
-/** 工具箱的五个子项：主抽屉内展开与聊天页侧边抽屉共用这份清单，避免两处各自维护。 */
+/**
+ * 工具箱的子项：主抽屉内展开与聊天页侧边抽屉共用这份清单，避免两处各自维护。
+ *
+ * 「角色」（人设提示词 `PromptsPanel`）**2026-10-15 搬走了** —— 它跟「改角色」是同一件事，
+ * 却分在工具箱里，跟姓名/人设/语音割裂。现在挂在点头像打开的 `ProfileEditor`
+ * 的「角色设定」页签下（`features/shell/ProfileEditor.tsx`）。
+ * **不要往这里加回来**：同一个编辑器只留一个入口。
+ */
 export interface ToolboxSection {
   key: string;
   label: string;
@@ -16,7 +22,6 @@ export interface ToolboxSection {
 
 export const TOOLBOX_SECTIONS: ToolboxSection[] = [
   { key: 'plugins', label: '插件', icon: Puzzle, render: () => <McpPage /> },
-  { key: 'role', label: '角色', icon: User, render: () => <PromptsPanel /> },
   { key: 'worldbook', label: '世界书', icon: BookOpen, render: () => <WorldbookPanel /> },
   { key: 'workspace', label: '工作区', icon: FolderTree, render: () => <WorkspacePanel /> },
   { key: 'skills', label: '技能', icon: Sparkles, render: () => <SkillsPanel collapsible={false} /> },

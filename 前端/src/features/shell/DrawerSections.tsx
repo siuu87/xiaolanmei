@@ -184,7 +184,7 @@ export function ModuleCards() {
   const closeDrawer = useShellStore((s) => s.closeDrawer);
   // 手风琴：同时只展开一个分组，点已展开的收起
   const [expanded, setExpanded] = useState<string | null>(null);
-  // 工具箱内部的子项（插件/角色/…），独立于分组手风琴
+  // 工具箱内部的子项（插件/世界书/…），独立于分组手风琴
   const [toolboxSection, setToolboxSection] = useState<string | null>(null);
 
   const go = (to: string) => {
@@ -257,7 +257,8 @@ export function ModuleCards() {
           );
         })}
 
-        {/* 工具箱：插件 / 角色 / 世界书 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板） */}
+        {/* 工具箱：插件 / 世界书 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板）
+            「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签 */}
         <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151b2b]">
           <button
             type="button"

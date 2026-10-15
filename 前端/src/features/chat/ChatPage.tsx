@@ -1172,7 +1172,7 @@ export function ChatPage() {
           type="button"
           onClick={openToolbox}
           aria-label="工具箱"
-          title="插件 / 角色 / 世界书 / 工作区 / 技能"
+          title="插件 / 世界书 / 工作区 / 技能"
           data-testid="chat-toolbox-desktop"
           className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95 md:flex"
         >

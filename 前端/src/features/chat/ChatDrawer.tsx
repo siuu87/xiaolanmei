@@ -3,7 +3,7 @@ import { X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TOOLBOX_SECTIONS } from './toolboxSections';
 
-/** 聊天页左侧抽屉：插件 / 角色 / 世界书 / 工作区，点击展开折叠菜单 */
+/** 聊天页左侧抽屉：插件 / 世界书 / 工作区 / 技能，点击展开折叠菜单（清单见 toolboxSections） */
 export function ChatDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
