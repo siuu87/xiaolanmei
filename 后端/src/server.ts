@@ -43,6 +43,7 @@ import { dishRoutes } from './routes/dishes.js';
 import { tavernRoutes } from './routes/tavern.js';
 import { phoneRoutes } from './routes/phone.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
+import { seedPersonaModules } from './persona/seed.js';
 import { startMailScheduler } from './services/mailScheduler.js';
 
 async function main(): Promise<void> {
@@ -50,6 +51,8 @@ async function main(): Promise<void> {
   initDatabase();
   // 幂等初始化内置技能（阶段 11）
   await seedBuiltinSkills();
+  // 幂等播种五模块人设（只补缺失，不覆盖面板里的编辑）
+  seedPersonaModules();
 
   const app = Fastify({ logger: true });
 

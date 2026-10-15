@@ -4,6 +4,23 @@ import { db } from '../db/client.js';
 import { prompts } from '../db/schema.js';
 import { env } from '../config/env.js';
 import { newId, now } from '../utils/id.js';
+import { PERSONA_ANNIVERSARY_FALLBACK, PERSONA_DEFAULT_VARS } from '../persona/modules.js';
+import { seedPersonaModules } from '../persona/seed.js';
+
+/**
+ * 恋爱起点，与前端 `features/shell/loveDays.ts` 的 `LOVE_START` 同源。
+ * 前端用它渲染抽屉/聊天顶栏的「第 N 天」，后端用同一常量渲染提示词里的
+ * `{{anniversary}}` / `{{loveDays}}`——**两处必须同步，改一处要改另一处**。
+ */
+const ANNIVERSARY = PERSONA_ANNIVERSARY_FALLBACK;
+
+/** 距恋爱起点的整天数（按本地日期算，避免时区把日期算偏一天） */
+function loveDaysSince(iso: string, now: Date): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  const start = new Date(y, (m || 1) - 1, d || 1);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((today.getTime() - start.getTime()) / 86_400_000));
+}
 
 interface PromptBody {
   type?: 'global' | 'model';
@@ -15,13 +32,19 @@ interface PromptBody {
   sortOrder?: number;
 }
 
-/** 变量替换：{{key}} → 自定义变量 > 内置变量；未知替换为空。 */
+/**
+ * 变量替换：`{{key}}` → 自定义变量 > 内置变量；未知替换为空。
+ * 内置：`date` / `time` / `model` / `anniversary` / `loveDays` + 人设兜底 `PERSONA_DEFAULT_VARS`。
+ */
 function renderVariables(content: string, custom: Record<string, string>, model: string): string {
   const d = new Date();
   const builtin: Record<string, string> = {
+    ...PERSONA_DEFAULT_VARS,
     date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
     time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
     model,
+    anniversary: ANNIVERSARY,
+    loveDays: String(loveDaysSince(ANNIVERSARY, d)),
   };
   return content.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, key: string) => {
     if (key in custom) return custom[key];
@@ -43,6 +66,11 @@ function parseVariables(raw: string | null): Record<string, string> | null {
 /**
  * 组装 system 提示词（阶段 5）：启用的「全局 + 该模型」提示词按 sortOrder 拼接，变量替换。
  * 供 chat/stream 注入与 /prompts/preview 预览共用，保证注入与预览一致。
+ *
+ * 变量表是**跨模块共享**的：先把所有模块的 variables 合成一张表，再拿去渲染每个模块。
+ * 这样 `{{user_nickname}}` 无论写在模块一还是模块四，读到的都是同一个值——
+ * 否则同一个槽位在多处声明，改一处不改另一处，提示词就会自相矛盾。
+ * 同名 key 后者覆盖前者：所以每个 key 只许在一个模块里声明（见 persona/modules.ts）。
  */
 export function buildSystemPrompt(model: string): string {
   const rows = db
@@ -53,9 +81,12 @@ export function buildSystemPrompt(model: string): string {
     .filter((p) => p.type === 'global' || (p.type === 'model' && p.model === model))
     .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt);
 
+  const shared: Record<string, string> = {};
+  for (const p of rows) Object.assign(shared, parseVariables(p.variables) ?? {});
+
   const parts: string[] = [];
   for (const p of rows) {
-    parts.push(renderVariables(p.content, parseVariables(p.variables) ?? {}, model));
+    parts.push(renderVariables(p.content, shared, model));
   }
   return parts.join('\n\n').trim();
 }
@@ -138,5 +169,15 @@ export async function promptRoutes(app: FastifyInstance): Promise<void> {
     const { model } = (req.query ?? {}) as { model?: string };
     const m = model?.trim() || env.defaultModel;
     return { model: m, systemPrompt: buildSystemPrompt(m) };
+  });
+
+  /**
+   * 播种五模块人设（幂等）。
+   * 不带 force：只补缺失，不覆盖你在面板里的编辑。
+   * 带 `{force:true}`：用仓库源码覆盖正文与变量。
+   */
+  app.post('/prompts/seed', async (req) => {
+    const { force } = (req.body ?? {}) as { force?: boolean };
+    return seedPersonaModules({ force: force === true });
   });
 }
