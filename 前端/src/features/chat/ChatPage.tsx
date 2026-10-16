@@ -999,6 +999,9 @@ export function ChatPage() {
   const startCall = (kind: CallKind) => {
     callStartedRef.current = Date.now();
     setCallKind(kind);
+    // 通话浮层是整屏的，把「+」/表情面板收掉，挂断后回到干净的聊天页
+    setAttachOpen(false);
+    setStickerOpen(false);
   };
 
   /**
