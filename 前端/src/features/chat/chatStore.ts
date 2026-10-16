@@ -224,23 +224,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ? [...all].sort((a, b) => a.createdAt - b.createdAt)[0]
         : await api.createConversation(uid(), DEFAULT_TITLE);
       const msgs = await api.listMessages(conv.id);
+      const mapped = msgs.map<ChatMessage>((m) => {
+        const meta = parseMeta(m.meta);
+        return {
+          id: m.id,
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content,
+          parentId: m.parentId,
+          status: (m.status ?? 'done') as MessageStatus,
+          ...meta,
+          createdAt: m.createdAt,
+        };
+      });
+      /**
+       * `active_message_id` 可能**悬空** —— 它指向的那条消息被删了/被清理掉了，指针却没跟着改。
+       * 照搬过来会让「从 active 往回走分支」walk 不出任何东西 → **聊天页一片空白**，
+       * 看起来像整个会话的数据都丢了（2026-10-16 实测：清掉验收残留后就变成这样）。
+       * 所以先校验它是否还在本次加载的消息里，不在就退回最后一条存活消息。
+       */
+      const activeMessageId =
+        conv.activeMessageId && mapped.some((m) => m.id === conv.activeMessageId)
+          ? conv.activeMessageId
+          : (mapped[mapped.length - 1]?.id ?? null);
       set({
         conversation: {
           id: conv.id,
           title: conv.title,
-          activeMessageId: conv.activeMessageId ?? null,
-          messages: msgs.map<ChatMessage>((m) => {
-            const meta = parseMeta(m.meta);
-            return {
-              id: m.id,
-              role: m.role === 'assistant' ? 'assistant' : 'user',
-              content: m.content,
-              parentId: m.parentId,
-              status: (m.status ?? 'done') as MessageStatus,
-              ...meta,
-              createdAt: m.createdAt,
-            };
-          }),
+          activeMessageId,
+          messages: mapped,
         },
         loaded: true,
       });
