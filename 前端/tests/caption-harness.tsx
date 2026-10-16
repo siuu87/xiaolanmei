@@ -195,3 +195,35 @@ const api = {
 };
 
 (window as unknown as { CaptionHarness: typeof api }).CaptionHarness = api;
+
+/* ------------------------------------------------------------------ *
+ * 打开就能玩
+ * ------------------------------------------------------------------ */
+
+/**
+ * 页面一加载就挂一个 6 秒的示例，方便人眼验收：
+ * 点 ▶ 看逐字亮起，**点一个字就跳到那个词的开头**（词级来源会在词内摊开显示时间，
+ * 但跳播永远用词起点 —— 这就是"显示细分"和"精确跳播"分开的意思）。
+ * 自动化脚本会用自己的用例把它顶掉，互不影响。
+ */
+const DEMO_TEXT = '今天降温了，出门记得把那件灰色的外套穿上。';
+const DEMO: HarnessConfig = {
+  key: 'demo',
+  text: DEMO_TEXT,
+  durationSec: 6,
+  audioSeconds: 6,
+  words: [
+    { word: '今天', start: 0.2, end: 0.9, confidence: 1 },
+    { word: '降温了', start: 1.1, end: 2.0, confidence: 1 },
+    { word: '出门', start: 2.3, end: 2.8, confidence: 1 },
+    { word: '记得', start: 3.0, end: 3.5, confidence: 1 },
+    { word: '把那件', start: 3.6, end: 4.3, confidence: 1 },
+    { word: '灰色的', start: 4.5, end: 5.1, confidence: 1 },
+    { word: '外套', start: 5.2, end: 5.7, confidence: 1 },
+    { word: '穿上', start: 5.75, end: 6.0, confidence: 1 },
+  ],
+};
+
+void api.mount(DEMO).catch(() => {
+  /* 台架自己出错不该让页面挂掉 */
+});
