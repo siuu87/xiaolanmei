@@ -60,6 +60,8 @@ import {
 } from './chatStore';
 import { Markdown } from '@/components/Markdown';
 import { AvatarContent } from '@/components/AvatarContent';
+import { CaptionView } from '@/components/VoiceCaption';
+import { useVoiceCaption } from '@/lib/caption/useVoiceCaption';
 import { SearchOverlay } from './SearchOverlay';
 import { ChatDrawer } from './ChatDrawer';
 import { ModelPicker } from './ModelPicker';
@@ -332,17 +334,28 @@ function InnerNote({ text }: { text: string }) {
   );
 }
 
-/** 语音消息气泡：▶ / 波形 / mm:ss / ⤓（参考图底部那条） */
-function VoiceBubble({ ms, text }: { ms: number; text: string }) {
-  const [playing, setPlaying] = useState(false);
-
-  // 占位播放：只驱动进度与暂停，不真的出声（TTS 还没接）
-  useEffect(() => {
-    if (!playing) return;
-    if (ms <= 0) return;
-    const t = window.setTimeout(() => setPlaying(false), ms);
-    return () => window.clearTimeout(t);
-  }, [playing, ms]);
+/**
+ * 语音消息气泡：▶ / 波形 / mm:ss / ⤓（参考图底部那条）＋ 下方 NEST 逐字字幕。
+ *
+ * 字幕状态由 `useVoiceCaption` 提供，**和播放键共用同一个时钟** ——
+ * 两边各建一个的话，字变深的速度会和 ▶ 的实际进度对不上。
+ *
+ * 现在还没有真实录音（TTS 未接），所以拿到的是**估算时钟**：
+ *  - 逐字变深只用于显示，容器上标 `data-timing-status="estimated"`；
+ *  - 每个字都**不带** `data-seek-time` → 不可点、不产生假的跳播时间
+ *    （原文 §1：没有可靠时间戳的字，`start` 必须是 `null`，不能转成 0）。
+ * 等真实音频 / 逐字时间戳接上，把 `media` / `words` 传进 hook，
+ * 点字跳到那个词、词内细分、真实停顿就全部自动生效，这个组件不用再改。
+ */
+function VoiceBubble({ id, ms, text }: { id: string; ms: number; text: string }) {
+  const cap = useVoiceCaption({
+    text,
+    durationSec: ms / 1000,
+    // 消息 id 就是这一版「音频」的标识：正文被编辑或重新合成后，旧时间轴自动作废
+    audioIdentity: `voice:${id}`,
+    // 还没有逐字时间戳，去问服务端也只会拿到空结果 —— 先不发起请求
+    autoFetch: false,
+  });
 
   const total = Math.max(0, Math.round(ms / 1000));
   const label = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
@@ -354,36 +367,49 @@ function VoiceBubble({ ms, text }: { ms: number; text: string }) {
   }, [text]);
 
   return (
-    <div data-testid="voice-bubble" className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => setPlaying((v) => !v)}
-        aria-label={playing ? '暂停' : '播放'}
-        className={cn(
-          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-chat-me-fg transition',
-          'bg-black/[0.06] hover:bg-black/[0.1] dark:bg-white/[0.08] dark:hover:bg-white/[0.14]',
-        )}
-      >
-        {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="ml-0.5 h-3.5 w-3.5" />}
-      </button>
-      <span className="flex items-center gap-[2px]" aria-hidden>
-        {bars.map((h, i) => (
-          <span
-            key={i}
-            className={cn('w-[2px] rounded-full bg-current opacity-45', playing && 'soundwave-bar opacity-70')}
-            style={{ height: h, animationDelay: `${i * 60}ms` }}
-          />
-        ))}
-      </span>
-      <span className="shrink-0 text-[13px] tabular-nums">{label}</span>
-      <button
-        type="button"
-        aria-label="下载语音"
-        title="下载语音"
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full opacity-60 transition hover:opacity-100"
-      >
-        <Download className="h-3.5 w-3.5" />
-      </button>
+    <div data-testid="voice-bubble" className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={cap.toggle}
+          aria-label={cap.playing ? '暂停' : '播放'}
+          className={cn(
+            // 用 currentColor：这样放在己方（浅蓝）和对方（浅灰）气泡里都跟着气泡的字色走
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-current transition',
+            'bg-black/[0.06] hover:bg-black/[0.1] dark:bg-white/[0.08] dark:hover:bg-white/[0.14]',
+          )}
+        >
+          {cap.playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="ml-0.5 h-3.5 w-3.5" />}
+        </button>
+        <span className="flex items-center gap-[2px]" aria-hidden>
+          {bars.map((h, i) => (
+            <span
+              key={i}
+              className={cn('w-[2px] rounded-full bg-current opacity-45', cap.playing && 'soundwave-bar opacity-70')}
+              style={{ height: h, animationDelay: `${i * 60}ms` }}
+            />
+          ))}
+        </span>
+        <span className="shrink-0 text-[13px] tabular-nums">{label}</span>
+        <button
+          type="button"
+          aria-label="下载语音"
+          title="下载语音"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full opacity-60 transition hover:opacity-100"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* 转录：跟着播放逐字变深。估算态下不可点，等真实时间戳接上才变成可跳播。
+          宽度对齐上面那条波形（约 11rem），免得在 320px 窄屏上把气泡撑破。 */}
+      {text ? (
+        <CaptionView
+          state={cap}
+          onToggle={cap.toggle}
+          className="block max-w-[11rem] text-left text-[13px] leading-5 opacity-90"
+        />
+      ) : null}
     </div>
   );
 }
@@ -654,7 +680,8 @@ interface ShapeSample {
 const SHAPE_SAMPLES: ShapeSample[] = [
   { id: 'demo-quote', role: 'assistant', content: '会员卡做完了吗，给我看最终版。', quote: { label: 'Inside' }, ago: 5 * 60_000 },
   { id: 'demo-inner', role: 'assistant', content: '手机放下。', inner: '写了内心', ago: 4 * 60_000 },
-  { id: 'demo-voice', role: 'user', content: '（语音消息）', voiceMs: 12_000, ago: 3 * 60_000 },
+  // 语音样本的 content 就是**转录文本**：气泡下面用它跑逐字字幕（估算态，见 VoiceBubble）
+  { id: 'demo-voice', role: 'user', content: '我下班啦，路上给你买了那家的草莓，马上就到家，等我。', voiceMs: 12_000, ago: 3 * 60_000 },
   { id: 'demo-call-ok', role: 'assistant', content: '（语音通话 02:17）', call: { kind: 'voice', state: 'answered', seconds: 137 }, ago: 2 * 60_000 },
   { id: 'demo-call-declined', role: 'assistant', content: '（已拒接）', call: { kind: 'voice', state: 'declined' }, ago: 90_000 },
   { id: 'demo-call-missed', role: 'assistant', content: '（未接来电 已回拨）', call: { kind: 'voice', state: 'missed' }, ago: 45_000 },
@@ -1448,7 +1475,7 @@ export function ChatPage() {
                           </div>
                         </div>
                       ) : m.voiceMs ? (
-                        <VoiceBubble ms={m.voiceMs} text={m.content} />
+                        <VoiceBubble id={m.id} ms={m.voiceMs} text={m.content} />
                       ) : m.role === 'assistant' ? (
                         <AssistantBody
                           content={m.content}
@@ -1674,7 +1701,7 @@ export function ChatPage() {
                         s.role === 'user' ? 'bg-chat-me text-chat-me-fg' : 'bg-chat-ai text-chat-ai-fg',
                       )}
                     >
-                      {s.voiceMs ? <VoiceBubble ms={s.voiceMs} text={s.content} /> : s.content}
+                      {s.voiceMs ? <VoiceBubble id={s.id} ms={s.voiceMs} text={s.content} /> : s.content}
                     </div>
                   )}
                 </MsgRow>

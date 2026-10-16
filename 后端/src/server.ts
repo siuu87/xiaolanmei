@@ -44,6 +44,7 @@ import { dishRoutes } from './routes/dishes.js';
 import { tavernRoutes } from './routes/tavern.js';
 import { phoneRoutes } from './routes/phone.js';
 import { callRoutes } from './routes/calls.js';
+import { captionRoutes } from './routes/captions.js';
 import { galleryRoutes } from './routes/gallery.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
 import { seedPersonaModules } from './persona/seed.js';
@@ -105,6 +106,7 @@ async function main(): Promise<void> {
   await app.register(tavernRoutes, { prefix: '/api' });
   await app.register(phoneRoutes, { prefix: '/api' });
   await app.register(callRoutes, { prefix: '/api' });
+  await app.register(captionRoutes, { prefix: '/api' });
   await app.register(galleryRoutes, { prefix: '/api' });
 
   /*

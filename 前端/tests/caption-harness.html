@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>逐字字幕台架（dev only）</title>
+    <style>
+      body { margin: 0; padding: 16px; font: 14px/1.5 system-ui, sans-serif; background: #fff; color: #1e2533; }
+      #root { padding: 8px 12px; border: 1px solid #cfd8e6; border-radius: 12px; display: inline-block; max-width: 40rem; }
+      #root:empty { display: none; }
+      .hint { color: #6b7688; font-size: 12px; margin-bottom: 10px; }
+      .audio-bar { margin-top: 14px; }
+      audio { vertical-align: middle; }
+    </style>
+  </head>
+  <body>
+    <div class="hint">
+      逐字字幕台架 —— 只在 vite dev 下开（/tests/caption-harness.html），不参与打包。<br />
+      由 <code>verify-caption-harness.js</code> 驱动；<code>window.CaptionHarness</code> 是全部入口。
+    </div>
+    <div id="root"></div>
+    <div class="audio-bar"><audio id="harness-audio" controls preload="auto"></audio></div>
+    <script type="module" src="/tests/caption-harness.tsx"></script>
+  </body>
+</html>
