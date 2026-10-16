@@ -668,3 +668,45 @@ export const galleryItems = sqliteTable('gallery_items', {
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
 });
+
+/**
+ * 「白起的内心」情绪状态：**单例行**（id 恒为 `'default'`，同 `timetable_config` 的约定）。
+ *
+ * 四个数值都是 0-100 的整数，默认值就是「刚在一起时的稳态」。
+ * 每聊完一轮（助手消息落库 / 流式收尾）由 `emotion/rules.ts` 按关键词规则微调一档，
+ * **每次调整都把可读的理由写进 `lastReason`** —— 面板要回答「为什么涨了」。
+ *
+ * `lastMessageId` 是幂等键：同一条消息触发的重复演进直接跳过
+ * （`POST /conversations/:id/messages` 与 `PATCH /messages/:id` 都可能是「一轮结束」信号）。
+ */
+export const characterState = sqliteTable('character_state', {
+  id: text('id').primaryKey(), // 恒为 'default'
+  affection: integer('affection').notNull().default(100), // 爱意
+  possessiveness: integer('possessiveness').notNull().default(50), // 占有欲
+  restraint: integer('restraint').notNull().default(80), // 克制
+  longing: integer('longing').notNull().default(30), // 思念
+  currentMood: text('current_mood').notNull().default('温柔'),
+  lastReason: text('last_reason'), // 上一次调整的可读理由（JSON 数组或短句）
+  lastMessageId: text('last_message_id'), // 幂等：同一轮不重复演进
+  turnCount: integer('turn_count').notNull().default(0), // 累计演进轮次
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 渡口念头（Thought Notes）：角色内心一闪而过的独白。
+ *
+ * 与 `memories`（记忆锚点）**同流不同表** —— 念头是「当下的碎碎念」，会过期、可点掉；
+ * 记忆是「沉淀下来的事实」，长期有效。面板里合成一条卡片流按时间倒序混排。
+ * `context` 记「在什么情况下冒出来的」，`isResolved` 供用户点掉（表示已经看见/消化）。
+ */
+export const thoughtNotes = sqliteTable('thought_notes', {
+  id: text('id').primaryKey(),
+  thought: text('thought').notNull(),
+  context: text('context'),
+  isResolved: integer('is_resolved', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});

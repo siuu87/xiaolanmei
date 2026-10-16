@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { messages } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { evolveForMessage } from '../emotion/service.js';
 
 interface CreateMessageBody {
   id?: string;
@@ -18,6 +19,32 @@ interface PatchMessageBody {
   content?: string;
   status?: string;
   meta?: string | null; // JSON：发图附件引用 / 思考链等（阶段 12）
+}
+
+/**
+ * 「一轮结束」的信号只有消息写入这边知道，所以情绪自动演进挂在这里。
+ *
+ * 两个挂载点：
+ *   - `POST /conversations/:id/messages` 助手消息**非流式**一次落库（`status` 缺省即 done）
+ *   - `PATCH /messages/:id { status: 'done' }` 流式收尾 / 手动中止
+ *
+ * 只认**显式**的 `done`：`PATCH` 不带 status 是「编辑内容」，不是新一轮，不该演进。
+ * `status: 'error'` / `'streaming'` / `'aborted'` 一律跳过。
+ * 幂等交给 `evolveForMessage`（`character_state.last_message_id`），所以重复 PATCH 无副作用。
+ */
+function maybeEvolve(messageId: string, status: string | undefined): void {
+  if (status !== 'done') return;
+  const row = db.select().from(messages).where(eq(messages.id, messageId)).get();
+  if (!row || row.role !== 'assistant') return;
+  try {
+    const result = evolveForMessage(messageId);
+    if (!result.skipped) {
+      console.log(`💗 情绪演进 → ${result.state.currentMood}（累计第 ${result.state.turnCount} 轮）`);
+    }
+  } catch (err) {
+    // 情绪演进失败绝不能连累消息落库
+    console.error('情绪演进失败', err);
+  }
 }
 
 /**
@@ -50,6 +77,7 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
     const mid = body.id ?? newId();
+    const status = body.status ?? 'done';
     const ts = now();
     db.insert(messages)
       .values({
@@ -58,13 +86,14 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
         role: body.role ?? 'user',
         content: body.content,
         parentId: body.parentId ?? null,
-        status: body.status ?? 'done',
+        status,
         model: body.model ?? null,
         meta: body.meta ?? null,
         createdAt: ts,
         updatedAt: ts,
       })
       .run();
+    maybeEvolve(mid, status);
     reply.code(201).send({ id: mid, conversationId: id, createdAt: ts });
   });
 
@@ -87,6 +116,7 @@ export async function messageRoutes(app: FastifyInstance): Promise<void> {
       reply.code(404).send({ message: '消息不存在' });
       return;
     }
+    maybeEvolve(id, body.status);
     reply.send({ ok: true });
   });
 

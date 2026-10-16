@@ -46,6 +46,8 @@ import { phoneRoutes } from './routes/phone.js';
 import { callRoutes } from './routes/calls.js';
 import { captionRoutes } from './routes/captions.js';
 import { galleryRoutes } from './routes/gallery.js';
+import { characterRoutes } from './routes/character.js';
+import { thoughtRoutes } from './routes/thoughts.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
 import { seedPersonaModules } from './persona/seed.js';
 import { startMailScheduler } from './services/mailScheduler.js';
@@ -108,6 +110,8 @@ async function main(): Promise<void> {
   await app.register(callRoutes, { prefix: '/api' });
   await app.register(captionRoutes, { prefix: '/api' });
   await app.register(galleryRoutes, { prefix: '/api' });
+  await app.register(characterRoutes, { prefix: '/api' });
+  await app.register(thoughtRoutes, { prefix: '/api' });
 
   /*
    * Host 化（阶段 1）：前端产物就托管在这里，一个进程=完整应用。

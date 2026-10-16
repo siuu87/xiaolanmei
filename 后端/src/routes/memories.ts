@@ -7,11 +7,11 @@ import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatMessage, Usage } from '../adapters/types.js';
 import { getModelConfig, getAdapterConfig } from './stations.js';
 
-const MEMORY_CATEGORIES = ['fact', 'event', 'relation'] as const;
+const MEMORY_CATEGORIES = ['fact', 'event', 'relation', 'anchor'] as const;
 type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 
 function normalizeCategory(c?: string): MemoryCategory {
-  return c === 'event' || c === 'relation' ? c : 'fact';
+  return c === 'event' || c === 'relation' || c === 'anchor' ? c : 'fact';
 }
 
 /** 把文本切成关键词集合：中文用逐字 bigram（兼顾词与短语），英文/数字按词。 */
@@ -80,6 +80,7 @@ function toDTO(m: typeof memories.$inferSelect) {
     importance: m.importance,
     active: m.active,
     createdAt: m.createdAt,
+    updatedAt: m.updatedAt,
   };
 }
 
@@ -120,14 +121,40 @@ interface MemoryBody {
  * - buildMemoryContext 供 chat/stream 注入 system 提示词。
  */
 export async function memoryRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/memories', async () => {
-    return db
+  /**
+   * 记忆列表。「白起的内心」面板要用 `q` / `category` / `sort` 做检索，
+   * 但**不传任何参数时行为与改造前完全一致**（按重要度倒序、只给未删除的）。
+   */
+  app.get('/memories', async (req) => {
+    const query = (req.query ?? {}) as {
+      q?: string;
+      category?: string;
+      active?: string;
+      sort?: string;
+    };
+    const needle = query.q?.trim().toLowerCase() ?? '';
+    const category = query.category?.trim() ?? '';
+
+    const rows = db
       .select()
       .from(memories)
       .all()
       .filter((m) => m.deletedAt == null)
-      .sort((a, b) => b.importance - a.importance || b.createdAt - a.createdAt)
-      .map(toDTO);
+      .filter((m) => (query.active === '0' ? !m.active : query.active === '1' ? m.active : true))
+      .filter((m) => (!category || category === 'all' ? true : m.category === category))
+      .filter((m) =>
+        needle
+          ? m.content.toLowerCase().includes(needle) ||
+            (m.relatedEntity ?? '').toLowerCase().includes(needle)
+          : true,
+      );
+
+    rows.sort(
+      query.sort === 'time'
+        ? (a, b) => b.createdAt - a.createdAt
+        : (a, b) => b.importance - a.importance || b.createdAt - a.createdAt,
+    );
+    return rows.map(toDTO);
   });
 
   app.post('/memories', async (req, reply) => {

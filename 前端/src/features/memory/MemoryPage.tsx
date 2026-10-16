@@ -17,13 +17,19 @@ import {
 } from '@/lib/api/memories';
 import { useChatStore, activePath } from '@/features/chat/chatStore';
 
-const CATEGORY_LABEL: Record<MemoryCategory, string> = { fact: '事实', event: '事件', relation: '关系' };
+const CATEGORY_LABEL: Record<MemoryCategory, string> = {
+  fact: '事实',
+  event: '事件',
+  relation: '关系',
+  anchor: '锚点',
+};
 const CATEGORY_CLS: Record<MemoryCategory, string> = {
   fact: 'bg-primary/15 text-primary',
   event: 'bg-amber-400/15 text-amber-300',
   relation: 'bg-rose-400/15 text-rose-300',
+  anchor: 'bg-rose-400/20 text-rose-200',
 };
-const CATEGORIES: MemoryCategory[] = ['fact', 'event', 'relation'];
+const CATEGORIES: MemoryCategory[] = ['fact', 'event', 'relation', 'anchor'];
 
 const inputCls =
   'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';

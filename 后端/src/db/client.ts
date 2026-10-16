@@ -643,6 +643,36 @@ CREATE TABLE IF NOT EXISTS tavern_personas (
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
 );
+
+-- 「白起的内心」情绪状态：**单例行**，id 恒为 'default'（同 timetable_config 的约定）。
+-- 数值都是 0-100 的整数，每聊完一轮由后端按规则微调（每条 delta 都写进 last_reason 供面板解释）。
+-- last_message_id 是幂等键：同一条消息触发的重复演进要跳过。
+CREATE TABLE IF NOT EXISTS character_state (
+  id TEXT PRIMARY KEY,
+  affection INTEGER NOT NULL DEFAULT 100,
+  possessiveness INTEGER NOT NULL DEFAULT 50,
+  restraint INTEGER NOT NULL DEFAULT 80,
+  longing INTEGER NOT NULL DEFAULT 30,
+  current_mood TEXT NOT NULL DEFAULT '温柔',
+  last_reason TEXT,
+  last_message_id TEXT,
+  turn_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+-- 渡口念头（Thought Notes）：角色内心一闪而过的独白，与 memories（记忆锚点）在同一个卡片流里展示。
+-- context 记「什么情况下冒出来的」，is_resolved 供用户点掉（表示这条念头已经被看见/消化）。
+CREATE TABLE IF NOT EXISTS thought_notes (
+  id TEXT PRIMARY KEY,
+  thought TEXT NOT NULL,
+  context TEXT,
+  is_resolved INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
 `;
 
 /**

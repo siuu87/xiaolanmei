@@ -64,6 +64,8 @@ import { CaptionView } from '@/components/VoiceCaption';
 import { useVoiceCaption } from '@/lib/caption/useVoiceCaption';
 import { SearchOverlay } from './SearchOverlay';
 import { ChatDrawer } from './ChatDrawer';
+import { MindDrawer } from './MindDrawer';
+import { HEALTH_TEXT, useModelHealth } from './modelHealth';
 import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
 import { CallOverlay, type CallResult } from './CallOverlay';
@@ -77,30 +79,15 @@ import { loveDays } from '@/features/shell/loveDays';
 
 /**
  * 顶栏右侧连接指示器：只给一个 6px 小灯，不占宽度。
- * 绿=模型通道正常，黄=检测/重连中，红=不可达；点一下立即重探。
+ * 绿=模型通道正常，黄=检测/重连中，红=不可达。
+ *
+ * **2026-10-17 起点击不再重探，改为打开「白起的内心与记忆中枢」。**
+ * 手动重探挪进了面板（右上角那颗同样的灯 + 状态文字）。
+ * 这样语义才不混：小灯仍然只是「通道可见性」的指示器，点它是「进去看看他」。
+ * 状态改由 `modelHealth` 模块单例托管 —— 面板和这里读的是同一份，不会两个轮询各打一次。
  */
-function ConnDot() {
-  const [state, setState] = useState<'probing' | 'ok' | 'bad'>('probing');
-
-  const probe = async () => {
-    try {
-      const ctrl = new AbortController();
-      const t = window.setTimeout(() => ctrl.abort(), 6000);
-      const res = await fetch('/api/chat/health', { signal: ctrl.signal });
-      window.clearTimeout(t);
-      setState(res.ok ? 'ok' : 'bad');
-    } catch {
-      setState('bad');
-    }
-  };
-
-  useEffect(() => {
-    setState('probing');
-    void probe();
-    const timer = window.setInterval(() => void probe(), 30_000);
-    return () => window.clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+function ConnDot({ onClick }: { onClick: () => void }) {
+  const state = useModelHealth();
 
   const color =
     state === 'ok' ? 'bg-emerald-400' : state === 'probing' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500';
@@ -108,9 +95,9 @@ function ConnDot() {
   return (
     <button
       type="button"
-      onClick={() => void probe()}
-      aria-label="连接状态"
-      title={state === 'ok' ? '模型通道正常 · 点击重探' : state === 'probing' ? '检测中…' : '通道不可达 · 点击重探'}
+      onClick={onClick}
+      aria-label="白起的内心"
+      title={`${HEALTH_TEXT[state]} · 点击查看他的内心与记忆`}
       data-testid="conn-dot"
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-chat-line/70"
     >
@@ -705,6 +692,8 @@ export function ChatPage() {
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [menuForId, setMenuForId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  // 「白起的内心与记忆中枢」：点顶栏那颗小红点打开
+  const [mindOpen, setMindOpen] = useState(false);
   // 工具箱改由外壳 store 控制：顶栏汉堡让位给主抽屉，工具箱入口搬进抽屉里
   const toolboxOpen = useShellStore((s) => s.toolboxOpen);
   const closeToolbox = useShellStore((s) => s.closeToolbox);
@@ -1300,7 +1289,7 @@ export function ChatPage() {
             <span>在一起 {loveDayCount} 天</span>
           </span>
         </span>
-        <ConnDot />
+        <ConnDot onClick={() => setMindOpen(true)} />
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
@@ -2000,6 +1989,9 @@ export function ChatPage() {
       {/* 微信式全屏搜索 */}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <ChatDrawer open={toolboxOpen} onClose={closeToolbox} />
+
+      {/* 白起的内心与记忆中枢（点顶栏小红点） */}
+      <MindDrawer open={mindOpen} onClose={() => setMindOpen(false)} />
 
       {/* 通话浮层（语音 / 视频共用）。挂断 → endCall 落库 + 往聊天流推卡片 */}
       {callKind && (
