@@ -7,6 +7,7 @@ import { newId, now } from '../utils/id.js';
 import { PERSONA_ANNIVERSARY_FALLBACK, PERSONA_DEFAULT_VARS } from '../persona/modules.js';
 import { seedPersonaModules } from '../persona/seed.js';
 import { enabledStyleRules } from './styleRules.js';
+import { buildTimeSense } from '../emotion/timeSense.js';
 
 /**
  * 恋爱起点，与前端 `features/shell/loveDays.ts` 的 `LOVE_START` 同源。
@@ -80,7 +81,7 @@ function parseVariables(raw: string | null): Record<string, string> | null {
  * 「中」按模块数对半切而不是按字符对半切，是为了让切点永远落在模块边界上，
  * 不会把某条模块的正文拦腰截断。
  */
-export function buildSystemPrompt(model: string): string {
+export function buildSystemPrompt(model: string, ctx?: { lastMessageAt?: number | null }): string {
   const rows = db
     .select()
     .from(prompts)
@@ -102,12 +103,16 @@ export function buildSystemPrompt(model: string): string {
 
   // 中点：模块数为 0 时切在 0（中段条目就落在最前），避免 slice 出负数
   const cut = Math.ceil(parts.length / 2);
+  // 时间感信号（阶段 5 末尾追加，始终在场）：让 AI 语气随当前时段 / 距上次对话自适应。
+  // lastMessageAt 由 chat 路由按会话最后一条消息算出；预览/拿不到时退化为「新对话」。
+  const timeSense = buildTimeSense(new Date(), ctx?.lastMessageAt ?? null);
   const blocks = [
     render(style.before),
     parts.slice(0, cut),
     render(style.middle),
     parts.slice(cut),
     render(style.after),
+    [timeSense],
   ];
   return blocks
     .filter((b) => b.length)

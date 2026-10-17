@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatEvent, ChatMessage } from '../adapters/types.js';
 import { db } from '../db/client.js';
-import { tokenUsage, courses, ragDocuments, periodRecords } from '../db/schema.js';
+import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
 import { buildWorldContext } from './worldbook.js';
@@ -282,8 +282,21 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
     const partnerStateNote = getPartnerStateNote(convId);
     const draftNote = ragOn ? getDraftMemosNote() : '';
+
+    // 阶段 5.5：取本会话最后一条消息时间，算「距上次对话」间隔喂给时间感信号
+    const lastMsg =
+      convId != null
+        ? db
+            .select()
+            .from(messagesTable)
+            .all()
+            .filter((m) => m.conversationId === convId && m.deletedAt == null)
+            .sort((a, b) => b.createdAt - a.createdAt)[0]
+        : undefined;
+    const lastMessageAt = lastMsg ? lastMsg.createdAt : null;
+
     const systemPrompt = [
-      buildSystemPrompt(model),
+      buildSystemPrompt(model, { lastMessageAt }),
       buildWorldContext(),
       buildMemoryContext(query),
       ragBlock,
