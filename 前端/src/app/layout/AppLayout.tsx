@@ -10,6 +10,7 @@ import { ChatPage } from '@/features/chat/ChatPage';
 import { Drawer } from '@/features/shell/Drawer';
 import { LetterReaderLayer } from '@/features/notes/LetterReaderLayer';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
+import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
 
 /**
  * 全局布局（双层结构）
@@ -64,6 +65,12 @@ export function AppLayout() {
     root.style.setProperty('--primary', hsl);
     root.style.setProperty('--ring', hsl);
   }, [accent]);
+
+  // 开源项目红点：启动时后台查一次（后端有缓存），失败则红点回退到 localStorage 上次计数
+  const loadOpenSource = useOpenSourceStore((s) => s.load);
+  useEffect(() => {
+    void loadOpenSource();
+  }, [loadOpenSource]);
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">

@@ -1,14 +1,15 @@
 import { create } from 'zustand';
 import { listNotes, createNote, deleteNote } from '@/lib/api/home';
 import { newId } from '@/lib/id';
-import type { InspirationNote } from './notesData';
+import type { InspirationNote, LetterTheme } from './notesData';
 
 interface NotesState {
   notes: InspirationNote[]; // 全部来信，新→旧
   loaded: boolean;
   readIds: string[]; // 已拆开读过的（全部页里显示成展开的信纸）
   load: () => Promise<void>;
-  addNote: (content: string) => Promise<void>; // 手动补一封（导入/兜底用）
+  /** 手动补一封（导入/兜底用）；`letterTheme` 不传即为 default */
+  addNote: (content: string, letterTheme?: LetterTheme) => Promise<void>;
   removeNote: (id: string) => void;
   markRead: (id: string) => void;
 }
@@ -54,10 +55,15 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
   },
 
-  addNote: async (content) => {
+  addNote: async (content, letterTheme = 'default') => {
     const text = content.trim();
     if (!text) return;
-    const note: InspirationNote = { id: newId(), content: text, createdAt: Date.now() };
+    const note: InspirationNote = {
+      id: newId(),
+      content: text,
+      createdAt: Date.now(),
+      letterTheme,
+    };
     set((s) => ({ notes: [note, ...s.notes] }));
     try {
       await createNote(note);

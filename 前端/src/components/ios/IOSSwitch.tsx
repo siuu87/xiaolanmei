@@ -32,7 +32,7 @@ export function IOSSwitch({ checked, defaultChecked, onCheckedChange, disabled, 
       disabled={disabled}
       className={cn(
         'relative h-8 w-14 shrink-0 rounded-full transition-colors duration-200',
-        isChecked ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700',
+        isChecked ? 'bg-green-500' : 'bg-muted',
         disabled && 'opacity-50',
       )}
     >

@@ -6,8 +6,11 @@ import { PageShell } from '@/components/PageShell';
 import { getDish, type Dish, type DishIngredient } from '@/lib/api/dishes';
 import { AppleEmoji } from '@/components/AppleEmoji';
 import { useDishStore } from './dishStore';
-import { MangoKick } from './MangoKick';
-import { SUBSTITUTE_MAP, checkMango, tagClass, tagEmoji } from './foodData';
+import { AllergenKick } from './AllergenKick';
+import { SUBSTITUTE_MAP, tagClass, tagEmoji } from './foodData';
+import { useDietStore } from '@/features/diet/dietStore';
+import { matchDietHits } from '@/features/diet/dietHits';
+import { DietBadge } from '@/features/diet/DietBadge';
 
 /** 食材行：命中 SUBSTITUTE_MAP 时可展开替代建议 */
 function IngredientRow({ ing }: { ing: DishIngredient }) {
@@ -45,6 +48,7 @@ export function FoodDetailPage() {
   const fromStore = useDishStore((s) => s.dishes.find((d) => d.id === id));
   const [dish, setDish] = useState<Dish | null>(fromStore ?? null);
   const [kick, setKick] = useState(0);
+  const dietProfile = useDietStore((s) => s.profile);
 
   useEffect(() => {
     if (!id || fromStore) return;
@@ -52,12 +56,25 @@ export function FoodDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, fromStore]);
 
-  const hasMango = useMemo(() => {
-    if (!dish) return false;
-    return checkMango([dish.name, dish.description ?? '', ...dish.ingredients.map((i) => i.name)].join(' '));
-  }, [dish]);
+  useEffect(() => {
+    void useDietStore.getState().load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const triggerMango = () => setKick((t) => t + 1);
+  /**
+   * 这道菜命中了哪些忌口 / 过敏源 —— **从动态档案里算**，这里不写死任何食物名。
+   * 菜名、描述、用料一起扫，命中就显示对应级别的胶囊。
+   */
+  const dietHits = useMemo(() => {
+    if (!dish) return [];
+    return matchDietHits(
+      [dish.name, dish.description ?? '', ...dish.ingredients.map((i) => i.name)].join(' '),
+      dietProfile,
+    );
+  }, [dish, dietProfile]);
+  const allergyHits = dietHits.filter((h) => h.level === 'allergy');
+
+  const triggerKick = () => setKick((t) => t + 1);
 
   return (
     <PageShell
@@ -110,9 +127,14 @@ export function FoodDetailPage() {
               {dish.type === 'dessert' && (
                 <span className="flex items-center gap-0.5">治愈 <AppleEmoji emoji="🍬" className="h-3 w-3" /> {dish.healingIndex}</span>
               )}
-              {hasMango && (
-                <button type="button" onClick={triggerMango} className="flex items-center gap-0.5 rounded-full bg-pink-100 px-2 py-0.5 text-pink-600 transition hover:bg-pink-200 dark:bg-pink-950/50 dark:text-pink-300">
-                  <AppleEmoji emoji="🥭" className="h-3.5 w-3.5" /> 含芒果
+              {allergyHits.length > 0 && (
+                <button
+                  type="button"
+                  onClick={triggerKick}
+                  data-testid="food-allergen-kick"
+                  className="flex items-center gap-0.5 rounded-full bg-pink-100 px-2 py-0.5 text-pink-600 transition hover:bg-pink-200 dark:bg-pink-950/50 dark:text-pink-300"
+                >
+                  <AppleEmoji emoji="🚫" className="h-3.5 w-3.5" /> 含过敏源
                 </button>
               )}
             </div>
@@ -143,15 +165,25 @@ export function FoodDetailPage() {
             </ol>
           </section>
 
-          {hasMango && (
-            <p className="mt-6 rounded-xl bg-pink-50 p-3 text-center text-xs text-pink-600 dark:bg-pink-950/40 dark:text-pink-300">
-              ⚠️ 这道菜含芒果，小猫记得避开哦
-            </p>
+          {dietHits.length > 0 && (
+            <div
+              data-testid="food-diet-hits"
+              className="mt-6 flex flex-wrap items-center justify-center gap-1.5 rounded-xl bg-muted/50 p-3"
+            >
+              {dietHits.map((h) => (
+                <DietBadge key={`${h.level}:${h.name}`} hit={h} />
+              ))}
+              <span className="text-xs text-muted-foreground">这道菜有她要避开的东西</span>
+            </div>
           )}
         </>
       )}
 
-      <MangoKick trigger={kick} onClose={() => setKick(0)} />
+      <AllergenKick
+        trigger={kick}
+        name={allergyHits[0]?.name}
+        onClose={() => setKick(0)}
+      />
     </PageShell>
   );
 }

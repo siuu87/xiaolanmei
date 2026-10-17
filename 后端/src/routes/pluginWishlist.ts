@@ -1,34 +1,33 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { pluginWishlist } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 
 /**
- * 灵感待办池（BM 大方案模块③ / plugin_wishlist）。
- * 收集「灵感 / 心愿 / 待办」三类条目，支持增删改、完成态、手动排序。
- * kind: 'idea' 灵感 | 'wish' 心愿 | 'todo' 待办
+ * 灵感与待办池（Inbox & Todo 统一模块 / plugin_wishlist）。
+ *
+ * 2026-10-18 重构：由「三态 kind（idea/wish/todo）+ done」收敛为二态统一模型
+ * - `isTodo`    false = 灵感（Inbox）｜true = 待办任务（Todo）
+ * - `completed` 完成状态，`completedAt` 在完成时写入、取消完成时清空
+ *
+ * 排序：未完成在前、已完成沉底；组内按 sortOrder 升序、再按创建时间。
  */
-
-export type WishKind = 'idea' | 'wish' | 'todo';
-
-function isKind(v: unknown): v is WishKind {
-  return v === 'idea' || v === 'wish' || v === 'todo';
-}
 
 function toDTO(r: typeof pluginWishlist.$inferSelect) {
   return {
     id: r.id,
     content: r.content,
-    kind: (r.kind === 'wish' || r.kind === 'todo' ? r.kind : 'idea') as WishKind,
-    done: r.done,
+    isTodo: r.isTodo,
+    completed: r.completed,
+    completedAt: r.completedAt ?? null,
     sortOrder: r.sortOrder,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
 }
 
-/** 未完成在前（done=0），已完成沉底；同组内按 sortOrder 升序、再按创建时间。 */
+/** 未完成在前（completed=0），已完成沉底；同组内按 sortOrder 升序、再按创建时间。 */
 function listAll() {
   return db
     .select()
@@ -36,7 +35,7 @@ function listAll() {
     .all()
     .filter((r) => r.deletedAt == null)
     .sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
       if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
       return a.createdAt - b.createdAt;
     })
@@ -46,8 +45,9 @@ function listAll() {
 export async function pluginWishlistRoutes(app: FastifyInstance): Promise<void> {
   app.get('/plugin-wishlist', async () => listAll());
 
+  /** 快捷录入：回车即存。默认存为灵感（isTodo=false），传 isTodo=true 则存为待办。 */
   app.post('/plugin-wishlist', async (req, reply) => {
-    const body = (req.body ?? {}) as { id?: string; content?: string; kind?: string; done?: boolean };
+    const body = (req.body ?? {}) as { id?: string; content?: string; isTodo?: boolean };
     const content = body.content?.trim();
     if (!content) {
       reply.code(400).send({ message: 'content 必填' });
@@ -64,8 +64,9 @@ export async function pluginWishlistRoutes(app: FastifyInstance): Promise<void> 
       .values({
         id,
         content,
-        kind: isKind(body.kind) ? body.kind! : 'idea',
-        done: body.done ?? false,
+        isTodo: body.isTodo ?? false,
+        completed: false,
+        completedAt: null,
         sortOrder: maxRow + 10,
         createdAt: ts,
         updatedAt: ts,
@@ -78,14 +79,19 @@ export async function pluginWishlistRoutes(app: FastifyInstance): Promise<void> 
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as {
       content?: string;
-      kind?: string;
-      done?: boolean;
+      isTodo?: boolean;
+      completed?: boolean;
       sortOrder?: number;
     };
     const set: Record<string, unknown> = { updatedAt: now() };
     if (body.content !== undefined) set.content = body.content.trim();
-    if (body.kind !== undefined) set.kind = isKind(body.kind) ? body.kind : 'idea';
-    if (body.done !== undefined) set.done = body.done;
+    if (body.isTodo !== undefined) set.isTodo = !!body.isTodo;
+    if (body.completed !== undefined) {
+      const done = !!body.completed;
+      set.completed = done;
+      // 完成时记下时刻，取消完成则清空（不留悬空时间戳）
+      set.completedAt = done ? now() : null;
+    }
     if (body.sortOrder !== undefined) set.sortOrder = body.sortOrder;
 
     const result = db.update(pluginWishlist).set(set).where(eq(pluginWishlist.id, id)).run();
@@ -119,5 +125,16 @@ export async function pluginWishlistRoutes(app: FastifyInstance): Promise<void> 
         .run();
     });
     reply.send({ ok: true });
+  });
+
+  /** 一键清理（归档）已完成项：软删所有 completed=1 的条目，返回清理条数。 */
+  app.post('/plugin-wishlist/clear-completed', async () => {
+    const ts = now();
+    const result = db
+      .update(pluginWishlist)
+      .set({ deletedAt: ts, updatedAt: ts })
+      .where(and(eq(pluginWishlist.completed, true), isNull(pluginWishlist.deletedAt)))
+      .run();
+    return { ok: true, cleared: result.changes ?? 0 };
   });
 }

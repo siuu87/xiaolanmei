@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, Loader2, PenLine } from 'lucide-react';
 import { listMemos, createMemo, type MemoDTO } from '@/lib/api/memo';
 import { MemoBullet } from './MemoBullet';
+import { useDietStore } from '@/features/diet/dietStore';
+import { matchDietHits } from '@/features/diet/dietHits';
+import { DietHitBar } from '@/features/diet/DietBadge';
 
 /** 一次最多渲染这么多条，再多就提示去「备忘录」页看全部，免得折叠页里长到没边 */
 const MAX_ROWS = 30;
@@ -21,6 +24,7 @@ export function MemoSection() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const dietProfile = useDietStore((s) => s.profile);
 
   const load = () => {
     listMemos()
@@ -30,7 +34,16 @@ export function MemoSection() {
 
   useEffect(() => {
     load();
+    void useDietStore.getState().load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * 录入时即时提示（需求 §3）：草稿里提到她的忌口 / 过敏源就弹对应级别的胶囊。
+   * 记进去之后这条本身也会喂给档案解析（后端从备忘录正文里认标记词），
+   * 所以记完要重新拉一次档案。
+   */
+  const dietHits = useMemo(() => matchDietHits(draft, dietProfile), [draft, dietProfile]);
 
   const add = async () => {
     const content = draft.trim();
@@ -48,6 +61,8 @@ export function MemoSection() {
       });
       setDraft('');
       load();
+      // 这条可能就是新的忌口 / 过敏记录 → 档案要跟着变
+      void useDietStore.getState().load();
     } catch (e) {
       // 后端对重复内容返回 409，这里原样显示，不要吞掉
       setErr((e as Error).message || '记入失败');
@@ -74,6 +89,11 @@ export function MemoSection() {
           data-testid="memo-input"
           className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm leading-6 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         />
+        {dietHits.length > 0 && (
+          <div className="mt-2">
+            <DietHitBar hits={dietHits} hint="记下来之后，她在聊天里会自动避开" />
+          </div>
+        )}
         <div className="mt-2 flex items-center gap-2">
           <button
             type="button"

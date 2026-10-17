@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useNotesStore } from './notesStore';
-import { NOTE_AUTHOR, formatNoteDate } from './notesData';
-import { EnvelopeFlap, ENVELOPE_BG, PAPER_BG } from './LetterArt';
+import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme } from './notesData';
+import { EnvelopeFlap, letterParts } from './LetterArt';
 
 /**
  * 一封来信的独立页面：叠在侧边栏（抽屉）之上，居中，点空白处收起。
@@ -14,6 +14,8 @@ import { EnvelopeFlap, ENVELOPE_BG, PAPER_BG } from './LetterArt';
  *   还盖不住抽屉。层级 z-[1400]（抽屉 1200 / 外观浮层 1300）。
  * - **展开动画**：信纸从信封口「抽出来」——origin 落在底部，scaleY 0.03 → 1
  *   配合向上位移，终态是信纸居中、信封在背后露出一截（跟全部页的已读态同一套视觉）。
+ * - **信封主题**：信封 / 信纸 / 火漆 / 墨色整套按 `note.letterTheme` 换，
+ *   主题配色集中在 `LetterArt.tsx` 的 `LETTER_THEME_PARTS` 一张表里。
  */
 export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => void }) {
   const notes = useNotesStore((s) => s.notes);
@@ -32,11 +34,15 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
   }, [id, markRead]);
 
   const note = notes.find((n) => n.id === id) ?? null;
+  // 信还没取到时也要有套配色（空态信纸按 default 画），取到后按它自己的主题渲染
+  const theme = normalizeLetterTheme(note?.letterTheme);
+  const parts = letterParts(theme);
 
   return createPortal(
     <div
       className="fixed inset-0 z-[1400] flex items-center justify-center p-6"
       data-testid="letter-page"
+      data-letter-theme={theme}
     >
       {/* 空白遮罩：点它 = 收起返回 */}
       <motion.div
@@ -55,7 +61,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
         <motion.div
           className={cn(
             'absolute -inset-x-3 bottom-[-16px] h-[96px] overflow-hidden rounded-[4px]',
-            ENVELOPE_BG,
+            parts.envelope,
             'shadow-[0_12px_30px_rgba(0,0,0,0.5)]',
           )}
           initial={{ opacity: 0, y: 24 }}
@@ -64,7 +70,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
           transition={{ duration: 0.2 }}
           data-testid="letter-page-envelope"
         >
-          <EnvelopeFlap sealClass="h-6 w-6 text-[11px]" />
+          <EnvelopeFlap theme={theme} sealClass="h-6 w-6 text-[11px]" />
         </motion.div>
 
         {/* 信纸：从信封口抽出来 */}
@@ -78,14 +84,17 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
             style={{ transformOrigin: 'bottom center' }}
             className={cn(
               'relative z-10 max-h-[60vh] overflow-y-auto rounded-[4px] px-5 py-6',
-              'text-[#4a4034] shadow-[0_16px_44px_rgba(0,0,0,0.5)]',
-              PAPER_BG,
+              'shadow-[0_16px_44px_rgba(0,0,0,0.5)]',
+              parts.paper,
+              parts.ink,
             )}
           >
             <p className="whitespace-pre-wrap text-[14px] leading-7">{note.content}</p>
             <div className="mt-6 flex flex-col items-end gap-0.5">
-              <span className="text-[11px] text-[#8a7f6d]">{formatNoteDate(note.createdAt)}</span>
-              <span className="text-[11px] text-[#6f6555]">{NOTE_AUTHOR}</span>
+              <span className={cn('text-[11px]', parts.meta)}>
+                {formatNoteDate(note.createdAt)}
+              </span>
+              <span className={cn('text-[11px] opacity-80', parts.meta)}>{NOTE_AUTHOR}</span>
             </div>
           </motion.div>
         ) : (
@@ -93,8 +102,9 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
             data-testid="letter-paper"
             className={cn(
               'relative z-10 flex h-32 items-center justify-center rounded-[4px] px-5',
-              'text-[12px] text-[#8a7f6d] shadow-[0_16px_44px_rgba(0,0,0,0.5)]',
-              PAPER_BG,
+              'text-[12px] shadow-[0_16px_44px_rgba(0,0,0,0.5)]',
+              parts.paper,
+              parts.meta,
             )}
           >
             {loaded ? '这封信找不到了' : '取信中…'}

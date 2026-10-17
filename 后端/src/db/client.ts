@@ -283,12 +283,16 @@ CREATE TABLE IF NOT EXISTS todos (
 CREATE TABLE IF NOT EXISTS plugin_wishlist (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
-  kind TEXT NOT NULL DEFAULT 'idea',
-  done INTEGER NOT NULL DEFAULT 0,
+  is_todo INTEGER NOT NULL DEFAULT 0,
+  completed INTEGER NOT NULL DEFAULT 0,
+  completed_at INTEGER,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  deleted_at INTEGER
+  deleted_at INTEGER,
+  -- ↓ 遗留列：仅旧数据回填用（三态 kind + done），新代码读写 is_todo / completed
+  kind TEXT,
+  done INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS memorials (
@@ -305,6 +309,7 @@ CREATE TABLE IF NOT EXISTS memorials (
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
+  letter_theme TEXT NOT NULL DEFAULT 'default',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -733,5 +738,112 @@ export function initDatabase(): void {
   } else {
     sqlite.exec(`UPDATE rag_documents SET status = 'archived' WHERE status = 'organized'`);
     sqlite.exec(`UPDATE rag_documents SET status = 'unfiled' WHERE status = 'draft'`);
+  }
+
+  /**
+   * 幂等迁移（2026-10-18）：灵感待办池由「三态 kind + done」重构为「二态 is_todo + completed」。
+   * 顺序不能反：回填的 UPDATE 会引用 completed / completed_at，必须先补齐三列。
+   */
+  const wishCols = sqlite.prepare(`PRAGMA table_info(plugin_wishlist)`).all() as { name: string }[];
+  const wishMigrated = wishCols.some((c) => c.name === 'is_todo');
+  if (!wishMigrated) {
+    sqlite.exec(`ALTER TABLE plugin_wishlist ADD COLUMN is_todo INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!wishCols.some((c) => c.name === 'completed')) {
+    sqlite.exec(`ALTER TABLE plugin_wishlist ADD COLUMN completed INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!wishCols.some((c) => c.name === 'completed_at')) {
+    sqlite.exec(`ALTER TABLE plugin_wishlist ADD COLUMN completed_at INTEGER`);
+  }
+  // 幂等迁移（2026-10-18）：信件（notes）补信封主题列 letter_theme
+  const noteCols = sqlite.prepare(`PRAGMA table_info(notes)`).all() as { name: string }[];
+  if (!noteCols.some((c) => c.name === 'letter_theme')) {
+    sqlite.exec(`ALTER TABLE notes ADD COLUMN letter_theme TEXT NOT NULL DEFAULT 'default'`);
+  }
+
+  // 只在「首次新增 is_todo」时回填一次 —— 否则每次启动都会把用户之后的改动覆盖回旧值
+  if (!wishMigrated) {
+    sqlite.exec(`
+      UPDATE plugin_wishlist SET
+        is_todo = CASE WHEN kind = 'todo' THEN 1 ELSE 0 END,
+        completed = CASE WHEN COALESCE(done, 0) = 1 THEN 1 ELSE 0 END,
+        completed_at = CASE WHEN COALESCE(done, 0) = 1 THEN updated_at ELSE NULL END
+    `);
+  }
+
+  migrateDietPersonaVars(sqlite);
+}
+
+/**
+ * 幂等迁移（2026-10-18）：人设模块四补**结构化的饮食变量**。
+ *
+ * 为什么不能直接改 `PERSONA_MODULES` 就完事：`seedPersonaModules()` 默认**只补缺失**，
+ * 已经装过的库里模块四早就存在，新变量根本不会被写进去 —— 于是
+ * `{{diet_dislikes}}` / `{{diet_allergies}}` 会渲染成空字符串，徽章也永远是空的。
+ * 所以老库要靠这条迁移补键。
+ *
+ * 规矩：
+ * - **只补缺失的键**，已经存在的（用户自己改过的）一律不动；
+ * - 旧变量 `diet_taboos` 那句自由文本当作 `diet_dislikes` 的初值（里面就写着忌口）；
+ * - 正文只在**仍是旧版原样**时才替换，用户改过就不碰。
+ */
+function migrateDietPersonaVars(conn: Database.Database): void {
+  const MODULE4 = '模块四 · 用户专属事实备忘库';
+  const OLD_BLOCK = `- **绝对忌口与强过敏源：芒果。这是硬拦截，不是偏好。**
+  · 不推荐、不提及、不做芒果相关的东西（芒果西米露、芒果奶昔在库里但对她不可用）。
+  · 她想吃甜品时自动排除芒果类，换成草莓／香草／可可方向。
+  · 她坚持要吃时，先提醒一句风险，再把话说软，**不训她**。
+- **其他忌口**：{{diet_taboos}}`;
+  const NEW_BLOCK = `- **忌口（不想吃 / 要避开，不是过敏）**：{{diet_dislikes}}
+  · 推荐菜、买食材、点外卖时主动避开这些，不主动提及。
+  · 她坚持要吃时提醒一句就好，**不训她**。
+- **过敏源（硬拦截，不是偏好）**：{{diet_allergies}}
+  · 不推荐、不提及、不做含这些食材的东西。
+  · 命中时**必须明确提醒风险**，再把话说软。
+  · 下面两项为空 = 她没有忌口 / 没有过敏源，不要自己编一个出来。`;
+
+  const rows = conn
+    .prepare(`SELECT id, content, variables FROM prompts WHERE name = ? AND deleted_at IS NULL`)
+    .all(MODULE4) as { id: string; content: string; variables: string | null }[];
+
+  for (const row of rows) {
+    let vars: Record<string, unknown> = {};
+    try {
+      const parsed = row.variables ? JSON.parse(row.variables) : null;
+      if (parsed && typeof parsed === 'object') vars = parsed as Record<string, unknown>;
+    } catch {
+      vars = {};
+    }
+
+    let dirty = false;
+    if (!('diet_dislikes' in vars)) {
+      // 旧版只有一句 diet_taboos 自由文本，拿它当忌口初值
+      const legacy = typeof vars.diet_taboos === 'string' ? vars.diet_taboos : '';
+      // 旧值形如「冰的少喝，尤其经期前后；不碰芒果。」——「不碰 X」那段已经归到过敏源了，
+      // 这里只留前半句忌口，并把结尾残留的分隔符一并削掉。
+      vars.diet_dislikes = legacy
+        .replace(/[；;、]\s*不碰[^，。；、]*/g, '')
+        .replace(/[，。；、;,.]\s*$/g, '')
+        .trim();
+      dirty = true;
+    }
+    if (!('diet_allergies' in vars)) {
+      // 旧正文里明写着过敏源，挑出来；挑不到就留空（空 = 没有，绝不猜）
+      const m = /绝对忌口与强过敏源[：:]\s*([^。\n]+)/.exec(row.content ?? '');
+      vars.diet_allergies = m ? m[1].replace(/。这是硬拦截.*$/, '').trim() : '';
+      dirty = true;
+    }
+    if (dirty) {
+      conn
+        .prepare(`UPDATE prompts SET variables = ?, updated_at = ? WHERE id = ?`)
+        .run(JSON.stringify(vars), Date.now(), row.id);
+    }
+
+    // 正文只在「原样是旧版」时换，避免覆盖用户的手工编辑
+    if ((row.content ?? '').includes(OLD_BLOCK)) {
+      conn
+        .prepare(`UPDATE prompts SET content = ?, updated_at = ? WHERE id = ?`)
+        .run((row.content as string).replace(OLD_BLOCK, NEW_BLOCK), Date.now(), row.id);
+    }
   }
 }

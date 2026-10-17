@@ -28,7 +28,7 @@ function MoodRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-6 shrink-0 text-[11px] text-[#8b93a8]">{who}</span>
+      <span className="w-6 shrink-0 text-[11px] text-muted-foreground">{who}</span>
       <div className="flex flex-1 items-center justify-around">
         {MOODS.map((m) => {
           const on = value === m.key;
@@ -47,8 +47,8 @@ function MoodRow({
                 'relative flex h-11 w-11 items-center justify-center rounded-full',
                 'border transition-colors duration-300',
                 on
-                  ? 'border-white/25 bg-white/[0.06]'
-                  : 'border-white/[0.08] bg-white/[0.02] hover:border-white/15',
+                  ? 'border-foreground/25 bg-foreground/[0.06]'
+                  : 'border-border bg-foreground/[0.02] hover:border-foreground/15',
               )}
             >
               {/* 选中时的柔和淡光晕 */}
@@ -105,7 +105,7 @@ export function MoodCard() {
   return (
     <div className="px-1 py-1">
       {/* 标题：纤细衬线 + 浅灰白 */}
-      <p className={cn('font-serif font-light tracking-wide text-[#c9cede]', 'text-[13px] sm:text-sm')}>
+      <p className={cn('font-serif font-light tracking-wide text-foreground', 'text-[13px] sm:text-sm')}>
         {title}
       </p>
 

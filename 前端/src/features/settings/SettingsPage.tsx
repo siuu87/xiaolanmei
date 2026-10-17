@@ -257,11 +257,11 @@ export function SettingsPage() {
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-900 transition hover:bg-black/5 dark:text-gray-100 dark:hover:bg-white/10"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-foreground/5"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="pointer-events-none absolute inset-x-0 text-center text-[17px] font-semibold text-gray-900 dark:text-gray-100">
+          <div className="pointer-events-none absolute inset-x-0 text-center text-[17px] font-semibold text-foreground">
             设置
           </div>
         </div>
@@ -292,7 +292,7 @@ export function SettingsPage() {
           onClick={() => toggle('memo')}
         />
         {expanded === 'memo' && (
-          <div className="bg-gray-50/60 px-4 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-4 py-3">
             {recent.length ? (
               <div className="space-y-2">
                 {recent.map((m) => {
@@ -305,10 +305,10 @@ export function SettingsPage() {
                       className="flex w-full items-center gap-2 text-left"
                     >
                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: meta.dot }} />
-                      <span className="min-w-0 flex-1 truncate text-[14px] text-gray-800 dark:text-gray-200">
+                      <span className="min-w-0 flex-1 truncate text-[14px] text-foreground">
                         {m.title}
                       </span>
-                      <span className="shrink-0 text-[12px] text-gray-400 dark:text-zinc-500">
+                      <span className="shrink-0 text-[12px] text-muted-foreground">
                         {fmtTime(m.updatedAt)}
                       </span>
                     </button>
@@ -323,7 +323,7 @@ export function SettingsPage() {
                 </button>
               </div>
             ) : (
-              <p className="text-[13px] text-gray-400 dark:text-zinc-500">还没有备忘录，聊天时会自动帮你记。</p>
+              <p className="text-[13px] text-muted-foreground">还没有备忘录，聊天时会自动帮你记。</p>
             )}
           </div>
         )}
@@ -349,7 +349,7 @@ export function SettingsPage() {
           onClick={() => toggle('skills')}
         />
         {expanded === 'skills' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-3 py-3">
             <SkillsPanel />
           </div>
         )}
@@ -362,7 +362,7 @@ export function SettingsPage() {
           onClick={() => toggle('prompts')}
         />
         {expanded === 'prompts' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-3 py-3">
             <PromptsPanel />
           </div>
         )}
@@ -375,7 +375,7 @@ export function SettingsPage() {
           onClick={() => toggle('memory')}
         />
         {expanded === 'memory' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-3 py-3">
             <MemoryPanel />
           </div>
         )}
@@ -388,7 +388,7 @@ export function SettingsPage() {
         同一个组件、同一份 localStorage 数据——在这儿改记忆/备份/主题，小手机里立刻一样，反之亦然。
       */}
       <IOSSettingGroup title="数据中枢">
-        <p className="px-4 py-2.5 text-[11px] leading-relaxed text-gray-500 dark:text-zinc-400">
+        <p className="px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
           和小手机「中枢」是同一套界面与同一份数据：存储占用、主角可见上下文、记忆区、快照备份。外观已单独提到上方。
         </p>
         <div className="h-[600px] overflow-hidden">
@@ -410,16 +410,16 @@ export function SettingsPage() {
           onClick={() => toggle('period')}
         />
         {expanded === 'period' && (
-          <div className="bg-gray-50/60 px-4 py-3 dark:bg-zinc-950/40">
-            <p className="text-[13px] leading-6 text-gray-500 dark:text-zinc-400">
+          <div className="bg-muted/60 px-4 py-3">
+            <p className="text-[13px] leading-6 text-muted-foreground">
               {periodCare}
             </p>
             {next && (
-              <p className="mt-1 text-[13px] text-gray-400 dark:text-zinc-500">
+              <p className="mt-1 text-[13px] text-muted-foreground">
                 预测下次经期：{next}
               </p>
             )}
-            <p className="mt-2 text-[12px] text-gray-400 dark:text-zinc-600">
+            <p className="mt-2 text-[12px] text-muted-foreground">
               在「首页 → 日历」里点选日期即可标记经期。
             </p>
           </div>
@@ -446,7 +446,7 @@ export function SettingsPage() {
           onClick={() => toggle('profiles')}
         />
         {expanded === 'profiles' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-3 py-3">
             <ProfilesSection />
           </div>
         )}
@@ -460,9 +460,9 @@ export function SettingsPage() {
           onClick={() => toggle('model')}
         />
         {expanded === 'model' && (
-          <div className="space-y-3 bg-gray-50/60 px-4 py-4 dark:bg-zinc-950/40">
+          <div className="space-y-3 bg-muted/60 px-4 py-4">
             <div>
-              <label className="mb-1 block text-[13px] text-gray-500 dark:text-zinc-400">温度（0–2）</label>
+              <label className="mb-1 block text-[13px] text-muted-foreground">温度（0–2）</label>
               <input
                 type="number"
                 min={0}
@@ -474,7 +474,7 @@ export function SettingsPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[13px] text-gray-500 dark:text-zinc-400">识图模型（可选）</label>
+              <label className="mb-1 block text-[13px] text-muted-foreground">识图模型（可选）</label>
               <div className="flex gap-2">
                 <select
                   value={form.visionStationId}
@@ -526,9 +526,9 @@ export function SettingsPage() {
           onClick={() => toggle('stations')}
         />
         {expanded === 'stations' && (
-          <div className="space-y-3 bg-gray-50/60 px-4 py-4 dark:bg-zinc-950/40">
+          <div className="space-y-3 bg-muted/60 px-4 py-4">
             {stations.map((s) => (
-              <div key={s.id} className="rounded-xl border bg-white p-3 dark:bg-zinc-900">
+              <div key={s.id} className="rounded-xl border bg-card p-3">
                 <div className="flex items-center gap-1.5">
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.name}</span>
                   {s.isDefault && (
@@ -597,7 +597,7 @@ export function SettingsPage() {
             )}
 
             {editing ? (
-              <div className="space-y-2 rounded-xl border border-primary/40 bg-white p-3 dark:bg-zinc-900">
+              <div className="space-y-2 rounded-xl border border-primary/40 bg-card p-3">
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">名称</label>
                   <input
@@ -682,7 +682,7 @@ export function SettingsPage() {
           onClick={() => toggle('stickers')}
         />
         {expanded === 'stickers' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-3 py-3">
             <StickerSettings />
           </div>
         )}
@@ -696,7 +696,7 @@ export function SettingsPage() {
           onClick={() => toggle('sync')}
         />
         {expanded === 'sync' && (
-          <div className="bg-gray-50/60 px-3 py-3 dark:bg-zinc-950/40">
+          <div className="bg-muted/60 px-3 py-3">
             <SyncPanel />
           </div>
         )}

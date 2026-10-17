@@ -247,21 +247,35 @@ export const todos = sqliteTable('todos', {
 });
 
 /**
- * 灵感待办池（BM 大方案模块③ / plugin_wishlist）：灵感 / 心愿 / 待办 的收集池。
- * - kind: 'idea' 灵感 | 'wish' 心愿 | 'todo' 待办
- * - done: 是否完成（心愿/待办用，灵感也可随手勾掉）
- * - sortOrder: 用户手动排序，越小越靠前
+ * 灵感与待办池（Inbox & Todo 统一模块 / plugin_wishlist）。
+ *
+ * 2026-10-18 重构：原三态 `kind`（idea/wish/todo）+ `done` 收敛为二态统一模型：
+ * - `isTodo`  false = 灵感（Inbox）｜true = 待办任务（Todo）
+ * - `completed` 完成状态，`completedAt` 记完成时刻（未完成为 null）
+ * - `sortOrder` 手动排序，越小越靠前
+ *
+ * `kind` / `done` 降级为**遗留列**：只用于旧库一次性回填，业务代码不再读写。
  */
 export const pluginWishlist = sqliteTable('plugin_wishlist', {
   id: text('id').primaryKey(),
   content: text('content').notNull(),
-  kind: text('kind').notNull().default('idea'),
-  done: integer('done', { mode: 'boolean' }).notNull().default(false),
+  isTodo: integer('is_todo', { mode: 'boolean' }).notNull().default(false),
+  completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+  completedAt: integer('completed_at'),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
 });
+
+/**
+ * ⚠️ 库里还有 `kind` / `done` 两列（旧三态模型的遗留列），但**故意不声明在 drizzle schema 里**。
+ *
+ * 原因：drizzle 生成 INSERT 时会为「已声明但未提供」的列显式写 NULL；真库的
+ * `kind` 是 `NOT NULL DEFAULT 'idea'`，一旦声明就会被写成 NULL → NOT NULL 约束报错。
+ * 不声明 → drizzle 完全不碰这两列，插入时由 SQLite 套用自己的 DEFAULT，相安无事。
+ * 它们只由 client.ts 里的一次性回填 SQL 读取，业务代码一律不读写。
+ */
 
 /** 纪念日（阶段 7 收尾）：repeat 为 none/year/month/day */
 export const memorials = sqliteTable('memorials', {
@@ -275,10 +289,18 @@ export const memorials = sqliteTable('memorials', {
   deletedAt: integer('deleted_at'),
 });
 
-/** 灵感便签（阶段 7 收尾）：AI 每日一签，created_at 即生成时间戳(ms) */
+/**
+ * 灵感便签 / 深夜来信（阶段 7 收尾）：AI 每日一签，created_at 即生成时间戳(ms)。
+ *
+ * `letterTheme` = 信封主题（`default` 极简素雅 | `memorial` 纪念日 | `night` 深色磨砂星空），
+ * 前端信箱按它渲染不同样式的信封与拆信视觉。
+ * ⚠️ 必须带 `.default('default')`：drizzle 对「已声明但未提供」的列会显式写 NULL，
+ * 没有默认值就会撞 NOT NULL（见 MEMORY.md 硬规则 §10）。
+ */
 export const notes = sqliteTable('notes', {
   id: text('id').primaryKey(),
   content: text('content').notNull(),
+  letterTheme: text('letter_theme').notNull().default('default'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

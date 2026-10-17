@@ -43,7 +43,7 @@ export function Drawer() {
           <div className="fixed inset-0 z-[1200] md:hidden" data-testid="main-drawer">
             {/* 背板：纯色不透明，底下的页面不透出来 */}
             <motion.div
-              className="absolute inset-0 bg-[#0f1424]"
+              className="absolute inset-0 bg-background"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -52,7 +52,7 @@ export function Drawer() {
             />
             {/* 面板 */}
             <motion.div
-              className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col border-r border-white/10 bg-[#0f1424] shadow-2xl"
+              className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col border-r border-border bg-background shadow-2xl"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
@@ -60,12 +60,12 @@ export function Drawer() {
             >
               {/* 顶部小把手行 */}
               <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-3">
-                <span className="font-serif text-[15px] font-semibold text-[#e8ecf6]">🫐 小蓝莓</span>
+                <span className="font-serif text-[15px] font-semibold text-foreground">🫐 小蓝莓</span>
                 <button
                   type="button"
                   onClick={closeDrawer}
                   aria-label="关闭抽屉"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.08] hover:text-white"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -91,24 +91,24 @@ export function Drawer() {
       {/* 外观页（齿轮）：整页纯色，直接复用「我」页那一套外观设置，不重造 */}
       <AnimatePresence>
         {appearanceOpen && (
-          <div className="fixed inset-0 z-[1300] flex flex-col bg-[#0f1424]" data-testid="appearance-sheet">
+          <div className="fixed inset-0 z-[1300] flex flex-col bg-background" data-testid="appearance-sheet">
             <motion.div
-              className="flex h-full w-full flex-col overflow-hidden bg-[#0f1424]"
+              className="flex h-full w-full flex-col overflow-hidden bg-background"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 360, damping: 32 }}
             >
-              <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.08] px-2.5 py-2.5">
+              <div className="flex shrink-0 items-center gap-1 border-b border-border px-2.5 py-2.5">
                 <button
                   type="button"
                   onClick={closeAppearance}
                   aria-label="返回"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#a8b0c4] transition hover:bg-white/[0.08]"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <p className="flex-1 text-center text-[15px] font-semibold text-[#e8ecf6]">外观与全局配置</p>
+                <p className="flex-1 text-center text-[15px] font-semibold text-foreground">外观与全局配置</p>
                 <span className="h-8 w-8 shrink-0" aria-hidden />
               </div>
               <div

@@ -1,4 +1,5 @@
 import { request } from './conversations';
+import type { DietHit } from '@/features/diet/dietHits';
 
 // ---- 今天吃什么 类型与 API ----
 
@@ -60,7 +61,7 @@ export const randomDish = (type: DishType) =>
 export const searchDishes = (q: string) =>
   request<Dish[]>(`/api/dishes/search?q=${encodeURIComponent(q)}`);
 export const checkAllergen = (text: string) =>
-  request<{ hasMango: boolean }>('/api/dishes/check-allergen', {
+  request<{ hits: DietHit[]; hasAllergen: boolean }>('/api/dishes/check-allergen', {
     method: 'POST',
     body: JSON.stringify({ text }),
   });

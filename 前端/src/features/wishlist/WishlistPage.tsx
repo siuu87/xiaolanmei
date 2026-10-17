@@ -1,37 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Lightbulb, Plus, Sparkles, Trash2, ListChecks } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Lightbulb, ListChecks, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
 
-type WishKind = 'idea' | 'wish' | 'todo';
+/**
+ * 灵感与待办池（Inbox & Todo 统一模块）。
+ *
+ * 2026-10-18 重构：原来三态（灵感/心愿/待办）收敛为二态：
+ * - `isTodo=false` 灵感（Inbox）｜`isTodo=true` 待办（Todo）
+ * - 待办可勾选完成 → 划线 + 降透明度；已完成项沉底，可一键清理
+ * 顶部输入框回车即存为一条新灵感，左侧图标一键在「灵感 ↔ 待办」间切换。
+ */
 
 interface WishItem {
   id: string;
   content: string;
-  kind: WishKind;
-  done: boolean;
+  isTodo: boolean;
+  completed: boolean;
+  completedAt: number | null;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
 
-const KIND_META: Record<WishKind, { label: string; dot: string; icon: typeof Lightbulb }> = {
-  idea: { label: '灵感', dot: 'bg-violet-500', icon: Lightbulb },
-  wish: { label: '心愿', dot: 'bg-amber-500', icon: Sparkles },
-  todo: { label: '待办', dot: 'bg-sky-500', icon: ListChecks },
-};
-
-const KIND_ORDER: WishKind[] = ['idea', 'wish', 'todo'];
 const API = '/api/plugin-wishlist';
-
-type Filter = 'all' | 'active' | 'done';
+type Filter = 'all' | 'active' | 'completed';
 
 export function WishlistPage() {
   const [items, setItems] = useState<WishItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [addText, setAddText] = useState('');
-  const [addKind, setAddKind] = useState<WishKind>('idea');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
@@ -48,19 +47,25 @@ export function WishlistPage() {
     refresh();
   }, [refresh]);
 
+  /** 未完成在前、已完成沉底；组内按 sortOrder 再按创建时间（与后端排序一致） */
   const displayed = useMemo(() => {
     const list =
-      filter === 'active' ? items.filter((i) => !i.done) : filter === 'done' ? items.filter((i) => i.done) : items;
+      filter === 'active'
+        ? items.filter((i) => !i.completed)
+        : filter === 'completed'
+          ? items.filter((i) => i.completed)
+          : items;
     return [...list].sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
       if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
       return a.createdAt - b.createdAt;
     });
   }, [items, filter]);
 
-  const activeCount = items.filter((i) => !i.done).length;
+  const activeCount = items.filter((i) => !i.completed).length;
   const doneCount = items.length - activeCount;
 
+  /** 快捷录入：回车即存，默认存为灵感 */
   const addItem = async () => {
     const content = addText.trim();
     if (!content) return;
@@ -68,12 +73,15 @@ export function WishlistPage() {
     const r = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, kind: addKind }),
+      body: JSON.stringify({ content, isTodo: false }),
     });
     if (r.ok) refresh();
   };
 
-  const patchItem = async (id: string, patch: Partial<Pick<WishItem, 'content' | 'kind' | 'done'>>) => {
+  const patchItem = async (
+    id: string,
+    patch: Partial<Pick<WishItem, 'content' | 'isTodo' | 'completed'>>,
+  ) => {
     await fetch(`${API}/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -87,12 +95,18 @@ export function WishlistPage() {
     refresh();
   };
 
+  /** 一键清理（归档）已完成项 */
+  const clearCompleted = async () => {
+    if (doneCount === 0) return;
+    await fetch(`${API}/clear-completed`, { method: 'POST' });
+    refresh();
+  };
+
   const move = async (index: number, dir: -1 | 1) => {
     const target = index + dir;
     if (target < 0 || target >= displayed.length) return;
     const next = [...displayed];
     [next[index], next[target]] = [next[target], next[index]];
-    // 乐观更新展示顺序
     setItems((prev) => {
       const map = new Map(next.map((it, i) => [it.id, { ...it, sortOrder: i * 10 }]));
       return prev.map((it) => map.get(it.id) ?? it);
@@ -108,58 +122,37 @@ export function WishlistPage() {
   return (
     <PageShell
       title="灵感待办池"
-      eyebrow="WISHLIST"
+      eyebrow="INBOX & TODO"
       right={
         <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">
           未完成 {activeCount} · 已完成 {doneCount}
         </span>
       }
     >
-      {/* 添加条 */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <input
-            value={addText}
-            onChange={(e) => setAddText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addItem()}
-            placeholder="记一条灵感 / 心愿 / 待办…"
-            className="h-10 flex-1 rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-muted/80"
-          />
-          <button
-            type="button"
-            onClick={addItem}
-            disabled={!addText.trim()}
-            aria-label="添加"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex gap-1.5">
-          {KIND_ORDER.map((k) => {
-            const m = KIND_META[k];
-            const on = addKind === k;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setAddKind(k)}
-                className={cn(
-                  'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] transition',
-                  on ? 'bg-foreground/10 text-foreground' : 'bg-muted/50 text-muted-foreground',
-                )}
-              >
-                <span className={cn('h-1.5 w-1.5 rounded-full', m.dot)} />
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* 快捷录入：极简输入框，回车即存为灵感 */}
+      <div className="flex items-center gap-2">
+        <input
+          value={addText}
+          onChange={(e) => setAddText(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addItem()}
+          placeholder="记一条灵感，回车即存…"
+          aria-label="快捷录入"
+          className="h-11 flex-1 rounded-2xl border border-border/60 bg-card/60 px-4 text-sm text-foreground outline-none backdrop-blur-sm placeholder:text-muted-foreground/60 focus:border-primary/60"
+        />
+        <button
+          type="button"
+          onClick={addItem}
+          disabled={!addText.trim()}
+          aria-label="添加"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
       </div>
 
-      {/* 过滤 */}
-      <div className="mt-4 flex gap-1.5">
-        {(['all', 'active', 'done'] as Filter[]).map((f) => (
+      {/* 过滤 + 一键清理 */}
+      <div className="mt-3 flex items-center gap-1.5">
+        {(['all', 'active', 'completed'] as Filter[]).map((f) => (
           <button
             key={f}
             type="button"
@@ -172,45 +165,72 @@ export function WishlistPage() {
             {f === 'all' ? '全部' : f === 'active' ? '未完成' : '已完成'}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={clearCompleted}
+          disabled={doneCount === 0}
+          className="ml-auto flex items-center gap-1 rounded-full px-3 py-1 text-[12px] text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          清理已完成
+        </button>
       </div>
 
-      {/* 列表 */}
+      {/* 卡片流 */}
       <div className="mt-3 space-y-2">
         {loading ? (
           <div className="py-10 text-center text-xs text-muted-foreground/60">加载中…</div>
         ) : displayed.length === 0 ? (
           <div className="py-10 text-center text-xs text-muted-foreground/60">
-            {filter === 'done' ? '还没有已完成的事项' : '池子空空的，上面记一条吧'}
+            {filter === 'completed' ? '还没有已完成的事项' : '池子空空的，上面记一条吧'}
           </div>
         ) : (
           displayed.map((it, idx) => {
-            const m = KIND_META[it.kind];
-            const Icon = m.icon;
+            const Icon = it.isTodo ? ListChecks : Lightbulb;
             const editing = editingId === it.id;
             return (
               <div
                 key={it.id}
                 className={cn(
-                  'flex items-start gap-3 rounded-2xl border border-page-line bg-muted/30 p-3 transition',
-                  it.done && 'opacity-60',
+                  // 极简毛玻璃卡片（半透明底 + 模糊，铺在 PageShell 的不透明页底上，不会透出聊天）
+                  'flex items-start gap-3 rounded-2xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm transition',
+                  it.completed && 'opacity-60',
                 )}
               >
-                {/* 完成勾选 */}
+                {/* 左侧图标：一键在「灵感 ↔ 待办」之间切换 */}
                 <button
                   type="button"
-                  onClick={() => patchItem(it.id, { done: !it.done })}
-                  aria-label={it.done ? '标记为未完成' : '标记为完成'}
+                  onClick={() => patchItem(it.id, { isTodo: !it.isTodo })}
+                  aria-label={it.isTodo ? '切换为灵感' : '切换为待办'}
+                  title={it.isTodo ? '待办任务（点击转为灵感）' : '灵感（点击转为待办）'}
                   className={cn(
-                    'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
-                    it.done
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-muted-foreground/40 text-transparent hover:border-primary',
+                    'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition',
+                    it.isTodo
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-muted/60 text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  <Check className="h-3 w-3" />
+                  <Icon className="h-3.5 w-3.5" />
                 </button>
 
-                {/* 内容区 */}
+                {/* 待办状态下的完成复选框 */}
+                {it.isTodo && (
+                  <button
+                    type="button"
+                    onClick={() => patchItem(it.id, { completed: !it.completed })}
+                    aria-label={it.completed ? '标记为未完成' : '标记为完成'}
+                    className={cn(
+                      'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition',
+                      it.completed
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-muted-foreground/40 text-transparent hover:border-primary',
+                    )}
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                )}
+
+                {/* 内容区（点文字内联编辑） */}
                 <div className="min-w-0 flex-1">
                   {editing ? (
                     <input
@@ -236,21 +256,26 @@ export function WishlistPage() {
                       }}
                       className={cn(
                         'cursor-text break-words text-sm leading-snug text-foreground',
-                        it.done && 'line-through',
+                        it.completed && 'line-through',
                       )}
                     >
                       {it.content}
                     </p>
                   )}
                   <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <span
+                      className={cn(
+                        'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]',
+                        it.isTodo ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-muted-foreground',
+                      )}
+                    >
                       <Icon className="h-3 w-3" />
-                      {m.label}
+                      {it.isTodo ? '待办' : '灵感'}
                     </span>
                   </div>
                 </div>
 
-                {/* 操作 */}
+                {/* 操作：上/下移 + 删除 */}
                 <div className="flex shrink-0 flex-col gap-1">
                   <div className="flex gap-1">
                     <button
@@ -276,7 +301,7 @@ export function WishlistPage() {
                     type="button"
                     onClick={() => removeItem(it.id)}
                     aria-label="删除"
-                    className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/60 text-muted-foreground transition hover:bg-red-500/20 hover:text-red-400"
+                    className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/60 text-muted-foreground transition hover:bg-destructive/20 hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

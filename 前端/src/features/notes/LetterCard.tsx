@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { formatNoteDate, type InspirationNote } from './notesData';
+import { formatNoteDate, normalizeLetterTheme, type InspirationNote } from './notesData';
+import { letterParts } from './LetterArt';
 
 /**
  * 「深夜来信 Live」Daily Card
@@ -58,6 +59,9 @@ export function DailyLetterCard({
   const title = useMemo(() => mailTitle(note), [note]);
   const mood = useMemo(() => mailMoodTag(note), [note]);
   const time = useMemo(() => formatMailTime(note.createdAt), [note]);
+  // 信封主题：封面 / 月亮 / 星点 / 火漆整套换色
+  const theme = normalizeLetterTheme(note.letterTheme);
+  const parts = letterParts(theme);
 
   return (
     <motion.button
@@ -66,6 +70,7 @@ export function DailyLetterCard({
       aria-label={`阅读 ${formatNoteDate(note.createdAt)} 的深夜来信`}
       data-testid="daily-letter-card"
       data-note-id={note.id}
+      data-letter-theme={theme}
       whileTap={{ scale: 0.985 }}
       className={cn(
         'group relative block w-full overflow-hidden rounded-[18px] border border-white/[0.09]',
@@ -107,22 +112,29 @@ export function DailyLetterCard({
       {/* 主视觉：极简夜空 + 月亮微光 */}
       <div
         data-testid="mail-cover"
-        className="relative mt-3 h-[72px] overflow-hidden rounded-[12px] bg-gradient-to-b from-[#242e4b] via-[#171e33] to-[#101726]"
+        className={cn('relative mt-3 h-[72px] overflow-hidden rounded-[12px]', parts.cover)}
       >
         <span
           aria-hidden
-          className="absolute right-4 top-3 block h-7 w-7 rounded-full bg-gradient-to-br from-[#f7e6ba] to-[#e0c489] opacity-90 shadow-[0_0_22px_6px_rgba(247,230,186,0.18)]"
+          className={cn(
+            'absolute right-4 top-3 block h-7 w-7 rounded-full',
+            parts.moon,
+            parts.moonGlow,
+          )}
         />
         {['left-[18%] top-[26%]', 'left-[34%] top-[62%]', 'left-[52%] top-[20%]'].map((pos) => (
           <span
             key={pos}
             aria-hidden
-            className={cn('absolute block h-[2px] w-[2px] rounded-full bg-white/60', pos)}
+            className={cn('absolute block h-[2px] w-[2px] rounded-full', parts.star, pos)}
           />
         ))}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#0e1322] to-transparent"
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 h-8',
+            parts.coverFade,
+          )}
         />
       </div>
 
@@ -170,9 +182,9 @@ export function DailyLetterCard({
           data-testid="mail-seal"
           className={cn(
             'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
-            'bg-gradient-to-br from-[#b4554c] to-[#8d3b34] text-[10px] text-white/95',
-            'shadow-[0_0_12px_-2px_rgba(180,85,76,0.7)] transition-transform duration-300',
-            'group-hover:scale-105',
+            'text-[10px] transition-transform duration-300 group-hover:scale-105',
+            parts.seal,
+            parts.sealGlow,
           )}
         >
           🫐

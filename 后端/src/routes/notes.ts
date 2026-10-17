@@ -13,8 +13,26 @@ import { getModelConfig, getAdapterConfig } from './stations.js';
  *   由前端决定用 AI 还是兜底文案，再 POST /notes 落库）。
  */
 
+/** 信封主题枚举：default 极简素雅 / memorial 纪念日 / night 深色磨砂星空 */
+export const LETTER_THEMES = ['default', 'memorial', 'night'] as const;
+export type LetterTheme = (typeof LETTER_THEMES)[number];
+
+function isLetterTheme(v: unknown): v is LetterTheme {
+  return typeof v === 'string' && (LETTER_THEMES as readonly string[]).includes(v);
+}
+
+/** 库里若存了枚举外的脏值，兜底回 default，不让前端拿到非法主题 */
+function normalizeTheme(v: unknown): LetterTheme {
+  return isLetterTheme(v) ? v : 'default';
+}
+
 function toDTO(n: typeof notes.$inferSelect) {
-  return { id: n.id, content: n.content, createdAt: n.createdAt };
+  return {
+    id: n.id,
+    content: n.content,
+    letterTheme: normalizeTheme(n.letterTheme),
+    createdAt: n.createdAt,
+  };
 }
 
 export async function noteRoutes(app: FastifyInstance): Promise<void> {
@@ -29,7 +47,12 @@ export async function noteRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/notes', async (req, reply) => {
-    const body = (req.body ?? {}) as { id?: string; content?: string; createdAt?: number };
+    const body = (req.body ?? {}) as {
+      id?: string;
+      content?: string;
+      createdAt?: number;
+      letterTheme?: string;
+    };
     const content = body.content?.trim();
     if (!content) {
       reply.code(400).send({ message: 'content 必填' });
@@ -38,7 +61,13 @@ export async function noteRoutes(app: FastifyInstance): Promise<void> {
     const id = body.id?.trim() || newId();
     const ts = body.createdAt ?? now();
     db.insert(notes)
-      .values({ id, content, createdAt: ts, updatedAt: ts })
+      .values({
+        id,
+        content,
+        letterTheme: normalizeTheme(body.letterTheme),
+        createdAt: ts,
+        updatedAt: ts,
+      })
       .run();
     reply.code(201).send({ id, createdAt: ts });
   });
@@ -48,6 +77,22 @@ export async function noteRoutes(app: FastifyInstance): Promise<void> {
     const ts = now();
     db.update(notes).set({ deletedAt: ts, updatedAt: ts }).where(eq(notes.id, id)).run();
     return { ok: true };
+  });
+
+  /** 改一封信的信封主题（letterTheme），或改正文 */
+  app.patch('/notes/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { content?: string; letterTheme?: string };
+    const set: Record<string, unknown> = { updatedAt: now() };
+    if (body.content !== undefined) set.content = body.content.trim();
+    if (body.letterTheme !== undefined) set.letterTheme = normalizeTheme(body.letterTheme);
+
+    const result = db.update(notes).set(set).where(eq(notes.id, id)).run();
+    if (result.changes === 0) {
+      reply.code(404).send({ message: '信件不存在' });
+      return;
+    }
+    reply.send({ ok: true });
   });
 
   // AI 生成一句灵感文案（调用成功与否都不影响前端兜底）

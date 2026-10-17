@@ -3,6 +3,8 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { dishes, type Ingredient } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { loadDietProfile } from '../diet/source.js';
+import { matchDietHits } from '../diet/profile.js';
 
 /**
  * 今天吃什么路由：合并食谱 + 甜品为一张 dishes 表。
@@ -17,8 +19,6 @@ const SWEET_WORDS = [
   '尝一口，是我对你的心意 💕',
   '辛苦啦，奖励你吃这个 🍰',
 ];
-
-const MANGO_KEYWORDS = ['芒果', 'mango', 'Mango', 'MANGO'];
 
 function parseJSON<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -56,8 +56,12 @@ function listByType(type?: string) {
     .map(dishDTO);
 }
 
-function containsMango(text: string): boolean {
-  return MANGO_KEYWORDS.some((k) => text.includes(k));
+/**
+ * 菜品文本命中了哪些忌口 / 过敏源 —— **从人设 + 备忘录动态读取**，
+ * 这里不写死任何具体食物名（需求 §3）。
+ */
+function allergenHits(text: string) {
+  return matchDietHits(text, loadDietProfile());
 }
 
 export async function dishRoutes(app: FastifyInstance): Promise<void> {
@@ -84,8 +88,9 @@ export async function dishRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/dishes/check-allergen', async (req) => {
     const body = (req.body ?? {}) as { text?: string };
-    const text = body.text ?? '';
-    return { hasMango: containsMango(text) };
+    const hits = allergenHits(body.text ?? '');
+    // hasAllergen = 至少命中一条**过敏源**（忌口只是提醒，不算硬拦截）
+    return { hits, hasAllergen: hits.some((h) => h.level === 'allergy') };
   });
 
   app.get('/dishes', async (req) => {

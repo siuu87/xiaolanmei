@@ -200,7 +200,7 @@ export function CollapsibleCalendar({
             onClick={goPrevMonth}
             aria-label="上个月"
             className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-[#22304a]',
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-foreground/10',
               collapsed && 'invisible',
             )}
           >
@@ -210,7 +210,7 @@ export function CollapsibleCalendar({
             type="button"
             onClick={toggleCollapsed}
             title={collapsed ? '展开整月' : '收起日历'}
-            className="min-w-0 flex-1 truncate text-center font-serif text-lg font-medium tracking-wide text-[#e2e8f0] transition hover:text-white"
+            className="min-w-0 flex-1 truncate text-center font-serif text-lg font-medium tracking-wide text-foreground transition hover:text-primary"
           >
             {monthLabel}
           </button>
@@ -219,7 +219,7 @@ export function CollapsibleCalendar({
             onClick={goNextMonth}
             aria-label="下个月"
             className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-[#22304a]',
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-foreground/10',
               collapsed && 'invisible',
             )}
           >
@@ -251,7 +251,7 @@ export function CollapsibleCalendar({
               return (
                 <Fragment key={ds}>
                   {isMonthStart && (
-                    <span className="shrink-0 font-serif text-[9px] uppercase tracking-wider text-[#64748b]">
+                    <span className="shrink-0 font-serif text-[9px] uppercase tracking-wider text-muted-foreground">
                       {MONTHS[m - 1].slice(0, 3)}
                     </span>
                   )}
@@ -269,8 +269,8 @@ export function CollapsibleCalendar({
                       selected
                         ? 'bg-primary text-primary-foreground shadow-[0_4px_10px_rgba(0,0,0,0.25)]'
                         : isCurrent
-                          ? 'bg-[#1e293b] text-[#e2e8f0] shadow-[0_2px_6px_rgba(0,0,0,0.3)]'
-                          : 'bg-[#151f33] text-[#5b6b85]',
+                          ? 'bg-muted text-foreground shadow-[0_2px_6px_rgba(0,0,0,0.3)]'
+                          : 'bg-muted text-muted-foreground',
                       isToday && !selected && 'ring-2 ring-primary/60',
                     )}
                   >
@@ -302,7 +302,7 @@ export function CollapsibleCalendar({
             {WEEKDAYS.map((w) => (
               <div
                 key={w}
-                className="py-1 text-center font-serif text-[10px] uppercase tracking-wide text-[#64748b]"
+                className="py-1 text-center font-serif text-[10px] uppercase tracking-wide text-muted-foreground"
               >
                 {w}
               </div>
@@ -334,7 +334,7 @@ export function CollapsibleCalendar({
                             ? 'text-amber-400'
                             : isToday
                               ? 'bg-primary/20 text-primary ring-2 ring-primary'
-                              : 'text-[#e2e8f0] hover:bg-[#22304a]',
+                              : 'text-foreground hover:bg-foreground/10',
                       // 今天的底/环照旧给（纪念日只改字色，不抢今天的视觉身份）
                       isToday && !selected && 'bg-primary/20 ring-2 ring-primary',
                       dec?.period === 'predicted' && 'ring-2 ring-rose-400',

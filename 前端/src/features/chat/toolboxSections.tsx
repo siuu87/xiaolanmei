@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { BookOpen, FolderTree, Puzzle, Smartphone, Sparkles, type LucideIcon } from 'lucide-react';
+import { BookOpen, FolderTree, Github, Puzzle, Smartphone, Sparkles, type LucideIcon } from 'lucide-react';
 import { McpPage } from '@/features/mcp/McpPage';
 import { DevicePage } from '@/features/device/DevicePage';
 import { WorldbookPanel } from '@/features/worldbook/WorldbookPanel';
 import { WorkspacePanel } from '@/features/code/WorkspacePanel';
 import { SkillsPanel } from '@/features/skills/SkillsPanel';
+import { OpenSourcePanel } from '@/features/openSource/OpenSourcePanel';
 
 /**
  * 工具箱的子项：主抽屉内展开与聊天页侧边抽屉共用这份清单，避免两处各自维护。
@@ -27,4 +28,5 @@ export const TOOLBOX_SECTIONS: ToolboxSection[] = [
   { key: 'worldbook', label: '世界书', icon: BookOpen, render: () => <WorldbookPanel /> },
   { key: 'workspace', label: '工作区', icon: FolderTree, render: () => <WorkspacePanel /> },
   { key: 'skills', label: '技能', icon: Sparkles, render: () => <SkillsPanel collapsible={false} /> },
+  { key: 'opensource', label: '开源项目', icon: Github, render: () => <OpenSourcePanel /> },
 ];

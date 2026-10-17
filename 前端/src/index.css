@@ -85,6 +85,9 @@
        这一档跟 app 外壳同一张「暖纸」，深色模式随之降档；--page-line 给统一顶栏画分隔线。 */
     --page-bg: 40 33% 96%;
     --page-line: 38 20% 86%;
+    /* 抬升面板（卡片/抽屉内块/弹层），比页面底更亮一档，给层次感 */
+    --surface: 0 0% 100%;
+    --surface-2: 40 30% 90%;
     --radius: 1rem;
   }
 
@@ -130,6 +133,9 @@
     /* 覆盖层页面统一底（深色一档，与 --background 同源） */
     --page-bg: 30 18% 9%;
     --page-line: 30 12% 22%;
+    /* 抬升面板（深色一档，比底更亮，给层次感） */
+    --surface: 30 16% 14%;
+    --surface-2: 30 14% 18%;
   }
 }
 
@@ -328,7 +334,7 @@
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', 'Playfair Display', serif;
 }
 
-/* ===== 今天吃什么 / 抽盲盒 & 芒果飞踢 动画 ===== */
+/* ===== 今天吃什么 / 抽盲盒 & 过敏原飞踢 动画 ===== */
 @keyframes shake {
   0%, 100% { transform: rotate(0deg); }
   20% { transform: rotate(-6deg); }
@@ -337,7 +343,8 @@
   80% { transform: rotate(3deg); }
 }
 
-@keyframes mangoFly {
+/* 名字里的 allergen 是「过敏原」的类别名，不是具体食物 —— 踢飞什么由调用方决定 */
+@keyframes allergenFly {
   0% { transform: translate(0, 0) rotate(0); opacity: 1; }
   30% { transform: translate(-40px, 20px) rotate(-30deg); }
   100% { transform: translate(120vw, -40vh) rotate(720deg); opacity: 0; }

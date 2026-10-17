@@ -26,11 +26,11 @@ export function IOSProfileCard({ avatar, avatarColor, name, status, onClick }: I
         {avatar ?? '🫐'}
       </span>
       <span className="min-w-0">
-        <span className="block text-[22px] font-bold leading-tight text-gray-900 dark:text-gray-100">
+        <span className="block text-[22px] font-bold leading-tight text-foreground">
           {name || '未命名'}
         </span>
         {status && (
-          <span className="mt-0.5 block text-[14px] text-gray-500 dark:text-zinc-400">{status}</span>
+          <span className="mt-0.5 block text-[14px] text-muted-foreground">{status}</span>
         )}
       </span>
     </button>

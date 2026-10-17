@@ -37,6 +37,7 @@ import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
 import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
+import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
 
 /* ---------------------------- A. 伴侣档案卡 ---------------------------- */
 
@@ -64,7 +65,7 @@ export function ProfileHeader() {
             aria-label="调整他的资料"
             title="调整他的资料"
             data-testid="avatar-partner"
-            className="rounded-full transition hover:ring-2 hover:ring-white/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
+            className="rounded-full transition hover:ring-2 hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
           >
             <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#5b3f6e] to-[#7a4a63] text-[22px]">
               <AvatarContent value={partnerAvatar} fallback="🐰" />
@@ -76,7 +77,7 @@ export function ProfileHeader() {
             aria-label="调整我的资料"
             title="调整我的资料"
             data-testid="avatar-me"
-            className="rounded-full transition hover:ring-2 hover:ring-white/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
+            className="rounded-full transition hover:ring-2 hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
           >
             <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-[22px]">
               <AvatarContent value={avatar} fallback="🫐" />
@@ -86,17 +87,17 @@ export function ProfileHeader() {
 
         {/* 在一起 N 天：数字给到 32px，一眼看到 */}
         <div className="mt-2.5 flex items-baseline gap-1.5">
-          <span className="text-[12px] text-[#8b93a7]">在一起</span>
+          <span className="text-[12px] text-muted-foreground">在一起</span>
           <span
             data-testid="love-days"
-            className="font-serif text-[32px] font-semibold leading-none text-[#e8ecf6]"
+            className="font-serif text-[32px] font-semibold leading-none text-foreground"
           >
             {days}
           </span>
-          <span className="text-[12px] text-[#8b93a7]">天</span>
+          <span className="text-[12px] text-muted-foreground">天</span>
         </div>
 
-        <span className="mt-1 text-[10px] text-[#6b7488]">
+        <span className="mt-1 text-[10px] text-muted-foreground">
           {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
         </span>
       </div>
@@ -112,7 +113,7 @@ export function ProfileHeader() {
 export function DailyBoard() {
   return (
     <section className="px-4 pb-3">
-      <h3 className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-wider text-[#6b7488]">
+      <h3 className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         日常生活
       </h3>
       <div className="space-y-3">
@@ -178,7 +179,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     icon: Utensils,
     entries: [
       { to: '/food', label: '今天吃什么', icon: Utensils },
-      { to: '/wishlist', label: '灵感池', hint: '灵感 · 心愿 · 待办', icon: Lightbulb },
+      { to: '/wishlist', label: '灵感待办池', hint: '灵感 · 待办，回车即记', icon: Lightbulb },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
     ],
@@ -192,6 +193,8 @@ export function ModuleCards() {
   const [expanded, setExpanded] = useState<string | null>(null);
   // 工具箱内部的子项（插件/世界书/…），独立于分组手风琴
   const [toolboxSection, setToolboxSection] = useState<string | null>(null);
+  // 开源项目：有依赖可更新时在「开源项目」项旁亮红点
+  const openSourceUpdates = useOpenSourceStore((s) => s.updatesCount);
 
   const go = (to: string) => {
     closeDrawer();
@@ -200,7 +203,7 @@ export function ModuleCards() {
 
   return (
     <section className="px-4 pb-3">
-      <h3 className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-wider text-[#6b7488]">
+      <h3 className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         模块
       </h3>
       <div className="space-y-2.5">
@@ -209,23 +212,23 @@ export function ModuleCards() {
           // 只有一项的分组（如酒馆小手机）不再展开：直接点分组头进入
           const direct = g.entries.length === 1;
           return (
-            <div key={g.title} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151b2b]">
+            <div key={g.title} className="overflow-hidden rounded-2xl border border-border bg-surface">
               {/* 分组头：尺寸和下面的「工具箱」按键完全一致；单项分组点击即进入 */}
               <button
                 type="button"
                 onClick={() => (direct ? go(g.entries[0].to) : setExpanded(open ? null : g.title))}
                 aria-expanded={direct ? undefined : open}
                 data-testid={`module-group-${g.title}`}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-foreground/10"
               >
-                <g.icon className="h-4 w-4 text-[#9aa3b8]" />
-                <span className="text-[12px] font-medium text-[#dfe4ef]">{g.title}</span>
-                <span className="ml-auto text-[10px] text-[#6b7488]">{direct ? '进入' : `${g.entries.length} 项`}</span>
+                <g.icon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-[12px] font-medium text-foreground">{g.title}</span>
+                <span className="ml-auto text-[10px] text-muted-foreground">{direct ? '进入' : `${g.entries.length} 项`}</span>
                 {direct ? (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[#6b7488]" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 ) : (
                   <ChevronDown
-                    className={cn('h-4 w-4 shrink-0 text-[#6b7488] transition-transform', open && 'rotate-180')}
+                    className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
                   />
                 )}
               </button>
@@ -241,17 +244,17 @@ export function ModuleCards() {
                       transition={{ duration: 0.22, ease: 'easeOut' }}
                       className="overflow-hidden"
                     >
-                      <div className="grid grid-cols-2 gap-1.5 border-t border-white/[0.06] px-2.5 py-2.5">
+                      <div className="grid grid-cols-2 gap-1.5 border-t border-border px-2.5 py-2.5">
                         {g.entries.map((e) => (
                           <button
                             key={e.to + e.label}
                             type="button"
                             onClick={() => go(e.to)}
-                            className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-white/[0.06]"
+                            className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
                           >
-                            <e.icon className="h-4 w-4 text-[#9aa3b8]" />
-                            <span className="text-[12px] font-medium leading-tight text-[#dfe4ef]">{e.label}</span>
-                            {e.hint && <span className="text-[10px] leading-tight text-[#6b7488]">{e.hint}</span>}
+                            <e.icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-[12px] font-medium leading-tight text-foreground">{e.label}</span>
+                            {e.hint && <span className="text-[10px] leading-tight text-muted-foreground">{e.hint}</span>}
                           </button>
                         ))}
                       </div>
@@ -265,19 +268,19 @@ export function ModuleCards() {
 
         {/* 工具箱：插件 / 世界书 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板）
             「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签 */}
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151b2b]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           <button
             type="button"
             onClick={() => setExpanded(expanded === 'toolbox' ? null : 'toolbox')}
             aria-expanded={expanded === 'toolbox'}
             data-testid="module-group-toolbox"
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-foreground/10"
           >
-            <Puzzle className="h-4 w-4 text-[#9aa3b8]" />
-            <span className="text-[12px] font-medium text-[#dfe4ef]">工具箱</span>
-            <span className="ml-auto text-[10px] text-[#6b7488]">{TOOLBOX_SECTIONS.length} 项</span>
+            <Puzzle className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[12px] font-medium text-foreground">工具箱</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">{TOOLBOX_SECTIONS.length} 项</span>
             <ChevronDown
-              className={cn('h-4 w-4 shrink-0 text-[#6b7488] transition-transform', expanded === 'toolbox' && 'rotate-180')}
+              className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', expanded === 'toolbox' && 'rotate-180')}
             />
           </button>
 
@@ -290,24 +293,31 @@ export function ModuleCards() {
                 transition={{ duration: 0.22, ease: 'easeOut' }}
                 className="overflow-hidden"
               >
-                <div className="space-y-2 border-t border-white/[0.06] p-2.5">
+                <div className="space-y-2 border-t border-border p-2.5">
                   {TOOLBOX_SECTIONS.map((s) => {
                     const isOpen = toolboxSection === s.key;
                     return (
-                      <div key={s.key} className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.03]">
+                      <div key={s.key} className="overflow-hidden rounded-xl border border-border bg-muted/30">
                         <button
                           type="button"
                           onClick={() => setToolboxSection(isOpen ? null : s.key)}
                           aria-expanded={isOpen}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.06]"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-foreground/10"
                         >
-                          <s.icon className="h-4 w-4 shrink-0 text-[#9aa3b8]" />
-                          <span className="text-[12px] font-medium text-[#dfe4ef]">{s.label}</span>
+                          <s.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="text-[12px] font-medium text-foreground">{s.label}</span>
+                          {s.key === 'opensource' && openSourceUpdates > 0 && (
+                            <span
+                              aria-label={`${openSourceUpdates} 个依赖有更新`}
+                              data-testid="opensource-dot"
+                              className="block h-[7px] w-[7px] shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]"
+                            />
+                          )}
                           <ChevronDown
-                            className={cn('ml-auto h-4 w-4 shrink-0 text-[#6b7488] transition-transform', isOpen && 'rotate-180')}
+                            className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
                           />
                         </button>
-                        {isOpen && <div className="border-t border-white/[0.06] p-3">{s.render()}</div>}
+                        {isOpen && <div className="border-t border-border p-3">{s.render()}</div>}
                       </div>
                     );
                   })}
@@ -329,9 +339,9 @@ export function StickyFooter() {
   const openAppearance = useShellStore((s) => s.openAppearance);
 
   return (
-    <div className="sticky bottom-0 flex shrink-0 items-center gap-2 border-t border-white/[0.08] bg-[#111726]/95 px-4 py-2.5 backdrop-blur">
+    <div className="sticky bottom-0 flex shrink-0 items-center gap-2 border-t border-border bg-background/95 px-4 py-2.5 backdrop-blur">
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1 text-[10px] text-[#6b7488]">
+        <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <CalendarDays className="h-3 w-3" />
           v1 · 数据本地同步
         </p>
@@ -342,7 +352,7 @@ export function StickyFooter() {
           closeDrawer();
           navigate('/settings');
         }}
-        className="rounded-full px-2.5 py-1 text-[11px] text-[#8b93a7] transition hover:bg-white/[0.06]"
+        className="rounded-full px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-foreground/10"
       >
         全部设置
       </button>
@@ -353,8 +363,8 @@ export function StickyFooter() {
         title="外观自定义"
         data-testid="drawer-settings"
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-full text-[#a8b0c4] transition',
-          'hover:bg-white/[0.08] hover:text-white',
+          'flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition',
+          'hover:bg-foreground/10 hover:text-foreground',
         )}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">

@@ -1,10 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { notes, tokenUsage } from '../db/schema.js';
+import { notes, memorials, tokenUsage } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatMessage } from '../adapters/types.js';
 import { getModelConfig, getAdapterConfig } from '../routes/stations.js';
+import type { LetterTheme } from '../routes/notes.js';
 
 /**
  * 深夜来信调度器：AI **不定时**抓取一封信。
@@ -52,6 +53,63 @@ function pickFallback(used: Set<string>): string {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+/**
+ * 今天是不是某个纪念日（含每年 / 每月 / 每天重复的）。
+ * 跟前端 `memorialStore.memorialOnDate` 同一套判定，只是搬到后端——
+ * 调度器要据此给信挑「纪念日」信封。查库失败就当不是，不影响写信。
+ */
+function memorialHitsToday(ts: number): boolean {
+  let rows: { date: string; repeat: string; deletedAt: number | null }[];
+  try {
+    rows = db
+      .select({ date: memorials.date, repeat: memorials.repeat, deletedAt: memorials.deletedAt })
+      .from(memorials)
+      .all();
+  } catch {
+    return false;
+  }
+
+  const d = new Date(ts);
+  const ty = d.getFullYear();
+  const tm = d.getMonth() + 1;
+  const td = d.getDate();
+
+  for (const r of rows) {
+    if (r.deletedAt != null) continue;
+    const [y, m, dd] = r.date.split('-').map(Number);
+    if (![y, m, dd].every((n) => Number.isFinite(n))) continue;
+    switch (r.repeat) {
+      case 'none':
+        if (y === ty && m === tm && dd === td) return true;
+        break;
+      case 'year':
+        if (m === tm && dd === td) return true;
+        break;
+      case 'month':
+        if (dd === td) return true;
+        break;
+      case 'day':
+        return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 给一封信挑信封主题（`letter_theme`）：
+ * - 今天是纪念日 → `memorial`（玫瑰金 + 金箔火漆）
+ * - 深夜 22:00~05:00 → `night`（深色磨砂星空）
+ * - 其余 → `default`（极简素雅）
+ *
+ * 只认时辰和纪念日，不认任何具体人名 / 具体日期，换个用户照样成立。
+ */
+export function pickLetterTheme(ts: number = now()): LetterTheme {
+  if (memorialHitsToday(ts)) return 'memorial';
+  const h = new Date(ts).getHours();
+  if (h >= 22 || h < 5) return 'night';
+  return 'default';
+}
+
 /** 最近若干封信的正文（用来去重，别连着寄一样的话） */
 function recentContents(limit = 20): string[] {
   try {
@@ -97,6 +155,7 @@ export async function fetchOneLetter(): Promise<{
   let model = '';
   let usage: { input?: number; output?: number } | undefined;
   const started = now();
+  const theme = pickLetterTheme(started);
 
   try {
     const cfg = getModelConfig();
@@ -107,7 +166,9 @@ export async function fetchOneLetter(): Promise<{
         role: 'system',
         content:
           '你是「小蓝莓」，在深夜给一对情侣写信。写一封 1~3 句、温柔克制、有陪伴感的中文短信，' +
-          '可以提到当下的天气、月亮、雨声、白噪音之类的环境细节。只输出信件正文，不要称呼、不要署名、不要引号、不要解释。',
+          '可以提到当下的天气、月亮、雨声、白噪音之类的环境细节。只输出信件正文，不要称呼、不要署名、不要引号、不要解释。' +
+          // 纪念日那天让信里自然带一笔，但不点名具体是哪个纪念日（纪念日是人设数据，不该写死进提示词）
+          (theme === 'memorial' ? '\n今天对他们是个特别的日子，语气可以更柔软一点，但不要说出纪念日的具体名字或日期。' : ''),
       },
       { role: 'user', content: '现在写一封深夜来信。' },
     ];
@@ -139,7 +200,9 @@ export async function fetchOneLetter(): Promise<{
   const id = newId();
   const ts = now();
   try {
-    db.insert(notes).values({ id, content, createdAt: ts, updatedAt: ts }).run();
+    db.insert(notes)
+      .values({ id, content, letterTheme: theme, createdAt: ts, updatedAt: ts })
+      .run();
     db.insert(tokenUsage)
       .values({
         id: newId(),

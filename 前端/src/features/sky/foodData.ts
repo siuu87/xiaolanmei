@@ -24,12 +24,11 @@ export function pickRecommendation(): string {
   return SWEET_WORDS[Math.floor(Math.random() * SWEET_WORDS.length)];
 }
 
-const MANGO_KEYWORDS = ['芒果', 'mango', 'Mango', 'MANGO'];
-
-/** 判断文本是否含芒果过敏原 */
-export function checkMango(text: string): boolean {
-  return MANGO_KEYWORDS.some((k) => text.includes(k));
-}
+/**
+ * 忌口 / 过敏源的判定**不在这里** —— 一律走 `@/features/diet/dietHits` 的
+ * `matchDietHits(text, profile)`，条目来自人设 + 备忘录的动态档案。
+ * 这里不写死任何食物名（需求 §1/§3）。
+ */
 
 /** 标签配色：多囊友好=绿、治愈指数=粉、姨妈期推荐=玫红 */
 export function tagClass(tag: string): string {

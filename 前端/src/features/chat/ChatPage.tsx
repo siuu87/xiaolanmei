@@ -17,7 +17,6 @@ import {
   MoreHorizontal,
   Copy,
   Menu,
-  Puzzle,
   Globe,
   Phone,
   Video,
@@ -63,7 +62,6 @@ import { AvatarContent } from '@/components/AvatarContent';
 import { CaptionView } from '@/components/VoiceCaption';
 import { useVoiceCaption } from '@/lib/caption/useVoiceCaption';
 import { SearchOverlay } from './SearchOverlay';
-import { ChatDrawer } from './ChatDrawer';
 import { MindDrawer } from './MindDrawer';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
 import { ModelPicker } from './ModelPicker';
@@ -75,6 +73,9 @@ import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useDietStore } from '@/features/diet/dietStore';
+import { matchDietHits } from '@/features/diet/dietHits';
+import { DietHitBar } from '@/features/diet/DietBadge';
 import { loveDays } from '@/features/shell/loveDays';
 
 /**
@@ -694,11 +695,7 @@ export function ChatPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   // 「白起的内心与记忆中枢」：点顶栏那颗小红点打开
   const [mindOpen, setMindOpen] = useState(false);
-  // 工具箱改由外壳 store 控制：顶栏汉堡让位给主抽屉，工具箱入口搬进抽屉里
-  const toolboxOpen = useShellStore((s) => s.toolboxOpen);
-  const closeToolbox = useShellStore((s) => s.closeToolbox);
   const openDrawer = useShellStore((s) => s.openDrawer);
-  const openToolbox = useShellStore((s) => s.openToolbox);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const partnerName = useProfileStore((s) => s.partnerName);
   const loveDayCount = useMemo(() => loveDays(), []);
@@ -724,6 +721,8 @@ export function ChatPage() {
   /** 是否已贴底：决定右下角浮出的「回到底部」圆钮显示不显示 */
   const [atBottom, setAtBottom] = useState(true);
   const [thoughtReasoning, setThoughtReasoning] = useState<string | null>(null);
+  /** 忌口 / 过敏档案（人设 + 备忘录动态解析，空 = 没配） */
+  const dietProfile = useDietStore((s) => s.profile);
   const [memoAdded, setMemoAdded] = useState<
     Record<string, { id?: string; title: string; fromWho?: string; toWho?: string }[]>
   >({});
@@ -743,6 +742,12 @@ export function ChatPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 忌口 / 过敏档案：进聊天就取一次（人设或备忘录改了，重新进页面即生效）
+  useEffect(() => {
+    void useDietStore.getState().load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 组件卸载（如切换到其它 Tab）时中止进行中的流，避免卸载后继续 setState
   useEffect(
@@ -1103,6 +1108,28 @@ export function ChatPage() {
     await produceReply(text, userMsg.id, [...base, toPayload(userMsg)]);
   };
 
+  /**
+   * 会话里「最新的一条」正文（AI 回复也算）——用来检测忌口 / 过敏命中。
+   * 取 createdAt 最大的那条而不是数组末位：消息是棵树，末位未必是最新的。
+   */
+  const latestMsgText = useChatStore((s) => {
+    const ms = s.conversation?.messages;
+    if (!ms || ms.length === 0) return '';
+    let last = ms[0];
+    for (const m of ms) if ((m.createdAt ?? 0) >= (last.createdAt ?? 0)) last = m;
+    return last.content ?? '';
+  });
+
+  /**
+   * 命中检测（需求 §3）：**输入框草稿 + 最新一条消息**都扫。
+   * 自己打字会即时提示，AI 回复里提到也会拦下来。
+   * 前端本地匹配只为即时反馈，档案本身以 `GET /api/diet/profile` 为准。
+   */
+  const dietHits = useMemo(
+    () => matchDietHits(`${input}\n${latestMsgText}`, dietProfile),
+    [input, latestMsgText, dietProfile],
+  );
+
   // 发送表情包：内置贴图只展示不触发回复；自定义图片贴图拉回 base64 发给模型，让模型看图接话
   const sendSticker = async (key: string) => {
     if (busy) return;
@@ -1264,17 +1291,6 @@ export function ChatPage() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        {/* 桌面端：抽屉不生效，工具箱得留个直接入口，否则功能失联 */}
-        <button
-          type="button"
-          onClick={openToolbox}
-          aria-label="工具箱"
-          title="插件 / 手机感知 / 世界书 / 工作区 / 技能"
-          data-testid="chat-toolbox-desktop"
-          className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95 md:flex"
-        >
-          <Puzzle className="h-4 w-4" />
-        </button>
         {/* 中间状态槽：会话标题 + 伴侣挂件（TA 头像 + 在一起天数） */}
         <span className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
           <span
@@ -1300,17 +1316,6 @@ export function ChatPage() {
           <Search className="h-4 w-4" />
         </button>
         {/* 通话入口**不在这里**：按需求顶栏保持简洁，通话已收进输入框的「+」面板 */}
-        {/* 移动端：⋮ → 工具箱（桌面已由 Puzzle 药丸承担，不给重复入口） */}
-        <button
-          type="button"
-          onClick={openToolbox}
-          aria-label="更多"
-          title="工具箱"
-          data-testid="chat-more"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95 md:hidden"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
       </div>
 
       {/* 消息列表 + 右下角「回到底部」圆钮 */}
@@ -1790,6 +1795,12 @@ export function ChatPage() {
             </button>
           </div>
         )}
+        {/* 忌口 / 过敏命中提示（需求 §3）：条目来自动态档案，这里不写死任何食物名 */}
+        {dietHits.length > 0 && (
+          <div className="mx-auto mb-2 w-full max-w-3xl">
+            <DietHitBar hits={dietHits} />
+          </div>
+        )}
         <div className="mx-auto w-full max-w-3xl">
           <div className="flex items-end gap-2">
             <button
@@ -1988,7 +1999,6 @@ export function ChatPage() {
 
       {/* 微信式全屏搜索 */}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <ChatDrawer open={toolboxOpen} onClose={closeToolbox} />
 
       {/* 白起的内心与记忆中枢（点顶栏小红点） */}
       <MindDrawer open={mindOpen} onClose={() => setMindOpen(false)} />

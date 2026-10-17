@@ -45,6 +45,11 @@ export default {
           bg: 'hsl(var(--page-bg))',
           line: 'hsl(var(--page-line))',
         },
+        // 抬升面板：比页面底更亮一档，用于卡片 / 抽屉内块 / 弹层（深浅色各自定义）
+        surface: {
+          DEFAULT: 'hsl(var(--surface))',
+          2: 'hsl(var(--surface-2))',
+        },
         // 阅读主题（一起读）：米白纸面 / 暗夜 / 墨色
         paper: '#FBF7F0',
         night: '#1A1A1F',

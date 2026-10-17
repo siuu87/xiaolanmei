@@ -12,11 +12,11 @@ export function IOSSettingGroup({ title, children, className }: IOSSettingGroupP
   return (
     <div className={cn('mx-4', className)}>
       {title && (
-        <p className="mb-2 px-4 text-[13px] uppercase tracking-wide text-gray-500 dark:text-zinc-400">
+        <p className="mb-2 px-4 text-[13px] uppercase tracking-wide text-muted-foreground">
           {title}
         </p>
       )}
-      <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-sm dark:divide-zinc-800 dark:bg-zinc-900">
+      <div className="divide-y divide-border overflow-hidden rounded-2xl bg-card shadow-sm">
         {children}
       </div>
     </div>

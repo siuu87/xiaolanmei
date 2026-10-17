@@ -149,7 +149,7 @@ export function CalendarCard() {
   };
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-[#0f172a] shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+    <div className="overflow-hidden rounded-3xl bg-background shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
       {/* 黄历详情页（点拓展页里的农历打开） */}
       {almanacOpen && selectedDate && (
         <AlmanacPage y={sy} m={sm} d={sd} onBack={() => setAlmanacOpen(false)} />
@@ -164,7 +164,7 @@ export function CalendarCard() {
       />
 
       {selectedDate != null && (
-        <div className="border-t border-[#22304a] p-4">
+        <div className="border-t border-border p-4">
           {/* 记日记入口（原 X 收起按钮改）：进入当天日记，无则新建 */}
           <div className="flex items-center justify-end">
             <button
@@ -172,7 +172,7 @@ export function CalendarCard() {
               onClick={() => {
                 if (selectedKey) navigate(`/diary?date=${selectedKey}${diaryOfDay ? '' : '&new=1'}`);
               }}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-[#22304a]"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-foreground/10"
             >
               <Pencil className="h-3.5 w-3.5" />
               记日记
@@ -182,7 +182,7 @@ export function CalendarCard() {
           {/* 心情：只读展示。「心情」二字与两个人的心情图标同一行，图案与首页 MOOD 一致 */}
           {showMood && (
             <div className="flex items-center gap-3">
-              <span className="font-serif text-xs text-[#64748b]">心情</span>
+              <span className="font-serif text-xs text-muted-foreground">心情</span>
               <div className="flex flex-1 items-center justify-end gap-4">
                 <MoodChip who="我" mood={selectedRec.me} />
                 <MoodChip who="AI" mood={selectedRec.ai} />
@@ -198,21 +198,21 @@ export function CalendarCard() {
               aria-label={`查看${lunarText}黄历详情`}
               className={cn(
                 'mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 transition',
-                'hover:bg-[#22304a]',
+                'hover:bg-foreground/10',
               )}
             >
-              <span className="font-serif text-xs text-[#64748b]">农历</span>
-              <span className="flex items-center gap-1 text-[13px] text-[#c9cede]">
+              <span className="font-serif text-xs text-muted-foreground">农历</span>
+              <span className="flex items-center gap-1 text-[13px] text-foreground">
                 {lunarText}
-                <ChevronRight className="h-3.5 w-3.5 text-[#64748b]" />
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               </span>
             </button>
           )}
 
           {/* 经期：关怀语 + 症状 / 记入 + 设置 */}
-          <div className={cn(showMood && 'mt-3 border-t border-[#22304a] pt-3')}>
+          <div className={cn(showMood && 'mt-3 border-t border-border pt-3')}>
             <div className="flex items-center justify-between">
-              <span className="font-serif text-xs text-[#64748b]">经期</span>
+              <span className="font-serif text-xs text-muted-foreground">经期</span>
               <button
                 type="button"
                 onClick={() => setShowPeriodSettings((v) => !v)}
@@ -220,7 +220,7 @@ export function CalendarCard() {
                   'rounded-full px-2 py-0.5 text-xs transition',
                   showPeriodSettings
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-[#64748b] hover:bg-[#22304a]',
+                    : 'text-muted-foreground hover:bg-foreground/10',
                 )}
               >
                 设置
@@ -229,11 +229,11 @@ export function CalendarCard() {
 
             {/* 上次经期 / 平均周期摘要 */}
             {periodSummaryText && (
-              <div className="mt-0.5 text-xs text-[#64748b]/80">{periodSummaryText}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground/80">{periodSummaryText}</div>
             )}
 
             {/* 关怀语（按选中日计算） */}
-            <div className="mt-1 text-sm leading-6 text-[#e2e8f0]/90">
+            <div className="mt-1 text-sm leading-6 text-foreground/90">
               {selectedISO ? careMessage({ records, settings }, selectedISO) : ''}
             </div>
 
@@ -241,19 +241,19 @@ export function CalendarCard() {
             <button
               type="button"
               onClick={toggleMark}
-              className="mt-2 flex w-full items-center gap-2.5 rounded-xl bg-[#1e293b] px-3 py-2.5 text-sm transition hover:bg-[#22304a]"
+              className="mt-2 flex w-full items-center gap-2.5 rounded-xl bg-muted px-3 py-2.5 text-sm transition hover:bg-foreground/10"
             >
               <span
                 className={cn(
                   'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition',
                   selectedPeriodIdx !== null
                     ? 'border-rose-400 bg-rose-400'
-                    : 'border-[#334155] bg-transparent',
+                    : 'border-border bg-transparent',
                 )}
               >
-                {selectedPeriodIdx !== null && <Check className="h-3.5 w-3.5 text-white" />}
+                {selectedPeriodIdx !== null && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
               </span>
-              <span className={cn(selectedPeriodIdx !== null ? 'text-[#e2e8f0]' : 'text-[#e2e8f0]/80')}>
+              <span className={cn(selectedPeriodIdx !== null ? 'text-foreground' : 'text-foreground/80')}>
                 {selectedPeriodIdx !== null ? '已记入经期' : '将该日期记入经期'}
               </span>
             </button>
@@ -262,7 +262,7 @@ export function CalendarCard() {
             {selectedPeriodIdx !== null && (
               <div className="mt-2 space-y-2.5">
                 <div>
-                  <div className="font-serif text-xs text-[#64748b]">痛经程度</div>
+                  <div className="font-serif text-xs text-muted-foreground">痛经程度</div>
                   <div className="mt-1.5 flex gap-1.5">
                     {CRAMP_LEVELS.map((label, lv) => (
                       <button
@@ -272,8 +272,8 @@ export function CalendarCard() {
                         className={cn(
                           'flex-1 rounded-lg py-1.5 text-xs transition',
                           (selectedSymptoms?.cramps ?? 0) === lv
-                            ? 'bg-rose-400 text-white'
-                            : 'bg-[#1e293b] text-[#e2e8f0]/70 hover:bg-[#22304a]',
+                            ? 'bg-rose-400 text-primary-foreground'
+                            : 'bg-muted text-foreground/70 hover:bg-foreground/10',
                         )}
                       >
                         {label}
@@ -283,14 +283,14 @@ export function CalendarCard() {
                 </div>
 
                 <div>
-                  <div className="font-serif text-xs text-[#64748b]">其他不适</div>
+                  <div className="font-serif text-xs text-muted-foreground">其他不适</div>
                   <input
                     value={selectedSymptoms?.discomfort ?? ''}
                     onChange={(e) =>
                       selectedISO && setSymptom(selectedISO, { discomfort: e.target.value })
                     }
                     placeholder="如腰酸、乏力…"
-                    className="mt-1.5 h-9 w-full rounded-xl bg-[#1e293b] px-3 text-sm text-[#e2e8f0] outline-none placeholder:text-[#64748b]/60 focus:bg-white"
+                    className="mt-1.5 h-9 w-full rounded-xl bg-muted px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-surface"
                   />
                 </div>
 
@@ -298,9 +298,9 @@ export function CalendarCard() {
             )}
 
             {showPeriodSettings && (
-              <div className="mt-3 border-t border-[#22304a] pt-3">
+              <div className="mt-3 border-t border-border pt-3">
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-[#e2e8f0]/80">经期持续天数</span>
+                  <span className="text-sm text-foreground/80">经期持续天数</span>
                   <input
                     type="number"
                     min={1}
@@ -309,11 +309,11 @@ export function CalendarCard() {
                     onChange={(e) =>
                       setSetting({ periodDays: Math.min(14, Math.max(1, Number(e.target.value) || 1)) })
                     }
-                    className="h-8 w-20 rounded-lg bg-[#1e293b] px-2 text-center text-sm text-[#e2e8f0] outline-none focus:bg-white"
+                    className="h-8 w-20 rounded-lg bg-muted px-2 text-center text-sm text-foreground outline-none focus:bg-surface"
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-[#e2e8f0]/80">月经周期</span>
+                  <span className="text-sm text-foreground/80">月经周期</span>
                   <input
                     type="number"
                     min={15}
@@ -322,11 +322,11 @@ export function CalendarCard() {
                     onChange={(e) =>
                       setSetting({ cycleDays: Math.min(60, Math.max(15, Number(e.target.value) || 28)) })
                     }
-                    className="h-8 w-20 rounded-lg bg-[#1e293b] px-2 text-center text-sm text-[#e2e8f0] outline-none focus:bg-white"
+                    className="h-8 w-20 rounded-lg bg-muted px-2 text-center text-sm text-foreground outline-none focus:bg-surface"
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-[#e2e8f0]/80">规律</span>
+                  <span className="text-sm text-foreground/80">规律</span>
                   <button
                     type="button"
                     role="switch"
@@ -334,7 +334,7 @@ export function CalendarCard() {
                     onClick={() => setSetting({ regular: !settings.regular })}
                     className={cn(
                       'relative h-6 w-11 rounded-full transition',
-                      settings.regular ? 'bg-primary' : 'bg-[#334155]',
+                      settings.regular ? 'bg-primary' : 'bg-muted-foreground/30',
                     )}
                   >
                     <span
@@ -346,7 +346,7 @@ export function CalendarCard() {
                   </button>
                 </div>
                 {!settings.regular && (
-                  <div className="mt-1 text-xs text-[#64748b]/70">
+                  <div className="mt-1 text-xs text-muted-foreground/70">
                     不规律时按历史记录的平均周期预测
                   </div>
                 )}
@@ -356,10 +356,10 @@ export function CalendarCard() {
 
           {/* 节日信息 */}
           {selectedSpecial && (
-            <div className="mt-3 flex items-center justify-between border-t border-[#22304a] pt-3">
+            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
               <div>
-                <div className="text-sm font-medium text-[#e2e8f0]">{selectedSpecial.label}</div>
-                <div className="mt-0.5 text-xs text-[#64748b]">{selectedDateLabel}</div>
+                <div className="text-sm font-medium text-foreground">{selectedSpecial.label}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{selectedDateLabel}</div>
               </div>
               <div
                 className="font-serif text-sm font-medium"
@@ -379,13 +379,13 @@ export function CalendarCard() {
 
           {/* 日记：当天有则展示（跳转到日记页对应位置），无则不提示（记日记入口在右上角） */}
           {diaryOfDay && (
-            <div className="mt-3 border-t border-[#22304a] pt-3">
+            <div className="mt-3 border-t border-border pt-3">
               <button
                 type="button"
                 onClick={() => selectedKey && navigate(`/diary?date=${selectedKey}`)}
                 className="block w-full text-left"
               >
-                <div className="text-xs text-[#64748b]">{diaryOfDay.date}</div>
+                <div className="text-xs text-muted-foreground">{diaryOfDay.date}</div>
                 <div
                   className={cn(
                     'mt-1 text-sm font-medium',
@@ -394,7 +394,7 @@ export function CalendarCard() {
                 >
                   {AUTHOR_LABEL[diaryOfDay.author]}
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#e2e8f0]/90">
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-foreground/90">
                   {diaryOfDay.content}
                 </p>
               </button>
@@ -428,9 +428,9 @@ function MoodChip({ who, mood }: { who: string; mood?: MoodKey }) {
           <path d={info.path} />
         </svg>
       ) : (
-        <span className="h-6 w-6 rounded-full border border-dashed border-[#334155]" />
+        <span className="h-6 w-6 rounded-full border border-dashed border-border" />
       )}
-      <span className="text-[10px] text-[#64748b]">{who}</span>
+      <span className="text-[10px] text-muted-foreground">{who}</span>
     </div>
   );
 }

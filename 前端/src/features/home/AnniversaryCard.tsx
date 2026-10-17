@@ -147,7 +147,7 @@ export function AnniversaryCard({ memorial }: { memorial: MemorialDay }) {
             autoFocus
             maxLength={30}
             placeholder="xxx & xxx"
-            className="w-full border-b-2 border-[#c8835f] bg-transparent font-serif text-[28px] leading-tight tracking-[0.08em] text-[#e8e0cf] outline-none"
+            className="w-full border-b-2 border-primary bg-transparent font-serif text-[28px] leading-tight tracking-[0.08em] text-foreground outline-none"
           />
         ) : (
           <button
@@ -156,15 +156,15 @@ export function AnniversaryCard({ memorial }: { memorial: MemorialDay }) {
             title="点击编辑名字"
             className="group flex max-w-full items-baseline gap-1.5 text-left"
           >
-            <span className="truncate font-serif text-[28px] leading-tight tracking-[0.08em] text-[#e8e0cf] transition group-hover:opacity-80">
+            <span className="truncate font-serif text-[28px] leading-tight tracking-[0.08em] text-foreground transition group-hover:opacity-80">
               <NamePart text={leftName} />
-              {nameParts.length > 1 && <span className="mx-0.5 font-sans text-[#c8835f]">&</span>}
+              {nameParts.length > 1 && <span className="mx-0.5 font-sans text-primary">&</span>}
               <NamePart text={rightName} />
             </span>
-            <Pencil className="h-3.5 w-3.5 shrink-0 text-[#8f8776] opacity-0 transition group-hover:opacity-100" />
+            <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
           </button>
         )}
-        <span className="text-xs text-[#8f8776]">since {startDateText}</span>
+        <span className="text-xs text-muted-foreground">since {startDateText}</span>
       </div>
 
       {/* 右：天数（点击切换单位）+ 分页 */}
@@ -177,14 +177,14 @@ export function AnniversaryCard({ memorial }: { memorial: MemorialDay }) {
         <span className="flex items-baseline gap-1.5">
           {segments.map((seg, i) => (
             <span key={i} className="flex items-baseline gap-1">
-              <span className="font-sans text-5xl font-bold leading-none tabular-nums tracking-tight text-[#e8e0cf]">
+              <span className="font-sans text-5xl font-bold leading-none tabular-nums tracking-tight text-foreground">
                 {seg.value}
               </span>
-              <span className="text-xs text-[#8f8776]">{seg.label}</span>
+              <span className="text-xs text-muted-foreground">{seg.label}</span>
             </span>
           ))}
         </span>
-        <span className="mt-2 text-[11px] tabular-nums text-[#8f8776]">{pageText}</span>
+        <span className="mt-2 text-[11px] tabular-nums text-muted-foreground">{pageText}</span>
       </button>
     </div>
   );

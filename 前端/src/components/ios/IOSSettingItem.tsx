@@ -38,7 +38,7 @@ export function IOSSettingItem({
     <div
       className={cn(
         'flex w-full items-center gap-3 px-4 py-3 text-left transition',
-        onClick ? 'cursor-pointer active:bg-gray-100 dark:active:bg-zinc-800' : 'cursor-default',
+        onClick ? 'cursor-pointer active:bg-muted' : 'cursor-default',
       )}
     >
       <button
@@ -49,7 +49,7 @@ export function IOSSettingItem({
         {icon && (
           <span
             className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-white',
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-primary-foreground',
               iconBg ?? 'bg-gray-400',
             )}
           >
@@ -60,22 +60,22 @@ export function IOSSettingItem({
           <span
             className={cn(
               'block text-[16px] leading-tight',
-              destructive ? 'text-red-500' : 'text-gray-900 dark:text-gray-100',
+              destructive ? 'text-red-500' : 'text-foreground',
             )}
           >
             {title}
           </span>
           {subtitle && (
-            <span className="mt-0.5 block text-[13px] text-gray-500 dark:text-zinc-400">
+            <span className="mt-0.5 block text-[13px] text-muted-foreground">
               {subtitle}
             </span>
           )}
         </span>
       </button>
-      {value && <span className="shrink-0 text-[16px] text-gray-400 dark:text-zinc-500">{value}</span>}
+      {value && <span className="shrink-0 text-[16px] text-muted-foreground">{value}</span>}
       {trailing}
       {showChevron && !trailing && (
-        <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 dark:text-zinc-600" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       )}
     </div>
   );
