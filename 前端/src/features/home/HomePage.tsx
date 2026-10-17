@@ -7,7 +7,6 @@ import { TokenCard } from './TokenCard';
 import { FeatureGrid } from './FeatureGrid';
 import { PeriodHint } from './PeriodHint';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
-import { HealthIndicator } from '@/components/HealthIndicator';
 import { useMemorialStore } from './memorialStore';
 
 export function HomePage() {
@@ -26,7 +25,6 @@ export function HomePage() {
           <MoodCard />
           <CalendarCard />
           <PeriodHint />
-          <HealthIndicator />
           <CourseCard />
           <TodoCard />
           <div className="grid grid-cols-2 gap-3">
