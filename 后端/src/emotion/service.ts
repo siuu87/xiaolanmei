@@ -59,23 +59,7 @@ export interface CharacterStateDTO {
   updatedAt: number;
 }
 
-function seed(): CharacterStateRow {
-  const ts = now();
-  db.insert(characterState)
-    .values({
-      id: STATE_ID,
-      affection: EMOTION_DEFAULT.affection,
-      possessiveness: EMOTION_DEFAULT.possessiveness,
-      restraint: EMOTION_DEFAULT.restraint,
-      longing: EMOTION_DEFAULT.longing,
-      currentMood: EMOTION_DEFAULT.currentMood,
-      lastReason: null,
-      lastMessageId: null,
-      turnCount: 0,
-      createdAt: ts,
-      updatedAt: ts,
-    })
-    .run();
+function defaultRow(ts: number): CharacterStateRow {
   return {
     affection: EMOTION_DEFAULT.affection,
     possessiveness: EMOTION_DEFAULT.possessiveness,
@@ -89,10 +73,35 @@ function seed(): CharacterStateRow {
   };
 }
 
-/** 读单例行；不存在就播种。软删过的行视为不存在（重新播种）。 */
+/** 行不存在时播种：首次 GET 建好默认状态。 */
+function seed(): CharacterStateRow {
+  const ts = now();
+  db.insert(characterState)
+    .values({
+      id: STATE_ID,
+      ...defaultRow(ts),
+      createdAt: ts,
+    })
+    .run();
+  return defaultRow(ts);
+}
+
+/** 软删过的单例行：复用同一条（id 恒 'default'），重置回默认值并清掉 deletedAt。
+ *  不能走 seed() 的 INSERT——id 撞主键会崩。 */
+function revive(): CharacterStateRow {
+  const ts = now();
+  db.update(characterState)
+    .set({ ...defaultRow(ts), deletedAt: null })
+    .where(eq(characterState.id, STATE_ID))
+    .run();
+  return defaultRow(ts);
+}
+
+/** 读单例行；不存在就播种，软删过就原地复活（重置默认值）。 */
 export function readRow(): CharacterStateRow {
   const row = db.select().from(characterState).where(eq(characterState.id, STATE_ID)).get();
-  if (!row || row.deletedAt != null) return seed();
+  if (!row) return seed();
+  if (row.deletedAt != null) return revive();
   return {
     affection: row.affection,
     possessiveness: row.possessiveness,
@@ -152,8 +161,10 @@ export function patchState(body: Partial<Record<EmotionField | 'currentMood', un
   const row = readRow();
   const next = toState(row);
   for (const f of EMOTION_FIELDS) {
-    const v = Number(body[f]);
-    if (Number.isFinite(v)) next[f] = Math.round(Math.min(100, Math.max(0, v)));
+    const raw = body[f];
+    // 只收真实数字：Number(null)/Number('')/Number(false) 都得 0，会把「没传」误当「清零」
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) continue;
+    next[f] = Math.round(Math.min(100, Math.max(0, raw)));
   }
   if (typeof body.currentMood === 'string' && body.currentMood.trim()) {
     next.currentMood = body.currentMood.trim();

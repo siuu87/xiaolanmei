@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatEvent, ChatMessage } from '../adapters/types.js';
+import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
@@ -283,15 +284,40 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const partnerStateNote = getPartnerStateNote(convId);
     const draftNote = ragOn ? getDraftMemosNote() : '';
 
-    // 阶段 5.5：取本会话最后一条消息时间，算「距上次对话」间隔喂给时间感信号
+    // 阶段 5.5：取本会话「本轮之前」的最后一条消息时间，算「距上次对话」间隔喂给时间感信号。
+    // 此刻 DB 里最新的正是刚落库的本轮消息（用户消息 + streaming 占位），直接取最新会得到
+    // gap≈0；所以以「本轮用户消息」为界，取它之前（createdAt 更早）的那条，并走索引查询。
     const lastMsg =
       convId != null
-        ? db
-            .select()
-            .from(messagesTable)
-            .all()
-            .filter((m) => m.conversationId === convId && m.deletedAt == null)
-            .sort((a, b) => b.createdAt - a.createdAt)[0]
+        ? (() => {
+            const latestUser = db
+              .select({ createdAt: messagesTable.createdAt })
+              .from(messagesTable)
+              .where(
+                and(
+                  eq(messagesTable.conversationId, convId),
+                  eq(messagesTable.role, 'user'),
+                  isNull(messagesTable.deletedAt),
+                ),
+              )
+              .orderBy(desc(messagesTable.createdAt))
+              .limit(1)
+              .get();
+            if (!latestUser) return undefined;
+            return db
+              .select({ createdAt: messagesTable.createdAt })
+              .from(messagesTable)
+              .where(
+                and(
+                  eq(messagesTable.conversationId, convId),
+                  isNull(messagesTable.deletedAt),
+                  lt(messagesTable.createdAt, latestUser.createdAt),
+                ),
+              )
+              .orderBy(desc(messagesTable.createdAt))
+              .limit(1)
+              .get();
+          })()
         : undefined;
     const lastMessageAt = lastMsg ? lastMsg.createdAt : null;
 

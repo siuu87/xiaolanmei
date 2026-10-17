@@ -173,11 +173,13 @@ export function parseBattery(text: string): BatteryInfo | null {
   const status = t.match(/状态[：:]\s*(\S+)/);
   const temp = t.match(/温度[：:]\s*(-?\d+(?:\.\d+)?)\s*°C/);
   const percent = pct ? toNumber(pct[1]) : null;
+  const temperature = temp ? toNumber(temp[1]) : null;
   return {
     percent: percent != null && percent >= 0 ? percent : null,
     // 注意先判「未充电」：`/充电/` 也会命中「未充电」
     charging: status ? /充电/.test(status[1]) && !/未充电/.test(status[1]) : null,
-    temperature: temp ? toNumber(temp[1]) : null,
+    // -1 是 LC 取不到的哨兵；其余负温（如 -5°C）是真实值，保留
+    temperature: temperature != null && temperature !== -1 ? temperature : null,
   };
 }
 
