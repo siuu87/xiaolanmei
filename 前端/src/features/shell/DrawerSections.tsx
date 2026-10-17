@@ -23,6 +23,7 @@ import {
   GraduationCap,
   Puzzle,
   Star,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -177,6 +178,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     icon: Utensils,
     entries: [
       { to: '/food', label: '今天吃什么', icon: Utensils },
+      { to: '/wishlist', label: '灵感池', hint: '灵感 · 心愿 · 待办', icon: Lightbulb },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
     ],

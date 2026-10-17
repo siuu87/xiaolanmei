@@ -26,6 +26,7 @@ import { tokenStatsRoutes } from './routes/tokenStats.js';
 import { billingRoutes } from './routes/billing.js';
 import { diaryRoutes } from './routes/diaries.js';
 import { todoRoutes } from './routes/todos.js';
+import { pluginWishlistRoutes } from './routes/pluginWishlist.js';
 import { memorialRoutes } from './routes/memorials.js';
 import { noteRoutes } from './routes/notes.js';
 import { periodRoutes } from './routes/period.js';
@@ -91,6 +92,7 @@ async function main(): Promise<void> {
   await app.register(billingRoutes, { prefix: '/api' });
   await app.register(diaryRoutes, { prefix: '/api' });
   await app.register(todoRoutes, { prefix: '/api' });
+  await app.register(pluginWishlistRoutes, { prefix: '/api' });
   await app.register(memorialRoutes, { prefix: '/api' });
   await app.register(noteRoutes, { prefix: '/api' });
   await app.register(periodRoutes, { prefix: '/api' });

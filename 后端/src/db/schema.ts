@@ -246,6 +246,23 @@ export const todos = sqliteTable('todos', {
   deletedAt: integer('deleted_at'),
 });
 
+/**
+ * 灵感待办池（BM 大方案模块③ / plugin_wishlist）：灵感 / 心愿 / 待办 的收集池。
+ * - kind: 'idea' 灵感 | 'wish' 心愿 | 'todo' 待办
+ * - done: 是否完成（心愿/待办用，灵感也可随手勾掉）
+ * - sortOrder: 用户手动排序，越小越靠前
+ */
+export const pluginWishlist = sqliteTable('plugin_wishlist', {
+  id: text('id').primaryKey(),
+  content: text('content').notNull(),
+  kind: text('kind').notNull().default('idea'),
+  done: integer('done', { mode: 'boolean' }).notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 /** 纪念日（阶段 7 收尾）：repeat 为 none/year/month/day */
 export const memorials = sqliteTable('memorials', {
   id: text('id').primaryKey(),
