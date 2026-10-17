@@ -186,6 +186,27 @@ export async function listTools(config: McpServerConfig): Promise<McpToolInfo[]>
   }));
 }
 
+/**
+ * 读取服务器信息（`initialize` 的 `serverInfo`）。
+ * 纯探测用途：不支持或解析不了就返回 null，绝不把异常抛给调用方。
+ * 注意：这是 **新增的旁路**，`listTools` / `callTool` 仍然是不握手的单次 POST，
+ * 因为 LoverConnect 那类无状态服务端本来就不要求先 initialize，加了握手只会多两趟往返。
+ */
+export async function getServerInfo(
+  config: McpServerConfig,
+): Promise<{ name?: string; version?: string } | null> {
+  try {
+    const result = (await call(config, 'initialize', {
+      protocolVersion: PROTOCOL_VERSION,
+      capabilities: {},
+      clientInfo: { name: 'little-blueberry', version: '1.0.0' },
+    })) as { serverInfo?: { name?: string; version?: string } } | undefined;
+    return result?.serverInfo ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** 调用服务器上的工具，返回文本结果 */
 export async function callTool(
   config: McpServerConfig,
