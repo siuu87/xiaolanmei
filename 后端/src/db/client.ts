@@ -413,6 +413,16 @@ CREATE TABLE IF NOT EXISTS stickers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   url TEXT NOT NULL,
+  category_id TEXT NOT NULL DEFAULT 'default',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS sticker_categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -787,6 +797,25 @@ export function initDatabase(): void {
   if (!noteCols.some((c) => c.name === 'letter_theme')) {
     sqlite.exec(`ALTER TABLE notes ADD COLUMN letter_theme TEXT NOT NULL DEFAULT 'default'`);
   }
+
+  /**
+   * 幂等迁移（2026-10-18）：表情包分分类。
+   * - 老库 stickers 补 `category_id`，已有行统一回填 'default'（NOT NULL + DEFAULT 一次搞定）；
+   * - 保证固定存在一条 `id='default'` 的「默认」分类，后端不让删 ——
+   *   否则删掉分类后，未指定分类的新增表情就会指向一个不存在的 id。
+   */
+  const stickerCols = sqlite.prepare(`PRAGMA table_info(stickers)`).all() as { name: string }[];
+  if (!stickerCols.some((c) => c.name === 'category_id')) {
+    sqlite.exec(`ALTER TABLE stickers ADD COLUMN category_id TEXT NOT NULL DEFAULT 'default'`);
+  }
+  const seedTs = Date.now();
+  sqlite
+    .prepare(
+      `INSERT INTO sticker_categories (id, name, sort_order, created_at, updated_at)
+       VALUES ('default', '默认', 0, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET deleted_at = NULL`,
+    )
+    .run(seedTs, seedTs);
 
   // 只在「首次新增 is_todo」时回填一次 —— 否则每次启动都会把用户之后的改动覆盖回旧值
   if (!wishMigrated) {

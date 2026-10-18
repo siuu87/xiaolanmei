@@ -402,11 +402,27 @@ export const timetableConfig = sqliteTable('timetable_config', {
   deletedAt: integer('deleted_at'),
 });
 
+/**
+ * 表情包分类（2026-10-18）：设置页里可以建多个分类，把表情包分门别类归拢。
+ * 固定有一条 `id='default'` 的「默认」分类（client.ts 里幂等插入），
+ * 不允许删除 —— 老数据与「没选分类」的新增都落在它上面。
+ */
+export const stickerCategories = sqliteTable('sticker_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 /** 自定义表情包（阶段 7 收尾）：用户上传的贴图，url 指向 /api/files/xxx，聊天表情包面板里可用 */
 export const stickers = sqliteTable('stickers', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   url: text('url').notNull(),
+  /** 所属分类 id；老数据由 client.ts 的 ALTER 回填成 'default' */
+  categoryId: text('category_id').notNull().default('default'),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
