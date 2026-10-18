@@ -382,6 +382,29 @@
   animation: think-dot 1.2s ease-in-out infinite;
 }
 
+/* ===== 底部弹层（思考链 / 说话风格共用） =====
+   从下往上滑，曲线比 ease-out 更「跟手」；遮罩只做淡入，不要 backdrop-blur。 */
+@keyframes bb-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes bb-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-bb-sheet-up {
+  animation: bb-sheet-up 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.animate-bb-fade-in {
+  animation: bb-fade-in 180ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-bb-sheet-up,
+  .animate-bb-fade-in {
+    animation: none;
+  }
+}
+
 /* ===== 聊天气泡小尾巴（微信式） ===== */
 .bubble-tail {
   position: absolute;

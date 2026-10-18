@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { settings } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { CHAT_STYLE_MODES, normalizeChatStyle, type ChatStyleMode } from '../persona/chatStyle.js';
 
 /**
  * 设置（阶段 8）：现在只保留全局模型参数（temperature）。
@@ -13,6 +14,7 @@ const KEYS = {
   temperature: 'model.temperature',
   visionStationId: 'vision.stationId',
   visionModel: 'vision.model',
+  chatStyleMode: 'chat.styleMode',
 } as const;
 
 function getSetting(key: string): string | null {
@@ -49,22 +51,39 @@ export function setSetting(key: string, value: unknown): void {
   }
 }
 
+/**
+ * 当前说话风格（`chat.styleMode`）。
+ * 由 `buildSystemPrompt()` 每次拼提示词时现读 —— 用户在顶栏切完，**下一条消息立刻生效**，
+ * 不需要重启后端，也不需要重开会话。
+ */
+export function getChatStyleMode(): ChatStyleMode {
+  return normalizeChatStyle(getSettingValue<string | null>(KEYS.chatStyleMode, null));
+}
+
 export async function settingsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/settings', async () => ({
     temperature: getSettingValue<number>(KEYS.temperature, 0.7),
     visionStationId: getSettingValue<string | null>(KEYS.visionStationId, null),
     visionModel: getSettingValue<string | null>(KEYS.visionModel, null),
+    chatStyleMode: getChatStyleMode(),
   }));
 
-  app.put('/settings', async (req) => {
+  app.put('/settings', async (req, reply) => {
     const body = (req.body ?? {}) as {
       temperature?: number;
       visionStationId?: string | null;
       visionModel?: string | null;
+      chatStyleMode?: string;
     };
+    // 显式校验：只认白名单里的两个值，避免前端传错把提示词切成空档
+    if (body.chatStyleMode !== undefined && !CHAT_STYLE_MODES.includes(body.chatStyleMode as ChatStyleMode)) {
+      reply.code(400).send({ message: `chatStyleMode 只能是 ${CHAT_STYLE_MODES.join(' / ')}` });
+      return;
+    }
     if (body.temperature !== undefined) setSetting(KEYS.temperature, body.temperature);
     if (body.visionStationId !== undefined) setSetting(KEYS.visionStationId, body.visionStationId ?? null);
     if (body.visionModel !== undefined) setSetting(KEYS.visionModel, body.visionModel ?? null);
+    if (body.chatStyleMode !== undefined) setSetting(KEYS.chatStyleMode, body.chatStyleMode);
     return { ok: true };
   });
 }

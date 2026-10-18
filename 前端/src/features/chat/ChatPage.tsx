@@ -65,6 +65,8 @@ import { MindDrawer } from './MindDrawer';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
 import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
+import { ChatStyleSheet } from './ChatStyleSheet';
+import { BottomSheet } from '@/components/BottomSheet';
 import { CallOverlay, type CallResult } from './CallOverlay';
 import { createCall, fmtDuration, type CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
@@ -72,6 +74,7 @@ import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useChatStyle, CHAT_STYLE_META } from '@/stores/chatStyleStore';
 import { useDietStore } from '@/features/diet/dietStore';
 import { matchDietHits } from '@/features/diet/dietHits';
 import { DietHitBar } from '@/features/diet/DietBadge';
@@ -463,20 +466,22 @@ function isSameDay(a?: number, b?: number): boolean {
 /**
  * 思考链入口（**气泡上方一行**）。
  *
- * 2026-10-18 调整（用户要求）：之前是内联接在正文第一句后面，现在搬到
- * 「每段回答的最上一条上面」——每条带 reasoning 的 assistant 消息，在气泡顶上
- * 挂一个可点的胶囊；点开是 `ThoughtModal`。
+ * 2026-10-18 两次调整（都按用户要求）：
+ * ① 位置：从「内联接在正文第一句后面」搬到「每条带 reasoning 的回复气泡正上方」；
+ * ② 名字：从「思考链」改成「{称呼}的小心思」——称呼跟随抽屉里设置的名字，
+ *    没设就用「哥哥」（用户一直这么叫他）。文案统一走 `owner` 参数，不要在这里写死。
  *
- * 流式期间只显示三个跳动的点（气泡里另有「思考中…」文案，避免两处都写字重复），
- * 收完之后变成 ✓ + 「思考链」+ 右箭头，暗示可展开。
+ * 流式期间只显示三个跳动的点（气泡里另有「{称呼}在想…」文案，避免两处都写字重复），
+ * 收完之后变成 ✓ + 名字 + 右箭头，暗示可以点开。
  */
-function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
+function ThoughtEntry({ owner, active, onClick }: { owner: string; active: boolean; onClick: () => void }) {
+  const label = `${owner}的小心思`;
   return (
     <button
       type="button"
       data-testid="thought-entry"
-      title={active ? '正在思考，点开看已生成的部分' : '点开看这段回复的思考链'}
-      aria-label="查看思考链"
+      title={active ? `${owner}正在想，点开看已经想到哪了` : `点开看${label}`}
+      aria-label={label}
       onClick={onClick}
       className={cn(
         'mb-1 inline-flex items-center gap-1 rounded-full bg-chat-pill px-2 py-[3px] text-[11px] leading-none',
@@ -492,7 +497,8 @@ function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => voi
       ) : (
         <Check className="h-3 w-3 shrink-0 text-chat-accent" />
       )}
-      {!active && <span>思考链</span>}
+      {/* 思考中写「{称呼}在想…」，收完之后才换成「{称呼}的小心思」——注意别在气泡里再写一遍造成重复 */}
+      <span>{active ? `${owner}在想…` : label}</span>
       {!active && <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />}
     </button>
   );
@@ -501,38 +507,49 @@ function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => voi
 /**
  * AI 正文。
  *
- * 思考链已经搬到气泡上方（见 `ThoughtEntry`），这里只管正文与「思考中…」占位。
- * 还没出正文且没有思考链时给一句「思考中…」，否则气泡会是空的。
+ * 思考链已经搬到气泡上方（见 `ThoughtEntry`），这里只管正文与「{称呼}在想…」占位。
+ * 还没出正文且没有思考链时给一句占位，否则气泡会是空的。
  */
-function AssistantBody({ content, streaming }: { content: string; streaming: boolean }) {
+function AssistantBody({ content, streaming, owner }: { content: string; streaming: boolean; owner: string }) {
   if (!content) {
-    return streaming ? <span className="text-chat-meta">思考中…</span> : null;
+    return streaming ? <span className="text-chat-meta">{owner}在想…</span> : null;
   }
   return <Markdown>{content}</Markdown>;
 }
 
-/** 思考链弹窗：白色大圆角卡片 + 半透明灰蒙版 + 左上角黑色× */
-function ThoughtModal({ reasoning, onClose }: { reasoning: string; onClose: () => void }) {
+/**
+ * 思考链**下弹窗**（2026-10-18 用户要求：从居中卡片改成从底部滑上来）。
+ * 遮罩点一下就关；底部再给一颗「收起」，手机上够得着。
+ */
+function ThoughtSheet({ reasoning, owner, onClose }: { reasoning: string; owner: string; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[72vh] w-full max-w-md flex-col rounded-3xl bg-card p-5 shadow-2xl">
-        <div className="relative mb-4 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="关闭"
-            className="absolute left-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <h2 className="text-base font-semibold text-foreground">思考链</h2>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{reasoning}</p>
-        </div>
+    <BottomSheet
+      open
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+      title={`${owner}的小心思`}
+      testid="thought-sheet"
+      maxHeight="max-h-[72vh]"
+    >
+      <div className="px-5 pb-3 pt-1">
+        <p
+          data-testid="thought-text"
+          className="whitespace-pre-wrap text-[14px] leading-relaxed text-chat-ai-fg/80"
+        >
+          {reasoning}
+        </p>
       </div>
-    </div>
+      <div className="px-4 pb-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-xl bg-chat-pill py-2.5 text-[14px] font-medium text-chat-pill-fg transition active:scale-[0.99]"
+        >
+          收起
+        </button>
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -627,6 +644,14 @@ export function ChatPage() {
   const openDrawer = useShellStore((s) => s.openDrawer);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const partnerName = useProfileStore((s) => s.partnerName);
+  /** 「小心思 / 在想…」里的人称：抽屉里设了名字就用它，没设就用「哥哥」（用户一直这么叫） */
+  const ownerName = partnerName || '哥哥';
+  /** 说话风格（即兴碎片流 / 沉浸纯对话），切换写后端，下一条回复生效 */
+  const chatStyleMode = useChatStyle((s) => s.mode);
+  const loadChatStyle = useChatStyle((s) => s.load);
+  const [styleSheetOpen, setStyleSheetOpen] = useState(false);
+  /** 说话风格切换失败时的可见提示（失败静默是最要命的，宁可挡一条也要说） */
+  const [styleErr, setStyleErr] = useState<string | null>(null);
   const loveDayCount = useMemo(() => loveDays(), []);
   const [confirming, setConfirming] = useState<{ confirmId: string; toolName: string; summary: string } | null>(
     null,
@@ -691,6 +716,11 @@ export function ChatPage() {
       .then((s) => setVision({ model: s.visionModel ?? null }))
       .catch(() => {});
   }, []);
+
+  // 说话风格：进聊天页对齐一次后端的档位（别的设备改过也能同步）
+  useEffect(() => {
+    void loadChatStyle();
+  }, [loadChatStyle]);
 
   // 输入变化时（防抖）预判当前会激活哪些技能，显示在输入框上方
   useEffect(() => {
@@ -1234,6 +1264,19 @@ export function ChatPage() {
             <span>在一起 {loveDayCount} 天</span>
           </span>
         </span>
+        {/* 说话风格切换（即兴碎片流 / 沉浸纯对话）：点开底部弹层选。
+            全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
+        <button
+          type="button"
+          onClick={() => setStyleSheetOpen(true)}
+          data-testid="chat-style-pill"
+          aria-label={`说话风格：${CHAT_STYLE_META[chatStyleMode].title}，点击切换`}
+          title={`说话风格：${CHAT_STYLE_META[chatStyleMode].title}`}
+          className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-chat-pill px-2.5 text-[11px] text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
+        >
+          <Sparkles className="h-3.5 w-3.5 opacity-80" />
+          <span className="whitespace-nowrap">{CHAT_STYLE_META[chatStyleMode].short}</span>
+        </button>
         <ConnDot onClick={() => setMindOpen(true)} />
         <button
           type="button"
@@ -1246,6 +1289,17 @@ export function ChatPage() {
         </button>
         {/* 通话入口**不在这里**：按需求顶栏保持简洁，通话已收进输入框的「+」面板 */}
       </div>
+
+      {/* 切换说话风格失败的提示条：3 秒后自动消失，不做弹窗打断聊天 */}
+      {styleErr ? (
+        <div
+          role="alert"
+          data-testid="chat-style-error"
+          className="shrink-0 border-b border-chat-line bg-chat-bar px-4 py-1.5 text-center text-[12px] text-destructive"
+        >
+          {styleErr}
+        </div>
+      ) : null}
 
       {/* 消息列表 + 右下角「回到底部」圆钮 */}
       <div className="relative min-h-0 flex-1">
@@ -1306,6 +1360,23 @@ export function ChatPage() {
             const myIdx = siblings.findIndex((s) => s.id === m.id);
             const isEditing = editingId === m.id;
             const menuOpen = menuForId === m.id;
+            /**
+             * 即兴聊天模式下的「碎片流」：后端被要求一行一句，这里把每个非空行
+             * 渲染成**一条独立气泡**，模拟微信里一条条往外蹦的节奏。
+             * 只有 AI 文本消息才拆（用户消息、表情、语音、通话卡都不动），
+             * 而且至少要两段才拆 —— 一段话拆成一个组没意义，还会多包一层 DOM。
+             */
+            const bubbleSegs =
+              chatStyleMode === 'improv' && m.role === 'assistant' && !isEditing && !m.voiceMs && !m.sticker
+                ? m.content
+                    .split(/\n+/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : [];
+            const multiBubble = bubbleSegs.length > 1;
+            /** 刚发出、正文还没到的 AI 消息：只留上方「{称呼}在想…」，不再给一个空气泡 */
+            const waitingFirstToken =
+              m.role === 'assistant' && m.status === 'streaming' && !m.content && !!m.reasoning;
 
             return (
               <div key={m.id} className="flex flex-col">
@@ -1328,12 +1399,13 @@ export function ChatPage() {
                 >
                   <MsgRow
                     mine={m.role === 'user'}
-                    stamp={needStamp ? <InlineStamp ts={m.createdAt} /> : null}
+                    stamp={needStamp && !waitingFirstToken ? <InlineStamp ts={m.createdAt} /> : null}
                     above={
                       <>
                         {/* 思考链：挂在这条回复的最上面（有 reasoning 才出现） */}
                         {m.role === 'assistant' && m.reasoning ? (
                           <ThoughtEntry
+                            owner={ownerName}
                             active={m.status === 'streaming'}
                             onClick={() => setThoughtReasoning(m.reasoning ?? '')}
                           />
@@ -1346,6 +1418,25 @@ export function ChatPage() {
                     {/* 通话记录卡：不是气泡，是一张卡 */}
                     {m.call ? (
                       <CallRecordCard call={m.call} />
+                    ) : waitingFirstToken ? null : multiBubble ? (
+                      /* 即兴聊天：一条 AI 消息按行拆成多条气泡，一条条往外蹦 */
+                      <div className="flex min-w-0 flex-col items-start gap-1.5" data-testid="bubble-group">
+                        {bubbleSegs.map((seg, si) => (
+                          <div
+                            key={si}
+                            data-testid="chat-bubble"
+                            className="select-none rounded-[18px] bg-chat-ai px-4 py-2.5 text-[15px] leading-6 text-chat-ai-fg"
+                            style={
+                              {
+                                '--foreground': 'var(--chat-ai-fg)',
+                                '--muted-foreground': 'var(--chat-meta)',
+                              } as React.CSSProperties
+                            }
+                          >
+                            <Markdown>{seg}</Markdown>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                     <div
                       className={cn(
@@ -1411,7 +1502,7 @@ export function ChatPage() {
                       ) : m.voiceMs ? (
                         <VoiceBubble id={m.id} ms={m.voiceMs} text={m.content} />
                       ) : m.role === 'assistant' ? (
-                        <AssistantBody content={m.content} streaming={m.status === 'streaming'} />
+                        <AssistantBody content={m.content} streaming={m.status === 'streaming'} owner={ownerName} />
                       ) : m.sticker ? (
                         <StickerBubble emoji={m.sticker} />
                       ) : (
@@ -1935,10 +2026,24 @@ export function ChatPage() {
       {/* 应用内浏览器：点消息里的链接就走这里，不跳出 App */}
       {browserUrl && <InAppBrowser url={browserUrl} onClose={() => setBrowserUrl(null)} />}
 
-      {/* 思考链弹窗 */}
+      {/* 思考链：下弹窗（气泡上方那颗「XX 的小心思」点开） */}
       {thoughtReasoning !== null && (
-        <ThoughtModal reasoning={thoughtReasoning} onClose={() => setThoughtReasoning(null)} />
+        <ThoughtSheet
+          reasoning={thoughtReasoning}
+          owner={ownerName}
+          onClose={() => setThoughtReasoning(null)}
+        />
       )}
+
+      {/* 说话风格：底部弹层二选一（即兴碎片流 / 沉浸纯对话） */}
+      <ChatStyleSheet
+        open={styleSheetOpen}
+        onOpenChange={setStyleSheetOpen}
+        onError={(msg) => {
+          setStyleErr(msg);
+          window.setTimeout(() => setStyleErr(null), 3000);
+        }}
+      />
     </div>
   );
 }

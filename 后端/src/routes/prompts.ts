@@ -8,6 +8,8 @@ import { PERSONA_ANNIVERSARY_FALLBACK, PERSONA_DEFAULT_VARS } from '../persona/m
 import { seedPersonaModules } from '../persona/seed.js';
 import { enabledStyleRules } from './styleRules.js';
 import { buildTimeSense } from '../emotion/timeSense.js';
+import { chatStyleBlock, normalizeChatStyle, type ChatStyleMode } from '../persona/chatStyle.js';
+import { getChatStyleMode } from './settings.js';
 
 /**
  * 恋爱起点，与前端 `features/shell/loveDays.ts` 的 `LOVE_START` 同源。
@@ -80,8 +82,14 @@ function parseVariables(raw: string | null): Record<string, string> | null {
  * - `after`  → 拼在角色设定正文**之后**
  * 「中」按模块数对半切而不是按字符对半切，是为了让切点永远落在模块边界上，
  * 不会把某条模块的正文拦腰截断。
+ * **说话风格档位**（`chat.styleMode`）排在**所有模块与语言风格条目之后**：
+ * 它讲的是「话怎么落地成气泡」，必须压过前面任何关于分行/整段的表述。
+ * 预览接口可以传 `?style=improv` 临时覆盖，方便对着两套提示词调文案。
  */
-export function buildSystemPrompt(model: string, ctx?: { lastMessageAt?: number | null }): string {
+export function buildSystemPrompt(
+  model: string,
+  ctx?: { lastMessageAt?: number | null; chatStyle?: ChatStyleMode },
+): string {
   const rows = db
     .select()
     .from(prompts)
@@ -106,12 +114,15 @@ export function buildSystemPrompt(model: string, ctx?: { lastMessageAt?: number 
   // 时间感信号（阶段 5 末尾追加，始终在场）：让 AI 语气随当前时段 / 距上次对话自适应。
   // lastMessageAt 由 chat 路由按会话最后一条消息算出；预览/拿不到时退化为「新对话」。
   const timeSense = buildTimeSense(new Date(), ctx?.lastMessageAt ?? null);
+  // 说话风格：读完设置再拼，切档之后下一条消息立刻换口吻（不需要重启/重开会话）
+  const styleBlock = chatStyleBlock(ctx?.chatStyle ?? getChatStyleMode());
   const blocks = [
     render(style.before),
     parts.slice(0, cut),
     render(style.middle),
     parts.slice(cut),
     render(style.after),
+    [styleBlock],
     [timeSense],
   ];
   return blocks
@@ -196,9 +207,11 @@ export async function promptRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/prompts/preview', async (req) => {
-    const { model } = (req.query ?? {}) as { model?: string };
+    const { model, style } = (req.query ?? {}) as { model?: string; style?: string };
     const m = model?.trim() || env.defaultModel;
-    return { model: m, systemPrompt: buildSystemPrompt(m) };
+    // `?style=` 只影响这次预览，不落库；不带就用当前设置里的档位
+    const chatStyle = style ? normalizeChatStyle(style) : undefined;
+    return { model: m, chatStyle: chatStyle ?? getChatStyleMode(), systemPrompt: buildSystemPrompt(m, { chatStyle }) };
   });
 
   /**
