@@ -487,18 +487,24 @@ function ThoughtEntry({ owner, active, onClick }: { owner: string; active: boole
         'text-chat-meta shadow-sm transition hover:text-chat-pill-fg active:scale-95',
       )}
     >
+      {/* 思考中：文字在**前**、三个点在**后**（2026-10-18 用户指定顺序）。
+          收完之后换成 ✓ + 「{称呼}的小心思」+ 箭头——注意别在气泡里再写一遍造成重复 */}
       {active ? (
-        <span className="flex items-center gap-[3px]">
-          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '0ms' }} />
-          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '150ms' }} />
-          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '300ms' }} />
-        </span>
+        <>
+          <span>{owner}在想…</span>
+          <span className="flex items-center gap-[3px]">
+            <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '0ms' }} />
+            <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '150ms' }} />
+            <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '300ms' }} />
+          </span>
+        </>
       ) : (
-        <Check className="h-3 w-3 shrink-0 text-chat-accent" />
+        <>
+          <Check className="h-3 w-3 shrink-0 text-chat-accent" />
+          <span>{label}</span>
+          <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
+        </>
       )}
-      {/* 思考中写「{称呼}在想…」，收完之后才换成「{称呼}的小心思」——注意别在气泡里再写一遍造成重复 */}
-      <span>{active ? `${owner}在想…` : label}</span>
-      {!active && <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />}
     </button>
   );
 }
