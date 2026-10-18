@@ -31,7 +31,6 @@ import {
   Pause,
   Download,
   Quote,
-  Sparkles,
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
@@ -724,35 +723,6 @@ function AttachButton({
   );
 }
 
-/**
- * 「新消息形态」预览样本。
- *
- * 参考图里的引用卡 / 内心独白 / 语音气泡 / 通话记录目前都**没有数据来源**
- * （没有 TTS、没有通话记录表），所以这里用一个纯内存开关把它们摆出来看效果：
- * 不写后端、不进 localStorage、也不会被 toPayload 送进模型上下文。
- */
-interface ShapeSample {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  quote?: { label: string };
-  inner?: string;
-  voiceMs?: number;
-  call?: NonNullable<ChatMessage['call']>;
-  /** 相对「现在」往前推的毫秒数，把几条样本排成一条递增的时间线 */
-  ago: number;
-}
-
-const SHAPE_SAMPLES: ShapeSample[] = [
-  { id: 'demo-quote', role: 'assistant', content: '会员卡做完了吗，给我看最终版。', quote: { label: 'Inside' }, ago: 5 * 60_000 },
-  { id: 'demo-inner', role: 'assistant', content: '手机放下。', inner: '写了内心', ago: 4 * 60_000 },
-  // 语音样本的 content 就是**转录文本**：气泡下面用它跑逐字字幕（估算态，见 VoiceBubble）
-  { id: 'demo-voice', role: 'user', content: '我下班啦，路上给你买了那家的草莓，马上就到家，等我。', voiceMs: 12_000, ago: 3 * 60_000 },
-  { id: 'demo-call-ok', role: 'assistant', content: '（通话 02:17）', call: { kind: 'voice', state: 'answered', seconds: 137 }, ago: 2 * 60_000 },
-  { id: 'demo-call-declined', role: 'assistant', content: '（已拒接）', call: { kind: 'voice', state: 'declined' }, ago: 90_000 },
-  { id: 'demo-call-missed', role: 'assistant', content: '（未接来电 已回拨）', call: { kind: 'voice', state: 'missed' }, ago: 45_000 },
-];
-
 export function ChatPage() {
   const navigate = useNavigate();
   const conversation = useChatStore((s) => s.conversation);
@@ -811,7 +781,8 @@ export function ChatPage() {
   /** 应用内浏览器要打开的地址（null = 关闭） */
   const [browserUrl, setBrowserUrl] = useState<string | null>(null);
   /** 「新消息形态」预览开关：**只在本组件内存里**，不写库、不进模型上下文 */
-  const [shapePreview, setShapePreview] = useState(false);
+  /** 正在引用的消息（引用后新消息上方会出现引用卡） */
+  const [quoteMsg, setQuoteMsg] = useState<{ label: string } | null>(null);
   /** 是否已贴底：决定右下角浮出的「回到底部」圆钮显示不显示 */
   const [atBottom, setAtBottom] = useState(true);
   const [thoughtReasoning, setThoughtReasoning] = useState<string | null>(null);
@@ -1243,6 +1214,8 @@ export function ChatPage() {
       parentId,
       status: 'done',
       createdAt: Date.now(),
+      // 引用：贴在气泡上方那张灰底小卡片（微信同款），会随 meta 一起落库
+      quote: quoteMsg ?? undefined,
       images: pendingImages.length
         ? pendingImages.map((i) => (direct ? i : { ...i, dataUrl: undefined }))
         : undefined,
@@ -1252,7 +1225,12 @@ export function ChatPage() {
     setReplyToId(null);
 
     const base = parentId ? pathTo(conv, parentId).map(toPayload) : [];
-    await produceReply(text, userMsg.id, [...base, toPayload(userMsg)]);
+    // 引用同时告诉模型「这条在接哪句话」，否则「这句什么意思」它没法对上下文
+    const payloadUser = quoteMsg
+      ? { ...toPayload(userMsg), content: `（引用 ${quoteMsg.label}）\n${userMsg.content}` }
+      : toPayload(userMsg);
+    setQuoteMsg(null);
+    await produceReply(text, userMsg.id, [...base, payloadUser]);
   };
 
   /**
@@ -1358,6 +1336,21 @@ export function ChatPage() {
   };
 
   const cancelReply = () => setReplyToId(null);
+
+  /**
+   * 引用（2026-10-18 新增，替代被删掉的「形态预览」）。
+   *
+   * 和「回复」不是一回事：回复是从那条往下**开分支**继续聊；
+   * 引用是把原话贴在**下一条消息上方**（微信那种灰底引用条），方便「你刚说的这句什么意思」。
+   * 摘要带说话人前缀，既给人看，也会在发给模型时作为上下文前缀。
+   */
+  const startQuote = (msg: ChatMessage) => {
+    const who = msg.role === 'user' ? '我' : ownerName;
+    const snippet = msg.content.replace(/\s+/g, ' ').trim().slice(0, 60);
+    setQuoteMsg({ label: `${who}：${snippet}` });
+    inputRef.current?.focus();
+  };
+  const cancelQuote = () => setQuoteMsg(null);
 
   const startEdit = (msg: ChatMessage) => {
     setEditingId(msg.id);
@@ -1512,14 +1505,6 @@ export function ChatPage() {
                 <Markdown>{WELCOME_TEXT}</Markdown>
               </div>
             </MsgRow>
-            {/* 空会话时没有 ⋯ 菜单，这里补一个入口，否则新形态预览没人点得到 */}
-            <button
-              type="button"
-              onClick={() => setShapePreview((v) => !v)}
-              className="ml-10 mt-2 rounded-full bg-chat-pill px-3 py-1 text-[11px] text-chat-pill-fg shadow-sm transition hover:bg-chat-line"
-            >
-              {shapePreview ? '收起消息形态预览' : '看看新消息形态'}
-            </button>
           </>
         ) : (
           <>
@@ -1846,11 +1831,11 @@ export function ChatPage() {
                       </>
                     ) : null}
                     <MenuAction
-                      icon={<Sparkles className="h-3.5 w-3.5" />}
-                      label={shapePreview ? '关闭形态预览' : '形态预览'}
+                      icon={<Quote className="h-3.5 w-3.5" />}
+                      label="引用"
                       onClick={() => {
                         closeMenu();
-                        setShapePreview((v) => !v);
+                        startQuote(m);
                       }}
                     />
                     <MenuAction
@@ -1869,50 +1854,6 @@ export function ChatPage() {
             );
           })}
           </>
-        )}
-        {/* 「新消息形态」预览：纯本地渲染，不入库、不进模型上下文 */}
-        {shapePreview && (
-          <div
-            data-testid="shape-preview"
-            className="mt-5 rounded-2xl border border-dashed border-chat-line bg-chat-line/20 p-3"
-          >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-chat-meta">
-                新消息形态预览（仅本地展示：不入库、不进模型上下文）
-              </span>
-              <button
-                type="button"
-                onClick={() => setShapePreview(false)}
-                className="shrink-0 rounded-full bg-chat-pill px-2.5 py-1 text-[11px] text-chat-pill-fg shadow-sm"
-              >
-                关闭
-              </button>
-            </div>
-            <div className="flex flex-col">
-              {SHAPE_SAMPLES.map((s) => (
-                <MsgRow
-                  key={s.id}
-                  mine={s.role === 'user'}
-                  stamp={<InlineStamp ts={Date.now() - s.ago} />}
-                  above={s.quote ? <QuoteCard label={s.quote.label} /> : null}
-                  below={s.inner ? <InnerNote text={s.inner} /> : null}
-                >
-                  {s.call ? (
-                    <CallRecordCard call={s.call} />
-                  ) : (
-                    <div
-                      className={cn(
-                        'rounded-[18px] px-4 py-2.5 text-[15px] leading-6',
-                        s.role === 'user' ? 'bg-chat-me text-chat-me-fg' : 'bg-chat-ai text-chat-ai-fg',
-                      )}
-                    >
-                      {s.voiceMs ? <VoiceBubble id={s.id} ms={s.voiceMs} text={s.content} /> : s.content}
-                    </div>
-                  )}
-                </MsgRow>
-              ))}
-            </div>
-          </div>
         )}
         <div ref={bottomRef} />
         </div>
@@ -1965,6 +1906,23 @@ export function ChatPage() {
               onClick={cancelReply}
               aria-label="取消回复"
               className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-chat-line/70"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        {quoteMsg && (
+          <div
+            data-testid="quote-banner"
+            className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-xl border border-chat-quote-line bg-chat-quote px-3 py-1.5 text-xs text-chat-pill-fg shadow-sm"
+          >
+            <Quote className="h-3.5 w-3.5 shrink-0 text-chat-accent" />
+            <span className="min-w-0 flex-1 truncate">{quoteMsg.label}</span>
+            <button
+              type="button"
+              onClick={cancelQuote}
+              aria-label="取消引用"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-chat-line/70"
             >
               <X className="h-3 w-3" />
             </button>
