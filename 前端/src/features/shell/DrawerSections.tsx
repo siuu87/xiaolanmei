@@ -19,6 +19,7 @@ import {
   Phone,
   Utensils,
   NotebookPen,
+  Moon,
   Cake,
   GraduationCap,
   Puzzle,
@@ -33,6 +34,7 @@ import { ProfileEditor, type ProfileTarget } from './ProfileEditor';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
+import { MoodCard } from '@/features/home/MoodCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
@@ -119,6 +121,9 @@ export function DailyBoard() {
       <div className="space-y-3">
         {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
         <CalendarCard />
+        {/* 我的心情：首页唯一入口原本只在 /home 渲染，移动端抽屉没镜像 → 用户感知「心情界面消失」。
+            这里补上，让抽屉也能填当天心情。 */}
+        <MoodCard />
         <TodoCard />
         {/* Token 与收信匣并排，一半一半 */}
         <div className="grid grid-cols-2 gap-3">
@@ -152,7 +157,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     title: 'together',
     icon: Star,
-    // 与 TogetherPage 的五个分块保持一致（watch/listen/read/gallery/diary）——
+    // 与 TogetherPage 的分块保持一致（watch/listen/read/gallery/diary/goodnight）——
     // 抽屉是镜像入口，那边加一块这边也要加，否则「收拢」就只收了一半。
     entries: [
       { to: '/watch', label: 'watch', hint: '电视 · 片单', icon: Tv },
@@ -160,6 +165,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { to: '/library', label: 'read', hint: '书架 · 管理', icon: BookOpen },
       { to: '/gallery', label: 'gallery', hint: '相册 · 图像记忆', icon: Images },
       { to: '/diary', label: 'diary', hint: '日记本 · 随手写', icon: NotebookPen },
+      { to: '/goodnight', label: 'goodnight', hint: '哄睡 · 陪睡', icon: Moon },
     ],
   },
   {
@@ -191,7 +197,7 @@ export function ModuleCards() {
   const closeDrawer = useShellStore((s) => s.closeDrawer);
   // 手风琴：同时只展开一个分组，点已展开的收起
   const [expanded, setExpanded] = useState<string | null>(null);
-  // 工具箱内部的子项（插件/世界书/…），独立于分组手风琴
+  // 工具箱内部的子项（插件/工作区/…），独立于分组手风琴
   const [toolboxSection, setToolboxSection] = useState<string | null>(null);
   // 开源项目：有依赖可更新时在「开源项目」项旁亮红点
   const openSourceUpdates = useOpenSourceStore((s) => s.updatesCount);
@@ -266,7 +272,7 @@ export function ModuleCards() {
           );
         })}
 
-        {/* 工具箱：插件 / 世界书 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板）
+        {/* 工具箱：插件 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板）
             「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签 */}
         <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           <button
@@ -308,7 +314,7 @@ export function ModuleCards() {
                           <span className="text-[12px] font-medium text-foreground">{s.label}</span>
                           {s.key === 'opensource' && openSourceUpdates > 0 && (
                             <span
-                              aria-label={`${openSourceUpdates} 个依赖有更新`}
+                              aria-label={`${openSourceUpdates} 个项目有更新`}
                               data-testid="opensource-dot"
                               className="block h-[7px] w-[7px] shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]"
                             />

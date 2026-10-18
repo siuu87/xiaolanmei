@@ -5,6 +5,7 @@ import {
   BookOpen,
   Images,
   NotebookPen,
+  Moon,
   ChevronRight,
   ArrowLeft,
   type LucideIcon,
@@ -20,13 +21,14 @@ interface TogetherBlock {
 }
 
 /**
- * together 的五个分块。
+ * together 的分块。
  *
  * 2026-10-16：`gallery`（相册 · 图像记忆）与 `diary`（日记本）按需求收拢到这里，
  * 跟 watch / listen / read 并列 —— 这一页就是「两个人的回忆与生活记录中心」。
  * 它们原来的入口（抽屉「生活小趣味」组、首页 FeatureGrid）已移除，但**路由没变**
  * （`/gallery` `/diary`），所以旧链接照样能用。
  * 标签沿用现有的小写英文风格（watch / listen / read），中文说明放 hint。
+ * 2026-10-18：新增 `goodnight`（晚安 · 哄睡陪睡），路由 `/goodnight`。
  */
 const BLOCKS: TogetherBlock[] = [
   { key: 'watch', label: 'watch', hint: '电视 · 片单', to: '/watch', icon: Tv },
@@ -34,6 +36,7 @@ const BLOCKS: TogetherBlock[] = [
   { key: 'read', label: 'read', hint: '书架 · 管理', to: '/library', icon: BookOpen },
   { key: 'gallery', label: 'gallery', hint: '相册 · 图像记忆', to: '/gallery', icon: Images },
   { key: 'diary', label: 'diary', hint: '日记本 · 随手写', to: '/diary', icon: NotebookPen },
+  { key: 'goodnight', label: 'goodnight', hint: '哄睡 · 陪睡', to: '/goodnight', icon: Moon },
 ];
 
 /**

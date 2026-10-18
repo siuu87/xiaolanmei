@@ -67,23 +67,11 @@ export const prompts = sqliteTable('prompts', {
   deletedAt: integer('deleted_at'),
 });
 
-export const worldbook = sqliteTable('worldbook', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  content: text('content').notNull(),
-  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
-  sortOrder: integer('sort_order').notNull().default(0),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
-  deletedAt: integer('deleted_at'),
-});
-
 /**
  * 语言风格条目（「他的资料 → 语言风格与输出」里的可增删列表）。
  *
- * 与 `worldbook` 是**两回事**：worldbook 是世界观/设定，走 `buildWorldContext()` 单独一段注入；
- * 这里的条目是「说话方式」的补充规则，由 `buildSystemPrompt()` 按 `position` 插进
- * 五模块拼成的角色设定正文里（前 / 中 / 后）。
+ * 原全局「世界书」已并入这里：世界设定与说话方式都写成条目，
+ * 由 `buildSystemPrompt()` 按 `position` 插进五模块拼成的角色设定正文里（前 / 中 / 后）。
  */
 export const styleRules = sqliteTable('style_rules', {
   id: text('id').primaryKey(),
@@ -618,6 +606,59 @@ export const dishes = sqliteTable('dishes', {
   tags: text('tags'), // JSON: string[]，如 多囊友好 / 治愈指数 / 姨妈期推荐
   difficulty: integer('difficulty').notNull().default(1), // 1-3
   healingIndex: integer('healing_index').notNull().default(3), // 治愈指数 1-5
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 开源项目关注清单（工具箱 → 开源项目）。
+ *
+ * **只放用户自己加的项目** —— 后端不再自动扫描 package.json 依赖，
+ * 列表里出现什么完全由用户在面板里添加/删除决定。
+ *
+ * 「有没有更新」的判定：`seen_version` 是用户**已知**的版本（添加时写入、
+ * 点过「知道了」再更新），刷新拉到的 `latest_version` 比它新 → `has_update = 1`。
+ */
+export const openSourceProjects = sqliteTable('open_source_projects', {
+  id: text('id').primaryKey(),
+  owner: text('owner').notNull(), // GitHub owner
+  repo: text('repo').notNull(), // GitHub repo
+  repoUrl: text('repo_url').notNull(),
+  name: text('name').notNull(), // 展示名，默认 full_name，可改
+  note: text('note'), // 用户备注
+  description: text('description'), // GitHub 仓库描述（刷新时同步）
+  stars: integer('stars'),
+  language: text('language'),
+  homepage: text('homepage'),
+  latestVersion: text('latest_version'), // 最新 release tag（没有 release 则为 null）
+  latestPublishedAt: integer('latest_published_at'), // release 发布时间（ms）
+  /** 用户已经知道的版本：比它新才算「有更新」 */
+  seenVersion: text('seen_version'),
+  lastCheckedAt: integer('last_checked_at'),
+  hasUpdate: integer('has_update', { mode: 'boolean' }).notNull().default(false),
+  checkError: text('check_error'), // 上一次刷新失败的原因（成功则清空）
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 晚安页音频（together → goodnight）：用户导入的哄睡/陪睡音频。
+ *
+ * 音频本体落盘 `data/sleep-audio/`，这里只存 URL + 元数据（标题 / 时长 / 大小）。
+ * 白噪音不入库（前端 Web Audio 实时生成，无需存储）。
+ * `sort_order` 越小越靠前。
+ */
+export const sleepAudio = sqliteTable('sleep_audio', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  url: text('url').notNull(),
+  mime: text('mime'),
+  duration: integer('duration'), // 秒（可选，前端上传时尽量带上）
+  size: integer('size'), // 字节
+  sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

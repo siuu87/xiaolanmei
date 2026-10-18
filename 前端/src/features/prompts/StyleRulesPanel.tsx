@@ -15,7 +15,7 @@ import {
 } from '@/lib/api/styleRules';
 
 /**
- * 语言风格条目面板：「类似世界书」的交互 —— 右上角 + 新增、可上下调序、
+ * 语言风格条目面板：右上角 + 新增、可上下调序、
  * 每条带启用开关与插入位置（前 / 中 / 后）。
  *
  * 位置的含义由后端 `buildSystemPrompt()` 决定（见 `routes/prompts.ts`）：
@@ -138,7 +138,7 @@ export function StyleRulesPanel() {
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <CardTitle>语言风格条目</CardTitle>
-              <CardDescription>像世界书一样：加一条、选它插在角色设定的前 / 中 / 后</CardDescription>
+              <CardDescription>加一条说话方式或设定，选它插在角色设定的前 / 中 / 后</CardDescription>
             </div>
             <Button size="sm" onClick={startCreate} data-testid="style-add">
               <Plus className="h-4 w-4" /> 新增

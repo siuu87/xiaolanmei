@@ -77,20 +77,9 @@ CREATE TABLE IF NOT EXISTS prompts (
   deleted_at INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS worldbook (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  content TEXT NOT NULL,
-  enabled INTEGER NOT NULL DEFAULT 1,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  deleted_at INTEGER
-);
-
 -- 语言风格条目：「他的资料 → 语言风格与输出」里的可增删列表。
 -- position 决定它插进角色设定正文的位置（before 前 / middle 中 / after 后）。
--- 与 worldbook 分开：worldbook 是世界观设定，走 buildWorldContext() 单独注入。
+-- 原全局「世界书」已并入此处：世界设定与说话方式都写成条目。
 CREATE TABLE IF NOT EXISTS style_rules (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -618,6 +607,44 @@ CREATE TABLE IF NOT EXISTS dishes (
   deleted_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_dishes_type ON dishes(type);
+
+-- 开源项目关注清单：只放用户自己加的项目（后端不再自动扫描依赖）
+CREATE TABLE IF NOT EXISTS open_source_projects (
+  id TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  repo TEXT NOT NULL,
+  repo_url TEXT NOT NULL,
+  name TEXT NOT NULL,
+  note TEXT,
+  description TEXT,
+  stars INTEGER,
+  language TEXT,
+  homepage TEXT,
+  latest_version TEXT,
+  latest_published_at INTEGER,
+  seen_version TEXT,
+  last_checked_at INTEGER,
+  has_update INTEGER NOT NULL DEFAULT 0,
+  check_error TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+-- 晚安页音频（together → goodnight）：用户导入的哄睡/陪睡音频。本体落盘 data/sleep-audio/，这里只存 URL + 元数据。
+CREATE TABLE IF NOT EXISTS sleep_audio (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  url TEXT NOT NULL,
+  mime TEXT,
+  duration INTEGER,
+  size INTEGER,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
 
 CREATE TABLE IF NOT EXISTS tavern_characters (
   id TEXT PRIMARY KEY,

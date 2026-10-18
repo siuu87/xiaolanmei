@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">小蓝莓手机代理</string>
+    <string name="start_agent">启动手机代理</string>
+    <string name="accessibility_desc">小蓝莓手机代理：允许该服务读取当前界面、模拟点击与输入，以执行你通过小蓝莓下发的操作指令（如「打开微信」「截个图」）。所有指令都来自你本人，且操作全程在本地完成。</string>
+</resources>

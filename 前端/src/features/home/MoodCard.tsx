@@ -11,7 +11,7 @@
  * 单选语义：再点一次同一项 = 取消，回到「还没告诉我」。
  */
 import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { MOODS, moodInfo, useMoodStore, todayKey, type MoodKey } from './moodStore';
 
@@ -51,24 +51,6 @@ function MoodRow({
                   : 'border-border bg-foreground/[0.02] hover:border-foreground/15',
               )}
             >
-              {/* 选中时的柔和淡光晕 */}
-              <AnimatePresence>
-                {on && (
-                  <motion.span
-                    key="halo"
-                    aria-hidden
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.7 }}
-                    transition={{ duration: 0.32, ease: 'easeOut' }}
-                    className="pointer-events-none absolute inset-0 rounded-full"
-                    style={{
-                      boxShadow: `0 0 18px 4px ${m.color}55, inset 0 0 12px ${m.color}22`,
-                    }}
-                  />
-                )}
-              </AnimatePresence>
-
               <svg
                 viewBox="0 0 32 32"
                 className={cn('h-6 w-6 transition-colors duration-300', on ? '' : 'opacity-70')}

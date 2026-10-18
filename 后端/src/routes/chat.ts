@@ -6,7 +6,6 @@ import { db } from '../db/client.js';
 import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
-import { buildWorldContext } from './worldbook.js';
 import { buildMemoryContext } from './memories.js';
 import { buildSummaryContext } from './summaries.js';
 import { getModelConfig, getAdapterConfig, resolveStation, firstModel } from './stations.js';
@@ -241,7 +240,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const ragOn = body.rag !== false;
     const convId = body.conversationId ?? null;
 
-    // 阶段 5/6：注入 system 提示词（全局 + 该模型）+ 世界书 + 长期记忆 + 最近摘要
+    // 阶段 5/6：注入 system 提示词（全局 + 该模型）+ 长期记忆 + 最近摘要
     // 记忆按「用户最后一条消息」做关键词检索，而非无脑塞全部
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     const query = typeof lastUser?.content === 'string' ? lastUser.content : '';
@@ -323,7 +322,6 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
     const systemPrompt = [
       buildSystemPrompt(model, { lastMessageAt }),
-      buildWorldContext(),
       buildMemoryContext(query),
       ragBlock,
       buildSummaryContext(convId),

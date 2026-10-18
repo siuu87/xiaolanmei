@@ -11,7 +11,7 @@
 import { create } from 'zustand';
 
 interface ShellState {
-  drawerOpen: boolean; // 主抽屉（伴侣档案 / 日常看板 / 模块卡；插件/世界书/工作区/技能等工具箱内容也在这里）
+  drawerOpen: boolean; // 主抽屉（伴侣档案 / 日常看板 / 模块卡；插件/工作区/技能等工具箱内容也在这里）
   appearanceOpen: boolean; // 外观自定义浮层
   openDrawer: () => void;
   closeDrawer: () => void;

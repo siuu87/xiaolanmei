@@ -1,8 +1,10 @@
 import type { ToolDef } from '../adapters/types.js';
+import { phoneHub } from '../phoneControl/hub.js';
 import { eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles } from '../db/schema.js';
+import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles, pluginWishlist } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { addOpenSourceProject, refreshOpenSource } from '../routes/openSource.js';
 import { indexDocument, updateDocument } from '../services/ragService.js';
 
 /**
@@ -400,7 +402,264 @@ const memoOrganize: BuiltinTool = {
   },
 };
 
-const BUILTIN_TOOLS: BuiltinTool[] = [webFetch, webSearch, saveCourses, memoAdd, memoUpdate, memoDelete, memoOrganize];
+/* ----------------------------------------------------------------------------
+ * 手机控制工具（真·控手机：原生 Android 桥 ↔ 后端 SSE ↔ LLM）
+ * 每个工具本质是把一条确定性指令经 phoneHub 发给手机上的原生端执行，
+ * 这正是 Operit 式「模型推理 + 确定性工具层」三明治架构。
+ * 只读类（ui_tree / screenshot / home / back / scroll）默认免确认；
+ * 会改变设备状态/输入类（tap / swipe / input / open_app）需要用户确认。
+ * ------------------------------------------------------------------------- */
+
+function phoneResult(res: { ok: boolean; data?: unknown; error?: string }, fallback = ''): string {
+  if (!res.ok) return `手机未连接或操作失败：${res.error ?? '未知错误'}`;
+  if (res.data == null) return fallback || 'ok';
+  return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+}
+
+function phoneTool(
+  name: string,
+  description: string,
+  properties: Record<string, unknown>,
+  required: string[],
+  tool: string,
+  requiresConfirm: boolean,
+  argMap?: (a: Record<string, unknown>) => Record<string, unknown>,
+): BuiltinTool {
+  return {
+    name,
+    description,
+    parameters: { type: 'object', properties, required },
+    requiresConfirm,
+    async execute(args) {
+      const payload = argMap ? argMap(args) : args;
+      const res = await phoneHub.sendCommand(tool, payload);
+      return phoneResult(res);
+    },
+  };
+}
+
+const phoneUiTree = phoneTool(
+  'phone_ui_tree',
+  '读取手机当前屏幕的界面结构（各可见元素的文本/内容描述与位置）。相当于让 AI「看到」当前手机界面，是执行任何点击/输入前先观察屏幕的第一步。只读，无需确认。',
+  {},
+  [],
+  'ui_tree',
+  false,
+  () => ({}),
+);
+
+const phoneScreenshot = phoneTool(
+  'phone_screenshot',
+  '截取手机当前屏幕。只读，无需确认。返回图片在后端的可访问地址（仅本地/内网），不会上传到任何外部服务。',
+  {},
+  [],
+  'screenshot',
+  false,
+  () => ({}),
+);
+
+const phoneTap = phoneTool(
+  'phone_tap',
+  '在手机上点击一个界面元素。优先用 text（元素的可见文本或内容描述）定位；也可给 x,y（0~1 比例坐标）精确点击。当用户要小蓝莓帮忙点开某个 App、按钮、链接、开关时使用。会改变设备状态，需要用户确认。',
+  {
+    text: { type: 'string', description: '要点击的元素文本或内容描述（优先）。例如「设置」「微信」' },
+    x: { type: 'number', description: '点击横坐标，0~1 比例（与 text 二选一）' },
+    y: { type: 'number', description: '点击纵坐标，0~1 比例（与 text 二选一）' },
+  },
+  [],
+  'tap',
+  true,
+);
+
+const phoneSwipe = phoneTool(
+  'phone_swipe',
+  '在手机屏幕上滑动。可给 direction（up/down/left/right）；也可给精确起止坐标 fromX/fromY/toX/toY（0~1 比例）。用于翻页、下拉刷新、返回上一层等。需要用户确认。',
+  {
+    direction: { type: 'string', enum: ['up', 'down', 'left', 'right'], description: '滑动方向（快捷方式）' },
+    fromX: { type: 'number', description: '起点横坐标 0~1' },
+    fromY: { type: 'number', description: '起点纵坐标 0~1' },
+    toX: { type: 'number', description: '终点横坐标 0~1' },
+    toY: { type: 'number', description: '终点纵坐标 0~1' },
+  },
+  [],
+  'swipe',
+  true,
+);
+
+const phoneInput = phoneTool(
+  'phone_input',
+  '在当前聚焦的输入框里输入文字（先确保已 tap 到输入框）。用于发消息、搜素、填表。需要用户确认，避免误输入。',
+  {
+    text: { type: 'string', description: '要输入的文字内容' },
+  },
+  ['text'],
+  'input',
+  true,
+);
+
+const phoneOpenApp = phoneTool(
+  'phone_open_app',
+  '打开手机上的某个 App。可传 packageName（如 com.tencent.mm）；若不记得包名可传 appName（如「微信」「设置」），由原生端按已安装列表模糊匹配。需要用户确认。',
+  {
+    packageName: { type: 'string', description: 'Android 包名（优先），如 com.tencent.mm' },
+    appName: { type: 'string', description: 'App 显示名（模糊匹配），如「微信」「设置」' },
+  },
+  [],
+  'open_app',
+  true,
+);
+
+const phoneHome = phoneTool(
+  'phone_home',
+  '按系统「返回桌面」（Home 键）。导航操作，相对安全，无需确认。',
+  {},
+  [],
+  'home',
+  false,
+  () => ({}),
+);
+
+const phoneBack = phoneTool(
+  'phone_back',
+  '按系统「返回」键（上一级）。导航操作，无需确认。',
+  {},
+  [],
+  'back',
+  false,
+  () => ({}),
+);
+
+const phoneScroll = phoneTool(
+  'phone_scroll',
+  '在当前界面内滚动。direction 为 up/down/left/right。用于浏览列表/长页面。只读式浏览，无需确认。',
+  {
+    direction: { type: 'string', enum: ['up', 'down', 'left', 'right'], description: '滚动方向' },
+  },
+  ['direction'],
+  'scroll',
+  false,
+);
+
+const PHONE_TOOLS: BuiltinTool[] = [
+  phoneUiTree,
+  phoneScreenshot,
+  phoneTap,
+  phoneSwipe,
+  phoneInput,
+  phoneOpenApp,
+  phoneHome,
+  phoneBack,
+  phoneScroll,
+];
+
+/* ----------------------------------------------------------------------------
+ * 灵感待办池 / 开源项目：让 AI 在对话里直接往这些清单写东西
+ * （对应需求：灵感待办池可以 AI 自行添加；AI 还能对开源项目进行添加和更新）
+ * ------------------------------------------------------------------------- */
+
+const wishlistAdd: BuiltinTool = {
+  name: 'wishlist_add',
+  description:
+    '把对话中冒出的灵感或待办写进两人的「灵感待办池」（/wishlist）。当用户说「记一下」「提醒我」「以后想…」「帮我存个 todo」「这个想法不错」等时调用。默认存为灵感；若是明确的待办任务可传 isTodo=true。',
+  parameters: {
+    type: 'object',
+    properties: {
+      content: { type: 'string', description: '要记录的内容（灵感或待办的文字）' },
+      isTodo: { type: 'boolean', description: 'true=待办任务（可勾选完成），false/缺省=灵感（Inbox）' },
+    },
+    required: ['content'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const content = String(args.content ?? '').trim();
+    if (!content) return '错误：content 不能为空';
+    const isTodo = args.isTodo === true;
+    const id = newId();
+    const ts = now();
+    const maxRow = db
+      .select({ max: pluginWishlist.sortOrder })
+      .from(pluginWishlist)
+      .all()
+      .reduce((m, r) => Math.max(m, r.max ?? 0), 0);
+    db.insert(pluginWishlist)
+      .values({
+        id,
+        content,
+        isTodo,
+        completed: false,
+        completedAt: null,
+        sortOrder: maxRow + 10,
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    return `已写进灵感待办池（${isTodo ? '待办' : '灵感'}）：${content}`;
+  },
+};
+
+const openSourceAdd: BuiltinTool = {
+  name: 'open_source_add',
+  description:
+    '把用户提到的 GitHub 开源项目加入「开源项目关注清单」。传仓库地址（https://github.com/owner/repo 或 owner/repo）。加入后自动拉取星标与最新版本，有新版本时亮红点。已在清单里则提示已存在。',
+  parameters: {
+    type: 'object',
+    properties: {
+      repoUrl: { type: 'string', description: 'GitHub 仓库地址，如 https://github.com/owner/repo' },
+      note: { type: 'string', description: '备注（可选）' },
+    },
+    required: ['repoUrl'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const repoUrl = String(args.repoUrl ?? '').trim();
+    if (!repoUrl) return '错误：repoUrl 不能为空';
+    try {
+      const id = await addOpenSourceProject(repoUrl, args.note ? String(args.note) : undefined);
+      return `已加入开源项目关注清单：${repoUrl}（id=${id}）。以后想查更新就说一声。`;
+    } catch (e) {
+      return `添加失败：${(e as Error).message}`;
+    }
+  },
+};
+
+const openSourceRefresh: BuiltinTool = {
+  name: 'open_source_refresh',
+  description:
+    '检查「开源项目关注清单」里有没有新版本发布（只读检查，不动本地依赖）。不传 id 检查全部；传 id 只查那一个。返回有多少项目有更新、哪些失败。',
+  parameters: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: '只看某个项目时的项目 id（可选，缺省检查全部）' },
+    },
+    required: [],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    try {
+      const r = await refreshOpenSource(typeof args.id === 'string' && args.id ? args.id : undefined);
+      if (r.failed.length) {
+        return `检查完成：有 ${r.updated} 个项目可更新；${r.failed.length} 个失败（${r.failed.map((f) => f.name).join('、')}）。`;
+      }
+      return r.updated > 0 ? `检查完成：${r.updated} 个项目有新版本。` : '检查完成：没有项目有新版本。';
+    } catch (e) {
+      return `检查更新失败：${(e as Error).message}`;
+    }
+  },
+};
+
+const BUILTIN_TOOLS: BuiltinTool[] = [
+  webFetch,
+  webSearch,
+  saveCourses,
+  memoAdd,
+  memoUpdate,
+  memoDelete,
+  memoOrganize,
+  wishlistAdd,
+  openSourceAdd,
+  openSourceRefresh,
+  ...PHONE_TOOLS,
+];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));
 
 export function listBuiltinTools(): BuiltinTool[] {

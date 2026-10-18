@@ -1,201 +1,399 @@
 import type { FastifyInstance } from 'fastify';
-import fs from 'node:fs';
-import path from 'node:path';
-import { env } from '../config/env.js';
+import { and, eq, isNull } from 'drizzle-orm';
+import { db } from '../db/client.js';
+import { openSourceProjects } from '../db/schema.js';
+import { newId, now } from '../utils/id.js';
 
 /**
- * 开源项目清单：列出本项目用到、且能在 GitHub 上找到源码的 npm 依赖（前端 + 后端）。
+ * 开源项目关注清单（工具箱 → 开源项目）。
  *
- * **只提醒、不执行**：这里只读 package.json / node_modules 的实际版本，再去 npm registry
- * 查最新版与 GitHub 仓库地址，算出「有没有更新」下发前端。真正更新由用户自己去 GitHub/npm
- * 手动做——本路由**不**跑 npm install，不碰任何写操作。
+ * 2026-10-18 改版：
+ * - **列表只放用户自己加的项目**。以前是自动扫 package.json 依赖，
+ *   里面大部分是用户根本不关心的传递依赖；现在改成空白清单，加什么由用户说了算。
+ * - **「检查更新」按钮**：点一下后端去 GitHub 拉每个项目的最新 release，
+ *   比 `seen_version`（用户已知的版本）新就标「有更新」。这是**只读的更新检查**，
+ *   不会去动本地依赖——真要升级依赖得用户自己决定。
  *
- * 范围：只保留 npm 元数据里能解析出 GitHub 仓库地址的包（其余丢进 node_modules 但列不出来）。
+ * 网络：只有 `api.github.com` 在这台机器上可达（`github.com` 连不上），
+ * 所以一律走 API，不抓网页。未鉴权 GitHub API 限流 60 次/小时，
+ * 每个项目 2 个请求 → 30 个项目以内一次刷完，超了会把失败原因回给前端。
  */
 
-type Side = 'frontend' | 'backend';
-type DepKind = 'dependency' | 'devDependency';
+const API = 'https://api.github.com';
 
-interface OpenSourceDep {
+interface ProjectDTO {
+  id: string;
+  owner: string;
+  repo: string;
+  repoUrl: string;
   name: string;
-  side: Side;
-  kind: DepKind;
-  declared: string; // package.json 里声明的范围，如 "^18.3.1"
-  installed: string | null; // node_modules 里实际装到的版本
-  latest: string | null; // npm registry 的最新版（查不到为 null）
-  hasUpdate: boolean;
-  repoUrl: string; // 解析出的 GitHub 仓库地址
-  homepage: string | null;
+  note: string | null;
   description: string | null;
+  stars: number | null;
+  language: string | null;
+  homepage: string | null;
+  latestVersion: string | null;
+  latestPublishedAt: number | null;
+  seenVersion: string | null;
+  lastCheckedAt: number | null;
+  hasUpdate: boolean;
+  checkError: string | null;
+  sortOrder: number;
+  createdAt: number;
 }
 
-interface OpenSourceResponse {
-  items: OpenSourceDep[];
-  summary: { total: number; updates: number; checkedAt: number };
+function toDTO(p: typeof openSourceProjects.$inferSelect): ProjectDTO {
+  return {
+    id: p.id,
+    owner: p.owner,
+    repo: p.repo,
+    repoUrl: p.repoUrl,
+    name: p.name,
+    note: p.note,
+    description: p.description,
+    stars: p.stars,
+    language: p.language,
+    homepage: p.homepage,
+    latestVersion: p.latestVersion,
+    latestPublishedAt: p.latestPublishedAt,
+    seenVersion: p.seenVersion,
+    lastCheckedAt: p.lastCheckedAt,
+    hasUpdate: p.hasUpdate,
+    checkError: p.checkError,
+    sortOrder: p.sortOrder,
+    createdAt: p.createdAt,
+  };
 }
 
-interface PkgJson {
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
+function listRows() {
+  return db
+    .select()
+    .from(openSourceProjects)
+    .all()
+    .filter((p) => p.deletedAt == null)
+    .sort((a, b) => a.sortOrder - b.sortOrder || b.createdAt - a.createdAt);
 }
 
-/** 前端 / 后端各自的工作目录（相对仓库根 env.workspacePath = d:\小蓝莓） */
-const SIDES: { side: Side; dir: string }[] = [
-  { side: 'frontend', dir: '前端' },
-  { side: 'backend', dir: '后端' },
-];
-
-const REGISTRY = 'https://registry.npmjs.org';
-// 上游版本变动慢，10 分钟内复用同一份结果，避免每次打开面板都连打 30 个请求
-const CACHE_TTL = 10 * 60_000;
-let cache: { at: number; result: OpenSourceResponse } | null = null;
-
-function readJson<T>(...segments: string[]): T | null {
-  try {
-    const p = path.join(env.workspacePath, ...segments);
-    return JSON.parse(fs.readFileSync(p, 'utf8')) as T;
-  } catch {
-    return null;
-  }
-}
-
-/** 实际安装版本：直接读 node_modules/<name>/package.json 的 version，比解析 ^ 范围准 */
-function readInstalled(dir: string, name: string): string | null {
-  const pkg = readJson<{ version?: string }>(dir, 'node_modules', name, 'package.json');
-  return pkg?.version ?? null;
-}
+/* --------------------------- GitHub 地址解析 --------------------------- */
 
 /**
- * 从 npm 元数据的 repository 字段解析 GitHub 仓库地址。
- * 容忍 `git+https://github.com/u/r.git` / `https://github.com/u/r` / `github:u/r` 等写法。
+ * 从用户输入里解析 owner/repo。
+ * 容忍这些写法：
+ *   https://github.com/owner/repo
+ *   https://github.com/owner/repo.git
+ *   github.com/owner/repo/tree/main
+ *   owner/repo
  */
-function parseRepoUrl(repo: unknown): string | null {
-  let raw: string | null = null;
-  if (typeof repo === 'string') raw = repo;
-  else if (repo && typeof repo === 'object') {
-    const u = (repo as { url?: unknown }).url;
-    if (typeof u === 'string') raw = u;
-  }
+export function parseRepo(input: string): { owner: string; repo: string } | null {
+  const raw = (input ?? '').trim();
   if (!raw) return null;
-  const cleaned = raw.replace(/\.git$/, '').replace(/\/$/, '').replace(/#.*$/, '');
-  const m =
-    cleaned.match(/github\.com[/:]([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/i) ??
-    cleaned.match(/^github:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/i);
+  // 去掉协议与域名，剩下 path 部分
+  const m = raw.match(/github\.com[/:]([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/i) ?? raw.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/);
   if (!m) return null;
-  return `https://github.com/${m[1]}/${m[2]}`;
+  const owner = m[1];
+  const repo = m[2].replace(/\.git$/i, '');
+  if (!owner || !repo) return null;
+  return { owner, repo };
 }
 
-/** 版本比较：只比 major.minor.patch 的数值，忽略 prerelease/build（本项目依赖没用到预发版） */
-function versionParts(v: string): [number, number, number] {
-  const [a, b, c] = v.split('.');
-  const toN = (s: string | undefined) => {
-    if (!s) return 0;
-    const m = /^\d+/.exec(s);
-    return m ? Number(m[0]) : 0;
+/* ------------------------------ GitHub 拉取 ------------------------------ */
+
+interface RepoMeta {
+  fullName: string;
+  description: string | null;
+  stars: number | null;
+  language: string | null;
+  homepage: string | null;
+}
+
+interface ReleaseMeta {
+  tag: string | null;
+  publishedAt: number | null;
+}
+
+async function ghGet<T>(url: string): Promise<T> {
+  const res = await fetch(url, {
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'blueberry-open-source' },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (res.status === 404) throw new Error('仓库不存在（或没有权限访问）');
+  if (res.status === 403 || res.status === 429) throw new Error('GitHub API 限流了，稍后再试');
+  if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+  return (await res.json()) as T;
+}
+
+async function fetchRepo(owner: string, repo: string): Promise<RepoMeta> {
+  const j = await ghGet<{
+    full_name?: string;
+    description?: string | null;
+    stargazers_count?: number;
+    language?: string | null;
+    homepage?: string | null;
+  }>(`${API}/repos/${owner}/${repo}`);
+  return {
+    fullName: j.full_name ?? `${owner}/${repo}`,
+    description: j.description ?? null,
+    stars: typeof j.stargazers_count === 'number' ? j.stargazers_count : null,
+    language: j.language ?? null,
+    homepage: j.homepage ?? null,
   };
-  return [toN(a), toN(b), toN(c)];
 }
 
-function isNewer(latest: string, installed: string): boolean {
-  const l = versionParts(latest);
-  const i = versionParts(installed);
-  for (let k = 0; k < 3; k++) {
-    if (l[k] !== i[k]) return l[k] > i[k];
+/** 最新 release；仓库没发过 release 时返回 null（不算错误） */
+async function fetchLatestRelease(owner: string, repo: string): Promise<ReleaseMeta> {
+  try {
+    const j = await ghGet<{ tag_name?: string; published_at?: string }>(
+      `${API}/repos/${owner}/${repo}/releases/latest`,
+    );
+    return {
+      tag: typeof j.tag_name === 'string' ? j.tag_name : null,
+      publishedAt: j.published_at ? Date.parse(j.published_at) : null,
+    };
+  } catch (e) {
+    // 「没有 release」是正常状态（404），不当成失败
+    if ((e as Error).message.startsWith('仓库不存在')) return { tag: null, publishedAt: null };
+    throw e;
+  }
+}
+
+/** 比 version 新才算更新：只比 major.minor.patch 数值，容忍 v 前缀与预发后缀 */
+export function isNewer(latest: string, seen: string): boolean {
+  const parts = (v: string) =>
+    v.replace(/^v/i, '').split(/[.-]/).slice(0, 3).map((s) => {
+      const m = /^\d+/.exec(s);
+      return m ? Number(m[0]) : 0;
+    });
+  const l = parts(latest);
+  const s = parts(seen);
+  for (let i = 0; i < 3; i++) {
+    const a = l[i] ?? 0;
+    const b = s[i] ?? 0;
+    if (a !== b) return a > b;
   }
   return false;
 }
 
-interface LatestManifest {
-  version?: string;
-  repository?: unknown;
-  homepage?: unknown;
-  description?: unknown;
+/** 拉一次 GitHub，算出这一条该写回什么（纯计算，不落库） */
+async function probeProject(owner: string, repo: string) {
+  const [meta, rel] = await Promise.all([fetchRepo(owner, repo), fetchLatestRelease(owner, repo)]);
+  return { meta, rel };
 }
 
-async function fetchMeta(name: string): Promise<{
-  latest: string | null;
-  repoUrl: string | null;
-  homepage: string | null;
-  description: string | null;
-}> {
-  // scoped 包（@fastify/cors）的 / 要编码成 %2F
-  const encoded = name.replace('/', '%2F');
-  // 用 /latest（单个版本 manifest，很小）：带 repository/homepage/description，
-  // 而不是整包 packument（几十 MB）或精简 packument（会把 repository 裁掉）
-  const res = await fetch(`${REGISTRY}/${encoded}/latest`, {
-    headers: { 'User-Agent': 'blueberry-open-source' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`registry ${res.status}`);
-  const data = (await res.json()) as LatestManifest;
-  return {
-    latest: typeof data.version === 'string' ? data.version : null,
-    repoUrl: parseRepoUrl(data.repository),
-    homepage: typeof data.homepage === 'string' ? data.homepage : null,
-    description: typeof data.description === 'string' ? data.description : null,
-  };
-}
+/* -------------------------------- 路由 -------------------------------- */
 
-async function buildList(): Promise<OpenSourceResponse> {
-  const entries: { name: string; side: Side; dir: string; kind: DepKind; declared: string }[] = [];
-  for (const { side, dir } of SIDES) {
-    const pkg = readJson<PkgJson>(dir, 'package.json');
-    if (!pkg) continue;
-    for (const [name, declared] of Object.entries(pkg.dependencies ?? {})) {
-      entries.push({ name, side, dir, kind: 'dependency', declared });
-    }
-    for (const [name, declared] of Object.entries(pkg.devDependencies ?? {})) {
-      entries.push({ name, side, dir, kind: 'devDependency', declared });
-    }
+/**
+ * 添加一个项目（供 HTTP 路由与内置 AI 工具共用）：传 GitHub 链接或 owner/repo，
+ * 立刻拉一次详情并落库。返回新行 id。
+ * 已在清单（含软删复活）则抛「已经在清单里」；地址无法解析抛「请填…」；GitHub 出错抛原始错误。
+ */
+export async function addOpenSourceProject(repoUrl: string, note?: string): Promise<string> {
+  const parsed = parseRepo(repoUrl);
+  if (!parsed) throw new Error('请填 GitHub 仓库地址，如 https://github.com/owner/repo');
+  const { owner, repo } = parsed;
+
+  const existing = db
+    .select()
+    .from(openSourceProjects)
+    .all()
+    .find(
+      (p) =>
+        p.owner.toLowerCase() === owner.toLowerCase() && p.repo.toLowerCase() === repo.toLowerCase(),
+    );
+  if (existing && existing.deletedAt == null) {
+    throw new Error(`已经在清单里了（${existing.name}）`);
   }
 
-  const items: OpenSourceDep[] = [];
-  await Promise.all(
-    entries.map(async (e) => {
-      const installed = readInstalled(e.dir, e.name);
-      let meta: Awaited<ReturnType<typeof fetchMeta>>;
-      try {
-        meta = await fetchMeta(e.name);
-      } catch {
-        return; // 单个包查不到就跳过，别因为一个包拖垮整张列表
-      }
-      if (!meta.repoUrl) return; // 只保留 GitHub 上找得到源码的
-      items.push({
-        name: e.name,
-        side: e.side,
-        kind: e.kind,
-        declared: e.declared,
-        installed,
-        latest: meta.latest,
-        hasUpdate: !!(meta.latest && installed && isNewer(meta.latest, installed)),
-        repoUrl: meta.repoUrl,
-        homepage: meta.homepage,
+  const { meta, rel } = await probeProject(owner, repo);
+  const ts = now();
+
+  if (existing) {
+    db.update(openSourceProjects)
+      .set({
+        deletedAt: null,
+        name: meta.fullName,
         description: meta.description,
-      });
-    }),
-  );
+        stars: meta.stars,
+        language: meta.language,
+        homepage: meta.homepage,
+        latestVersion: rel.tag,
+        latestPublishedAt: rel.publishedAt,
+        seenVersion: rel.tag,
+        lastCheckedAt: ts,
+        hasUpdate: false,
+        checkError: null,
+        updatedAt: ts,
+      })
+      .where(eq(openSourceProjects.id, existing.id))
+      .run();
+    return existing.id;
+  }
 
-  items.sort((a, b) =>
-    a.side === b.side ? a.name.localeCompare(b.name) : a.side === 'frontend' ? -1 : 1,
-  );
+  const id = newId();
+  db.insert(openSourceProjects)
+    .values({
+      id,
+      owner,
+      repo,
+      repoUrl: `https://github.com/${owner}/${repo}`,
+      name: meta.fullName,
+      note: note?.trim() || null,
+      description: meta.description,
+      stars: meta.stars,
+      language: meta.language,
+      homepage: meta.homepage,
+      latestVersion: rel.tag,
+      latestPublishedAt: rel.publishedAt,
+      seenVersion: rel.tag,
+      lastCheckedAt: ts,
+      hasUpdate: false,
+      checkError: null,
+      sortOrder: 0,
+      createdAt: ts,
+      updatedAt: ts,
+    })
+    .run();
+  return id;
+}
 
-  return {
-    items,
-    summary: {
-      total: items.length,
-      updates: items.filter((i) => i.hasUpdate).length,
-      checkedAt: Date.now(),
-    },
-  };
+/** 检查更新（供 HTTP 路由与内置 AI 工具共用）。id 为空 = 全部，否则只刷这一个。 */
+export async function refreshOpenSource(id?: string): Promise<{
+  updated: number;
+  failed: { id: string; name: string; error: string }[];
+  checkedAt: number;
+}> {
+  const rows = listRows().filter((p) => !id || p.id === id);
+  const ts = now();
+  const failed: { id: string; name: string; error: string }[] = [];
+  let updated = 0;
+
+  // 并发 4 个：GitHub 未鉴权限流很紧，别一次打几十个请求
+  const queue = [...rows];
+  const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
+    for (;;) {
+      const row = queue.shift();
+      if (!row) return;
+      try {
+        const { meta, rel } = await probeProject(row.owner, row.repo);
+        const hasUpdate = !!(rel.tag && row.seenVersion && isNewer(rel.tag, row.seenVersion));
+        if (hasUpdate) updated += 1;
+        db.update(openSourceProjects)
+          .set({
+            name: meta.fullName,
+            description: meta.description,
+            stars: meta.stars,
+            language: meta.language,
+            homepage: meta.homepage,
+            latestVersion: rel.tag,
+            latestPublishedAt: rel.publishedAt,
+            lastCheckedAt: ts,
+            hasUpdate,
+            checkError: null,
+            updatedAt: ts,
+          })
+          .where(eq(openSourceProjects.id, row.id))
+          .run();
+      } catch (e) {
+        const msg = (e as Error).message;
+        failed.push({ id: row.id, name: row.name, error: msg });
+        // 失败也要记 lastCheckedAt，免得界面上永远显示「从未检查」
+        db.update(openSourceProjects)
+          .set({ lastCheckedAt: ts, checkError: msg, updatedAt: ts })
+          .where(eq(openSourceProjects.id, row.id))
+          .run();
+      }
+    }
+  });
+  await Promise.all(workers);
+
+  return { updated, failed, checkedAt: ts };
 }
 
 export async function openSourceRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/open-source', async (req) => {
-    const { force } = (req.query ?? {}) as { force?: string };
-    if (!force && cache && Date.now() - cache.at < CACHE_TTL) return cache.result;
+  /** 清单：只读库，不发网络请求（打开面板要快） */
+  app.get('/open-source', async () => {
+    const items = listRows();
+    return {
+      items: items.map(toDTO),
+      summary: {
+        total: items.length,
+        updates: items.filter((i) => i.hasUpdate).length,
+        checkedAt: items.reduce((max, i) => Math.max(max, i.lastCheckedAt ?? 0), 0) || null,
+      },
+    };
+  });
 
-    const result = await buildList();
-    cache = { at: Date.now(), result };
-    return result;
+  /** 添加一个项目：传 GitHub 链接或 owner/repo，立刻拉一次详情 */
+  app.post('/open-source', async (req, reply) => {
+    const body = (req.body ?? {}) as { repoUrl?: string; note?: string };
+    try {
+      const id = await addOpenSourceProject(body.repoUrl ?? '', body.note);
+      reply.code(201).send({ id });
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg.startsWith('已经在清单里')) reply.code(409).send({ message: msg });
+      else if (msg.startsWith('请填')) reply.code(400).send({ message: msg });
+      else reply.code(502).send({ message: msg });
+    }
+  });
+
+  /** 改备注 / 改名 */
+  app.patch('/open-source/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { note?: string; name?: string };
+    const set: Record<string, unknown> = { updatedAt: now() };
+    if (body.note !== undefined) set.note = body.note.trim() || null;
+    if (body.name !== undefined) set.name = body.name.trim() || undefined;
+
+    const result = db
+      .update(openSourceProjects)
+      .set(set)
+      .where(and(eq(openSourceProjects.id, id), isNull(openSourceProjects.deletedAt)))
+      .run();
+    if (result.changes === 0) {
+      reply.code(404).send({ message: '项目不存在' });
+      return;
+    }
+    reply.send({ ok: true });
+  });
+
+  /** 移出清单（软删） */
+  app.delete('/open-source/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const ts = now();
+    const result = db
+      .update(openSourceProjects)
+      .set({ deletedAt: ts, updatedAt: ts })
+      .where(and(eq(openSourceProjects.id, id), isNull(openSourceProjects.deletedAt)))
+      .run();
+    if (result.changes === 0) {
+      reply.code(404).send({ message: '项目不存在' });
+      return;
+    }
+    reply.send({ ok: true });
+  });
+
+  /** 「知道了」：把当前最新版本记为已知，红点熄灭 */
+  app.post('/open-source/:id/ack', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const row = listRows().find((p) => p.id === id);
+    if (!row) {
+      reply.code(404).send({ message: '项目不存在' });
+      return;
+    }
+    db.update(openSourceProjects)
+      .set({ seenVersion: row.latestVersion, hasUpdate: false, updatedAt: now() })
+      .where(eq(openSourceProjects.id, id))
+      .run();
+    reply.send({ ok: true });
+  });
+
+  /**
+   * **一键检查更新**（面板上那个按钮）：逐个去 GitHub 拉最新 release，
+   * 比 `seen_version` 新就标「有更新」。只更新清单里的元信息，不动本地依赖。
+   * `id` 为空 = 全部；给了 id 就只刷这一个。
+   */
+  app.post('/open-source/refresh', async (req) => {
+    const body = (req.body ?? {}) as { id?: string };
+    return refreshOpenSource(body.id);
   });
 }

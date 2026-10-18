@@ -66,7 +66,8 @@ export function AppLayout() {
     root.style.setProperty('--ring', hsl);
   }, [accent]);
 
-  // 开源项目红点：启动时后台查一次（后端有缓存），失败则红点回退到 localStorage 上次计数
+  // 开源项目红点：启动时读一次清单（只读库、不发网络请求），失败则红点回退到 localStorage 上次计数
+  // 注意：这里**不自动检查更新** —— 只在用户点了面板上的「检查更新」时才去连 GitHub。
   const loadOpenSource = useOpenSourceStore((s) => s.load);
   useEffect(() => {
     void loadOpenSource();

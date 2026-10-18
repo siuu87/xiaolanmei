@@ -111,7 +111,7 @@ export function TodoCard() {
       {creating &&
         createPortal(
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4"
+            className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/40 p-2 sm:p-4"
             onClick={() => setCreating(false)}
           >
           <div

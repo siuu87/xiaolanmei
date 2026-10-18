@@ -7,7 +7,6 @@ import {
   ragChunks,
   ragDocumentCollections,
   memories,
-  worldbook,
   diaries,
 } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
@@ -283,7 +282,6 @@ export async function ragRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/rag/import', async () => {
     const mems = db.select().from(memories).all().filter((m) => m.deletedAt == null);
-    const wbs = db.select().from(worldbook).all().filter((w) => w.deletedAt == null);
     const dis = db.select().from(diaries).all().filter((d) => d.deletedAt == null);
 
     const mapMemCategory = (c: string) => (c === 'event' ? 'experience' : c === 'relation' ? 'agreement' : 'info');
@@ -294,7 +292,6 @@ export async function ragRoutes(app: FastifyInstance): Promise<void> {
     for (const m of mems) {
       tasks.push({ title: `记忆·${m.category}`, content: m.content, category: mapMemCategory(m.category) });
     }
-    for (const w of wbs) tasks.push({ title: w.name, content: w.content, category: 'info' });
     for (const d of dis) tasks.push({ title: `日记 ${d.date}`, content: d.content, category: 'experience' });
 
     for (const t of tasks) {
