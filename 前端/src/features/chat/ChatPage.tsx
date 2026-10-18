@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import {
   ArrowUp,
@@ -149,9 +150,70 @@ function autoDigest(): void {
 }
 
 /**
- * 消息操作弹窗里的一行（2026-10-18：菜单从「气泡下面一排小胶囊」改成底部弹窗，
- * 所以这里也从小胶囊改成**整行**：左侧图标、右侧文字，整行可点，跟系统 ActionSheet 一致）。
- * 只在消息操作弹窗里用。
+ * 微信式长按菜单：一块**深色小浮层**，贴着被长按的那条消息弹出（2026-10-18 用户要求
+ * 「类似微信长按消息的那个样子」）。
+ *
+ * 几个刻意为之的细节：
+ * - **不铺满屏**：宽度固定 184，只包住菜单本身；外面是一层透明背板，点一下就关。
+ * - **上下自动翻面**：消息上方空间够就往上弹（默认，微信也是往上），否则翻到下方，
+ *   两边的「小尖角」跟着换边，让人一眼看出这块菜单属于哪条消息。
+ * - **横向钳制**：靠近屏幕边缘时菜单会往里推，不会溢出屏幕。
+ * - 深色底是写死的 `#4c4c4c`（和微信一致），深浅主题下都保持这个观感 —— 这是全站少数
+ *   「故意不走 token」的地方，跟聊天气泡那种跟随主题的规则不冲突。
+ */
+function MessageMenu({
+  anchor,
+  onClose,
+  children,
+}: {
+  anchor: { top: number; bottom: number; left: number; width: number } | null;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const W = 184;
+  const GAP = 9;
+  const vw = typeof window === 'undefined' ? 420 : window.innerWidth;
+  const vh = typeof window === 'undefined' ? 800 : window.innerHeight;
+
+  // 没有锚点（理论上不会发生）就退回屏幕中央，至少别把菜单丢掉
+  const a = anchor ?? { top: vh / 2, bottom: vh / 2, left: vw / 2 - W / 2, width: W };
+  const centerX = a.left + a.width / 2;
+  const left = Math.min(Math.max(8, centerX - W / 2), Math.max(8, vw - W - 8));
+  const placeAbove = a.top > 220;
+  const pos: React.CSSProperties = placeAbove
+    ? { left, bottom: vh - a.top + GAP, width: W }
+    : { left, top: a.bottom + GAP, width: W };
+  const arrowLeft = Math.min(Math.max(14, centerX - left - 5), W - 19);
+
+  return createPortal(
+    <div data-testid="msg-menu-layer" className="fixed inset-0 z-[1400]" onClick={onClose}>
+      <div
+        data-testid="msg-menu"
+        data-menu
+        role="menu"
+        onClick={(e) => e.stopPropagation()}
+        style={pos}
+        className="animate-bb-pop fixed max-h-[62vh] overflow-y-auto overscroll-contain rounded-[10px] bg-[#4c4c4c] py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)]"
+      >
+        {children}
+        {/* 小尖角：指向被长按的那条消息 */}
+        <span
+          aria-hidden
+          className={cn(
+            'absolute h-2.5 w-2.5 rotate-45 bg-[#4c4c4c]',
+            placeAbove ? '-bottom-[5px]' : '-top-[5px]',
+          )}
+          style={{ left: arrowLeft }}
+        />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * 消息操作菜单里的一行：深色底上的白字 + 图标（微信长按菜单那套观感）。
+ * 只在 `MessageMenu` 里用。
  */
 function MenuAction({
   icon,
@@ -167,14 +229,15 @@ function MenuAction({
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] transition',
-        'hover:bg-chat-line/40 active:bg-chat-line/70',
-        danger ? 'text-destructive' : 'text-chat-ai-fg',
+        'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[14px] transition',
+        'hover:bg-white/10 active:bg-white/20',
+        danger ? 'text-rose-300' : 'text-white/95',
       )}
     >
-      <span className={cn('shrink-0', danger ? 'text-destructive' : 'text-chat-meta')}>{icon}</span>
+      <span className={cn('shrink-0', danger ? 'text-rose-300' : 'text-white/70')}>{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </button>
   );
@@ -707,6 +770,8 @@ export function ChatPage() {
   const [editText, setEditText] = useState('');
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [menuForId, setMenuForId] = useState<string | null>(null);
+  /** 打开菜单时这条消息在视口里的位置（浮层要贴着它弹出，微信长按那种） */
+  const [menuRect, setMenuRect] = useState<{ top: number; bottom: number; left: number; width: number } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   // 「白起的内心与记忆中枢」：点顶栏那颗小红点打开
   const [mindOpen, setMindOpen] = useState(false);
@@ -877,22 +942,23 @@ export function ChatPage() {
     }
   };
 
-  // 点菜单外任意处关闭。
-  // 菜单现在是底部弹窗（portal 到 body），所以除了 [data-menu] 还要放过整个弹层 ——
-  // 否则点弹窗标题/预览那一片空白会被当成「点外面」，弹窗还没用就自己关了。
+  // 菜单现在是一块**锚定在消息旁边**的浮层（微信长按那种），
+  // 关闭靠自己的全屏透明背板 + Esc，不再需要「点外部」的 document 监听。
   useEffect(() => {
     if (!menuForId) return;
-    const onDown = (e: PointerEvent) => {
-      const el = e.target as HTMLElement;
-      if (!el.closest('[data-menu]') && !el.closest('[data-testid="msg-action-sheet"]')) setMenuForId(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      closeMenu();
     };
-    document.addEventListener('pointerdown', onDown);
-    return () => document.removeEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuForId]);
 
-  // 长按弹出菜单
-  const startPress = (id: string) => {
-    pressTimerRef.current = window.setTimeout(() => setMenuForId(id), 450);
+  // 菜单锚点：微信长按是「贴着这条消息弹出」，所以打开时要记住消息在屏幕上的位置
+  const startPress = (id: string, el: HTMLElement | null) => {
+    pressTimerRef.current = window.setTimeout(() => openMenu(id, el), 450);
   };
   const cancelPress = () => {
     if (pressTimerRef.current != null) {
@@ -900,8 +966,30 @@ export function ChatPage() {
       pressTimerRef.current = null;
     }
   };
-  const toggleMenu = (id: string) => setMenuForId((cur) => (cur === id ? null : id));
-  const closeMenu = () => setMenuForId(null);
+  const toggleMenu = (id: string, el: HTMLElement | null) => {
+    if (menuForId === id) {
+      closeMenu();
+      return;
+    }
+    openMenu(id, el);
+  };
+  const openMenu = (id: string, el: HTMLElement | null) => {
+    // 锚点优先取**气泡本身**（而不是整行）：整行是满宽的，按它的中心算会把菜单
+    // 摆到屏幕正中，而微信那种观感是贴着气泡边缘出来的
+    const bubble = el?.querySelector('[data-bubble]') as HTMLElement | null;
+    const target = bubble ?? el;
+    if (target) {
+      const r = target.getBoundingClientRect();
+      setMenuRect({ top: r.top, bottom: r.bottom, left: r.left, width: r.width });
+    } else {
+      setMenuRect(null);
+    }
+    setMenuForId(id);
+  };
+  const closeMenu = () => {
+    setMenuForId(null);
+    setMenuRect(null);
+  };
 
   const copyText = async (m: ChatMessage) => {
     try {
@@ -1474,7 +1562,7 @@ export function ChatPage() {
               m.role === 'assistant' && m.status === 'streaming' && !m.content && !!m.reasoning;
 
             return (
-              <div key={m.id} className="flex flex-col">
+              <div key={m.id} className="flex flex-col" data-msg-row={m.id}>
                 {/* 跨天：居中日期分隔（「6月30日 · 00:10」，两侧细线） */}
                 {needDate && (
                   <DateDivider label={`${fmtDateLabel(m.createdAt)} · ${fmtTime(m.createdAt)}`} />
@@ -1484,7 +1572,8 @@ export function ChatPage() {
                   className="mb-2"
                   {...(!isEditing
                     ? {
-                        onPointerDown: () => startPress(m.id),
+                        onPointerDown: (e: React.PointerEvent<HTMLDivElement>) =>
+                          startPress(m.id, e.currentTarget),
                         onPointerUp: cancelPress,
                         onPointerMove: cancelPress,
                         onPointerLeave: cancelPress,
@@ -1516,7 +1605,7 @@ export function ChatPage() {
                     ) : waitingFirstToken ? null : multiBubble ? (
                       /* 即兴聊天：一条 AI 消息按行拆成多条气泡，一条条往外蹦。
                          间距用 gap-1、内边距 py-2，比整段气泡更紧 —— 碎片流本来就是这种密度 */
-                      <div className="flex min-w-0 flex-col items-start gap-1" data-testid="bubble-group">
+                      <div className="flex min-w-0 flex-col items-start gap-1" data-testid="bubble-group" data-bubble>
                         {bubbleSegs.map((seg, si) => (
                           <div
                             key={si}
@@ -1535,6 +1624,7 @@ export function ChatPage() {
                       </div>
                     ) : (
                     <div
+                      data-bubble
                       className={cn(
                         'text-[15px] leading-6',
                         !isEditing && 'select-none',
@@ -1685,7 +1775,9 @@ export function ChatPage() {
                   <button
                     type="button"
                     data-menu
-                    onClick={() => toggleMenu(m.id)}
+                    onClick={(e) =>
+                      toggleMenu(m.id, e.currentTarget.closest('[data-msg-row]') as HTMLElement | null)
+                    }
                     aria-label="更多操作"
                     className="flex h-5 w-5 items-center justify-center rounded text-chat-meta transition hover:bg-chat-line/70 hover:text-foreground"
                   >
@@ -1693,24 +1785,11 @@ export function ChatPage() {
                   </button>
                 </div>
 
-                {/* 长按消息 / 点 ⋯ → **底部弹窗**（2026-10-18 用户要求：内容从内联一排改成弹窗）。
-                    BottomSheet 会 portal 到 body，所以放在消息循环里也不会被气泡撑变形。 */}
+                {/* 长按消息 / 点 ⋯ → **贴着这条消息弹出的深色菜单**（微信长按那种）。
+                    portal 到 body，位置由 `menuRect` 算，所以不会被气泡或滚动容器裁掉。 */}
                 {menuOpen && (
-                  <BottomSheet
-                    open
-                    onOpenChange={(v) => {
-                      if (!v) closeMenu();
-                    }}
-                    title="消息操作"
-                    testid="msg-action-sheet"
-                    maxHeight="max-h-[62vh]"
-                  >
-                    {m.content ? (
-                      <div className="mx-4 mb-3 line-clamp-2 rounded-xl bg-chat-pill px-3 py-2 text-[12px] leading-relaxed text-chat-meta">
-                        {m.content}
-                      </div>
-                    ) : null}
-                    <div data-menu className="flex flex-col divide-y divide-chat-line/50 pb-2">
+                  <MessageMenu anchor={menuRect} onClose={closeMenu}>
+                    <div data-menu className="flex flex-col">
                     <MenuAction
                       icon={<Copy className="h-3.5 w-3.5" />}
                       label="复制"
@@ -1784,7 +1863,7 @@ export function ChatPage() {
                       }}
                     />
                     </div>
-                  </BottomSheet>
+                  </MessageMenu>
                 )}
               </div>
             );
