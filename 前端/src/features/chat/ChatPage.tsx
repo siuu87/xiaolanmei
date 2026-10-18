@@ -65,7 +65,6 @@ import { MindDrawer } from './MindDrawer';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
 import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
-import { ChatStyleSheet } from './ChatStyleSheet';
 import { BottomSheet } from '@/components/BottomSheet';
 import { CallOverlay, type CallResult } from './CallOverlay';
 import { createCall, fmtDuration, type CallKind } from '@/lib/api/calls';
@@ -74,7 +73,7 @@ import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
-import { useChatStyle, CHAT_STYLE_META } from '@/stores/chatStyleStore';
+import { useChatStyle, CHAT_STYLE_META, type ChatStyleMode } from '@/stores/chatStyleStore';
 import { useDietStore } from '@/features/diet/dietStore';
 import { matchDietHits } from '@/features/diet/dietHits';
 import { DietHitBar } from '@/features/diet/DietBadge';
@@ -554,6 +553,66 @@ function ThoughtSheet({ reasoning, owner, onClose }: { reasoning: string; owner:
 }
 
 /**
+ * 说话风格**滑块**（2026-10-18 用户要求：右上角的胶囊改成两档滑块，只有「短」「长」）。
+ *
+ * 左「短」= `improv` 即兴聊天（一行一句、拆成多条气泡）
+ * 右「长」= `immersive` 沉浸陪伴（整段一条、只写台词）
+ *
+ * 为什么不做开关（thumb 在中间那种）：这是**两个并列的选项**，不是开/关，
+ * 用两段等宽 + 白块滑过去，语义更准，也一眼看出自己站在哪一段。
+ * 白块在深浅主题下都保持白色（配深色文字），否则深色主题里滑块和轨道糊成一团。
+ */
+function ChatStyleSwitch({
+  mode,
+  disabled,
+  onChange,
+}: {
+  mode: ChatStyleMode;
+  disabled?: boolean;
+  onChange: (m: ChatStyleMode) => void;
+}) {
+  const isShort = mode === 'improv';
+  return (
+    <div
+      data-testid="chat-style-switch"
+      role="group"
+      aria-label="说话风格：短＝一句一条，长＝整段对话"
+      title={CHAT_STYLE_META[mode].desc}
+      className="relative flex h-[30px] w-[86px] shrink-0 items-center rounded-full bg-chat-line/70 p-[3px]"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'absolute left-[3px] top-[3px] h-[24px] w-[40px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.28)]',
+          'transition-transform duration-200 ease-out',
+          isShort ? 'translate-x-0' : 'translate-x-[40px]',
+        )}
+      />
+      {(['improv', 'immersive'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          data-testid={`chat-style-option-${m}`}
+          aria-pressed={mode === m}
+          disabled={disabled}
+          onClick={() => {
+            if (mode !== m) onChange(m);
+          }}
+          className={cn(
+            'relative z-10 flex h-[24px] flex-1 items-center justify-center text-[11px] font-medium leading-none transition-colors',
+            // 白块上的字必须是深色（深浅主题都一样），否则看不见
+            mode === m ? 'text-[#1c1c1e]' : 'text-chat-meta',
+            disabled && 'opacity-60',
+          )}
+        >
+          {CHAT_STYLE_META[m].short}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * 底部面板里的单个入口（微信式：白色圆角方块 + 方块下方一行小字）。
  * `[&_svg]` 是为了不用挨个改 4 个调用点的图标尺寸。
  */
@@ -649,9 +708,18 @@ export function ChatPage() {
   /** 说话风格（即兴碎片流 / 沉浸纯对话），切换写后端，下一条回复生效 */
   const chatStyleMode = useChatStyle((s) => s.mode);
   const loadChatStyle = useChatStyle((s) => s.load);
-  const [styleSheetOpen, setStyleSheetOpen] = useState(false);
+  const setChatStyle = useChatStyle((s) => s.setMode);
+  const styleSaving = useChatStyle((s) => s.saving);
   /** 说话风格切换失败时的可见提示（失败静默是最要命的，宁可挡一条也要说） */
   const [styleErr, setStyleErr] = useState<string | null>(null);
+  const changeStyle = async (next: ChatStyleMode) => {
+    try {
+      await setChatStyle(next);
+    } catch {
+      setStyleErr('切换失败，检查一下后端起来没有');
+      window.setTimeout(() => setStyleErr(null), 3000);
+    }
+  };
   const loveDayCount = useMemo(() => loveDays(), []);
   const [confirming, setConfirming] = useState<{ confirmId: string; toolName: string; summary: string } | null>(
     null,
@@ -1264,19 +1332,13 @@ export function ChatPage() {
             <span>在一起 {loveDayCount} 天</span>
           </span>
         </span>
-        {/* 说话风格切换（即兴碎片流 / 沉浸纯对话）：点开底部弹层选。
+        {/* 说话风格滑块：左「短」= 即兴碎片流，右「长」= 沉浸纯对话。
             全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
-        <button
-          type="button"
-          onClick={() => setStyleSheetOpen(true)}
-          data-testid="chat-style-pill"
-          aria-label={`说话风格：${CHAT_STYLE_META[chatStyleMode].title}，点击切换`}
-          title={`说话风格：${CHAT_STYLE_META[chatStyleMode].title}`}
-          className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-chat-pill px-2.5 text-[11px] text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
-        >
-          <Sparkles className="h-3.5 w-3.5 opacity-80" />
-          <span className="whitespace-nowrap">{CHAT_STYLE_META[chatStyleMode].short}</span>
-        </button>
+        <ChatStyleSwitch
+          mode={chatStyleMode}
+          disabled={styleSaving}
+          onChange={(m) => void changeStyle(m)}
+        />
         <ConnDot onClick={() => setMindOpen(true)} />
         <button
           type="button"
@@ -2035,15 +2097,6 @@ export function ChatPage() {
         />
       )}
 
-      {/* 说话风格：底部弹层二选一（即兴碎片流 / 沉浸纯对话） */}
-      <ChatStyleSheet
-        open={styleSheetOpen}
-        onOpenChange={setStyleSheetOpen}
-        onError={(msg) => {
-          setStyleErr(msg);
-          window.setTimeout(() => setStyleErr(null), 3000);
-        }}
-      />
     </div>
   );
 }

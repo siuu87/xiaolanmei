@@ -3,15 +3,19 @@ import { getSettings, updateSettings, type ChatStyleMode } from '@/lib/api/setti
 
 export type { ChatStyleMode };
 
+/**
+ * 两个档位在 UI 上只显示一个字：「短」/「长」。
+ * 滑块挤在顶栏，放不下「即兴聊天」四个字；完整说明放在 title 里（桌面 hover 可见）。
+ */
 export const CHAT_STYLE_META: Record<ChatStyleMode, { short: string; title: string; desc: string }> = {
   improv: {
-    short: '即兴',
-    title: '即兴聊天',
+    short: '短',
+    title: '短 · 即兴聊天',
     desc: '像正握着手机打字：一句一条、多条气泡、口语化，会突然改口也会补一句。',
   },
   immersive: {
-    short: '沉浸',
-    title: '沉浸陪伴',
+    short: '长',
+    title: '长 · 沉浸陪伴',
     desc: '面对面或贴着耳边说话：整段连贯、只说话不动手，不出现任何括号旁白。',
   },
 };
