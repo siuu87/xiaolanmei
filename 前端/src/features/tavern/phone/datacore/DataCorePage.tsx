@@ -280,8 +280,12 @@ function Toast({ text, tone }: { text: string; tone: 'ok' | 'err' }) {
  *
  * `panels` 用来裁剪显示哪些分块。「我」页里只放数据/主角可见/记忆/备份——
  * 外观已经搬到「我 → 外观」自己的分区了，不在这里重复一遍。
+ *
+ * `inline` 给设置页用：**去掉 `h-full` 与内嵌滚动条**，内容跟着整页一起滚。
+ * 之前设置页把它塞进一个固定 `h-[600px]` 的盒子里，手机上想往下滑整页时
+ * 手指一进这块就被里面那层滚动容器吃掉——改成点开内联展开就没有这个夹层了。
  */
-export function DataCorePage({ panels }: { panels?: Panel[] } = {}) {
+export function DataCorePage({ panels, inline }: { panels?: Panel[]; inline?: boolean } = {}) {
   const shown = panels && panels.length ? PANELS.filter((p) => panels.includes(p.key)) : PANELS;
   const [panel, setPanel] = useState<Panel>(shown[0]?.key ?? 'storage');
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null);
@@ -291,14 +295,22 @@ export function DataCorePage({ panels }: { panels?: Panel[] } = {}) {
   }, []);
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col bg-[#F2F2F7]">
-      {/* 顶栏 */}
-      <div className="flex h-11 shrink-0 items-center justify-between px-4">
-        <p className="text-[17px] font-semibold text-black">数据中枢</p>
-      </div>
+    <div
+      className={cn(
+        'relative flex flex-col bg-[#F2F2F7]',
+        inline ? 'rounded-xl' : 'h-full min-h-0',
+      )}
+      data-inline={inline ? '1' : undefined}
+    >
+      {/* 顶栏：内联展开时外层设置项已经有标题了，不再重复一行 */}
+      {!inline && (
+        <div className="flex h-11 shrink-0 items-center justify-between px-4">
+          <p className="text-[17px] font-semibold text-black">数据中枢</p>
+        </div>
+      )}
 
       {/* 分段切换 */}
-      <div className="shrink-0 px-4 pb-3">
+      <div className={cn('shrink-0 px-4 pb-3', inline && 'pt-3')}>
         <div className="flex rounded-[9px] bg-white p-0.5">
           {shown.map((p) => (
             <button
@@ -319,7 +331,13 @@ export function DataCorePage({ panels }: { panels?: Panel[] } = {}) {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">
+      <div
+        className={cn(
+          'px-4 pb-4',
+          // 内联模式：**不设 overflow**，让内容自然撑开，跟着设置页一起滚
+          inline ? 'min-h-0' : 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6',
+        )}
+      >
         <AnimatePresence>
           {toast && <Toast key={toast.text + Date.now()} {...toast} />}
         </AnimatePresence>

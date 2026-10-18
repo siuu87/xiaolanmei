@@ -10,6 +10,7 @@ import { ChatPage } from '@/features/chat/ChatPage';
 import { Drawer } from '@/features/shell/Drawer';
 import { LetterReaderLayer } from '@/features/notes/LetterReaderLayer';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
+import { BedtimeNudge } from '@/features/shell/BedtimeNudge';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
 
 /**
@@ -105,6 +106,9 @@ export function AppLayout() {
 
       {/* 移动端抽屉 */}
       {!immersive && <Drawer />}
+
+      {/* 睡前提醒（设置页「提醒与健康」里开启；22:00–02:59 每天最多一次） */}
+      <BedtimeNudge />
 
       {/* 一封来信的阅读页：叠在抽屉之上，点空白收起。
           挂在这里而不是 Outlet，是为了让 AnimatePresence 有机会播收起动画。 */}
