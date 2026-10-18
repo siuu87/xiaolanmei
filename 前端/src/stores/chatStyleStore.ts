@@ -1,66 +1,62 @@
 import { create } from 'zustand';
-import { getSettings, updateSettings, type ChatStyleMode } from '@/lib/api/settings';
-
-export type { ChatStyleMode };
 
 /**
- * 两个档位在 UI 上只显示一个字：「短」/「长」。
- * 滑块挤在顶栏，放不下「即兴聊天」四个字；完整说明放在 title 里（桌面 hover 可见）。
+ * 对白风格（2026-10-18 需求：💕 / 🩷 双态药丸）
+ *
+ * - `fragmented` 微信碎片流：一行一句、多条气泡、口语化、打字即兴感
+ * - `immersive`  沉浸纯对话流：整段连贯、只写台词、严禁动作/神态/心理/括号
+ *
+ * **持久化在前端 localStorage**（`blueberry.chatStyle`）：刷新、重开 App 都保持上次的选择。
+ * 后端不存这个偏好——每次 `POST /api/chat/stream` 带上 `chatStyle`，让提示词**按请求**拼，
+ * 这样同一台后端上两个标签页可以各用各的口吻，互不打架。
  */
-export const CHAT_STYLE_META: Record<ChatStyleMode, { short: string; title: string; desc: string }> = {
-  improv: {
-    short: '短',
-    title: '短 · 即兴聊天',
+export type ChatStyleMode = 'fragmented' | 'immersive';
+
+export const CHAT_STYLE_STORAGE_KEY = 'blueberry.chatStyle';
+
+export const CHAT_STYLE_META: Record<ChatStyleMode, { icon: string; title: string; desc: string }> = {
+  fragmented: {
+    icon: '💕',
+    title: '微信碎片流',
     desc: '像正握着手机打字：一句一条、多条气泡、口语化，会突然改口也会补一句。',
   },
   immersive: {
-    short: '长',
-    title: '长 · 沉浸陪伴',
+    icon: '🩷',
+    title: '沉浸纯对话流',
     desc: '面对面或贴着耳边说话：整段连贯、只说话不动手，不出现任何括号旁白。',
   },
 };
 
-interface ChatStyleState {
-  mode: ChatStyleMode;
-  loaded: boolean;
-  saving: boolean;
-  load: () => Promise<void>;
-  setMode: (mode: ChatStyleMode) => Promise<void>;
+function readStored(): ChatStyleMode {
+  try {
+    return localStorage.getItem(CHAT_STYLE_STORAGE_KEY) === 'fragmented' ? 'fragmented' : 'immersive';
+  } catch {
+    // 隐私模式 / 禁用存储：退回默认档，绝不能因为读不到就崩
+    return 'immersive';
+  }
 }
 
-/**
- * 说话风格 store（2026-10-18）。
- *
- * 为什么存后端而不是 localStorage：这个档位要**注入 system prompt**，
- * 只有后端读到才有意义；前端这份只是镜像，切完立刻更新，下次进聊天页再 `load()` 对齐。
- *
- * 切换是**乐观更新**：先改本地让气泡立刻变形，失败再回滚并抛错给调用方提示。
- */
+interface ChatStyleState {
+  mode: ChatStyleMode;
+  setMode: (mode: ChatStyleMode) => void;
+  toggle: () => void;
+  /** 另一个标签页改了 localStorage 时同步过来（storage 事件只发给「别的」标签页） */
+  syncFromStorage: () => void;
+}
+
 export const useChatStyle = create<ChatStyleState>((set, get) => ({
-  mode: 'immersive',
-  loaded: false,
-  saving: false,
+  mode: readStored(),
 
-  load: async () => {
+  setMode: (mode) => {
+    set({ mode });
     try {
-      const s = await getSettings();
-      set({ mode: s.chatStyleMode === 'improv' ? 'improv' : 'immersive', loaded: true });
+      localStorage.setItem(CHAT_STYLE_STORAGE_KEY, mode);
     } catch {
-      set({ loaded: true });
+      /* 存不进去也不影响本次会话 */
     }
   },
 
-  setMode: async (mode) => {
-    const prev = get().mode;
-    if (prev === mode) return;
-    set({ mode, saving: true });
-    try {
-      await updateSettings({ chatStyleMode: mode });
-    } catch (e) {
-      set({ mode: prev });
-      throw e;
-    } finally {
-      set({ saving: false });
-    }
-  },
+  toggle: () => get().setMode(get().mode === 'fragmented' ? 'immersive' : 'fragmented'),
+
+  syncFromStorage: () => set({ mode: readStored() }),
 }));

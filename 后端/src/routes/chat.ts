@@ -6,6 +6,7 @@ import { db } from '../db/client.js';
 import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
+import { normalizeChatStyle } from '../persona/chatStyle.js';
 import { buildMemoryContext } from './memories.js';
 import { buildSummaryContext } from './summaries.js';
 import { getModelConfig, getAdapterConfig, resolveStation, firstModel } from './stations.js';
@@ -25,6 +26,11 @@ interface ChatStreamBody {
   conversationId?: string | null;
   web?: boolean; // 阶段 9：开启后模型可联网搜索 / 读网页
   rag?: boolean; // 阶段 11：开启后模型可检索长期记忆并写入（默认开启）
+  /**
+   * 对白风格（2026-10-18）：`fragmented` 微信碎片流 / `immersive` 沉浸纯对话流。
+   * 由前端 localStorage 决定、**按请求传**——不传就回落到 settings 里的兜底值。
+   */
+  chatStyle?: string;
 }
 
 const WEB_NOTE =
@@ -321,7 +327,11 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const lastMessageAt = lastMsg ? lastMsg.createdAt : null;
 
     const systemPrompt = [
-      buildSystemPrompt(model, { lastMessageAt }),
+      // 对白风格按请求走：同一个后端进程里，两个标签页可以各用一种口吻
+      buildSystemPrompt(model, {
+        lastMessageAt,
+        chatStyle: body.chatStyle ? normalizeChatStyle(body.chatStyle) : undefined,
+      }),
       buildMemoryContext(query),
       ragBlock,
       buildSummaryContext(convId),

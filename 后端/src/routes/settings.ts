@@ -4,7 +4,6 @@ import { db } from '../db/client.js';
 import { settings } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { CHAT_STYLE_MODES, normalizeChatStyle, type ChatStyleMode } from '../persona/chatStyle.js';
-
 /**
  * 设置（阶段 8）：现在只保留全局模型参数（temperature）。
  * 单套 API 配置（apiBaseUrl/apiKey/defaultModel）已迁到 stations.ts 的多站子体系；
@@ -75,15 +74,19 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
       visionModel?: string | null;
       chatStyleMode?: string;
     };
-    // 显式校验：只认白名单里的两个值，避免前端传错把提示词切成空档
-    if (body.chatStyleMode !== undefined && !CHAT_STYLE_MODES.includes(body.chatStyleMode as ChatStyleMode)) {
+    // 显式校验：只认白名单里的值（兼容旧值 improv），避免前端传错把提示词切成空档
+    if (
+      body.chatStyleMode !== undefined &&
+      !CHAT_STYLE_MODES.includes(body.chatStyleMode as ChatStyleMode) &&
+      body.chatStyleMode !== 'improv'
+    ) {
       reply.code(400).send({ message: `chatStyleMode 只能是 ${CHAT_STYLE_MODES.join(' / ')}` });
       return;
     }
     if (body.temperature !== undefined) setSetting(KEYS.temperature, body.temperature);
     if (body.visionStationId !== undefined) setSetting(KEYS.visionStationId, body.visionStationId ?? null);
     if (body.visionModel !== undefined) setSetting(KEYS.visionModel, body.visionModel ?? null);
-    if (body.chatStyleMode !== undefined) setSetting(KEYS.chatStyleMode, body.chatStyleMode);
+    if (body.chatStyleMode !== undefined) setSetting(KEYS.chatStyleMode, normalizeChatStyle(body.chatStyleMode));
     return { ok: true };
   });
 }
