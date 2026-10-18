@@ -487,11 +487,11 @@ function ThoughtEntry({ owner, active, onClick }: { owner: string; active: boole
         'text-chat-meta shadow-sm transition hover:text-chat-pill-fg active:scale-95',
       )}
     >
-      {/* 思考中：文字在**前**、三个点在**后**（2026-10-18 用户指定顺序）。
-          收完之后换成 ✓ + 「{称呼}的小心思」+ 箭头——注意别在气泡里再写一遍造成重复 */}
+      {/* 思考中：「{称呼}在想」+ 三个跳动点（2026-10-18 用户要求：把末尾的省略号删掉，
+          因为省略号和动点都是点，摆一起重复）。收完之后换成 ✓ + 「{称呼}的小心思」+ 箭头 */}
       {active ? (
         <>
-          <span>{owner}在想…</span>
+          <span>{owner}在想</span>
           <span className="flex items-center gap-[3px]">
             <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '0ms' }} />
             <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '150ms' }} />
