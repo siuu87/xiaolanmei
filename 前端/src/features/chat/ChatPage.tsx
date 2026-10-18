@@ -559,36 +559,55 @@ function ThoughtSheet({ reasoning, owner, onClose }: { reasoning: string; owner:
 }
 
 /**
- * 对白风格**双态药丸**（2026-10-18 需求：💕 / 🩷，不带文字）。
+ * 对白风格**两档滑块**（2026-10-18 用户要求：💕 / 🩷 做成滑块，不是一个点了翻面的按钮）。
  *
- * - 💕 `fragmented` 微信碎片流（一句一条、拆成多条气泡）
- * - 🩷 `immersive`  沉浸纯对话流（整段一条、只写台词）
+ * - 左 💕 `fragmented` 微信碎片流（一句一条、拆成多条气泡）
+ * - 右 🩷 `immersive`  沉浸纯对话流（整段一条、只写台词）
  *
- * 只有两个状态，所以点一下就翻面，不弹面板、不解释。极简到只剩一个 emoji，
- * 靠 `aria-label` / `title` 补语义——视觉上不占地方，读屏和鼠标用户也不会一头雾水。
+ * 结构是「浅灰轨道 + 白色滑块」：滑块滑到哪一段，那一段的 emoji 就压在白底上。
+ * 用滑块而不是按钮，是因为这是**两个并列的档位**，滑块的物理位置本身就在告诉你「现在站在哪」；
+ * 点任意一段也能直接跳过去（别逼用户必须点右边那半）。
+ * 宽度按「两个 emoji」定：72×30，每段 33px；白块在深浅主题下都保持白色，否则深色里会糊成一团。
  * 状态存 localStorage（见 `stores/chatStyleStore`），刷新后仍是你上次选的那个。
  */
-function ChatStylePill({ mode, onToggle }: { mode: ChatStyleMode; onToggle: () => void }) {
+function ChatStyleSwitch({ mode, onChange }: { mode: ChatStyleMode; onChange: (m: ChatStyleMode) => void }) {
+  const isLeft = mode === 'fragmented';
   const meta = CHAT_STYLE_META[mode];
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      data-testid="chat-style-pill"
+    <div
+      data-testid="chat-style-switch"
       data-mode={mode}
-      aria-label={`对白风格：${meta.title}，点一下切换`}
-      aria-pressed={mode === 'fragmented'}
-      title={`${meta.title} · 点一下换另一种`}
-      className={cn(
-        // 用 chat-line 做浅灰底：白底 + 白药丸会糊在一起，看不出是个按钮
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-line/70 shadow-sm transition',
-        'hover:bg-chat-line active:scale-95',
-      )}
+      role="group"
+      aria-label={`对白风格：${meta.title}`}
+      title={`${meta.title} · ${meta.desc}`}
+      className="relative flex h-[30px] w-[72px] shrink-0 items-center rounded-full bg-chat-line/70 p-[3px] shadow-sm"
     >
-      <span data-testid="chat-style-icon" className="text-[15px] leading-none" aria-hidden>
-        {meta.icon}
-      </span>
-    </button>
+      <span
+        aria-hidden
+        data-testid="chat-style-thumb"
+        className={cn(
+          'absolute left-[3px] top-[3px] h-[24px] w-[33px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.28)]',
+          'transition-transform duration-200 ease-out',
+          isLeft ? 'translate-x-0' : 'translate-x-[33px]',
+        )}
+      />
+      {(['fragmented', 'immersive'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          data-testid={`chat-style-option-${m}`}
+          aria-pressed={mode === m}
+          aria-label={CHAT_STYLE_META[m].title}
+          onClick={() => onChange(m)}
+          className={cn(
+            'relative z-10 flex h-[24px] flex-1 items-center justify-center text-[13px] leading-none transition-opacity',
+            mode === m ? 'opacity-100' : 'opacity-55 hover:opacity-80',
+          )}
+        >
+          <span aria-hidden>{CHAT_STYLE_META[m].icon}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -687,7 +706,7 @@ export function ChatPage() {
   const ownerName = partnerName || '哥哥';
   /** 说话风格（💕 碎片流 / 🩷 沉浸流），存 localStorage，刷新保持 */
   const chatStyleMode = useChatStyle((s) => s.mode);
-  const toggleChatStyle = useChatStyle((s) => s.toggle);
+  const setChatStyleMode = useChatStyle((s) => s.setMode);
   const syncChatStyle = useChatStyle((s) => s.syncFromStorage);
   // 另一个标签页切了风格 → storage 事件只发给「别的」标签页，正好用来同步
   useEffect(() => {
@@ -1332,9 +1351,9 @@ export function ChatPage() {
             <span>在一起 {loveDayCount} 天</span>
           </span>
         </span>
-        {/* 对白风格：💕 碎片流 / 🩷 沉浸流，点一下翻面。
+        {/* 对白风格：💕 碎片流 / 🩷 沉浸流 两档滑块。
             全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
-        <ChatStylePill mode={chatStyleMode} onToggle={toggleChatStyle} />
+        <ChatStyleSwitch mode={chatStyleMode} onChange={setChatStyleMode} />
         <ConnDot onClick={() => setMindOpen(true)} />
         <button
           type="button"
