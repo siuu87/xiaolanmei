@@ -27,6 +27,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronDown, Check, ImagePlus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
+import { updateSettings } from '@/lib/api/settings';
 import { AvatarContent } from '@/components/AvatarContent';
 import { uploadImage } from '@/lib/api/attachments';
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
@@ -92,6 +93,8 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
 
   const [avatar, setAvatar] = useState(isMe ? store.avatar : store.partnerAvatar);
   const [name, setName] = useState(isMe ? store.name : store.partnerName);
+  /** 备注：就是他/她在聊天里显示的名字（2026-10-19 新加的字段，存在后端 settings） */
+  const [remark, setRemark] = useState(store.partnerRemark);
   const [text, setText] = useState(isMe ? store.description : store.persona);
   const [voiceId, setVoiceId] = useState(store.voiceId);
   const [speed, setSpeed] = useState(store.voiceSpeed);
@@ -118,6 +121,10 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
     } else {
       store.setPartnerAvatar(nextAvatar);
       store.setPartnerName(name.trim());
+      // 备注同时写后端：AI 改过 / 别处打开时都以服务端为准（失败也不挡保存，本地已生效）
+      const nextRemark = remark.trim().slice(0, 12);
+      store.setPartnerRemark(nextRemark);
+      void updateSettings({ partnerRemark: nextRemark }).catch(() => {});
       store.setPersona(text.trim());
       store.setVoiceId(voiceId.trim());
       store.setVoiceSpeed(speed);
@@ -202,6 +209,21 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
                     data-testid="profile-editor-name"
                     className={inputCls}
                   />
+                </Field>
+
+                <Field label="备注" htmlFor="pe-remark">
+                  <input
+                    id="pe-remark"
+                    value={remark}
+                    onChange={(e) => setRemark(e.target.value)}
+                    maxLength={12}
+                    placeholder="聊天里显示的名字，比如「哥哥」"
+                    data-testid="profile-editor-remark"
+                    className={inputCls}
+                  />
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-[#6b7488]">
+                    填了之后，聊天顶栏和「小心思」就显示这个名字（AI 也能帮你改）。
+                  </p>
                 </Field>
 
                 <Field label="人设" htmlFor="pe-persona">

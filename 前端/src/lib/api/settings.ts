@@ -14,6 +14,11 @@ export interface AppSettingsDTO {
   visionModel?: string | null;
   /** 说话风格，缺省视作 `immersive` */
   chatStyleMode?: ChatStyleMode;
+  /**
+   * 伴侣备注（聊天顶栏显示的名字）。
+   * `null` = 从没设过（前端保留本地值）；`''` = 用户主动清空。
+   */
+  partnerRemark?: string | null;
 }
 
 export interface AppSettingsInput {
@@ -21,6 +26,7 @@ export interface AppSettingsInput {
   visionStationId?: string | null;
   visionModel?: string | null;
   chatStyleMode?: ChatStyleMode;
+  partnerRemark?: string;
 }
 
 export const getSettings = () => request<AppSettingsDTO>('/api/settings');

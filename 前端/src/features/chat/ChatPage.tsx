@@ -748,8 +748,14 @@ export function ChatPage() {
   const openDrawer = useShellStore((s) => s.openDrawer);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const partnerName = useProfileStore((s) => s.partnerName);
-  /** 「小心思 / 在想…」里的人称：抽屉里设了名字就用它，没设就用「哥哥」（用户一直这么叫） */
-  const ownerName = partnerName || '哥哥';
+  const partnerRemark = useProfileStore((s) => s.partnerRemark);
+  /**
+   * 聊天里显示的名字：**备注优先**（2026-10-19 需求：「资料里填的备注就是聊天名字」）。
+   * 备注存在后端 settings（`profile.partnerRemark`），AI 也能改；本名兜底，再兜会话标题。
+   */
+  const displayName = partnerRemark || partnerName;
+  /** 「小心思 / 在想…」里的人称：跟聊天名字走，没设就用「哥哥」（用户一直这么叫） */
+  const ownerName = displayName || '哥哥';
   /** 说话风格（💕 碎片流 / 🩷 沉浸流），存 localStorage，刷新保持 */
   const chatStyleMode = useChatStyle((s) => s.mode);
   const setChatStyleMode = useChatStyle((s) => s.setMode);
@@ -1459,7 +1465,7 @@ export function ChatPage() {
               className="min-w-0 truncate font-serif text-[15px] font-semibold text-foreground"
             >
               {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
-              {partnerName || conversation?.title || '小蓝莓'}
+              {displayName || conversation?.title || '小蓝莓'}
             </span>
             <ConnDot />
           </button>
@@ -2177,7 +2183,7 @@ export function ChatPage() {
       {callKind && (
         <CallOverlay
           kind={callKind}
-          name={partnerName || '小蓝莓'}
+          name={displayName || '小蓝莓'}
           avatar={partnerAvatar}
           onEnd={(r) => void endCall(r)}
         />

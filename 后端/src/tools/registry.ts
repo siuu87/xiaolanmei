@@ -5,6 +5,7 @@ import { db } from '../db/client.js';
 import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles, pluginWishlist } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { addOpenSourceProject, refreshOpenSource } from '../routes/openSource.js';
+import { setSetting } from '../routes/settings.js';
 import { indexDocument, updateDocument } from '../services/ragService.js';
 
 /**
@@ -622,8 +623,32 @@ const openSourceAdd: BuiltinTool = {
   },
 };
 
-const openSourceRefresh: BuiltinTool = {
-  name: 'open_source_refresh',
+/**
+ * 备注（2026-10-19）：用户说「以后叫你 XX」「备注改成 XX」时，AI 直接把备注写进 settings。
+ * 这个备注就是**聊天顶栏显示的名字**（前端 `profileStore.partnerRemark` 会在启动时同步）。
+ * 为什么走后端：备注存在 localStorage 里的话 AI 碰不到。
+ */
+const setPartnerRemark: BuiltinTool = {
+  name: 'set_partner_remark',
+  description:
+    '给 TA 起 / 改一个备注（聊天里显示的名字）。用户说「以后叫你 XX」「备注写 XX」「你就叫 XX 吧」「别叫小蓝莓了，叫 XX」时调用。只改备注，不改人设里的本名。备注限 12 个字以内。',
+  parameters: {
+    type: 'object',
+    properties: {
+      remark: { type: 'string', description: '新的备注（1~12 个字），例如「哥哥」' },
+    },
+    required: ['remark'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const remark = String(args.remark ?? '').trim().slice(0, 12);
+    if (!remark) return '错误：remark 不能为空';
+    setSetting('profile.partnerRemark', remark);
+    return `已把备注改成「${remark}」。聊天顶栏和「小心思」那儿都会用这个名字（可能要点一下刷新）。`;
+  },
+};
+
+const openSourceRefresh: BuiltinTool = {  name: 'open_source_refresh',
   description:
     '检查「开源项目关注清单」里有没有新版本发布（只读检查，不动本地依赖）。不传 id 检查全部；传 id 只查那一个。返回有多少项目有更新、哪些失败。',
   parameters: {
@@ -658,6 +683,7 @@ const BUILTIN_TOOLS: BuiltinTool[] = [
   wishlistAdd,
   openSourceAdd,
   openSourceRefresh,
+  setPartnerRemark,
   ...PHONE_TOOLS,
 ];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));

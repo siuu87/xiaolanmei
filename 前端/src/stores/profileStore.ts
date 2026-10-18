@@ -14,7 +14,13 @@ interface ProfileState {
   signature: string; // 签名
 
   /* ---- TA ---- */
-  partnerName: string; // 名称（留空则沿用会话标题「小蓝莓」）
+  partnerName: string; // 本名（人设里的名字）
+  /**
+   * 备注：聊天顶栏 / 「小心思」显示的名字。
+   * 优先级 `partnerRemark > partnerName > 会话标题 > 小蓝莓`；
+   * 存在后端 `profile.partnerRemark`（AI 也能改），启动时同步到本地。
+   */
+  partnerRemark: string;
   partnerAvatar: string; // 头像
   persona: string; // 人设 / 人物设定
   voiceId: string; // MiniMax 音色 ID（voice_id）
@@ -26,6 +32,7 @@ interface ProfileState {
   setDescription: (v: string) => void;
   setSignature: (v: string) => void;
   setPartnerName: (v: string) => void;
+  setPartnerRemark: (v: string) => void;
   setPartnerAvatar: (v: string) => void;
   setPersona: (v: string) => void;
   setVoiceId: (v: string) => void;
@@ -43,6 +50,7 @@ export const useProfileStore = create<ProfileState>()(
       signature: '',
 
       partnerName: '',
+      partnerRemark: '',
       partnerAvatar: '🐰',
       persona: '',
       voiceId: '',
@@ -54,6 +62,7 @@ export const useProfileStore = create<ProfileState>()(
       setDescription: (description) => set({ description }),
       setSignature: (signature) => set({ signature }),
       setPartnerName: (partnerName) => set({ partnerName }),
+      setPartnerRemark: (partnerRemark) => set({ partnerRemark }),
       setPartnerAvatar: (partnerAvatar) => set({ partnerAvatar }),
       setPersona: (persona) => set({ persona }),
       setVoiceId: (voiceId) => set({ voiceId }),

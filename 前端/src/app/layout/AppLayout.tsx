@@ -13,6 +13,8 @@ import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
 import { BedtimeNudge } from '@/features/shell/BedtimeNudge';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
 import { useAppHeight } from '@/lib/useAppHeight';
+import { useProfileStore } from '@/stores/profileStore';
+import { getSettings } from '@/lib/api/settings';
 
 /**
  * 全局布局（双层结构）
@@ -77,6 +79,20 @@ export function AppLayout() {
   useEffect(() => {
     void loadOpenSource();
   }, [loadOpenSource]);
+
+  /**
+   * 伴侣备注（就是聊天顶栏显示的名字）以**后端**为准：
+   * AI 通过 `set_partner_remark` 工具改的是 settings，localStorage 它碰不到，
+   * 所以每次启动都拉一次同步过来。`null`（从没设过）不动本地值，`''` 才是用户主动清空。
+   */
+  const setPartnerRemark = useProfileStore((s) => s.setPartnerRemark);
+  useEffect(() => {
+    getSettings()
+      .then((s) => {
+        if (typeof s.partnerRemark === 'string') setPartnerRemark(s.partnerRemark);
+      })
+      .catch(() => {});
+  }, [setPartnerRemark]);
 
   return (
     <div
