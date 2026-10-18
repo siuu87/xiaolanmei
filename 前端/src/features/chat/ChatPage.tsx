@@ -461,27 +461,26 @@ function isSameDay(a?: number, b?: number): boolean {
 }
 
 /**
- * 思考链入口（内联版）：三个圆点（思考中弹动，完成后 ✓）。
+ * 思考链入口（**气泡上方一行**）。
  *
- * 它不再是气泡上方独立一行，而是**接在正文第一句话之后、同一段里**（见 `AssistantBody`）。
- * 所以：① 必须是 `inline-flex` + `align-middle` 才能跟着文字基线走；
- * ② 必须**足够窄**——早先沿用「Thought process」那种大胶囊有 104px 宽，
- *   在 420px 手机上接在首句后面根本放不下，会被挤到第二行行首，看起来又变回独立一行了。
- *   这里收成「✓ 思考链」约 60px，才能真正咬在首句后面。
+ * 2026-10-18 调整（用户要求）：之前是内联接在正文第一句后面，现在搬到
+ * 「每段回答的最上一条上面」——每条带 reasoning 的 assistant 消息，在气泡顶上
+ * 挂一个可点的胶囊；点开是 `ThoughtModal`。
+ *
+ * 流式期间只显示三个跳动的点（气泡里另有「思考中…」文案，避免两处都写字重复），
+ * 收完之后变成 ✓ + 「思考链」+ 右箭头，暗示可展开。
  */
-function ThoughtChip({ active, onClick }: { active: boolean; onClick: () => void }) {
+function ThoughtEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       data-testid="thought-entry"
-      title="思考链"
+      title={active ? '正在思考，点开看已生成的部分' : '点开看这段回复的思考链'}
       aria-label="查看思考链"
       onClick={onClick}
       className={cn(
-        'mx-1 inline-flex translate-y-[-1px] items-center gap-[3px] rounded-full px-1.5 py-[2px]',
-        'align-middle text-[11px] leading-none opacity-75 transition',
-        // 气泡底色可能是浅蓝也可能是浅灰，用「压一层黑」而不写死底色，两套主题都不会撞
-        'bg-black/[0.08] hover:bg-black/[0.14] dark:bg-white/[0.14] dark:hover:bg-white/[0.22]',
+        'mb-1 inline-flex items-center gap-1 rounded-full bg-chat-pill px-2 py-[3px] text-[11px] leading-none',
+        'text-chat-meta shadow-sm transition hover:text-chat-pill-fg active:scale-95',
       )}
     >
       {active ? (
@@ -491,94 +490,25 @@ function ThoughtChip({ active, onClick }: { active: boolean; onClick: () => void
           <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '300ms' }} />
         </span>
       ) : (
-        <Check className="h-3 w-3 shrink-0" />
+        <Check className="h-3 w-3 shrink-0 text-chat-accent" />
       )}
-      <span>思考链</span>
+      {!active && <span>思考链</span>}
+      {!active && <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />}
     </button>
   );
 }
 
-/** 正文以这些块级语法开头时，切句会把结构切坏——这时不内联，退回「胶囊在正文之前」 */
-const BLOCK_START = /^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s|```|\|)/;
-
 /**
- * 把正文切成「第一句」和「其余」。
+ * AI 正文。
  *
- * 切点取第一个句末标点（。！？!?…）或第一个换行；没有句末标点时整段算第一句。
- * 返回 `null` 表示**别切**（正文以块级 markdown 开头），调用方走降级分支。
+ * 思考链已经搬到气泡上方（见 `ThoughtEntry`），这里只管正文与「思考中…」占位。
+ * 还没出正文且没有思考链时给一句「思考中…」，否则气泡会是空的。
  */
-function splitFirstSentence(text: string): { head: string; tail: string } | null {
-  if (!text.trim()) return null;
-  if (BLOCK_START.test(text)) return null;
-  const m = /[。！？!?…]|\n/.exec(text);
-  if (!m) return { head: text, tail: '' };
-  const end = m[0] === '\n' ? m.index : m.index + 1;
-  return { head: text.slice(0, end), tail: text.slice(end) };
-}
-
-/** 「其余」里还有没有块级结构：有就必须另起段落，没有就跟首句连在同一段里 */
-function hasBlockStart(text: string): boolean {
-  return BLOCK_START.test(text) || /\n\s*\n/.test(text);
-}
-
-/**
- * AI 正文（含思考链）。
- *
- * 思考链的落点规则（用户要求）：**只在「回复之后的第一句」上**——也就是接在正文第一句
- * 后面、和第一句同一段；正文剩下的话继续跟在它后面（同段）或另起段落（有块级结构时）。
- * 三种降级：① 还没出正文 → 胶囊单独站着（配「思考中…」）；② 没思考链 → 纯正文；
- * ③ 正文以块级 markdown 开头 → 胶囊回到正文之前，不硬切。
- */
-function AssistantBody({
-  content,
-  reasoning,
-  streaming,
-  onOpenThought,
-}: {
-  content: string;
-  reasoning?: string;
-  streaming: boolean;
-  onOpenThought: () => void;
-}) {
+function AssistantBody({ content, streaming }: { content: string; streaming: boolean }) {
   if (!content) {
-    return (
-      <>
-        {reasoning ? (
-          <span className="block">
-            <ThoughtChip active={streaming} onClick={onOpenThought} />
-          </span>
-        ) : null}
-        {streaming && !reasoning ? <span className="text-chat-meta">思考中…</span> : null}
-      </>
-    );
+    return streaming ? <span className="text-chat-meta">思考中…</span> : null;
   }
-
-  if (!reasoning) return <Markdown>{content}</Markdown>;
-
-  const split = splitFirstSentence(content);
-  if (!split) {
-    return (
-      <>
-        <span className="mb-1.5 block">
-          <ThoughtChip active={false} onClick={onOpenThought} />
-        </span>
-        <Markdown>{content}</Markdown>
-      </>
-    );
-  }
-
-  const { head, tail } = split;
-  const tailInline = !!tail && !hasBlockStart(tail);
-  return (
-    <>
-      <span className="block">
-        <Markdown inline>{head}</Markdown>
-        <ThoughtChip active={false} onClick={onOpenThought} />
-        {tailInline ? <Markdown inline>{tail}</Markdown> : null}
-      </span>
-      {!tailInline && tail ? <Markdown>{tail}</Markdown> : null}
-    </>
-  );
+  return <Markdown>{content}</Markdown>;
 }
 
 /** 思考链弹窗：白色大圆角卡片 + 半透明灰蒙版 + 左上角黑色× */
@@ -1399,7 +1329,18 @@ export function ChatPage() {
                   <MsgRow
                     mine={m.role === 'user'}
                     stamp={needStamp ? <InlineStamp ts={m.createdAt} /> : null}
-                    above={m.quote ? <QuoteCard label={m.quote.label} /> : null}
+                    above={
+                      <>
+                        {/* 思考链：挂在这条回复的最上面（有 reasoning 才出现） */}
+                        {m.role === 'assistant' && m.reasoning ? (
+                          <ThoughtEntry
+                            active={m.status === 'streaming'}
+                            onClick={() => setThoughtReasoning(m.reasoning ?? '')}
+                          />
+                        ) : null}
+                        {m.quote ? <QuoteCard label={m.quote.label} /> : null}
+                      </>
+                    }
                     below={m.inner ? <InnerNote text={m.inner} /> : null}
                   >
                     {/* 通话记录卡：不是气泡，是一张卡 */}
@@ -1470,12 +1411,7 @@ export function ChatPage() {
                       ) : m.voiceMs ? (
                         <VoiceBubble id={m.id} ms={m.voiceMs} text={m.content} />
                       ) : m.role === 'assistant' ? (
-                        <AssistantBody
-                          content={m.content}
-                          reasoning={m.reasoning}
-                          streaming={m.status === 'streaming'}
-                          onOpenThought={() => setThoughtReasoning(m.reasoning ?? '')}
-                        />
+                        <AssistantBody content={m.content} streaming={m.status === 'streaming'} />
                       ) : m.sticker ? (
                         <StickerBubble emoji={m.sticker} />
                       ) : (
