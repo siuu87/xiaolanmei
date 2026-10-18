@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Moon,
   ArrowLeft,
   Upload,
   Play,
@@ -269,6 +268,18 @@ export function GoodnightPage() {
   return (
     <div className="relative min-h-full bg-[#070b1a] text-slate-200">
       <StarBackdrop />
+      {/* 真正的播放器：`togglePlay` 只往 audioRef 上写 src，元素必须真的挂在 DOM 里，
+          否则 audioRef.current 永远是 null、点播放毫无反应（进度条也不会走）。 */}
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        onTimeUpdate={onTimeUpdate}
+        onEnded={() => {
+          setPlayingId(null);
+          setProgress(0);
+        }}
+        className="hidden"
+      />
       <div className="relative mx-auto w-full max-w-md px-4 py-8">
         <header className="relative mb-8 text-center">
           <button

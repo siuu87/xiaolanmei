@@ -19,7 +19,6 @@ import {
   Menu,
   Globe,
   Phone,
-  Video,
   User,
   Plus,
   Image,
@@ -402,14 +401,14 @@ function VoiceBubble({ id, ms, text }: { id: string; ms: number; text: string })
   );
 }
 
-/** 通话记录卡：语音通话 02:17 / 已拒接 / 未接来电 已回拨 */
+/** 通话记录卡：通话 02:17 / 已拒接 / 未接来电 已回拨 */
 function CallRecordCard({ call }: { call: NonNullable<ChatMessage['call']> }) {
   const missed = call.state === 'missed';
   const declined = call.state === 'declined';
   const secs = call.seconds ?? 0;
   const dur = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
   const label =
-    call.state === 'answered' ? `${call.kind === 'video' ? '视频通话' : '语音通话'} ${dur}`
+    call.state === 'answered' ? `通话 ${dur}`
     : declined ? '已拒接'
     : '未接来电 已回拨';
   const Icon = missed ? PhoneMissed : declined ? PhoneOutgoing : PhoneIncoming;
@@ -670,7 +669,7 @@ const SHAPE_SAMPLES: ShapeSample[] = [
   { id: 'demo-inner', role: 'assistant', content: '手机放下。', inner: '写了内心', ago: 4 * 60_000 },
   // 语音样本的 content 就是**转录文本**：气泡下面用它跑逐字字幕（估算态，见 VoiceBubble）
   { id: 'demo-voice', role: 'user', content: '我下班啦，路上给你买了那家的草莓，马上就到家，等我。', voiceMs: 12_000, ago: 3 * 60_000 },
-  { id: 'demo-call-ok', role: 'assistant', content: '（语音通话 02:17）', call: { kind: 'voice', state: 'answered', seconds: 137 }, ago: 2 * 60_000 },
+  { id: 'demo-call-ok', role: 'assistant', content: '（通话 02:17）', call: { kind: 'voice', state: 'answered', seconds: 137 }, ago: 2 * 60_000 },
   { id: 'demo-call-declined', role: 'assistant', content: '（已拒接）', call: { kind: 'voice', state: 'declined' }, ago: 90_000 },
   { id: 'demo-call-missed', role: 'assistant', content: '（未接来电 已回拨）', call: { kind: 'voice', state: 'missed' }, ago: 45_000 },
 ];
@@ -1016,7 +1015,7 @@ export function ChatPage() {
     return { text: valid.length ? `\n\n[图片内容]：${valid.join('；')}` : '', direct: false };
   };
 
-  /** 发起通话：记下时刻（结算时用来算 startedAt），视频通话会一进去就请求摄像头 */
+  /** 发起通话：记下时刻（结算时用来算 startedAt）。统一从「通话」进入，进去后可点摄像头升级视频 */
   const startCall = (kind: CallKind) => {
     callStartedRef.current = Date.now();
     setCallKind(kind);
@@ -1052,7 +1051,7 @@ export function ChatPage() {
 
     const conv = useChatStore.getState().conversation;
     if (!conv) return;
-    const label = kind === 'video' ? '视频通话' : '语音通话';
+    const label = '通话';
     await appendMessage({
       id: uid(),
       role: 'assistant',
@@ -1943,7 +1942,8 @@ export function ChatPage() {
             {attachOpen ? (
               /* 等宽网格：4 列、每格同宽（卡片自身相对单元格居中）。
                  `w-full` + `max-w-[340px]`：手机上铺满、桌面端封顶 —— 否则 max-w-3xl 里
-                 4 等分会把 56px 的方块甩得东一个西一个。 */
+                 等分会把 56px 的方块甩得东一个西一个。
+                 表情包**不放这里**（入口是输入框旁那颗笑脸），所以只剩 图片/拍照/文件/通话。 */
               <div
                 className="grid w-full max-w-[340px] grid-cols-4 gap-x-1 gap-y-2.5 p-3"
                 data-testid="attach-panel"
@@ -1965,28 +1965,11 @@ export function ChatPage() {
                 />
                 <AttachButton
                   icon={<Phone className="h-5 w-5" />}
-                  label="语音通话"
-                  testid="attach-call-voice"
+                  label="通话"
+                  testid="attach-call"
                   onClick={() => {
                     setAttachOpen(false);
                     startCall('voice');
-                  }}
-                />
-                <AttachButton
-                  icon={<Video className="h-5 w-5" />}
-                  label="视频通话"
-                  testid="attach-call-video"
-                  onClick={() => {
-                    setAttachOpen(false);
-                    startCall('video');
-                  }}
-                />
-                <AttachButton
-                  icon={<Smile className="h-5 w-5" />}
-                  label="表情包"
-                  onClick={() => {
-                    setAttachOpen(false);
-                    setStickerOpen(true);
                   }}
                 />
               </div>

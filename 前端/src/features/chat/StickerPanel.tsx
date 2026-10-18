@@ -11,7 +11,7 @@ import { useStickerStore } from '@/stores/stickerStore';
  * 和原来那个全屏 bottom-sheet 的区别：
  * - **不是浮层**，就是输入栏下面那块面板区的内容，跟着面板一起**往下**长；
  * - 高度由外层 `BottomPanel` 给定（和「+」面板同高），所以两个面板来回切不会跳；
- * - 底栏是分类（内置 / 我的）+ 管理齿轮，微信也是这么一条。
+ * - **顶部**是分类栏（内置 / 我的）+ 管理齿轮，下面是表情格；归类在上、内容下是这一版的明确要求。
  */
 export function StickerPanel({ onPick }: { onPick: (key: string) => void }) {
   const custom = useStickerStore((s) => s.stickers);
@@ -25,6 +25,30 @@ export function StickerPanel({ onPick }: { onPick: (key: string) => void }) {
 
   return (
     <div className="flex h-full flex-col" data-testid="sticker-panel">
+      {/* 顶栏：分类 + 管理入口 */}
+      <div
+        className="flex h-11 shrink-0 items-center gap-1.5 border-b border-chat-line px-3"
+        data-testid="sticker-tabs"
+      >
+        <TabBtn active={tab === 'builtin'} onClick={() => setTab('builtin')}>
+          内置
+        </TabBtn>
+        <TabBtn active={tab === 'mine'} onClick={() => setTab('mine')}>
+          我的{custom.length > 0 ? ` ${custom.length}` : ''}
+        </TabBtn>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() => navigate('/settings?open=stickers')}
+          aria-label="管理表情包"
+          title="管理表情包"
+          data-testid="sticker-manage"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-chat-meta transition hover:bg-chat-line/60 hover:text-chat-pill-fg"
+        >
+          <Settings2 className="h-[18px] w-[18px]" />
+        </button>
+      </div>
+
       {/* 内容区：7 列铺开（微信是 7 列），可滚 */}
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin p-2">
         {list.length === 0 ? (
@@ -56,27 +80,6 @@ export function StickerPanel({ onPick }: { onPick: (key: string) => void }) {
             ))}
           </div>
         )}
-      </div>
-
-      {/* 底栏：分类 + 管理入口 */}
-      <div className="flex h-11 shrink-0 items-center gap-1.5 border-t border-chat-line px-3">
-        <TabBtn active={tab === 'builtin'} onClick={() => setTab('builtin')}>
-          内置
-        </TabBtn>
-        <TabBtn active={tab === 'mine'} onClick={() => setTab('mine')}>
-          我的{custom.length > 0 ? ` ${custom.length}` : ''}
-        </TabBtn>
-        <span className="flex-1" />
-        <button
-          type="button"
-          onClick={() => navigate('/settings?open=stickers')}
-          aria-label="管理表情包"
-          title="管理表情包"
-          data-testid="sticker-manage"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-chat-meta transition hover:bg-chat-line/60 hover:text-chat-pill-fg"
-        >
-          <Settings2 className="h-[18px] w-[18px]" />
-        </button>
       </div>
     </div>
   );

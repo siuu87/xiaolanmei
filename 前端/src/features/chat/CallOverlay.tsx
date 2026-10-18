@@ -5,18 +5,18 @@ import { AvatarContent } from '@/components/AvatarContent';
 import { fmtDuration, type CallKind } from '@/lib/api/calls';
 
 /**
- * 通话浮层（语音 / 视频）。
+ * 通话浮层（统一入口：默认语音，进去后可点摄像头升级视频）。
  *
  * 视觉照参考图那屏来：磨砂底 + 「● INCOMING CALL」字距拉开的小标 + 带光晕的大圆头像
  * + 衬线大名字 + 一红一绿两颗圆钮（拒绝 / 接听）。
  *
- * **能力边界（重要，别当成已实现的语音通话）**：
+ * **能力边界（重要，别当成已实现的实时通话）**：
  * - 没有 WebRTC，也没接模型音频 —— 本机还没有可用的模型 Key，
  *   所以「接通」是本地状态机：呼出后自动接通、本地计时，**双方没有真实音频通路**。
  * - **麦克风故意不采集**：没有音频通路时开麦只是白白占用设备并点亮系统指示灯，
  *   静音键做成 UI 状态就够了。
  * - **摄像头是真的**：`getUserMedia({video:true, audio:false})`，开了会弹系统权限，
- *   本地画面以画中画悬浮窗回显；关掉/卸载一律停轨。语音通话默认不开，可随时点「摄像头」升级。
+ *   本地画面以画中画悬浮窗回显；关掉/卸载一律停轨。默认不开摄像头，可随时点「摄像头」升级。
  * - 挂断把时长交回 `onEnd`，由 ChatPage 落库 + 往聊天流推一张内联卡片。
  */
 
@@ -34,7 +34,7 @@ export function CallOverlay({
 }: {
   name: string;
   avatar?: string;
-  /** 从哪张卡片进来的：视频通话会一进来就请求摄像头 */
+  /** 兼容旧参数：kind='video' 会一进来就请求摄像头；当前统一入口按 voice 进入 */
   kind?: CallKind;
   onEnd: (result: CallResult) => void;
 }) {
@@ -87,7 +87,7 @@ export function CallOverlay({
     }
   }, [camBusy]);
 
-  // 挂载时若从「视频通话」进来，接通后自动请求摄像头
+  // 兼容旧参数：kind='video' 时接通后自动请求摄像头
   useEffect(() => {
     if (kind === 'video' && connected) void startCam();
   }, [kind, connected, startCam]);
@@ -133,8 +133,6 @@ export function CallOverlay({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [connected, finish]);
 
-  const isVideo = kind === 'video' || !!stream;
-
   return (
     <div
       data-testid="call-overlay"
@@ -147,7 +145,7 @@ export function CallOverlay({
       <div className="mt-[max(4rem,env(safe-area-inset-top))] flex items-center gap-2">
         <span className="h-1.5 w-1.5 rounded-full bg-foreground" aria-hidden />
         <span className="text-[11px] uppercase tracking-[0.28em] text-foreground/80">
-          {connected ? (isVideo ? 'Video Call' : 'Connected') : 'Incoming Call'}
+          {connected ? 'In Call' : 'Incoming Call'}
         </span>
       </div>
 
@@ -168,7 +166,7 @@ export function CallOverlay({
           {name}
         </h2>
         <p data-testid="call-status" className="mt-2 text-sm text-chat-meta">
-          {connected ? fmtDuration(seconds) : '邀请你语音通话…'}
+          {connected ? fmtDuration(seconds) : '邀请你通话…'}
         </p>
         {camErr && (
           <p data-testid="call-cam-error" className="mt-2 max-w-[260px] text-center text-xs text-destructive">
