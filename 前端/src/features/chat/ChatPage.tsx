@@ -1418,7 +1418,7 @@ export function ChatPage() {
           底和栏现在都是白的，所以靠这条 1px 描边分界。 */}
       <div
         data-testid="chat-topbar"
-        className="flex shrink-0 items-center gap-2 border-b border-chat-line bg-chat-bar px-3 py-2.5"
+        className="relative flex shrink-0 items-center gap-2 border-b border-chat-line bg-chat-bar px-3 py-2.5"
       >
         {/* 移动端：汉堡 → 主抽屉（桌面有左侧常驻栏，不给重复入口） */}
         <button
@@ -1431,8 +1431,14 @@ export function ChatPage() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        {/* 中间状态槽：会话标题（点它 = 打开内心与记忆）+ 伴侣挂件 */}
-        <span className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
+        {/* 会话名字：**绝对定位到顶栏正中**（2026-10-19 用户要求「聊天名字居中」）。
+            以前是 flex-1 + justify-center，居中基准其实是「左右按钮夹出来的剩余空间」——
+            左边只有汉堡、右边有滑块 + 搜索，名字就会明显偏左。改成绝对居中后，
+            左右两侧按钮增减都不再影响名字的位置。 */}
+        <div
+          data-testid="chat-title-slot"
+          className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
+        >
           {/* 标题本身就是入口：点名字进「白起的内心与记忆中枢」。
               原来那盏红点从最右侧挪到这里当状态指示（`ConnDot` 已改成纯 span）。 */}
           <button
@@ -1442,7 +1448,7 @@ export function ChatPage() {
             aria-label={`打开${ownerName}的内心与记忆`}
             title={`点开看${ownerName}此刻在想什么`}
             className={cn(
-              'flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 transition',
+              'pointer-events-auto flex min-w-0 max-w-[54vw] items-center gap-1.5 rounded-full px-1.5 py-0.5 transition md:max-w-[420px]',
               'hover:bg-chat-line/60 active:scale-[0.98]',
               // 点完不要留一圈浏览器默认黑描边；键盘 Tab 过来才给一圈浅色 focus ring
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
@@ -1457,23 +1463,29 @@ export function ChatPage() {
             </span>
             <ConnDot />
           </button>
-          <span className="hidden shrink-0 items-center gap-1 rounded-full bg-chat-pill px-2 py-0.5 text-[10px] text-chat-meta shadow-sm sm:flex">
+          {/* 伴侣挂件贴在名字右侧**绝对定位**：挂在布局流里会把名字顶偏半个挂件的宽度。
+              必须 `w-max whitespace-nowrap` —— 绝对定位元素的可用宽度是从「容器宽 - left」算的，
+              而容器只有名字那么宽，不写死就会缩成一列竖排字。 */}
+          <span className="absolute left-full top-1/2 ml-2 hidden w-max shrink-0 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-chat-pill px-2 py-0.5 text-[10px] text-chat-meta shadow-sm sm:flex">
             <AvatarContent value={partnerAvatar} fallback="🐰" className="h-3.5 w-3.5 text-[11px]" />
             <span>在一起 {loveDayCount} 天</span>
           </span>
-        </span>
-        {/* 对白风格：💕 碎片流 / 🩷 沉浸流 两档滑块。
-            全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
-        <ChatStyleSwitch mode={chatStyleMode} onChange={setChatStyleMode} />
-        <button
-          type="button"
-          onClick={() => setSearchOpen(true)}
-          aria-label="搜索记录"
-          title="搜索记录"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
-        >
-          <Search className="h-4 w-4" />
-        </button>
+        </div>
+        {/* 右侧按钮组：靠 ml-auto 顶到最右（中间槽改成绝对定位后，不再有 flex-1 撑开） */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* 对白风格：💕 碎片流 / 🩷 沉浸流 两档滑块。
+              全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
+          <ChatStyleSwitch mode={chatStyleMode} onChange={setChatStyleMode} />
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="搜索记录"
+            title="搜索记录"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </div>
         {/* 通话入口**不在这里**：按需求顶栏保持简洁，通话已收进输入框的「+」面板 */}
       </div>
 
