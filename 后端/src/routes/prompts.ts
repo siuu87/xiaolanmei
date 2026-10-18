@@ -10,6 +10,7 @@ import { enabledStyleRules } from './styleRules.js';
 import { buildTimeSense } from '../emotion/timeSense.js';
 import { chatStyleBlock, normalizeChatStyle, type ChatStyleMode } from '../persona/chatStyle.js';
 import { getChatStyleMode } from './settings.js';
+import { DIET_GRADING_BLOCK, DIET_VAR_ALLERGIES, DIET_VAR_DISLIKES } from '../diet/profile.js';
 
 /**
  * 恋爱起点，与前端 `features/shell/loveDays.ts` 的 `LOVE_START` 同源。
@@ -116,12 +117,17 @@ export function buildSystemPrompt(
   const timeSense = buildTimeSense(new Date(), ctx?.lastMessageAt ?? null);
   // 说话风格：读完设置再拼，切档之后下一条消息立刻换口吻（不需要重启/重开会话）
   const styleBlock = chatStyleBlock(ctx?.chatStyle ?? getChatStyleMode());
+  // 忌口分级：只有真的配了忌口/过敏源才追加，没配就是零噪音
+  const hasDiet = !!(
+    shared[DIET_VAR_DISLIKES]?.trim() || shared[DIET_VAR_ALLERGIES]?.trim()
+  );
   const blocks = [
     render(style.before),
     parts.slice(0, cut),
     render(style.middle),
     parts.slice(cut),
     render(style.after),
+    ...(hasDiet ? [[DIET_GRADING_BLOCK]] : []),
     [styleBlock],
     [timeSense],
   ];

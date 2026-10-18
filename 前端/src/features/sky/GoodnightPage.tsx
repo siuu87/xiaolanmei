@@ -12,6 +12,7 @@ import {
   Music2,
 } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
+import { useWakeLock } from '@/lib/useWakeLock';
 import { listSleepAudio, uploadSleepAudio, deleteSleepAudio, type SleepAudioDTO } from '@/lib/api/sleepAudio';
 
 type NoiseType = 'white' | 'pink' | 'brown';
@@ -89,6 +90,42 @@ export function GoodnightPage() {
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const buffersRef = useRef<Partial<Record<NoiseType, AudioBuffer>>>({});
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /**
+   * 播放期间保持亮屏 + 锁屏上给一个「正在播放」。
+   *
+   * 息屏后 Android 会把 Web Audio / 隐藏 `<audio>` 的播放降频甚至掐掉，
+   * 所以只要还在出声就不让屏幕睡；同时把当前音频塞进 MediaSession，
+   * 锁屏/通知栏能看到标题，也顺手让系统把这条当成「媒体播放」对待（更不容易被回收）。
+   */
+  useWakeLock(!!playingId || !!noise);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+    const ms = navigator.mediaSession;
+    const item = items.find((i) => i.id === playingId);
+    if (!item) {
+      ms.metadata = null;
+      return;
+    }
+    ms.metadata = new MediaMetadata({ title: item.title, artist: 'goodnight', album: '小蓝莓' });
+    const play = () => void audioRef.current?.play().catch(() => {});
+    const pause = () => audioRef.current?.pause();
+    try {
+      ms.setActionHandler('play', play);
+      ms.setActionHandler('pause', pause);
+    } catch {
+      /* 某些浏览器只支持部分 action，忽略 */
+    }
+    return () => {
+      try {
+        ms.setActionHandler('play', null);
+        ms.setActionHandler('pause', null);
+      } catch {
+        /* noop */
+      }
+    };
+  }, [playingId, items]);
 
   const load = useCallback(async () => {
     try {
@@ -273,6 +310,7 @@ export function GoodnightPage() {
       <audio
         ref={audioRef}
         preload="metadata"
+        playsInline
         onTimeUpdate={onTimeUpdate}
         onEnded={() => {
           setPlayingId(null);

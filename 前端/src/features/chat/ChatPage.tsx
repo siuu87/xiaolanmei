@@ -823,6 +823,30 @@ export function ChatPage() {
     }
   }, [path, path[path.length - 1]?.content]);
 
+  // 软键盘弹起/收起：可视视口高度变了就重新贴底一次。
+  // 键盘弹起时布局视口往往不动，滚动高度却要重算，不补这一下最后一条消息就被挡住。
+  // 只在「原本就在底部附近」时才跟，避免把正在上翻历史的人拽回来。
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let raf = 0;
+    const onResize = () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 240) {
+          bottomRef.current?.scrollIntoView({ block: 'end' });
+        }
+      });
+    };
+    vv.addEventListener('resize', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, []);
+
   /** 滚动位置 → 「回到底部」圆钮的显隐（贴底 80px 内就不显示） */
   const onListScroll = () => {
     const el = scrollRef.current;
@@ -1487,13 +1511,14 @@ export function ChatPage() {
                     {m.call ? (
                       <CallRecordCard call={m.call} />
                     ) : waitingFirstToken ? null : multiBubble ? (
-                      /* 即兴聊天：一条 AI 消息按行拆成多条气泡，一条条往外蹦 */
-                      <div className="flex min-w-0 flex-col items-start gap-1.5" data-testid="bubble-group">
+                      /* 即兴聊天：一条 AI 消息按行拆成多条气泡，一条条往外蹦。
+                         间距用 gap-1、内边距 py-2，比整段气泡更紧 —— 碎片流本来就是这种密度 */
+                      <div className="flex min-w-0 flex-col items-start gap-1" data-testid="bubble-group">
                         {bubbleSegs.map((seg, si) => (
                           <div
                             key={si}
                             data-testid="chat-bubble"
-                            className="select-none rounded-[18px] bg-chat-ai px-4 py-2.5 text-[15px] leading-6 text-chat-ai-fg"
+                            className="select-none rounded-[18px] bg-chat-ai px-3.5 py-2 text-[15px] leading-6 text-chat-ai-fg"
                             style={
                               {
                                 '--foreground': 'var(--chat-ai-fg)',
@@ -1963,6 +1988,11 @@ export function ChatPage() {
                   // 微信：一聚焦输入框就收面板（那边是弹键盘，这边没有键盘概念）
                   setAttachOpen(false);
                   setStickerOpen(false);
+                  // 移动端：键盘弹起会把可视区压矮，等它动画结束再贴底，
+                  // 否则按旧高度算出来的滚动位置会让最后一条消息被挡住。
+                  window.setTimeout(() => {
+                    bottomRef.current?.scrollIntoView({ block: 'end' });
+                  }, 300);
                 }}
                 onKeyDown={(e) => {
                   // 输入法合成中按回车是确认候选词，不应触发发送

@@ -12,6 +12,7 @@ import { LetterReaderLayer } from '@/features/notes/LetterReaderLayer';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
 import { BedtimeNudge } from '@/features/shell/BedtimeNudge';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
+import { useAppHeight } from '@/lib/useAppHeight';
 
 /**
  * 全局布局（双层结构）
@@ -51,6 +52,9 @@ export function AppLayout() {
 
   useEdgeSwipe(openDrawer, !immersive && !fullReplace);
 
+  // 软键盘弹起时把根容器压到「可见视口」高度，否则输入框会被顶到键盘底下
+  useAppHeight();
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
@@ -75,7 +79,11 @@ export function AppLayout() {
   }, [loadOpenSource]);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
+    <div
+      className="flex h-dvh w-full overflow-hidden bg-background text-foreground"
+      // 有 --app-h 时以它为准（键盘/地址栏变化），没有就退回 h-dvh
+      style={{ height: 'var(--app-h, 100dvh)' }}
+    >
       {/* 桌面侧边栏（沉浸式时收起） */}
       {!immersive && (
         <aside className="hidden w-60 shrink-0 border-r bg-card md:block">
