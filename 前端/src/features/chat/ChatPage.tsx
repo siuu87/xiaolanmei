@@ -88,23 +88,28 @@ import { loveDays } from '@/features/shell/loveDays';
  * 这样语义才不混：小灯仍然只是「通道可见性」的指示器，点它是「进去看看他」。
  * 状态改由 `modelHealth` 模块单例托管 —— 面板和这里读的是同一份，不会两个轮询各打一次。
  */
-function ConnDot({ onClick }: { onClick: () => void }) {
+function ConnDot() {
   const state = useModelHealth();
 
   const color =
     state === 'ok' ? 'bg-emerald-400' : state === 'probing' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500';
 
+  /**
+   * 2026-10-18 用户要求：这盏灯从顶栏最右侧挪到**聊天名字旁边**，
+   * 连「打开内心与记忆中枢」的动作一起交给标题按钮（见顶栏那段）。
+   * 所以这里只是个状态指示器，不再是按钮 —— 按钮套按钮是非法 DOM，
+   * 点击由外层 `<button data-testid="chat-title-btn">` 统一接管。
+   */
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="白起的内心"
-      title={`${HEALTH_TEXT[state]} · 点击查看他的内心与记忆`}
+    <span
       data-testid="conn-dot"
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-chat-line/70"
+      role="img"
+      aria-label="白起的内心"
+      title={HEALTH_TEXT[state]}
+      className="inline-flex shrink-0 items-center justify-center"
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', color)} />
-    </button>
+    </span>
   );
 }
 
@@ -143,6 +148,11 @@ function autoDigest(): void {
   }
 }
 
+/**
+ * 消息操作弹窗里的一行（2026-10-18：菜单从「气泡下面一排小胶囊」改成底部弹窗，
+ * 所以这里也从小胶囊改成**整行**：左侧图标、右侧文字，整行可点，跟系统 ActionSheet 一致）。
+ * 只在消息操作弹窗里用。
+ */
 function MenuAction({
   icon,
   label,
@@ -159,12 +169,13 @@ function MenuAction({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 rounded-full bg-chat-pill px-2.5 py-1.5 text-xs text-chat-pill-fg shadow-sm transition hover:bg-chat-line',
-        danger && 'text-destructive',
+        'flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] transition',
+        'hover:bg-chat-line/40 active:bg-chat-line/70',
+        danger ? 'text-destructive' : 'text-chat-ai-fg',
       )}
     >
-      {icon}
-      <span>{label}</span>
+      <span className={cn('shrink-0', danger ? 'text-destructive' : 'text-chat-meta')}>{icon}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </button>
   );
 }
@@ -866,12 +877,14 @@ export function ChatPage() {
     }
   };
 
-  // 点菜单外任意处关闭
+  // 点菜单外任意处关闭。
+  // 菜单现在是底部弹窗（portal 到 body），所以除了 [data-menu] 还要放过整个弹层 ——
+  // 否则点弹窗标题/预览那一片空白会被当成「点外面」，弹窗还没用就自己关了。
   useEffect(() => {
     if (!menuForId) return;
     const onDown = (e: PointerEvent) => {
       const el = e.target as HTMLElement;
-      if (!el.closest('[data-menu]')) setMenuForId(null);
+      if (!el.closest('[data-menu]') && !el.closest('[data-testid="msg-action-sheet"]')) setMenuForId(null);
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
@@ -1337,15 +1350,32 @@ export function ChatPage() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        {/* 中间状态槽：会话标题 + 伴侣挂件（TA 头像 + 在一起天数） */}
+        {/* 中间状态槽：会话标题（点它 = 打开内心与记忆）+ 伴侣挂件 */}
         <span className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
-          <span
-            data-testid="chat-title"
-            className="min-w-0 truncate font-serif text-[15px] font-semibold text-foreground"
+          {/* 标题本身就是入口：点名字进「白起的内心与记忆中枢」。
+              原来那盏红点从最右侧挪到这里当状态指示（`ConnDot` 已改成纯 span）。 */}
+          <button
+            type="button"
+            onClick={() => setMindOpen(true)}
+            data-testid="chat-title-btn"
+            aria-label={`打开${ownerName}的内心与记忆`}
+            title={`点开看${ownerName}此刻在想什么`}
+            className={cn(
+              'flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 transition',
+              'hover:bg-chat-line/60 active:scale-[0.98]',
+              // 点完不要留一圈浏览器默认黑描边；键盘 Tab 过来才给一圈浅色 focus ring
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
+            )}
           >
-            {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
-            {partnerName || conversation?.title || '小蓝莓'}
-          </span>
+            <span
+              data-testid="chat-title"
+              className="min-w-0 truncate font-serif text-[15px] font-semibold text-foreground"
+            >
+              {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
+              {partnerName || conversation?.title || '小蓝莓'}
+            </span>
+            <ConnDot />
+          </button>
           <span className="hidden shrink-0 items-center gap-1 rounded-full bg-chat-pill px-2 py-0.5 text-[10px] text-chat-meta shadow-sm sm:flex">
             <AvatarContent value={partnerAvatar} fallback="🐰" className="h-3.5 w-3.5 text-[11px]" />
             <span>在一起 {loveDayCount} 天</span>
@@ -1354,7 +1384,6 @@ export function ChatPage() {
         {/* 对白风格：💕 碎片流 / 🩷 沉浸流 两档滑块。
             全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
         <ChatStyleSwitch mode={chatStyleMode} onChange={setChatStyleMode} />
-        <ConnDot onClick={() => setMindOpen(true)} />
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
@@ -1664,15 +1693,24 @@ export function ChatPage() {
                   </button>
                 </div>
 
-                {/* 长按 / ⋯ 弹出的操作菜单 */}
+                {/* 长按消息 / 点 ⋯ → **底部弹窗**（2026-10-18 用户要求：内容从内联一排改成弹窗）。
+                    BottomSheet 会 portal 到 body，所以放在消息循环里也不会被气泡撑变形。 */}
                 {menuOpen && (
-                  <div
-                    data-menu
-                    className={cn(
-                      'mt-1 flex flex-wrap gap-1.5',
-                      m.role === 'user' ? 'justify-end pr-10' : 'pl-10',
-                    )}
+                  <BottomSheet
+                    open
+                    onOpenChange={(v) => {
+                      if (!v) closeMenu();
+                    }}
+                    title="消息操作"
+                    testid="msg-action-sheet"
+                    maxHeight="max-h-[62vh]"
                   >
+                    {m.content ? (
+                      <div className="mx-4 mb-3 line-clamp-2 rounded-xl bg-chat-pill px-3 py-2 text-[12px] leading-relaxed text-chat-meta">
+                        {m.content}
+                      </div>
+                    ) : null}
+                    <div data-menu className="flex flex-col divide-y divide-chat-line/50 pb-2">
                     <MenuAction
                       icon={<Copy className="h-3.5 w-3.5" />}
                       label="复制"
@@ -1745,7 +1783,8 @@ export function ChatPage() {
                         void removeSubtree(m.id);
                       }}
                     />
-                  </div>
+                    </div>
+                  </BottomSheet>
                 )}
               </div>
             );
