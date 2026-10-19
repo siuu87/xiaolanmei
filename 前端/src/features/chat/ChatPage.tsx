@@ -37,6 +37,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { matchLocalIntent } from './assistant';
+import { PhotoStack } from '@/components/PhotoStack';
 import { streamChat, type ChatPayloadMessage } from '@/lib/api/chatStream';
 import { buildSupportContext } from '@/features/tavern/phone/datacore/contextBridge';
 import { matchSkills } from '@/lib/api/skills';
@@ -119,7 +120,13 @@ const WELCOME_TEXT =
 function toPayload(m: ChatMessage): ChatPayloadMessage {
   // 只把内存里的 base64 data URL 发给模型（重载后的消息没有 dataUrl，退化纯文本）
   const images = m.images?.map((i) => i.dataUrl).filter((x): x is string => !!x);
-  return { role: m.role, content: m.content, ...(images && images.length ? { images } : {}) };
+  return {
+    role: m.role,
+    content: m.content,
+    // 后端用它在送模型前渲染 [时间 · 间隔]；messageTimestamps 会剥离旧前缀，幂等
+    createdAt: m.createdAt,
+    ...(images && images.length ? { images } : {}),
+  };
 }
 
 /** 记忆提取节流：每 3 次模型回复才触发一次，避免每轮都调一次小模型。 */
@@ -727,6 +734,8 @@ export function ChatPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   // 「白起的内心与记忆中枢」：点顶栏那颗小红点打开
   const [mindOpen, setMindOpen] = useState(false);
+  /** 多图堆叠卡片点开的大图查看器（整页、纯色不透明，遵守「点开=新页面」） */
+  const [photoView, setPhotoView] = useState<{ urls: string[]; index: number } | null>(null);
   const openDrawer = useShellStore((s) => s.openDrawer);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const partnerName = useProfileStore((s) => s.partnerName);
@@ -913,6 +922,18 @@ export function ChatPage() {
       setStickerOpen(false);
     }
   };
+
+  // 大图查看器的 Esc：capture 阶段拦下，避免连抽屉一起关
+  useEffect(() => {
+    if (!photoView) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setPhotoView(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [photoView]);
 
   // 菜单现在是一块**锚定在消息旁边**的浮层（微信长按那种），
   // 关闭靠自己的全屏透明背板 + Esc，不再需要「点外部」的 document 监听。
@@ -1691,16 +1712,43 @@ export function ChatPage() {
                       ) : (
                         <>
                           {m.images && m.images.length > 0 && (
-                            <div className="mb-1.5 flex flex-wrap gap-1.5">
-                              {m.images.map((img, i) => (
-                                <img
-                                  key={i}
-                                  src={img.dataUrl ?? img.url}
-                                  alt={img.name ?? '图片'}
-                                  className="max-h-44 max-w-full rounded-lg object-cover"
+                            m.images.length > 1 ? (
+                              /* 多图 → PhotoStack 堆叠卡（微信式探边 / 跟手翻页 / 快甩） */
+                              <div className="mb-1.5" data-testid="chat-photo-stack">
+                                <PhotoStack
+                                  images={m.images.map((img) => img.dataUrl ?? img.url ?? '')}
+                                  onTap={(idx) =>
+                                    setPhotoView({
+                                      urls: (m.images ?? []).map((img) => img.dataUrl ?? img.url ?? ''),
+                                      index: idx,
+                                    })
+                                  }
                                 />
-                              ))}
-                            </div>
+                              </div>
+                            ) : (
+                              <div className="mb-1.5 flex flex-wrap gap-1.5">
+                                {m.images.map((img, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() =>
+                                      setPhotoView({
+                                        urls: [img.dataUrl ?? img.url ?? ''],
+                                        index: 0,
+                                      })
+                                    }
+                                    aria-label="查看大图"
+                                    className="overflow-hidden rounded-lg active:scale-[0.99]"
+                                  >
+                                    <img
+                                      src={img.dataUrl ?? img.url}
+                                      alt={img.name ?? '图片'}
+                                      className="max-h-44 max-w-full object-cover"
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            )
                           )}
                           {m.content}
                         </>
@@ -2223,6 +2271,64 @@ export function ChatPage() {
           owner={ownerName}
           onClose={() => setThoughtReasoning(null)}
         />
+      )}
+
+      {/* 多图堆叠卡点开的大图：整页纯色不透明，带前后翻页 */}
+      {photoView && (
+        <div data-testid="photo-viewer" className="fixed inset-0 z-[1400] flex flex-col bg-[#070b1a]">
+          <div className="flex h-14 shrink-0 items-center justify-between px-3 text-slate-200">
+            <button
+              type="button"
+              onClick={() => setPhotoView(null)}
+              aria-label="关闭大图"
+              data-testid="photo-viewer-close"
+              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/10"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <span className="text-[12px] tabular-nums text-slate-400">
+              {photoView.urls.length > 1 ? `${photoView.index + 1} / ${photoView.urls.length}` : ''}
+            </span>
+            <span className="w-9" />
+          </div>
+          <div className="relative flex min-h-0 flex-1 items-center justify-center px-3 pb-6">
+            {photoView.urls.length > 1 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setPhotoView({
+                    ...photoView,
+                    index: (photoView.index - 1 + photoView.urls.length) % photoView.urls.length,
+                  })
+                }
+                aria-label="上一张"
+                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
+            <img
+              src={photoView.urls[photoView.index]}
+              alt="照片"
+              className="max-h-full max-w-full rounded-lg object-contain"
+            />
+            {photoView.urls.length > 1 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setPhotoView({
+                    ...photoView,
+                    index: (photoView.index + 1) % photoView.urls.length,
+                  })
+                }
+                aria-label="下一张"
+                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
     </div>

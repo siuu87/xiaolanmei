@@ -18,6 +18,8 @@ import { requestConfirmation } from '../services/confirmations.js';
 import { retrieveChunks } from '../services/ragService.js';
 import { buildSkillContext } from '../services/skillEngine.js';
 import { getSettingValue } from './settings.js';
+import { env } from '../config/env.js';
+import { decorateMessages } from '../chat/messageTimestamps.js';
 import { applyPreAnalysis, type PreAnalysisResult } from '../emotion/service.js';
 import { analyzeEmotionDelta, type AnalyzeResult, type AnalyzerMessage } from '../emotion/analyzer.js';
 import {
@@ -396,6 +398,10 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       courseNote,
       partnerStateNote ? `【对方状态】${partnerStateNote}` : '',
       draftNote ? draftNote : '',
+      // 时间戳说明：只在真的渲染时间戳时出现（避免提示词撒谎）
+      convId != null && env.messageTimestamps
+        ? '【消息时间戳】每条 user / assistant 消息开头的方括号里是那条消息的真实发送时间（CST）和距上一条的间隔，例如 [Tue 2026-08-11 17:32:10 CST · +9h 44m]。据此判断你们隔了多久、对方是不是在深夜或清晨说话；不要把时间戳原样复述给 TA。'
+        : '',
       // 行为策略放最后：整轮里优先级最高、最近读到的一段行为规范
       emotionPre?.strategyBlock ?? '',
     ]
@@ -404,6 +410,16 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const finalMessages: ChatMessage[] = systemPrompt
       ? [{ role: 'system', content: systemPrompt }, ...messages]
       : messages;
+    /**
+     * 时间戳 patch（2026-10-19）：**只在这一步**给消息加 `[时间 · 间隔]` 前缀。
+     * - 存档（DB）里的 content 保持干净，永远不带前缀；
+     * - 幂等：decorateMessages 会先剥旧前缀，重复请求也不会叠成 [时间][时间]；
+     * - 只有带会话的真实聊天才加；星空/听歌等辅助调用不受影响。
+     */
+    const timedMessages =
+      convId != null
+        ? decorateMessages(finalMessages, { enabled: env.messageTimestamps })
+        : finalMessages;
 
     if (messages.length === 0) {
       reply.code(400).send({ code: 'invalid_request', message: 'messages 不能为空' });
@@ -541,7 +557,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       const result = await runAgentLoop({
         adapter,
         model,
-        messages: finalMessages,
+        messages: timedMessages,
         tools: defs,
         resolveTool,
         temperature,

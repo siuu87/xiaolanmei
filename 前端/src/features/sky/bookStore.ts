@@ -30,6 +30,10 @@ export interface Book {
   progress: number;
   /** 最近一次阅读时间戳 */
   lastReadAt?: number;
+  /** 来源渠道：local | weread | fanqie */
+  source?: string;
+  sourceId?: string;
+  lastSyncedAt?: number;
 }
 
 const PALETTE = [
@@ -176,6 +180,9 @@ function fromDTO(d: ReadingBook): Book {
     toc: d.toc ?? [],
     progress: 0,
     lastReadAt: undefined,
+    source: d.source ?? 'local',
+    sourceId: d.sourceId,
+    lastSyncedAt: d.lastSyncedAt,
   };
 }
 
@@ -183,6 +190,8 @@ interface BookState {
   books: Book[];
   loaded: boolean;
   load: () => Promise<void>;
+  /** 强制重新拉取（多源导入后书架要立刻看到新书） */
+  reload: () => Promise<void>;
   addBook: (input: {
     title: string;
     author: string;
@@ -247,6 +256,12 @@ export const useBookStore = create<BookState>((set, get) => ({
       }
     })();
     return loadPromise;
+  },
+
+  reload: async () => {
+    loadPromise = null;
+    set({ loaded: false });
+    await get().load();
   },
 
   addBook: async ({ title, author, paletteIdx, cover, desc, content, toc }) => {

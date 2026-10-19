@@ -20,3 +20,6 @@ data/
 
 # 组件临时预览页（frontend/preview-*.html），只给本地冒烟看效果
 前端/preview-*.html
+
+# 外部侧车：Remember-Me（图像记忆 / 相册 Dashboard），本地安装，不进版本库
+remember-me/

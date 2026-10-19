@@ -39,6 +39,12 @@ export const env = {
   obApiToken: (process.env.OB_API_TOKEN ?? '').trim(),
   obTimeoutMs: envNum(process.env.OB_TIMEOUT_MS, 3500, 500),
 
+  /**
+   * 消息时间戳（2026-10-19）：送模型前给每条消息动态加 `[Tue … CST · +9h 44m]`。
+   * `MESSAGE_TIMESTAMPS=off` 关闭，回到原生行为。存档永远不写时间戳。
+   */
+  messageTimestamps: (process.env.MESSAGE_TIMESTAMPS ?? 'on').toLowerCase() !== 'off',
+
   // 智能编程工作区（阶段 10）：默认后端上一级 = 项目根 d:\小蓝莓
   workspacePath: process.env.WORKSPACE_PATH ?? path.resolve(process.cwd(), '..'),
 } as const;

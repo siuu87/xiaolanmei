@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ImagePlus, Loader2, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, HardDrive, ImagePlus, Loader2, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
 import {
   deleteGalleryItem,
+  getRememberMeStatus,
   listGallery,
   listGalleryTags,
   patchGalleryItem,
   uploadToGallery,
   type GalleryItemDTO,
   type GalleryTagCount,
+  type RememberMeStatus,
 } from '@/lib/api/gallery';
 
 /**
@@ -32,6 +34,33 @@ export function GalleryPage() {
   const [err, setErr] = useState('');
   const [viewingId, setViewingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 相册视图（2026-10-19）：
+   * - `remember` = peanutsuee/Remember-Me 的 Dusk Archive Dashboard（侧车 8787）
+   * - `local`    = 原来的本地相册（不动旧数据，随时切回）
+   * 侧车没起时默认落回本地相册，并给出启动命令，不假装已接入。
+   */
+  const [mode, setMode] = useState<'remember' | 'local'>('local');
+  const [remember, setRemember] = useState<RememberMeStatus | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const checkRemember = async () => {
+    setChecking(true);
+    try {
+      const s = await getRememberMeStatus();
+      setRemember(s);
+      setMode(s.up ? 'remember' : 'local');
+    } catch {
+      setRemember(null);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    void checkRemember();
+  }, []);
 
   const load = async (tag = activeTag) => {
     try {
@@ -95,17 +124,19 @@ export function GalleryPage() {
       eyebrow="GALLERY"
       testId="gallery-page"
       right={
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={busy}
-          aria-label="添加照片"
-          title="添加照片"
-          data-testid="gallery-upload"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-        </button>
+        mode === 'local' ? (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            aria-label="添加照片"
+            title="添加照片"
+            data-testid="gallery-upload"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+          </button>
+        ) : null
       }
     >
       <input
@@ -118,7 +149,78 @@ export function GalleryPage() {
         className="hidden"
       />
 
-      {tags.length > 0 && (
+      {/* 视图切换：Remember-Me 记忆相册 / 本地相册 */}
+      <div className="mb-3 flex items-center gap-2" data-testid="gallery-mode">
+        <div className="flex rounded-full bg-muted p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode('remember')}
+            data-testid="gallery-mode-remember"
+            className={cn(
+              'rounded-full px-3 py-1 text-[11px] transition',
+              mode === 'remember'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-foreground/60 hover:text-foreground',
+            )}
+          >
+            记忆相册
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('local')}
+            data-testid="gallery-mode-local"
+            className={cn(
+              'rounded-full px-3 py-1 text-[11px] transition',
+              mode === 'local'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-foreground/60 hover:text-foreground',
+            )}
+          >
+            本地相册
+          </button>
+        </div>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => void checkRemember()}
+          aria-label="重新检测 Remember-Me"
+          data-testid="gallery-remember-check"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', checking && 'animate-spin')} />
+        </button>
+      </div>
+
+      {mode === 'remember' ? (
+        remember?.up ? (
+          <div
+            data-testid="remember-me-frame"
+            className="overflow-hidden rounded-2xl border border-page-line bg-white"
+          >
+            <div className="flex items-center justify-between border-b border-page-line px-3 py-2">
+              <span className="text-[11px] text-muted-foreground">Remember-Me · Dusk Archive</span>
+              <a
+                href={remember.dashboard}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-[11px] text-primary"
+              >
+                新窗口 <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            <iframe
+              title="Remember-Me"
+              src={remember.dashboard}
+              data-testid="remember-me-iframe"
+              className="h-[68vh] w-full"
+            />
+          </div>
+        ) : (
+          <RememberMeSetup checking={checking} onRetry={() => void checkRemember()} />
+        )
+      ) : (
+        <>
+          {tags.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1.5" data-testid="gallery-tags">
           <TagChip active={!activeTag} onClick={() => setActiveTag('')} testid="gallery-tag-all">
             全部
@@ -188,7 +290,41 @@ export function GalleryPage() {
           ))}
         </div>
       )}
+        </>
+      )}
     </PageShell>
+  );
+}
+
+/** Remember-Me 侧车没起时的启动说明（不假装已接入） */
+function RememberMeSetup({ checking, onRetry }: { checking: boolean; onRetry: () => void }) {
+  return (
+    <div
+      data-testid="remember-me-setup"
+      className="rounded-2xl border border-dashed border-page-line p-5 text-center"
+    >
+      <HardDrive className="mx-auto h-6 w-6 text-muted-foreground" />
+      <p className="mt-2 text-sm font-medium">Remember-Me 还没启动</p>
+      <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+        相册优先使用 peanutsuee/Remember-Me 的图像记忆库（Dusk Archive）。
+        侧车默认在 127.0.0.1:8787，启动后点「重新检测」。
+      </p>
+      <pre className="mt-3 overflow-x-auto rounded-lg bg-muted px-3 py-2 text-left text-[10px] leading-5 text-foreground/70">
+        {String.raw`cd remember-me
+.venv\Scripts\python.exe -m remember_me serve --data-root .data`}
+      </pre>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={checking}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12px] font-medium text-primary-foreground transition active:scale-95 disabled:opacity-50"
+      >
+        <RefreshCw className={cn('h-3.5 w-3.5', checking && 'animate-spin')} /> 重新检测
+      </button>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        侧车没起也可以切回「本地相册」，旧数据不会丢。
+      </p>
+    </div>
   );
 }
 

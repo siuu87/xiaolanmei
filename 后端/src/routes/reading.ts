@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { annotationNotes, annotations, books, readingLogs, readingProgress } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { extractReadable, parseFanqiePage, parseFanqieUrl } from '../reading/sources.js';
 
 /**
  * 一起读 / 书房路由：书目、双人进度、划线批注与双人留言。
@@ -28,6 +29,16 @@ function paragraphCount(content: string | null): number {
   return n || 1;
 }
 
+function parseSourceMeta(raw: string | null): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
 function bookDTO(b: typeof books.$inferSelect) {
   return {
     id: b.id,
@@ -41,6 +52,10 @@ function bookDTO(b: typeof books.$inferSelect) {
     color: b.color ?? undefined,
     band: b.band ?? undefined,
     height: b.height ?? undefined,
+    source: b.source,
+    sourceId: b.sourceId ?? undefined,
+    sourceMeta: parseSourceMeta(b.sourceMeta),
+    lastSyncedAt: b.lastSyncedAt ?? undefined,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
   };
@@ -52,6 +67,8 @@ function progressDTO(p: typeof readingProgress.$inferSelect) {
     currentChapter: p.currentChapter,
     currentPosition: p.currentPosition,
     percent: p.percent,
+    syncStatus: p.syncStatus,
+    lastSyncedAt: p.lastSyncedAt ?? undefined,
     updatedAt: p.updatedAt,
   };
 }
@@ -85,6 +102,24 @@ async function annotationDTO(a: typeof annotations.$inferSelect) {
     createdAt: a.createdAt,
     notes,
   };
+}
+
+const FETCH_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+
+/** 抓网页（15s 超时、带浏览器 UA，避免被当成爬虫直接 403） */
+async function fetchHtml(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': FETCH_UA,
+      Accept: 'text/html,application/xhtml+xml',
+      'Accept-Language': 'zh-CN,zh;q=0.9',
+    },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`抓取失败 HTTP ${res.status}`);
+  return res.text();
 }
 
 export async function readingRoutes(app: FastifyInstance): Promise<void> {
@@ -121,6 +156,9 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
       color?: string;
       band?: string;
       height?: number;
+      source?: string;
+      sourceId?: string;
+      sourceMeta?: Record<string, unknown>;
     };
     const title = body.title?.trim();
     if (!title) {
@@ -130,19 +168,25 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
     const id = body.id?.trim() || newId();
     const ts = now();
     const content = body.content ?? null;
+    const tocArr = Array.isArray(body.toc) ? body.toc.map((x) => String(x)).filter(Boolean) : [];
+    const source = ['local', 'weread', 'fanqie'].includes(body.source ?? '') ? body.source! : 'local';
     db.insert(books)
       .values({
         id,
         title,
         author: body.author?.trim() || null,
         coverUrl: body.coverUrl?.trim() || null,
-        totalChapters: paragraphCount(content),
+        totalChapters: content?.trim() ? paragraphCount(content) : Math.max(1, tocArr.length),
         content,
         desc: body.desc?.trim() || null,
-        toc: Array.isArray(body.toc) && body.toc.length ? JSON.stringify(body.toc) : null,
+        toc: tocArr.length ? JSON.stringify(tocArr) : null,
         color: body.color || null,
         band: body.band || null,
         height: body.height ?? null,
+        source,
+        sourceId: body.sourceId?.trim() || null,
+        sourceMeta: body.sourceMeta ? JSON.stringify(body.sourceMeta) : null,
+        lastSyncedAt: source === 'local' ? null : ts,
         createdAt: ts,
         updatedAt: ts,
       })
@@ -162,6 +206,7 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
       color?: string | null;
       band?: string | null;
       height?: number | null;
+      sourceMeta?: Record<string, unknown> | null;
     };
     const set: Record<string, unknown> = { updatedAt: now() };
     if (body.title !== undefined) set.title = body.title.trim();
@@ -176,6 +221,9 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
     if (body.color !== undefined) set.color = body.color || null;
     if (body.band !== undefined) set.band = body.band || null;
     if (body.height !== undefined) set.height = body.height ?? null;
+    if (body.sourceMeta !== undefined) {
+      set.sourceMeta = body.sourceMeta ? JSON.stringify(body.sourceMeta) : null;
+    }
 
     const result = db.update(books).set(set).where(eq(books.id, id)).run();
     if (result.changes === 0) {
@@ -228,10 +276,16 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
     const currentChapter = Math.max(1, Math.round(body.currentChapter ?? 1));
     const currentPosition = Math.max(0, Math.round(body.currentPosition ?? 0));
     const percent = Math.min(100, Math.max(0, Math.round(body.percent ?? 0)));
+    const book = db
+      .select()
+      .from(books)
+      .all()
+      .find((b) => b.id === bookId && b.deletedAt == null);
+    const syncStatus = book && book.source !== 'local' ? 'pending' : 'local';
 
     if (existing) {
       db.update(readingProgress)
-        .set({ currentChapter, currentPosition, percent, updatedAt: ts })
+        .set({ currentChapter, currentPosition, percent, syncStatus, updatedAt: ts })
         .where(eq(readingProgress.id, existing.id))
         .run();
     } else {
@@ -243,6 +297,7 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
           currentChapter,
           currentPosition,
           percent,
+          syncStatus,
           updatedAt: ts,
         })
         .run();
@@ -376,5 +431,240 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
       db.insert(readingLogs).values({ id: newId(), bookId, reader, day, minutes, createdAt: ts, updatedAt: ts }).run();
     }
     reply.send({ ok: true });
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // 多源书架（2026-10-19）
+  // ═══════════════════════════════════════════════════════════
+
+  /** 来源能力表：UI 用它决定哪些入口可用（不假装已接通微信读书） */
+  app.get('/reading/sources', async () => ({
+    sources: [
+      {
+        id: 'local',
+        label: '本地文本',
+        ready: true,
+        note: '粘贴 / 上传 txt，正文原样入库',
+      },
+      {
+        id: 'fanqie',
+        label: '番茄小说',
+        ready: true,
+        note: '导入书名、作者、封面与全量目录；正文有字体混淆，需外部下载器导出后粘贴',
+      },
+      {
+        id: 'link',
+        label: '网页链接',
+        ready: true,
+        note: '抓公开网页正文（公版书 / 文章）',
+      },
+      {
+        id: 'weread',
+        label: '微信读书',
+        ready: false,
+        note: '需要微信读书凭证，官方没有稳定公开接口；暂未自动拉取',
+      },
+    ],
+  }));
+
+  /**
+   * 番茄：从书籍页导入元数据 + 目录。
+   * 正文是 PUA 字体混淆的，**不写库**；只导入目录，避免把乱码塞进阅读器。
+   */
+  app.post('/reading/import/fanqie', async (req, reply) => {
+    const body = (req.body ?? {}) as { url?: string };
+    const bookId = parseFanqieUrl(body.url ?? '');
+    if (!bookId) {
+      reply.code(400).send({ message: '请填番茄书籍链接，如 https://fanqienovel.com/page/7143…' });
+      return;
+    }
+
+    let html = '';
+    try {
+      html = await fetchHtml(`https://fanqienovel.com/page/${bookId}`);
+    } catch (err) {
+      reply.code(502).send({ message: `番茄页面抓取失败：${(err as Error).message}` });
+      return;
+    }
+    const meta = parseFanqiePage(html);
+    if (!meta) {
+      reply.code(502).send({ message: '番茄页面结构可能变了，没解析到书名/目录' });
+      return;
+    }
+
+    const ts = now();
+    const sourceMeta = {
+      url: `https://fanqienovel.com/page/${bookId}`,
+      bookId,
+      chapterTotal: meta.totalChapters,
+      itemIds: meta.itemIds,
+    };
+    const existing = db
+      .select()
+      .from(books)
+      .all()
+      .find((b) => b.source === 'fanqie' && b.sourceId === bookId && b.deletedAt == null);
+
+    if (existing) {
+      db.update(books)
+        .set({
+          title: meta.title,
+          author: meta.author || existing.author,
+          coverUrl: meta.coverUrl || existing.coverUrl,
+          desc: meta.desc || existing.desc,
+          toc: JSON.stringify(meta.toc),
+          totalChapters: meta.toc.length || meta.totalChapters,
+          sourceMeta: JSON.stringify(sourceMeta),
+          lastSyncedAt: ts,
+          updatedAt: ts,
+        })
+        .where(eq(books.id, existing.id))
+        .run();
+      reply.send({
+        id: existing.id,
+        updated: true,
+        title: meta.title,
+        author: meta.author,
+        chapters: meta.toc.length,
+        hasText: !!(existing.content ?? '').trim(),
+        warning: '正文有字体混淆，未抓取；目录已更新。',
+      });
+      return;
+    }
+
+    const id = newId();
+    db.insert(books)
+      .values({
+        id,
+        title: meta.title,
+        author: meta.author || null,
+        coverUrl: meta.coverUrl,
+        totalChapters: meta.toc.length || meta.totalChapters,
+        content: null,
+        desc: meta.desc || null,
+        toc: JSON.stringify(meta.toc),
+        color: null,
+        band: null,
+        height: null,
+        source: 'fanqie',
+        sourceId: bookId,
+        sourceMeta: JSON.stringify(sourceMeta),
+        lastSyncedAt: ts,
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    reply.code(201).send({
+      id,
+      title: meta.title,
+      author: meta.author,
+      chapters: meta.toc.length,
+      hasText: false,
+      warning: '已导入目录；正文请用外部下载器导出后粘贴到「本地文本」里。',
+    });
+  });
+
+  /** 通用网页：抓正文入库（公开页面 / 公版书） */
+  app.post('/reading/import/link', async (req, reply) => {
+    const body = (req.body ?? {}) as { url?: string; title?: string };
+    const url = body.url?.trim() ?? '';
+    if (!/^https?:\/\//i.test(url)) {
+      reply.code(400).send({ message: '请填 http(s) 链接' });
+      return;
+    }
+
+    let html = '';
+    try {
+      html = await fetchHtml(url);
+    } catch (err) {
+      reply.code(502).send({ message: `抓取失败：${(err as Error).message}` });
+      return;
+    }
+    const page = extractReadable(html);
+    if (page.content.trim().length < 120) {
+      reply.code(422).send({ message: '这个页面没抓到足够正文（可能是 JS 渲染的），换一个来源或直接粘贴文本' });
+      return;
+    }
+
+    const ts = now();
+    const id = newId();
+    const title = body.title?.trim() || page.title || new URL(url).hostname;
+    db.insert(books)
+      .values({
+        id,
+        title: title.slice(0, 120),
+        author: null,
+        coverUrl: null,
+        totalChapters: paragraphCount(page.content),
+        content: page.content,
+        desc: null,
+        toc: null,
+        color: null,
+        band: null,
+        height: null,
+        source: 'local',
+        sourceId: null,
+        sourceMeta: JSON.stringify({ url }),
+        lastSyncedAt: null,
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    reply.code(201).send({ id, title, chars: page.content.length });
+  });
+
+  /**
+   * 进度同步（最小实现）：
+   * - 本地书 → 没有远端，直接 `local`；
+   * - 番茄/微信读书 → 记为 `pending`（待回传），并记 `lastSyncedAt`。
+   * 微信读书的回传需要凭证/接口，本版本只落「待回传」状态，不谎报已同步。
+   */
+  app.post('/reading/progress/sync', async (req, reply) => {
+    const body = (req.body ?? {}) as { bookId?: string };
+    const bookId = body.bookId?.trim();
+    if (!bookId) {
+      reply.code(400).send({ message: 'bookId 必填' });
+      return;
+    }
+    const book = db
+      .select()
+      .from(books)
+      .all()
+      .find((b) => b.id === bookId && b.deletedAt == null);
+    if (!book) {
+      reply.code(404).send({ message: '书不存在' });
+      return;
+    }
+
+    const ts = now();
+    const rows = db
+      .select()
+      .from(readingProgress)
+      .all()
+      .filter((p) => p.bookId === bookId && p.deletedAt == null);
+    const status = book.source === 'local' ? 'local' : 'pending';
+    for (const p of rows) {
+      db.update(readingProgress)
+        .set({ syncStatus: status, lastSyncedAt: ts, updatedAt: ts })
+        .where(eq(readingProgress.id, p.id))
+        .run();
+    }
+
+    return {
+      status,
+      source: book.source,
+      note:
+        book.source === 'local'
+          ? '本地书只在本机，无需同步'
+          : book.source === 'fanqie'
+            ? '已记入待回传；番茄没有公开进度接口，回传需外部适配器'
+            : '已记入待回传；微信读书回传需要凭证/接口',
+      progress: db
+        .select()
+        .from(readingProgress)
+        .all()
+        .filter((p) => p.bookId === bookId && p.deletedAt == null)
+        .map(progressDTO),
+    };
   });
 }

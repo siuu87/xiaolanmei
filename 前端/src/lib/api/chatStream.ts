@@ -1,6 +1,8 @@
 export interface ChatPayloadMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  /** 这条消息的发送时刻（ms）：后端送模型前据此渲染 [时间 · 间隔]，存档不写 */
+  createdAt?: number;
   /** 多模态图片（阶段 7）：base64 data URL，仅 user 消息发给模型 */
   images?: string[];
 }

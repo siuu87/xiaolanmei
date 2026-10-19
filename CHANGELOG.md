@@ -2,6 +2,37 @@
 
 本文件记录每次推送到远端的可见变更。**约定：每次上传前先更新本文件与 `README.md` 的功能总览，再推送。**
 
+## 2026-10-19（深夜电台 / 时间戳 / 多图）
+
+### 新增
+
+- **消息时间戳 patch**：送模型前给每条消息动态渲染 `[Tue 2026-08-11 17:32:10 CST · +9h 44m]`；
+  存档保持干净、剥离旧前缀幂等、按相邻消息算间隔；`MESSAGE_TIMESTAMPS=off` 可关。
+  前端 payload 带上 `createdAt`，`/chat/stream` 统一渲染，**绝不回写数据库**。
+- **PhotoStack 多图堆叠卡**：接入 `Wren036/PhotoStack`（PolyForm 非商用许可，已保留 LICENSE），
+  多图消息渲染成微信式堆叠卡（三张守恒 / 探边 / 跟手翻页 / 快甩），点开整页大图；单图保持原样。
+- **MIDNIGHT FM 深夜电台**：晚安页重做为四台复古收音机 ——
+  FM 90.6 故事台（读「一起读」书架正文）、FM 97.3 夜话台（关灯模式）、
+  FM 104.1 音乐台（雨/风/炉火/白粉棕噪音 + 导入音频）、隐藏枕话台（心跳底噪 + 耳语）。
+  切台先放程序化 BGM，后台生成广播稿 + Web Speech 朗读；纸条插话进入下一轮；保留定时器与 Wake Lock。
+- **书架多源导入**：`books` 补 `source / source_id / source_meta / last_synced_at`，
+  `reading_progress` 补 `sync_status / last_synced_at`；新增番茄目录导入（真实抓取书名/作者/封面/全量目录，
+  正文因字体混淆不抓）、通用网页正文导入、来源能力表；进度标记 `local / pending`，不谎报已同步。
+- **相册接入 Remember-Me**：相册页优先嵌入 `peanutsuee/Remember-Me` 的 Dusk Archive Dashboard；
+  后端 `/api/gallery/remember/status` 探活 8787，侧车没起自动回退本地相册并给出启动命令。
+- **开源清单**：新增 `Wren036/PhotoStack`、`AZHi-xinxin/LoverConnect-Enhanced`、
+  `peanutsuee/Remember-Me`、`chuochuochuo36-png/midnight-fm`、`POf-L/Fanqie-novel-Downloader`、`linzj/fanqie-dl`。
+
+### 调整
+
+- 晚安的「白噪音 + 上传音频 + 定时器」保留，但整体并入 MIDNIGHT FM 的音乐台。
+- 书架封面左上角显示来源角标（番茄 / 微信读书），导入框内新增番茄链接拉取。
+
+### 测试
+
+- 新增 `message-timestamps` 8、`radio-parse` 11、`reading-sources` 5，后端全套 **140/140**。
+- 新增 `verify-photo-stack.js` 10/10。
+
 ## 2026-10-19
 
 ### 新增

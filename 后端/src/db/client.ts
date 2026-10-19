@@ -548,6 +548,10 @@ CREATE TABLE IF NOT EXISTS books (
   color TEXT,
   band TEXT,
   height INTEGER,
+  source TEXT NOT NULL DEFAULT 'local',
+  source_id TEXT,
+  source_meta TEXT,
+  last_synced_at INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -560,6 +564,8 @@ CREATE TABLE IF NOT EXISTS reading_progress (
   current_chapter INTEGER NOT NULL DEFAULT 1,
   current_position INTEGER NOT NULL DEFAULT 0,
   percent INTEGER NOT NULL DEFAULT 0,
+  sync_status TEXT NOT NULL DEFAULT 'local',
+  last_synced_at INTEGER,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
 );
@@ -600,6 +606,21 @@ CREATE TABLE IF NOT EXISTS reading_logs (
   deleted_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_reading_logs_reader_day ON reading_logs(reader, day);
+
+-- 深夜电台素材（2026-10-19）：开场 / BGM / 音效 / 隐藏台 drama 切片
+CREATE TABLE IF NOT EXISTS radio_assets (
+  id TEXT PRIMARY KEY,
+  channel TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT,
+  meta TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_radio_assets_channel ON radio_assets(channel, kind);
 
 CREATE TABLE IF NOT EXISTS dishes (
   id TEXT PRIMARY KEY,
@@ -845,6 +866,32 @@ export function initDatabase(): void {
   }
   if (!charCols.some((c) => c.name === 'last_user_message_id')) {
     sqlite.exec(`ALTER TABLE character_state ADD COLUMN last_user_message_id TEXT`);
+  }
+
+  /**
+   * 幂等迁移（2026-10-19）：书架多源 + 双向进度。
+   * books 补 source / source_id / source_meta / last_synced_at；
+   * reading_progress 补 sync_status / last_synced_at。
+   */
+  const bookCols = sqlite.prepare(`PRAGMA table_info(books)`).all() as { name: string }[];
+  if (!bookCols.some((c) => c.name === 'source')) {
+    sqlite.exec(`ALTER TABLE books ADD COLUMN source TEXT NOT NULL DEFAULT 'local'`);
+  }
+  if (!bookCols.some((c) => c.name === 'source_id')) {
+    sqlite.exec(`ALTER TABLE books ADD COLUMN source_id TEXT`);
+  }
+  if (!bookCols.some((c) => c.name === 'source_meta')) {
+    sqlite.exec(`ALTER TABLE books ADD COLUMN source_meta TEXT`);
+  }
+  if (!bookCols.some((c) => c.name === 'last_synced_at')) {
+    sqlite.exec(`ALTER TABLE books ADD COLUMN last_synced_at INTEGER`);
+  }
+  const progCols = sqlite.prepare(`PRAGMA table_info(reading_progress)`).all() as { name: string }[];
+  if (!progCols.some((c) => c.name === 'sync_status')) {
+    sqlite.exec(`ALTER TABLE reading_progress ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'local'`);
+  }
+  if (!progCols.some((c) => c.name === 'last_synced_at')) {
+    sqlite.exec(`ALTER TABLE reading_progress ADD COLUMN last_synced_at INTEGER`);
   }
 
   migrateDietPersonaVars(sqlite);

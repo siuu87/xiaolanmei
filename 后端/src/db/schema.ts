@@ -550,6 +550,13 @@ export const books = sqliteTable('books', {
   color: text('color'), // 书脊底色
   band: text('band'), // 书头/书脚带颜色
   height: integer('height'), // 书脊高度 px
+  /** 来源渠道（2026-10-19）：local | weread | fanqie */
+  source: text('source').notNull().default('local'),
+  /** 来源侧的书 id（番茄 bookId / 微信读书 bookId） */
+  sourceId: text('source_id'),
+  /** 来源元信息（JSON：原始 URL、章节总数等） */
+  sourceMeta: text('source_meta'),
+  lastSyncedAt: integer('last_synced_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
@@ -563,6 +570,9 @@ export const readingProgress = sqliteTable('reading_progress', {
   currentChapter: integer('current_chapter').notNull().default(1),
   currentPosition: integer('current_position').notNull().default(0), // 段落/字符偏移
   percent: integer('percent').notNull().default(0), // 0-100
+  /** 同步状态（2026-10-19）：local 只在本机 / pending 待回传 / synced 已同步 / error */
+  syncStatus: text('sync_status').notNull().default('local'),
+  lastSyncedAt: integer('last_synced_at'),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
 });
@@ -598,6 +608,25 @@ export const readingLogs = sqliteTable('reading_logs', {
   reader: text('reader').notNull(), // me | partner
   day: text('day').notNull(), // YYYY-MM-DD
   minutes: integer('minutes').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 深夜电台素材（2026-10-19）：开场音乐 / 环境声 / 音效 / 隐藏台的 drama 切片。
+ * - channel：story | talk | music | pillow
+ * - kind：opener（开场垫底）| bgm | se | drama | voice
+ * 音频本体走 `POST /api/upload` 拿 URL，这里只存引用与排序。
+ */
+export const radioAssets = sqliteTable('radio_assets', {
+  id: text('id').primaryKey(),
+  channel: text('channel').notNull(),
+  kind: text('kind').notNull(),
+  name: text('name').notNull(),
+  url: text('url'),
+  meta: text('meta'), // JSON：时长 / 频率 / 左右耳等
+  sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

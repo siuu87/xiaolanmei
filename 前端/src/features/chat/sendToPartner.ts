@@ -4,7 +4,13 @@ import { streamChat, type ChatPayloadMessage } from '@/lib/api/chatStream';
 function toPayload(m: ChatMessage): ChatPayloadMessage {
   // 只把内存里的 base64 data URL 发给模型（重载后的消息没有 dataUrl，退化纯文本）
   const images = m.images?.map((i) => i.dataUrl).filter((x): x is string => !!x);
-  return { role: m.role, content: m.content, ...(images && images.length ? { images } : {}) };
+  return {
+    role: m.role,
+    content: m.content,
+    // 后端据此渲染消息时间戳（存档不写）
+    createdAt: m.createdAt,
+    ...(images && images.length ? { images } : {}),
+  };
 }
 
 /**

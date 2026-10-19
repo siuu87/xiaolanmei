@@ -50,6 +50,16 @@ export const patchGalleryItem = (
 export const deleteGalleryItem = (id: string) =>
   request<{ ok: true }>(`/api/gallery/${id}`, { method: 'DELETE' });
 
+/** Remember-Me 侧车状态（2026-10-19）：后端探活 8787，前端不跨域 */
+export interface RememberMeStatus {
+  up: boolean;
+  base: string;
+  dashboard: string;
+}
+
+export const getRememberMeStatus = () =>
+  request<RememberMeStatus>('/api/gallery/remember/status');
+
 /** 一步到位：先上传图片，再建一条相册记录 */
 export async function uploadToGallery(
   file: File,

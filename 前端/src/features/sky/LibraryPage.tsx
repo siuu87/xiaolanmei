@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBookStore, type Book } from './bookStore';
-import { getReadingTime, localDateString } from '@/lib/api/reading';
+import { getReadingTime, importFanqieBook, localDateString } from '@/lib/api/reading';
 import { BookDetailModal } from './BookDetailModal';
 import { AiImportDialog } from './AiImportDialog';
 import { aiSummarizeToc } from './aiImport';
@@ -105,6 +105,15 @@ function StatCard({ icon: Icon, value, label, onClick }: { icon: LucideIcon; val
 function FlatCover({ book, onOpen, onEdit, onDelete }: { book: Book; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
   return (
     <div className="group relative">
+      {book.source && book.source !== 'local' && (
+        <span
+          data-testid="book-source"
+          data-source={book.source}
+          className="absolute left-1.5 top-1.5 z-10 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-amber-200"
+        >
+          {book.source === 'fanqie' ? '番茄' : book.source === 'weread' ? '微信读书' : book.source}
+        </span>
+      )}
       <button
         type="button"
         onClick={onOpen}
@@ -165,6 +174,11 @@ export function LibraryPage() {
   const [tocBusy, setTocBusy] = useState(false);
   const [tocError, setTocError] = useState('');
 
+  /** 番茄目录导入（2026-10-19）：只拉元数据+目录，正文受字体混淆限制 */
+  const [fanqieUrl, setFanqieUrl] = useState('');
+  const [fanqieBusy, setFanqieBusy] = useState(false);
+  const [fanqieMsg, setFanqieMsg] = useState('');
+
   // 本周目标（分钟，可编辑，localStorage 持久化）
   const [goal, setGoal] = useState<number>(() => {
     const v = Number(localStorage.getItem(GOAL_KEY));
@@ -179,6 +193,30 @@ export function LibraryPage() {
   const detail = books.find((b) => b.id === detailId) ?? null;
 
   const set = (patch: Partial<EditorState>) => setEditor((f) => (f ? { ...f, ...patch } : f));
+
+  /** 从番茄拉目录：后端落库（source='fanqie'），成功后刷新书架并关掉导入框 */
+  const doFanqieImport = async () => {
+    const url = fanqieUrl.trim();
+    if (!url || fanqieBusy) return;
+    setFanqieBusy(true);
+    setFanqieMsg('');
+    try {
+      const r = await importFanqieBook(url);
+      setFanqieMsg(
+        `已导入《${r.title}》· ${r.chapters} 章目录${r.hasText ? '（含正文）' : '（正文需另行粘贴）'}`,
+      );
+      await useBookStore.getState().reload();
+      window.setTimeout(() => {
+        setEditor(null);
+        setFanqieUrl('');
+        setFanqieMsg('');
+      }, 900);
+    } catch (e) {
+      setFanqieMsg((e as Error).message);
+    } finally {
+      setFanqieBusy(false);
+    }
+  };
 
   const openNew = () => setEditor(EMPTY);
   const openEdit = (b: Book) =>
@@ -526,6 +564,39 @@ export function LibraryPage() {
               <button type="button" onClick={() => setEditor(null)} aria-label="关闭" className="text-slate-400 hover:text-slate-200">
                 <X className="h-4 w-4" />
               </button>
+            </div>
+
+            {/* 番茄目录导入（只拿元数据+目录；正文有字体混淆，需外部下载器） */}
+            <div data-testid="fanqie-import" className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
+              <p className="text-[10px] leading-4 text-[#8A8A8A]">
+                从番茄导入目录 · 正文需外部下载器导出后粘贴
+              </p>
+              <div className="mt-1.5 flex gap-2">
+                <input
+                  value={fanqieUrl}
+                  onChange={(e) => setFanqieUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void doFanqieImport();
+                  }}
+                  placeholder="fanqienovel.com/page/…"
+                  data-testid="fanqie-url"
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => void doFanqieImport()}
+                  disabled={fanqieBusy || !fanqieUrl.trim()}
+                  data-testid="fanqie-import-btn"
+                  className="shrink-0 rounded-lg bg-[#C9A96A] px-3 text-[12px] font-medium text-[#1a120b] transition active:scale-95 disabled:opacity-40"
+                >
+                  {fanqieBusy ? '拉取中…' : '拉取'}
+                </button>
+              </div>
+              {fanqieMsg && (
+                <p data-testid="fanqie-msg" className="mt-1 text-[10px] leading-4 text-[#C9A96A]">
+                  {fanqieMsg}
+                </p>
+              )}
             </div>
 
             <div className="mt-4 space-y-3">

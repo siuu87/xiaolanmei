@@ -40,6 +40,7 @@ import { skillRoutes } from './routes/skills.js';
 import { memoRoutes } from './routes/memo.js';
 import { profileRoutes } from './routes/profiles.js';
 import { readingRoutes } from './routes/reading.js';
+import { radioRoutes } from './routes/radio.js';
 import { dishRoutes } from './routes/dishes.js';
 import { dietRoutes } from './routes/diet.js';
 import { tavernRoutes } from './routes/tavern.js';
@@ -110,6 +111,7 @@ async function main(): Promise<void> {
   await app.register(memoRoutes, { prefix: '/api' });
   await app.register(profileRoutes, { prefix: '/api' });
   await app.register(readingRoutes, { prefix: '/api' });
+  await app.register(radioRoutes, { prefix: '/api' });
   await app.register(dishRoutes, { prefix: '/api' });
   await app.register(dietRoutes, { prefix: '/api' });
   await app.register(tavernRoutes, { prefix: '/api' });

@@ -51,6 +51,21 @@ OB_API_TOKEN=
 
 配好后可用 `GET /api/ob/status` 自检 OB 连通性。
 
+### 可选侧车：Remember-Me 相册
+
+相册页优先展示 [Remember-Me](https://github.com/peanutsuee/Remember-Me) 的 Dusk Archive Dashboard。
+把仓库放到 `remember-me/` 并装好依赖后：
+
+```bash
+cd remember-me
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -e ".[standalone]"
+cd ..
+bash scripts/start-remember-me.sh        # 默认 http://127.0.0.1:8787
+```
+
+侧车没起时相册自动回退本地相册，旧数据不受影响。
+
 > 注意：`better-sqlite3` 原生模块按 Node 24（NODE_MODULE_VERSION 137）编译，需用 Node 24 启动。
 
 ### 前端（端口 5173）
@@ -70,6 +85,10 @@ npm run dev
 
 ### 聊天
 - 流式回复 + Markdown 渲染
+- **多图消息**：接入 [PhotoStack](https://github.com/Wren036/PhotoStack) 的微信式堆叠照片卡
+  （三张守恒 / 探边 / 跟手翻页 / 快甩），点开整页看大图
+- **时间感知**：送模型前给每条消息动态渲染 `[Tue 2026-08-11 17:32:10 CST · +9h 44m]`，
+  存档保持干净、重复渲染幂等；`MESSAGE_TIMESTAMPS=off` 可关
 - **情绪与内心**：每轮开流前用轻量模型分析最近 4 条消息（80/20 加权）→ 四维状态机
   （占有欲与醋意 / 紧绷与情欲 / 克制与自控 / 示弱与委屈）平滑累积 → 把数值翻译成**行为策略**
   注入主模型；内心面板展示六条数值、此刻心绪、心境小剧场与策略标签
@@ -88,10 +107,18 @@ npm run dev
 ### together（两个人的回忆与生活）
 - **watch**：电视 + 片单
 - **listen**：一起听（网易云式滚动歌词 + 播放器）
-- **read / library**：书架 + 阅读器（进度、笔记）
-- **gallery**：相册 · 图像记忆
+- **read / library**：书架 + 阅读器（双人独立进度、划线、双人留言）。
+  书架支持本地文本 / 网页正文导入；番茄可导入书名、作者、封面与**全量目录**
+  （正文有字体混淆，需外部下载器导出后粘贴）。进度会标记 `local / pending`，
+  不谎报「已同步」
+- **gallery**：相册 · 图像记忆。优先接入 [Remember-Me](https://github.com/peanutsuee/Remember-Me)
+  的 Dusk Archive Dashboard；侧车没起时自动回退本地相册
 - **diary**：日记本
-- **goodnight（晚安）**：导入哄睡 / 陪睡音频（mp3 / wav / ogg / webm / aac / m4a / flac）、白 / 粉 / 棕实时白噪音、音量、睡眠定时器（到点自动停）
+- **goodnight（MIDNIGHT FM）**：四个台的深夜电台 ——
+  FM 90.6 故事台（直接读「一起读」书架里的小说正文）、FM 97.3 夜话台（关灯后的第一人称随笔）、
+  FM 104.1 音乐台（雨 / 风 / 炉火 / 白粉棕噪音 + 自己导入的哄睡音频）、
+  隐藏枕话台（心跳底噪 + 低声耳语）。切台先放程序化 BGM，后台生成广播稿 + Web Speech 朗读；
+  可随时递纸条，让白起在下一段自然回应；保留睡眠定时器与 Wake Lock
 
 ### 酒馆小手机（tavern）
 - 角色卡 / 世界书 / 人设卡（SillyTavern 风格）

@@ -17,6 +17,11 @@ export interface ReadingBook {
   color?: string;
   band?: string;
   height?: number;
+  /** 来源渠道（2026-10-19）：local | weread | fanqie */
+  source?: string;
+  sourceId?: string;
+  sourceMeta?: Record<string, unknown> | null;
+  lastSyncedAt?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -26,6 +31,9 @@ export interface ReadingProgress {
   currentChapter: number;
   currentPosition: number;
   percent: number;
+  /** local / pending / synced */
+  syncStatus?: string;
+  lastSyncedAt?: number;
   updatedAt: number;
 }
 
@@ -134,3 +142,43 @@ export const createAnnotationNote = (id: string, input: { author: Reader; conten
     method: 'POST',
     body: JSON.stringify(input),
   });
+
+// ── 多源书架（2026-10-19）────────────────────────────────
+
+export interface ReadingSourceMeta {
+  id: string;
+  label: string;
+  ready: boolean;
+  note: string;
+}
+
+export const listReadingSources = () =>
+  request<{ sources: ReadingSourceMeta[] }>('/api/reading/sources');
+
+/** 番茄：导入书名/作者/封面/目录（正文受字体混淆限制，不抓） */
+export const importFanqieBook = (url: string) =>
+  request<{
+    id: string;
+    updated?: boolean;
+    title: string;
+    author?: string;
+    chapters: number;
+    hasText: boolean;
+    warning?: string;
+  }>('/api/reading/import/fanqie', { method: 'POST', body: JSON.stringify({ url }) });
+
+/** 通用网页：抓公开正文入库 */
+export const importLinkBook = (url: string, title?: string) =>
+  request<{ id: string; title: string; chars: number }>('/api/reading/import/link', {
+    method: 'POST',
+    body: JSON.stringify({ url, title }),
+  });
+
+/** 进度同步：本地书 local；外部来源记为 pending（不谎报已同步） */
+export const syncReadingProgress = (bookId: string) =>
+  request<{
+    status: string;
+    source: string;
+    note: string;
+    progress: ReadingProgress[];
+  }>('/api/reading/progress/sync', { method: 'POST', body: JSON.stringify({ bookId }) });

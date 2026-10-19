@@ -156,4 +156,19 @@ export async function galleryRoutes(app: FastifyInstance): Promise<void> {
     db.update(galleryItems).set({ deletedAt: ts, updatedAt: ts }).where(eq(galleryItems.id, id)).run();
     return { ok: true };
   });
+
+  /**
+   * Remember-Me 侧车状态（2026-10-19）。
+   * 相册页优先展示 Remember-Me 的 Dusk Archive Dashboard；由后端探活，
+   * 前端不用直接跨域打 8787。地址可用 `REMEMBER_ME_URL` 覆盖。
+   */
+  app.get('/gallery/remember/status', async () => {
+    const base = (process.env.REMEMBER_ME_URL ?? 'http://127.0.0.1:8787').replace(/\/+$/, '');
+    try {
+      const res = await fetch(`${base}/healthz`, { signal: AbortSignal.timeout(1200) });
+      return { up: res.ok, base, dashboard: `${base}/dashboard` };
+    } catch {
+      return { up: false, base, dashboard: `${base}/dashboard` };
+    }
+  });
 }
