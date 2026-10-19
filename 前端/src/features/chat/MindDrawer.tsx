@@ -442,6 +442,8 @@ function EmotionPanel({
   }
 
   const evo = state.lastEvolution;
+  // 旧后端可能还没返回新字段；面板宁可少画一块，也不能整页崩
+  const strategyTags = state.strategyTags ?? [];
 
   return (
     <section
@@ -473,7 +475,7 @@ function EmotionPanel({
       </div>
 
       {/* 此刻心绪小剧场 + 命中的行为策略（只给模糊暗示，不把规则正文摊给用户） */}
-      {(state.moodTheater || state.strategyTags.length > 0) && (
+      {(state.moodTheater || strategyTags.length > 0) && (
         <div className="mt-3 space-y-2">
           {state.moodTheater && (
             <p
@@ -483,14 +485,14 @@ function EmotionPanel({
               「{state.moodTheater}」
             </p>
           )}
-          {state.strategyTags.length > 0 && (
+          {strategyTags.length > 0 && (
             <div data-testid="emotion-strategy" className="flex flex-wrap gap-1.5">
-              {state.strategyTags.map((t) => (
+              {strategyTags.map((t) => (
                 <span
                   key={t}
                   className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] text-[#9aa4bb]"
                 >
-                  {STRATEGY_LABEL[t]}
+                  {STRATEGY_LABEL[t] ?? t}
                 </span>
               ))}
             </div>

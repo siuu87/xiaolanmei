@@ -5,6 +5,11 @@ import path from 'node:path';
  * 环境配置：从 .env 读取，带默认值。
  * API Key 只存在后端，绝不下发到前端。
  */
+const envNum = (raw: string | undefined, fallback: number, min: number): number => {
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(min, n) : fallback;
+};
+
 export const env = {
   port: Number(process.env.PORT ?? 3001),
   databasePath: process.env.DATABASE_PATH ?? './data/blueberry.db',
@@ -22,8 +27,8 @@ export const env = {
    * - `EMOTION_ANALYZER=off`：显式关闭，排查 / 省 token 用。
    */
   emotionModel: process.env.EMOTION_MODEL ?? '',
-  emotionMaxTokens: Math.max(16, Number(process.env.EMOTION_MAX_TOKENS ?? 100)),
-  emotionTimeoutMs: Math.max(500, Number(process.env.EMOTION_TIMEOUT_MS ?? 5000)),
+  emotionMaxTokens: envNum(process.env.EMOTION_MAX_TOKENS, 100, 16),
+  emotionTimeoutMs: envNum(process.env.EMOTION_TIMEOUT_MS, 5000, 500),
   emotionAnalyzer: (process.env.EMOTION_ANALYZER ?? 'on').toLowerCase() !== 'off',
 
   /**
@@ -32,7 +37,7 @@ export const env = {
    */
   obBaseUrl: (process.env.OB_BASE_URL ?? '').trim(),
   obApiToken: (process.env.OB_API_TOKEN ?? '').trim(),
-  obTimeoutMs: Math.max(500, Number(process.env.OB_TIMEOUT_MS ?? 3500)),
+  obTimeoutMs: envNum(process.env.OB_TIMEOUT_MS, 3500, 500),
 
   // 智能编程工作区（阶段 10）：默认后端上一级 = 项目根 d:\小蓝莓
   workspacePath: process.env.WORKSPACE_PATH ?? path.resolve(process.cwd(), '..'),
