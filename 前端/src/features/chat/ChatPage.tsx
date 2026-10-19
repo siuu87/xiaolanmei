@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import {
-  ArrowUp,
   ArrowDown,
   Trash2,
   Pencil,
@@ -60,6 +59,7 @@ import { Markdown } from '@/components/Markdown';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CaptionView } from '@/components/VoiceCaption';
 import { useVoiceCaption } from '@/lib/caption/useVoiceCaption';
+import { useSpeechRecognition } from '@/lib/useSpeechRecognition';
 import { SearchOverlay } from './SearchOverlay';
 import { MindDrawer } from './MindDrawer';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
@@ -780,6 +780,19 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
+
+  /** 语音识别（STT）：点麦克风说话，定稿直接发出去。不支持的浏览器点一下走降级提示。 */
+  const stt = useSpeechRecognition({
+    lang: 'zh-CN',
+    onInterim: (t) => setInput(t),
+    onFinal: (t) => {
+      void send(t);
+    },
+    onError: (msg) => {
+      setToolStatus(msg);
+      window.setTimeout(() => setToolStatus(null), 2600);
+    },
+  });
   /** 正在进行的通话类型（null = 没在通话）。语音/视频共用这一个浮层。 */
   const [callKind, setCallKind] = useState<CallKind | null>(null);
   /** 呼出时刻，挂断时作为 startedAt 落库 */
@@ -1192,8 +1205,8 @@ export function ChatPage() {
     });
   };
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
     if ((!text && pendingImages.length === 0) || busy) return;
     setInput('');
 
@@ -1479,9 +1492,6 @@ export function ChatPage() {
         </div>
         {/* 右侧按钮组：靠 ml-auto 顶到最右（中间槽改成绝对定位后，不再有 flex-1 撑开） */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* 对白风格：💕 碎片流 / 🩷 沉浸流 两档滑块。
-              全站唯一入口 —— 不要再往「+」面板里塞一份。 */}
-          <ChatStyleSwitch mode={chatStyleMode} onChange={setChatStyleMode} />
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -1990,21 +2000,37 @@ export function ChatPage() {
         )}
         <div className="mx-auto w-full max-w-3xl">
           <div className="flex items-end gap-2">
+            {/* 最左：对白风格 💕/🩷 两档滑块（全站唯一入口，随手就能切） */}
+            <ChatStyleSwitch mode={chatStyleMode} onChange={setChatStyleMode} />
+
+            {/* 左·靠输入框：麦克风 → 语音识别（STT），定稿直接发出去 */}
             <button
               type="button"
               onClick={() => {
-                // 微信：两个面板互斥，再点一次收起
-                setAttachOpen((v) => !v);
+                if (stt.listening) {
+                  stt.stop();
+                  return;
+                }
+                setAttachOpen(false);
                 setStickerOpen(false);
+                stt.start();
               }}
-              aria-label="添加附件"
-              title="添加附件"
-              data-testid="chat-attach"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
+              aria-label={stt.listening ? '停止语音输入' : '语音输入'}
+              aria-pressed={stt.listening}
+              title={stt.listening ? '正在听，点一下停止' : '语音输入'}
+              data-testid="chat-mic"
+              data-listening={stt.listening ? 'true' : 'false'}
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                stt.listening
+                  ? 'animate-pulse bg-red-500 text-white shadow-sm'
+                  : 'bg-chat-pill text-chat-pill-fg shadow-sm hover:bg-chat-line',
+              )}
             >
-              <Plus className="h-5 w-5" />
+              <Mic className="h-[18px] w-[18px]" />
             </button>
-            {/* 输入胶囊：模型药丸 + 输入框 + 表情 + 麦克风 */}
+
+            {/* 中间：输入胶囊（模型药丸 + 输入框） */}
             <div className="flex min-h-[38px] min-w-0 flex-1 items-center gap-1.5 rounded-[19px] bg-chat-pill px-2 py-1 shadow-sm ring-1 ring-transparent transition focus-within:ring-chat-accent/40">
               {/* 模型选择跟着参考图搬进输入条，顶栏就不挤了 */}
               <ModelPicker
@@ -2070,54 +2096,68 @@ export function ChatPage() {
                 placeholder={replyToId ? '回复这条消息…' : 'Message...'}
                 className="h-8 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
               />
-              {/* 表情包（在输入框旁，点了面板向下展开） */}
-              <button
-                type="button"
-                onClick={() => {
-                  setStickerOpen((v) => !v);
-                  setAttachOpen(false);
-                }}
-                aria-label="表情包"
-                aria-expanded={stickerOpen}
-                title="表情包"
-                className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition',
-                  stickerOpen ? 'text-chat-accent' : 'text-chat-meta hover:text-chat-pill-fg',
-                )}
-              >
-                <Smile className="h-[18px] w-[18px]" />
-              </button>
-              {/* 麦克风：录音还没接，点了直说，不假装能录 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setToolStatus('语音录制还没接入，先用文字吧');
-                  window.setTimeout(() => setToolStatus(null), 2600);
-                }}
-                aria-label="语音消息"
-                title="语音消息（尚未接入录音）"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:text-chat-pill-fg"
-              >
-                <Mic className="h-[18px] w-[18px]" />
-              </button>
             </div>
-            {/* 发送 / 停止：深色圆形按钮（浅色主题下就是参考图那颗） */}
+
+            {/* 右·贴着输入框：表情 😊（点了面板向下展开） */}
             <button
               type="button"
-              onClick={busy ? stop : send}
-              aria-label={busy ? '停止' : '发送'}
-              disabled={!busy && !input.trim() && pendingImages.length === 0}
+              onClick={() => {
+                setStickerOpen((v) => !v);
+                setAttachOpen(false);
+              }}
+              aria-label="表情"
+              aria-expanded={stickerOpen}
+              title="表情"
+              data-testid="chat-emoji"
               className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition active:scale-95',
-                'disabled:opacity-30',
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
+                stickerOpen ? 'text-chat-accent' : 'text-chat-meta hover:text-chat-pill-fg',
               )}
             >
-              {busy ? (
-                <span className="block h-[11px] w-[11px] rounded-[2px] bg-current" />
-              ) : (
-                <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.6} />
-              )}
+              <Smile className="h-[18px] w-[18px]" />
             </button>
+
+            {/* 最右：微信式三态 —— 空=「+」开面板 / 有字=「发送」 / 生成中=「停止」。
+                平时没打字是「+」，点开唤起更多小工具；一打字「+」顺滑变成「发送」。 */}
+            {busy ? (
+              <button
+                type="button"
+                onClick={stop}
+                aria-label="停止"
+                data-testid="chat-stop"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition active:scale-95"
+              >
+                <span className="block h-[11px] w-[11px] rounded-[2px] bg-current" />
+              </button>
+            ) : input.trim() || pendingImages.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => void send()}
+                aria-label="发送"
+                data-testid="chat-send"
+                className="flex h-9 shrink-0 items-center justify-center rounded-full bg-chat-accent px-4 text-[14px] font-medium text-chat-accent-fg shadow-sm transition active:scale-95"
+              >
+                发送
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setAttachOpen((v) => !v);
+                  setStickerOpen(false);
+                }}
+                aria-label="更多功能"
+                aria-expanded={attachOpen}
+                title="更多功能"
+                data-testid="chat-attach"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                  attachOpen ? 'bg-chat-accent text-chat-accent-fg' : 'bg-chat-pill text-chat-pill-fg shadow-sm hover:bg-chat-line',
+                )}
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
