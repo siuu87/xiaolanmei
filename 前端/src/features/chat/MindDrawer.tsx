@@ -40,6 +40,7 @@ import {
   type CharacterStateDTO,
   type EmotionField,
   type EmotionFieldMeta,
+  type StrategyTag,
   type ThoughtDTO,
 } from '@/lib/api/character';
 import {
@@ -58,12 +59,23 @@ export function MindDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   );
 }
 
-/** 四条数值的配色（暖→冷，不带「好坏」含义，纯为可读性） */
+/** 六条数值的配色（暖→冷，不带「好坏」含义，纯为可读性） */
 const FIELD_STYLE: Record<EmotionField, { bar: string; text: string }> = {
-  affection: { bar: 'bg-rose-400', text: 'text-rose-200' },
   possessiveness: { bar: 'bg-violet-400', text: 'text-violet-200' },
+  tension: { bar: 'bg-orange-400', text: 'text-orange-200' },
   restraint: { bar: 'bg-sky-400', text: 'text-sky-200' },
+  vulnerability: { bar: 'bg-fuchsia-400', text: 'text-fuchsia-200' },
+  affection: { bar: 'bg-rose-400', text: 'text-rose-200' },
   longing: { bar: 'bg-amber-400', text: 'text-amber-200' },
+};
+
+/** 行为策略标签 → 面板上的中文短名（只暗示，不把规则正文摊给用户看） */
+const STRATEGY_LABEL: Record<StrategyTag, string> = {
+  jealous_cold: '吃醋·冷硬',
+  jealous_silent: '压着醋意',
+  tense: '隐忍紧绷',
+  vulnerable: '委屈求哄',
+  aftercare: '被顺毛了',
 };
 
 const CATEGORY_LABEL: Record<MemoryCategory, string> = {
@@ -459,6 +471,32 @@ function EmotionPanel({
           重置
         </button>
       </div>
+
+      {/* 此刻心绪小剧场 + 命中的行为策略（只给模糊暗示，不把规则正文摊给用户） */}
+      {(state.moodTheater || state.strategyTags.length > 0) && (
+        <div className="mt-3 space-y-2">
+          {state.moodTheater && (
+            <p
+              data-testid="emotion-theater"
+              className="rounded-xl bg-white/[0.04] px-3 py-2 text-[12px] leading-5 text-[#9aa4bb]"
+            >
+              「{state.moodTheater}」
+            </p>
+          )}
+          {state.strategyTags.length > 0 && (
+            <div data-testid="emotion-strategy" className="flex flex-wrap gap-1.5">
+              {state.strategyTags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] text-[#9aa4bb]"
+                >
+                  {STRATEGY_LABEL[t]}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 space-y-2.5">
         {meta.map((f) => {

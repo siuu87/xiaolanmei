@@ -8,6 +8,8 @@ export interface ChatPayloadMessage {
 export interface StreamChatOptions {
   signal?: AbortSignal;
   conversationId?: string;
+  /** 这一轮的用户消息 id：后端用它给情绪前置分析做幂等（同一条消息不重复累积） */
+  userMessageId?: string;
   model?: string;
   stationId?: string;
   web?: boolean;
@@ -28,7 +30,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat(
   messages: ChatPayloadMessage[],
-  { signal, conversationId, model, stationId, web, chatStyle, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
+  { signal, conversationId, userMessageId, model, stationId, web, chatStyle, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
 ): Promise<void> {
   let res: Response;
   try {
@@ -38,6 +40,7 @@ export async function streamChat(
       body: JSON.stringify({
         messages,
         ...(conversationId ? { conversationId } : {}),
+        ...(userMessageId ? { userMessageId } : {}),
         ...(model ? { model } : {}),
         ...(stationId ? { stationId } : {}),
         ...(web ? { web: true } : {}),

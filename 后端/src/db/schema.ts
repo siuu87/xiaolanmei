@@ -778,12 +778,16 @@ export const galleryItems = sqliteTable('gallery_items', {
 export const characterState = sqliteTable('character_state', {
   id: text('id').primaryKey(), // 恒为 'default'
   affection: integer('affection').notNull().default(100), // 爱意
-  possessiveness: integer('possessiveness').notNull().default(50), // 占有欲
-  restraint: integer('restraint').notNull().default(80), // 克制
+  possessiveness: integer('possessiveness').notNull().default(50), // 占有欲与醋意（状态机里的 jealousy）
+  restraint: integer('restraint').notNull().default(80), // 克制与自控
   longing: integer('longing').notNull().default(30), // 思念
+  tension: integer('tension').notNull().default(25), // 紧绷与情欲（2026-10-19）
+  vulnerability: integer('vulnerability').notNull().default(20), // 示弱与委屈（2026-10-19）
   currentMood: text('current_mood').notNull().default('温柔'),
   lastReason: text('last_reason'), // 上一次调整的可读理由（JSON 数组或短句）
   lastMessageId: text('last_message_id'), // 幂等：同一轮不重复演进
+  /** 预分析幂等键：这一条用户消息已经在 /chat/stream 前置分析过，消息落库时不要再演进一次 */
+  lastUserMessageId: text('last_user_message_id'),
   turnCount: integer('turn_count').notNull().default(0), // 累计演进轮次
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),

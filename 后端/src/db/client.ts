@@ -706,9 +706,12 @@ CREATE TABLE IF NOT EXISTS character_state (
   possessiveness INTEGER NOT NULL DEFAULT 50,
   restraint INTEGER NOT NULL DEFAULT 80,
   longing INTEGER NOT NULL DEFAULT 30,
+  tension INTEGER NOT NULL DEFAULT 25,
+  vulnerability INTEGER NOT NULL DEFAULT 20,
   current_mood TEXT NOT NULL DEFAULT '温柔',
   last_reason TEXT,
   last_message_id TEXT,
+  last_user_message_id TEXT,
   turn_count INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -825,6 +828,23 @@ export function initDatabase(): void {
         completed = CASE WHEN COALESCE(done, 0) = 1 THEN 1 ELSE 0 END,
         completed_at = CASE WHEN COALESCE(done, 0) = 1 THEN updated_at ELSE NULL END
     `);
+  }
+
+  /**
+   * 幂等迁移（2026-10-19）：情绪状态机新增两维 + 前置分析幂等键。
+   * - `tension`（紧绷与情欲）默认 25、`vulnerability`（示弱与委屈）默认 20 —— 即常态基准；
+   * - `last_user_message_id` 记住「哪条用户消息已经在 /chat/stream 前置分析过」，
+   *   消息落库时的 `evolveForMessage` 据此跳过，避免同一轮演进两次。
+   */
+  const charCols = sqlite.prepare(`PRAGMA table_info(character_state)`).all() as { name: string }[];
+  if (!charCols.some((c) => c.name === 'tension')) {
+    sqlite.exec(`ALTER TABLE character_state ADD COLUMN tension INTEGER NOT NULL DEFAULT 25`);
+  }
+  if (!charCols.some((c) => c.name === 'vulnerability')) {
+    sqlite.exec(`ALTER TABLE character_state ADD COLUMN vulnerability INTEGER NOT NULL DEFAULT 20`);
+  }
+  if (!charCols.some((c) => c.name === 'last_user_message_id')) {
+    sqlite.exec(`ALTER TABLE character_state ADD COLUMN last_user_message_id TEXT`);
   }
 
   migrateDietPersonaVars(sqlite);

@@ -14,6 +14,26 @@ export const env = {
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   defaultModel: process.env.DEFAULT_MODEL ?? 'qwen2.5:7b',
 
+  /**
+   * 轻量情绪分析管道（2026-10-19）。
+   * - `EMOTION_MODEL`：专门跑情绪分析的小模型；空 = 复用主模型。
+   * - `EMOTION_MAX_TOKENS`：默认 100（需求硬要求）。
+   * - `EMOTION_TIMEOUT_MS`：小模型超时就回退关键词，绝不拖住主对话。
+   * - `EMOTION_ANALYZER=off`：显式关闭，排查 / 省 token 用。
+   */
+  emotionModel: process.env.EMOTION_MODEL ?? '',
+  emotionMaxTokens: Math.max(16, Number(process.env.EMOTION_MAX_TOKENS ?? 100)),
+  emotionTimeoutMs: Math.max(500, Number(process.env.EMOTION_TIMEOUT_MS ?? 5000)),
+  emotionAnalyzer: (process.env.EMOTION_ANALYZER ?? 'on').toLowerCase() !== 'off',
+
+  /**
+   * Ombre Brain（OB）记忆专线（2026-10-19）：阿里云 VPS 上的独立服务。
+   * 没有配置就整条链路静默跳过，聊天行为与以前完全一致。
+   */
+  obBaseUrl: (process.env.OB_BASE_URL ?? '').trim(),
+  obApiToken: (process.env.OB_API_TOKEN ?? '').trim(),
+  obTimeoutMs: Math.max(500, Number(process.env.OB_TIMEOUT_MS ?? 3500)),
+
   // 智能编程工作区（阶段 10）：默认后端上一级 = 项目根 d:\小蓝莓
   workspacePath: process.env.WORKSPACE_PATH ?? path.resolve(process.cwd(), '..'),
 } as const;

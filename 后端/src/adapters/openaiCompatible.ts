@@ -67,6 +67,7 @@ export function openaiCompatibleAdapter(config: OpenAIConfig): ChatAdapter {
             stream_options: { include_usage: true },
             ...(req.tools && req.tools.length > 0 ? { tools: req.tools } : {}),
             ...(req.temperature != null ? { temperature: req.temperature } : {}),
+            ...(req.maxTokens != null ? { max_tokens: req.maxTokens } : {}),
           }),
           signal: opts?.signal,
         });
@@ -201,6 +202,7 @@ export function openaiCompatibleAdapter(config: OpenAIConfig): ChatAdapter {
             messages: req.messages.map(toApiMessage),
             ...(req.tools && req.tools.length > 0 ? { tools: req.tools } : {}),
             ...(req.temperature != null ? { temperature: req.temperature } : {}),
+            ...(req.maxTokens != null ? { max_tokens: req.maxTokens } : {}),
           }),
           signal: opts?.signal,
         });

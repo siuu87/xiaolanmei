@@ -18,6 +18,15 @@ import { requestConfirmation } from '../services/confirmations.js';
 import { retrieveChunks } from '../services/ragService.js';
 import { buildSkillContext } from '../services/skillEngine.js';
 import { getSettingValue } from './settings.js';
+import { applyPreAnalysis, type PreAnalysisResult } from '../emotion/service.js';
+import { analyzeEmotionDelta, type AnalyzeResult, type AnalyzerMessage } from '../emotion/analyzer.js';
+import {
+  buildObMemoryBlock,
+  composeTurnSummary,
+  obAppend,
+  obQuery,
+  type ObMemoryHit,
+} from '../services/ombreBrain.js';
 
 interface ChatStreamBody {
   messages?: ChatMessage[];
@@ -31,6 +40,11 @@ interface ChatStreamBody {
    * 由前端 localStorage 决定、**按请求传**——不传就回落到 settings 里的兜底值。
    */
   chatStyle?: string;
+  /**
+   * 这一轮的用户消息 id（2026-10-19）：情绪前置分析用它做幂等键。
+   * 消息落库时 `evolveForMessage()` 若发现它已分析过，就不再按关键词叠一次。
+   */
+  userMessageId?: string | null;
 }
 
 const WEB_NOTE =
@@ -252,6 +266,46 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const query = typeof lastUser?.content === 'string' ? lastUser.content : '';
     const hasImage = Array.isArray(lastUser?.images) && (lastUser?.images?.length ?? 0) > 0;
 
+    /**
+     * ── 前置旁路（2026-10-19）─────────────────────────────────
+     * 两件事**并行**做，互不依赖，也都不阻塞主模型超过各自的超时：
+     *   ① 轻量情绪分析：最近 4 条（近 2 条 80% / 前 2 条 20%）→ 四维 delta → 状态机落库
+     *      → 得到「此刻心绪 + 行为策略块」，随本轮 system prompt 注入；
+     *   ② Ombre Brain 检索：拿用户当前输入捞 3 条记忆锚点，拼进 `[记忆回想]`。
+     * 任何一步失败都只是少一段上下文，绝不拦下回复。
+     */
+    let analyzed: AnalyzeResult | null = null;
+    let emotionPre: PreAnalysisResult | null = null;
+    let obHits: ObMemoryHit[] = [];
+    /**
+     * 只有**带会话**的请求才算「和 TA 的这一轮对话」。
+     * 星空片单 / 听歌分析 / 批注 这些辅助功能也走 `/chat/stream`，但它们没有 conversationId，
+     * 不该被注入白起的心绪策略，也不该累积全局情绪状态。
+     */
+    if (convId != null && query.trim()) {
+      const recent: AnalyzerMessage[] = messages
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .slice(-4)
+        .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }));
+      try {
+        const [res, hits] = await Promise.all([
+          analyzeEmotionDelta(recent, { stationId: station?.id }),
+          obQuery(query, { limit: 3, threshold: 0.4 }),
+        ]);
+        analyzed = res;
+        obHits = hits;
+        emotionPre = applyPreAnalysis({
+          userMessageId: body.userMessageId ?? null,
+          userText: query,
+          delta: res.delta,
+          source: res.source,
+          persist: true,
+        });
+      } catch (err) {
+        console.error('情绪前置分析失败（不影响本轮回复）', err);
+      }
+    }
+
     // 图片识别：发截图时启用 save_courses 工具，并把当前课表喂给模型用于合并（replace 语义）
     const courseNote = hasImage
       ? (() => {
@@ -333,6 +387,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         chatStyle: body.chatStyle ? normalizeChatStyle(body.chatStyle) : undefined,
       }),
       buildMemoryContext(query),
+      // OB 捞回来的旧事（没有配置 OB 时这里是空串，零噪音）
+      obHits.length ? buildObMemoryBlock(obHits) : '',
       ragBlock,
       buildSummaryContext(convId),
       CODE_NOTE,
@@ -340,6 +396,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       courseNote,
       partnerStateNote ? `【对方状态】${partnerStateNote}` : '',
       draftNote ? draftNote : '',
+      // 行为策略放最后：整轮里优先级最高、最近读到的一段行为规范
+      emotionPre?.strategyBlock ?? '',
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -405,6 +463,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
     let status: 'success' | 'error' | 'aborted' = 'success';
     let usage: { input: number; output: number } | undefined;
+    /** 本轮完整回复（后置归档要摘要，不能只拿最后一段 delta） */
+    let replyText = '';
 
     try {
       // 编程工具常开（融合进日常对话）；联网工具按 web（默认开）；课表识别按是否带图；RAG 工具按 rag（默认开）
@@ -487,7 +547,10 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         temperature,
         signal: controller.signal,
         handlers: {
-          onDelta: (text) => write({ type: 'delta', content: text }),
+          onDelta: (text) => {
+            replyText += text;
+            write({ type: 'delta', content: text });
+          },
           onReasoning: (text) => write({ type: 'reasoning', content: text }),
           onToolCall: (tc) => {
             const name = tc.function?.name ?? '';
@@ -547,5 +610,20 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
     await writeChain;
     reply.raw.end();
+
+    /**
+     * ── 后置异步归档（2026-10-19）──────────────────────────────
+     * 前端在这一行之前已经收完整个流；这里**不 await**，归档慢/挂都不影响界面。
+     * 摘要在本地拼（不再调模型）：TA 说了什么 / 他回了什么 / 心绪 / 四维波动。
+     */
+    if (convId && replyText.trim() && analyzed) {
+      const summary = composeTurnSummary({
+        userText: query,
+        replyText,
+        moodLabel: emotionPre?.moodLabel ?? '平静',
+        delta: analyzed.delta,
+      });
+      void obAppend(summary, Date.now());
+    }
   });
 }

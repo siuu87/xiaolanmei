@@ -52,6 +52,8 @@ export interface ChatRequest {
   messages: ChatMessage[];
   tools?: ToolDef[];
   temperature?: number;
+  /** 输出上限（轻量旁路分析用，如情绪分析 max_tokens=100） */
+  maxTokens?: number;
 }
 
 export interface Usage {

@@ -1024,6 +1024,8 @@ export function ChatPage() {
     await streamChat(payload, {
       signal: controller.signal,
       conversationId: convId,
+      // 后端情绪前置分析拿它做幂等键：同一条用户消息重试时不重复累积
+      userMessageId: parentId,
       model: model ?? undefined,
       stationId: stationId ?? undefined,
       web,

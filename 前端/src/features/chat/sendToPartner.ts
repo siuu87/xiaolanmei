@@ -47,6 +47,8 @@ export async function sendToPartner(text: string): Promise<void> {
   const convId = conv.id;
   await streamChat([...base, toPayload(userMsg)], {
     conversationId: convId,
+    // 同样是「和 TA 的一轮」：后端情绪前置分析用它做幂等键
+    userMessageId: userMsg.id,
     onDelta: (d) => store.updateMessage(assistantId, (p) => ({ content: p.content + d })),
     onReasoning: (r) => store.updateMessage(assistantId, (p) => ({ reasoning: (p.reasoning ?? '') + r })),
     onDone: () => void store.finalizeMessage(assistantId, { status: 'done' }),
