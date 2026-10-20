@@ -20,6 +20,8 @@
 ├── 后端/     Fastify 后端（代理 API Key、SQLite 数据库，端口 3001）
 ├── android/  真·控手机的原生 Android 桥（无障碍服务 + SSE 长连接）
 ├── docs/     说明文档（phone-control.md 等）
+├── handoff/  交接说明（给外部设计/编码助手；zip 快照不入库）
+├── scripts/  本地辅助脚本（如 start-remember-me.sh）
 └── deploy/   部署配置（Docker + Nginx）
 ```
 
