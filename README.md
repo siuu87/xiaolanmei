@@ -21,7 +21,7 @@
 ├── android/  真·控手机的原生 Android 桥（无障碍服务 + SSE 长连接）
 ├── docs/     说明文档（phone-control.md 等）
 ├── handoff/  交接说明（给外部设计/编码助手；zip 快照不入库）
-├── scripts/  本地辅助脚本（如 start-remember-me.sh）
+├── scripts/  本地辅助脚本（start-remember-me.sh、setup-recipe-nook.bat 一键装小食谱）
 └── deploy/   部署配置（Docker + Nginx）
 ```
 
@@ -98,7 +98,22 @@ bash scripts/start-remember-me.sh        # 默认 http://127.0.0.1:8787
 
 ### 可选侧车：小食谱（recipe-nook）
 
-「今天吃什么」`/food` 由 recipe-nook 提供（FastAPI，端口 8790）：
+「今天吃什么」`/food` 由 recipe-nook 提供（FastAPI，端口 8790）。
+
+**Windows 一键脚本**（推荐，双击即可，五步全是幂等的，重复运行不会动你的饭账）：
+
+```
+scripts\setup-recipe-nook.bat            # 需要时构建菜谱库，然后启动
+scripts\setup-recipe-nook.bat check      # 只体检，不启动
+scripts\setup-recipe-nook.bat build      # 只构建菜谱库
+scripts\setup-recipe-nook.bat rebuild    # 强制重建菜谱库
+```
+
+它依次做：建 `.venv` → 装依赖 → 生成 `.env` → 菜谱库为空时才导入 HowToCook
+（约 100MB，首次几分钟；源码缓存在 `%TEMP%\recipe-nook-HowToCook`，之后重建很快）
+→ 在 8790 启动。已有内容一律跳过，下载被中断也会自己清掉重下。
+
+手动做法（macOS / Linux 或想自己控制每一步）：
 
 ```bash
 cd recipe-nook
@@ -115,7 +130,16 @@ git clone --depth 1 https://github.com/Anduin2017/HowToCook <你的路径>
 .venv/Scripts/python.exe scripts/build_htc.py <你的路径>
 ```
 
+查当前库里有多少道菜：`.venv/Scripts/python.exe scripts/count_recipes.py`（一键脚本靠它判断要不要构建）。
+
 侧车没起时 `/food` 会显示上面这几条命令 + 「重新连接 / 先回去」，不会白屏。
+
+> 改 `setup-recipe-nook.bat` 前先看文件头的 NOTE，其中三个坑最容易撞：
+> ① 文件必须**纯 ASCII**。cmd.exe 按系统代码页读 `.bat`，UTF-8 里的中文会被解错并把命令行切碎；
+> 中文说明一律放 README。② 括号块（`if/else`）里的行**不能以 `...` 结尾**，
+> cmd 会预先解析两个分支，没走到的那个分支里的 `...` 也会让整个脚本报「此时不应有 ...。」而中断。
+> ③ **脚本正在跑的时候别改它** —— cmd 按字节偏移续读，运行中改文件会让下一条命令
+> 从不相干的行的中间开始，看起来像脚本 bug。行尾保持 CRLF（已用 `.gitattributes` 钉住 `*.bat text eol=crlf`）。
 
 ### 前端（端口 5173）
 
@@ -207,7 +231,8 @@ npm run dev
   28 万道菜谱 / 吃什么转盘 / 按餐记饭 / AI 饮食打分。页面套小蓝莓自己的 `PageShell`
   （返回键 + 标题 + 新窗口打开 / 重新连接），iframe 右上角另钉一颗「退出」；
   **侧车没起时显示可直接照敲的启动命令 + 「重新连接 / 先回去」**，不会白屏。
-  最小可用库 = 公有领域 HowToCook（`scripts/build_htc.py`，几秒入库）
+  最小可用库 = 公有领域 HowToCook（`scripts/build_htc.py`，几秒入库）。
+  **Windows 装它不用敲命令：`scripts\setup-recipe-nook.bat` 双击即可**（见上方「可选侧车」）
 - 纪念日、课程表、备忘录、蓝莓信箱、日记本等详情页
 - 设置：模型站子、深浅色主题、MCP、技能、记忆、提示词、同步、编程工作区
 
