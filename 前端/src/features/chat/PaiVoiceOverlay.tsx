@@ -1,13 +1,16 @@
 /**
- * PaiVoice 通话悬浮窗（2026-10-20，替代原来的全屏 CallOverlay）。
+ * PaiVoice 通话界面（2026-10-20）
  *
- * - 可拖动：标题栏按住拖，位置夹在视口内；
- * - 可收起：收成一条 48px 的小条，**iframe 不卸载**，通话/麦克风不断；
- * - 结束：页面自己的挂断键会 postMessage `paivoice:end`，右上角也有兜底；
- * - 视频通话仍走旧 CallOverlay（PaiVoice 的画面是给回复端看，不是双向视频流）。
+ * 两种形态，随时切换：
+ * - **完整通话页**（默认）：整页铺满，能完整看到实时对话字幕与大按钮；
+ * - **悬浮窗**：320×440 浮在聊天上，标题栏可拖、可收起成 48px 小条，
+ *   收起时 iframe 不卸载（通话/麦克风不断）。
+ *
+ * 视频通话仍走旧 CallOverlay（PaiVoice 的画面是给回复端看，不是双向视频流）。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, Maximize2, PhoneOff } from 'lucide-react';
+import { ChevronDown, Maximize2, Minimize2, PhoneOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const WIN_W = 320;
 const HEAD_H = 48;
@@ -31,8 +34,9 @@ export function PaiVoiceOverlay({
 }) {
   const started = useRef(Date.now());
   const reported = useRef(false);
-  const [seconds, setSeconds] = useState(0);
+  const [mode, setMode] = useState<'full' | 'float'>('full');
   const [collapsed, setCollapsed] = useState(false);
+  const [seconds, setSeconds] = useState(0);
   const [pos, setPos] = useState(() => {
     if (typeof window === 'undefined') return { x: 12, y: 12 };
     const w = Math.min(WIN_W, window.innerWidth - 24);
@@ -77,7 +81,9 @@ export function PaiVoiceOverlay({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  const floating = mode === 'float';
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!floating) return;
     if ((e.target as HTMLElement).closest('button')) return;
     dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -104,9 +110,19 @@ export function PaiVoiceOverlay({
   return (
     <div
       data-testid="paivoice-overlay"
-      data-collapsed={collapsed ? '1' : '0'}
-      style={{ left: pos.x, top: pos.y, width, height: collapsed ? HEAD_H : height }}
-      className="fixed z-[1400] overflow-hidden rounded-2xl border border-amber-900/50 bg-[#0a0705] shadow-[0_20px_60px_rgba(0,0,0,.6)]"
+      data-mode={mode}
+      data-collapsed={floating && collapsed ? '1' : '0'}
+      style={
+        floating
+          ? { left: pos.x, top: pos.y, width, height: collapsed ? HEAD_H : height }
+          : undefined
+      }
+      className={cn(
+        'fixed z-[1400] bg-[#0a0705]',
+        floating
+          ? 'overflow-hidden rounded-2xl border border-amber-900/50 shadow-[0_20px_60px_rgba(0,0,0,.6)]'
+          : 'inset-0',
+      )}
     >
       <div
         data-testid="paivoice-drag"
@@ -114,20 +130,40 @@ export function PaiVoiceOverlay({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="flex h-12 cursor-grab touch-none select-none items-center gap-2 border-b border-amber-200/10 bg-[#1a120b] px-3 active:cursor-grabbing"
+        className={cn(
+          'flex h-12 select-none items-center gap-2 border-b border-amber-200/10 bg-[#1a120b] px-3',
+          floating ? 'cursor-grab touch-none active:cursor-grabbing' : '',
+        )}
       >
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
         <span className="min-w-0 flex-1 truncate text-[12px] text-amber-50">{name}</span>
         <span className="shrink-0 text-[11px] tabular-nums text-amber-200/50">{mmss(seconds)}</span>
+
         <button
           type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          aria-label={collapsed ? '展开通话' : '收起通话'}
-          data-testid="paivoice-collapse"
+          onClick={() => {
+            setMode(floating ? 'full' : 'float');
+            setCollapsed(false);
+          }}
+          aria-label={floating ? '全屏通话' : '悬浮窗通话'}
+          data-testid="paivoice-mode"
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-200/60 transition hover:bg-white/10 hover:text-amber-100"
         >
-          {collapsed ? <Maximize2 size={14} /> : <ChevronDown size={14} />}
+          {floating ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
         </button>
+
+        {floating && (
+          <button
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? '展开通话' : '收起通话'}
+            data-testid="paivoice-collapse"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-200/60 transition hover:bg-white/10 hover:text-amber-100"
+          >
+            {collapsed ? <Maximize2 size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => finish(seconds)}
@@ -139,7 +175,10 @@ export function PaiVoiceOverlay({
         </button>
       </div>
 
-      <div className={collapsed ? 'hidden' : 'block'} style={{ height: `calc(100% - ${HEAD_H}px)` }}>
+      <div
+        className={floating && collapsed ? 'hidden' : 'block'}
+        style={{ height: `calc(100% - ${HEAD_H}px)` }}
+      >
         <iframe
           title="PaiVoice"
           src={src}

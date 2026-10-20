@@ -329,6 +329,25 @@ export function LibraryPage() {
     });
   }, [timeLogs]);
 
+  /** 杂志式书架：按来源分类，一行一类；每类横向滑动、一屏三本 */
+  const shelfGroups = useMemo(() => {
+    const order = ['local', 'fanqie', 'weread'];
+    const labels: Record<string, string> = { local: '本地', fanqie: '番茄', weread: '微信读书' };
+    const map = new Map<string, Book[]>();
+    for (const b of books) {
+      const src = b.source ?? 'local';
+      if (!map.has(src)) map.set(src, []);
+      map.get(src)!.push(b);
+    }
+    return [...map.entries()]
+      .sort((a, b) => {
+        const ia = order.indexOf(a[0]);
+        const ib = order.indexOf(b[0]);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      })
+      .map(([src, list]) => ({ src, label: labels[src] ?? src, books: list }));
+  }, [books]);
+
   const commitGoal = () => {
     const v = Math.round(goalDraft);
     if (Number.isFinite(v) && v > 0) {
@@ -477,7 +496,7 @@ export function LibraryPage() {
             </section>
 
             {/* 阅读时间线 */}
-            <section className="rounded-2xl bg-[#1E1E1E] p-5">
+            <section className="rounded-2xl bg-[#1E1E1E] p-5" data-testid="reading-timeline">
               <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#8A8A8A]">Reading Timeline</p>
               <div className="mt-4 flex justify-between">
                 {week.map((d, i) => (
@@ -492,6 +511,84 @@ export function LibraryPage() {
                   </div>
                 ))}
               </div>
+            </section>
+
+            {/* 杂志式书架：书面朝外 + 透明书架；一行三本，分类各一行，可横滑 */}
+            <section className="rounded-2xl bg-[#1E1E1E] p-5" data-testid="reading-shelf">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#8A8A8A]">
+                  Bookshelf
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setView('shelf')}
+                  className="text-[11px] text-[#C9A96A] transition hover:text-[#E0C79A]"
+                >
+                  全部 →
+                </button>
+              </div>
+
+              {shelfGroups.length === 0 ? (
+                <p className="mt-4 text-[12px] text-[#8A8A8A]">书架还空着。</p>
+              ) : (
+                <div className="mt-4 space-y-5">
+                  {shelfGroups.map((g) => (
+                    <div key={g.src} data-testid={`shelf-row-${g.src}`}>
+                      <div className="mb-2 flex items-baseline gap-2">
+                        <span className="text-[12px] font-medium text-[#E0E0E0]">{g.label}</span>
+                        <span className="text-[10px] text-[#8A8A8A]">{g.books.length} 本</span>
+                      </div>
+                      <div className="relative">
+                        <div className="scrollbar-thin flex gap-3 overflow-x-auto pb-4">
+                          {g.books.map((b) => (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() => navigate(`/read/${b.id}`)}
+                              data-testid={`shelf-book-${b.id}`}
+                              className="group shrink-0 snap-start text-left"
+                              style={{ width: 'calc((100% - 1.5rem) / 3)' }}
+                            >
+                              <div
+                                className="relative w-full overflow-hidden rounded-[4px] shadow-[0_10px_22px_rgba(0,0,0,0.5)] transition group-active:scale-[0.98]"
+                                style={{ paddingBottom: '133.333%' }}
+                              >
+                                <div className="absolute inset-0">
+                                  {b.cover ? (
+                                    <img src={b.cover} alt={b.title} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div
+                                      className="flex h-full w-full flex-col justify-between p-2"
+                                      style={{
+                                        background: `linear-gradient(150deg, ${b.color}, ${b.color} 58%, rgba(0,0,0,.55))`,
+                                      }}
+                                    >
+                                      <span className="line-clamp-2 text-[9px] leading-3 text-white/65">
+                                        {b.author}
+                                      </span>
+                                      <span className="line-clamp-3 text-[11px] font-semibold leading-tight text-white/90">
+                                        {b.title}
+                                      </span>
+                                      <span className="h-0.5 w-6 rounded bg-white/30" />
+                                    </div>
+                                  )}
+                                  {/* 书脊高光 + 底部压暗，书面更像朝外立着 */}
+                                  <span className="pointer-events-none absolute inset-y-0 left-0 w-[3px] bg-gradient-to-r from-white/25 to-transparent" />
+                                  <span className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/25 to-transparent" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 truncate text-[10px] text-[#C9C9C9]">{b.title}</p>
+                            </button>
+                          ))}
+                        </div>
+                        {/* 透明书架：书下方一条玻璃亮边（先画柔光，再压亮边） */}
+                        <div className="pointer-events-none absolute inset-x-0 bottom-[27px] h-[10px] bg-gradient-to-b from-white/10 to-transparent" />
+                        <div data-testid="shelf-ledge" className="pointer-events-none absolute inset-x-0 bottom-[35px] h-[2px] rounded-full bg-gradient-to-r from-transparent via-white/70 to-transparent shadow-[0_1px_8px_rgba(255,255,255,0.25)]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
         )}
