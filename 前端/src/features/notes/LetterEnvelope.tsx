@@ -64,7 +64,13 @@ function backOf(theme: LetterTheme): string {
 /**
  * 信封本体。`opened` 控制拆封：封盖翻开、信纸从口子里升出一小截。
  *
- * 父容器只管给宽高（比例建议 3:2，跟真实信封一致），内部全部按比例定位。
+ * 父容器只管给宽高（**建议 5:3**，规整长方形），内部全部按比例定位。
+ *
+ * 2026-10-20 改长方形：原来封盖三角占了 52% 高、缺口深到中线，
+ * 上半部看着是一整个大三角，整枚信封像「房子 / 五边形」而不是信封。
+ * 现在缺口与封盖都收到 **45%**，剩下的 55% 是完整的矩形纸面，
+ * 轮廓才是一个清爽的长方形。
+ *
  * `children` 是**信纸内容**（一般是正文摘要或空），不传就只画一枚封好的信封。
  */
 export function EnvelopeArt({
@@ -96,9 +102,14 @@ export function EnvelopeArt({
       data-letter-theme={theme}
       className={cn('relative isolate', className)}
     >
-      {/* ① 背板 + 金边（恋与制作人那圈细描边） */}
+      {/*
+        ① 背板：这就是那枚**横版长方形信封**的本体 —— 一个完整的矩形纸面。
+        `rounded-[3px]` 只留一点点圆角（纸的切口），外圈 `ring` 是恋与制作人那道细描边，
+        两样一起把"长方形"的轮廓钉死，免得被上面的三角抢了注意力。
+      */}
       <div
         aria-hidden
+        data-testid="envelope-body"
         className={cn(
           'absolute inset-0 rounded-[3px] ring-1 ring-inset',
           ringOf(theme),
@@ -108,32 +119,36 @@ export function EnvelopeArt({
       />
 
       {/*
-        ② 信纸：只露出信封口那一小截（约 26%），不能整张浮出来 ——
+        ② 信纸：只露出信封口那一小截，不能整张浮出来 ——
            这是**卡片**，不是阅读器；整张露出来会盖住封盖翻开的动作，也会把卡片撑破。
            阅读器里信纸是另一套（从弹窗底部抽出来）。
       */}
       <div
         data-testid="envelope-paper-slot"
         className={cn(
-          'absolute inset-x-[10%] top-[10%] h-[34%] overflow-hidden rounded-t-[2px]',
+          'absolute inset-x-[10%] top-[9%] h-[38%] overflow-hidden rounded-t-[2px]',
           'transition-transform duration-[450ms] ease-out',
-          opened ? 'translate-y-[8%]' : 'translate-y-[26%]',
+          // 未读藏到缺口(45%)以下、已读升到缺口以上 —— 差值就是"露出一角"的量
+          opened ? 'translate-y-[6%]' : 'translate-y-[30%]',
           p.paper,
         )}
       >
         {children}
       </div>
 
-      {/* ③ 前面板：顶边倒 V 缺口露出信封口，遮住信纸下半截 */}
+      {/*
+        ③ 前面板：顶边一道浅 V 缺口（只到 45%）露出信封口，剩下 55% 是完整矩形纸面。
+        viewBox 100×60 = 5:3 的横版长方形。
+      */}
       <svg
-        viewBox="0 0 100 66"
+        viewBox="0 0 100 60"
         preserveAspectRatio="none"
         aria-hidden
         className="pointer-events-none absolute inset-0 h-full w-full"
       >
-        <path d="M0 0 L50 33 L100 0 L100 66 L0 66 Z" fill={p.flapFill} />
+        <path d="M0 0 L50 27 L100 0 L100 60 L0 60 Z" fill={p.flapFill} />
         <path
-          d="M0 0 L50 33 L100 0"
+          d="M0 0 L50 27 L100 0"
           fill="none"
           stroke={p.flapStroke}
           strokeWidth="0.8"
@@ -155,7 +170,7 @@ export function EnvelopeArt({
       */}
       <div
         data-testid="envelope-flap"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[52%] [perspective:400px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[45%] [perspective:400px]"
       >
         <div
           className="h-full w-full transition-transform duration-500 ease-out"
@@ -167,17 +182,17 @@ export function EnvelopeArt({
             transform: opened ? `rotateX(-${flapAngle}deg)` : 'rotateX(0deg)',
           }}
         >
-          {/* 正面：V 形封盖 + 火漆 */}
+          {/* 正面：V 形封盖 + 火漆（火漆压在尖端稍上，跟真实信封一样） */}
           <div className="absolute inset-0 [backface-visibility:hidden]">
             <svg
-              viewBox="0 0 100 34"
+              viewBox="0 0 100 27"
               preserveAspectRatio="none"
               aria-hidden
               className="h-full w-full"
             >
-              <path d="M0 0 L50 34 L100 0 Z" fill={p.flapFill} />
+              <path d="M0 0 L50 27 L100 0 Z" fill={p.flapFill} />
               <path
-                d="M0 0 L50 34 L100 0"
+                d="M0 0 L50 27 L100 0"
                 fill="none"
                 stroke={p.flapStroke}
                 strokeWidth="0.8"
@@ -188,7 +203,7 @@ export function EnvelopeArt({
               <EnvelopeSeal
                 theme={theme}
                 className={cn(
-                  'absolute left-1/2 top-[62%] -translate-x-1/2 -translate-y-1/2',
+                  'absolute left-1/2 top-[74%] -translate-x-1/2 -translate-y-1/2',
                   sealClass,
                 )}
               />
@@ -202,12 +217,12 @@ export function EnvelopeArt({
             style={{ transform: 'rotateX(180deg)' }}
           >
             <svg
-              viewBox="0 0 100 34"
+              viewBox="0 0 100 27"
               preserveAspectRatio="none"
               className="h-full w-full"
             >
               <path
-                d="M0 0 L50 34 L100 0"
+                d="M0 0 L50 27 L100 0"
                 fill="none"
                 stroke={p.flapStroke}
                 strokeWidth="0.8"

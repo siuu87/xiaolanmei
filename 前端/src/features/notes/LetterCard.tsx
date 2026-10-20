@@ -82,10 +82,14 @@ export function DailyLetterCard({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
       )}
     >
-      {/* 卡片外壳：深色玻璃托底，让暖色信封在上面「浮」出来 */}
+      {/*
+        卡片外壳：**不留 padding**。信封就是这张卡本身（横版长方形顶到边缘），
+        文字只贴在信封上下的窄边里 —— 以前外壳 p-2.5 会把信封挤小一圈，
+        看着像"卡片里放了个小信封"，而不是"这枚信封就是卡片"。
+      */}
       <div
         className={cn(
-          'relative overflow-hidden rounded-[16px] border border-white/[0.08] p-2.5',
+          'relative overflow-hidden rounded-[16px] border border-white/[0.08]',
           'bg-[#0f1424]/70 backdrop-blur-xl',
           'shadow-[0_10px_26px_-14px_rgba(0,0,0,0.7)] transition-all duration-300',
           'group-hover:-translate-y-[2px] group-hover:border-white/[0.16]',
@@ -98,7 +102,7 @@ export function DailyLetterCard({
         />
 
         {/* 顶栏：深夜来信 · 第 N 封 ｜ 未读点 */}
-        <div className="flex items-center justify-between gap-1.5 px-0.5">
+        <div className="flex items-center justify-between gap-1.5 px-2.5 pt-2.5">
           <span className="flex min-w-0 items-center gap-1">
             <span className="shrink-0 text-[10px] leading-none">💌</span>
             <span
@@ -117,14 +121,16 @@ export function DailyLetterCard({
           )}
         </div>
 
-        {/* 信封本体：3:2 实体信封，已读的封盖半掀开（卡片里空间小，掀到底会被裁掉） */}
-        <div className="mt-2 px-0.5">
+        {/* 信封本体：**横版长方形**（5:3），撑满卡片宽度，已读的封盖半掀开
+            （卡片里空间小，掀到底会被 overflow 裁掉，所以用 88°）。
+            底边留出一点空间给压在上面的日期条。 */}
+        <div className="mt-2 pb-5">
           <EnvelopeArt
             theme={theme}
             opened={!unread}
             flapAngle={88}
             sealClass="h-5 w-5 text-[9px]"
-            className="aspect-[3/2] w-full"
+            className="aspect-[5/3] w-full"
           >
             {/* 信封口里露出的那一小截：首句 */}
             <p
@@ -140,17 +146,21 @@ export function DailyLetterCard({
           </EnvelopeArt>
         </div>
 
-        {/* 底部：日期 + 心境 */}
-        <div className="mt-2 flex items-center justify-between gap-1.5 px-0.5">
+        {/*
+          底部：日期 + 心境 —— **压在信封底边上**，不单独占一条。
+          以前放在信封下面，卡片被撑高、信封显得小，下面那条深色还空着像没渲染出来。
+          现在浮在信封下沿，加一层暗色渐变托底，字在米色/深蓝信封上都读得清。
+        */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-1.5 bg-gradient-to-t from-black/40 via-black/20 to-transparent px-2.5 pb-1.5 pt-4">
           <span
             data-testid="mail-time"
-            className="truncate text-[9px] font-light tabular-nums text-[#6b7488]"
+            className="truncate text-[9px] font-light tabular-nums text-white/85"
           >
             {time}
           </span>
           <span
             data-testid="mail-mood"
-            className="shrink-0 truncate rounded-full bg-white/[0.05] px-1.5 py-[2px] text-[8px] font-light tracking-wide text-[#7f879b]"
+            className="shrink-0 truncate rounded-full bg-white/10 px-1.5 py-[2px] text-[8px] font-light tracking-wide text-white/75"
           >
             {mood}
           </span>

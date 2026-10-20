@@ -112,7 +112,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
             theme={theme}
             opened={opened}
             sealClass="h-6 w-6 text-[11px]"
-            className="aspect-[3/2] w-full"
+            className="aspect-[5/3] w-full"
           />
         </motion.div>
 
