@@ -21,14 +21,13 @@ import { getSettingValue } from './settings.js';
 import { env } from '../config/env.js';
 import { decorateMessages } from '../chat/messageTimestamps.js';
 import { applyPreAnalysis, type PreAnalysisResult } from '../emotion/service.js';
-import { analyzeEmotionDelta, type AnalyzeResult, type AnalyzerMessage } from '../emotion/analyzer.js';
+import { analyzeEmotionDelta, type AnalyzerMessage } from '../emotion/analyzer.js';
 import {
-  buildObMemoryBlock,
-  composeTurnSummary,
-  obAppend,
-  obQuery,
-  type ObMemoryHit,
-} from '../services/ombreBrain.js';
+  formatXinchaoBlock,
+  getXinchaoNow,
+  postXinchaoEvent,
+  type XinchaoNow,
+} from '../services/xinchao.js';
 
 interface ChatStreamBody {
   messages?: ChatMessage[];
@@ -276,9 +275,9 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
      *   ② Ombre Brain 检索：拿用户当前输入捞 3 条记忆锚点，拼进 `[记忆回想]`。
      * 任何一步失败都只是少一段上下文，绝不拦下回复。
      */
-    let analyzed: AnalyzeResult | null = null;
     let emotionPre: PreAnalysisResult | null = null;
-    let obHits: ObMemoryHit[] = [];
+    /** 心潮「此刻」块（替代原来的 OB 记忆回想） */
+    let xinchaoNow: XinchaoNow | null = null;
     /**
      * 只有**带会话**的请求才算「和 TA 的这一轮对话」。
      * 星空片单 / 听歌分析 / 批注 这些辅助功能也走 `/chat/stream`，但它们没有 conversationId，
@@ -290,12 +289,11 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         .slice(-4)
         .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '' }));
       try {
-        const [res, hits] = await Promise.all([
+        const [res, now] = await Promise.all([
           analyzeEmotionDelta(recent, { stationId: station?.id }),
-          obQuery(query, { limit: 3, threshold: 0.4 }),
+          getXinchaoNow(),
         ]);
-        analyzed = res;
-        obHits = hits;
+        xinchaoNow = now;
         emotionPre = applyPreAnalysis({
           userMessageId: body.userMessageId ?? null,
           userText: query,
@@ -389,8 +387,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         chatStyle: body.chatStyle ? normalizeChatStyle(body.chatStyle) : undefined,
       }),
       buildMemoryContext(query),
-      // OB 捞回来的旧事（没有配置 OB 时这里是空串，零噪音）
-      obHits.length ? buildObMemoryBlock(obHits) : '',
+      // 心潮「此刻」块（没起心潮时是空串，零噪音；取代原来的 OB [记忆回想]）
+      xinchaoNow ? formatXinchaoBlock(xinchaoNow) : '',
       ragBlock,
       buildSummaryContext(convId),
       CODE_NOTE,
@@ -628,18 +626,17 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     reply.raw.end();
 
     /**
-     * ── 后置异步归档（2026-10-19）──────────────────────────────
-     * 前端在这一行之前已经收完整个流；这里**不 await**，归档慢/挂都不影响界面。
-     * 摘要在本地拼（不再调模型）：TA 说了什么 / 他回了什么 / 心绪 / 四维波动。
+     * ── 后置写回（2026-10-20）──────────────────────────────────
+     * 前端在上一行已经收完整个流；这里**不 await**，心潮慢/挂都不影响界面。
+     * 取代原来的 OB `obAppend`：心潮按 `她说：… 他回：…` 自己判互动类型、推驱力。
      */
-    if (convId && replyText.trim() && analyzed) {
-      const summary = composeTurnSummary({
-        userText: query,
-        replyText,
-        moodLabel: emotionPre?.moodLabel ?? '平静',
-        delta: analyzed.delta,
+    if (convId && replyText.trim()) {
+      void postXinchaoEvent({
+        exchange: `她说：${query.slice(0, 800)} 他回：${replyText.slice(0, 1600)}`,
+        recent: replyText.slice(0, 600),
+        sessionId: convId,
+        eventId: body.userMessageId ?? null,
       });
-      void obAppend(summary, Date.now());
     }
   });
 }

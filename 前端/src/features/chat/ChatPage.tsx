@@ -68,6 +68,7 @@ import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
 import { BottomSheet } from '@/components/BottomSheet';
 import { CallOverlay, type CallResult } from './CallOverlay';
+import { PaiVoiceOverlay } from './PaiVoiceOverlay';
 import { createCall, fmtDuration, type CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
 import { resolveSticker } from './stickers';
@@ -786,6 +787,8 @@ export function ChatPage() {
   });
   /** 正在进行的通话类型（null = 没在通话）。语音/视频共用这一个浮层。 */
   const [callKind, setCallKind] = useState<CallKind | null>(null);
+  /** PaiVoice 实时语音层状态：起来了就让语音通话走它，否则回退旧通话浮层 */
+  const [paiVoice, setPaiVoice] = useState<{ up: boolean; wsUrl: string } | null>(null);
   /** 呼出时刻，挂断时作为 startedAt 落库 */
   const callStartedRef = useRef(0);
   /** 应用内浏览器要打开的地址（null = 关闭） */
@@ -922,6 +925,23 @@ export function ChatPage() {
       setStickerOpen(false);
     }
   };
+
+  // PaiVoice 探活：只探一次，决定语音通话走独立页面还是旧浮层
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/paivoice/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => {
+        if (!alive) return;
+        setPaiVoice(s ? { up: !!s.up, wsUrl: String(s.wsUrl ?? '') } : { up: false, wsUrl: '' });
+      })
+      .catch(() => {
+        if (alive) setPaiVoice({ up: false, wsUrl: '' });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // 大图查看器的 Esc：capture 阶段拦下，避免连抽屉一起关
   useEffect(() => {
@@ -2252,14 +2272,22 @@ export function ChatPage() {
       <MindDrawer open={mindOpen} onClose={() => setMindOpen(false)} />
 
       {/* 通话浮层（语音 / 视频共用）。挂断 → endCall 落库 + 往聊天流推卡片 */}
-      {callKind && (
-        <CallOverlay
-          kind={callKind}
-          name={displayName || '小蓝莓'}
-          avatar={partnerAvatar}
-          onEnd={(r) => void endCall(r)}
-        />
-      )}
+      {/* 通话：语音优先走 PaiVoice 实时语音层；没起 / 视频通话回退旧浮层 */}
+      {callKind &&
+        (paiVoice?.up && callKind === 'voice' ? (
+          <PaiVoiceOverlay
+            wsUrl={paiVoice.wsUrl}
+            name={displayName || '小蓝莓'}
+            onEnd={(seconds) => void endCall({ state: 'answered', seconds })}
+          />
+        ) : (
+          <CallOverlay
+            kind={callKind}
+            name={displayName || '小蓝莓'}
+            avatar={partnerAvatar}
+            onEnd={(r) => void endCall(r)}
+          />
+        ))}
 
       {/* 应用内浏览器：点消息里的链接就走这里，不跳出 App */}
       {browserUrl && <InAppBrowser url={browserUrl} onClose={() => setBrowserUrl(null)} />}

@@ -4,6 +4,16 @@
 
 ## 2026-10-20
 
+### 替换
+
+- **心潮·念（Xinchao·Nian）取代 Ombre Brain**：`/chat/stream` 开流前拉 `/v1/now`
+  注入 `[心潮 · 此刻]`，流结束后把「她说 / 他回」写回 `/v1/conversation-event`；
+  内心面板改为心潮的「此刻 + 11 股驱力 + 情绪」（心潮没起时回退本地六维情绪）。
+- **PaiVoice 取代语音通话浮层**：语音通话走独立 `/paivoice` 页面（AGPL-3.0，作为独立静态页
+  而非打进主包），支持打断、断线接回、实时字幕、静音；PaiVoice 没起时自动回退旧浮层。
+  视频通话仍走旧浮层（PaiVoice 的画面是给回复端看，不是双向视频流）。
+- 开源清单新增 `tianyupaipai-cmd/pai-voice`、`tianyupaipai-cmd/xinchao-nian`。
+
 ### 调整
 
 - **内心面板**：标题由「{称呼}的内心」统一改为「内心」，顶栏红点 `aria-label` 同步改为「内心」；

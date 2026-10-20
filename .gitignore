@@ -23,3 +23,7 @@ data/
 
 # 外部侧车：Remember-Me（图像记忆 / 相册 Dashboard），本地安装，不进版本库
 remember-me/
+
+# 外部侧车：心潮·念 / PaiVoice（本地服务 + venv），不进版本库
+xinchao/
+pai-voice/

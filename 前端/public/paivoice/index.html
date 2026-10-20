@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PaiVoice · 实时语音</title>
+    <!--
+      PaiVoice 独立通话页（2026-10-20）
+      组件来自 tianyupaipai-cmd/pai-voice（AGPL-3.0，见同目录 LICENSE）。
+      刻意**不打包进主前端**：这里是独立页面，通过 WebSocket 与 PaiVoice 核心通信。
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f5ece2;
+        --muted: #9b8d80;
+        --line: rgba(255, 255, 255, 0.09);
+        --accent: #e2b57f;
+        --accent-soft: rgba(226, 181, 127, 0.16);
+        --danger: #e07b7b;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+        background:
+          radial-gradient(120% 80% at 50% 0%, #2a1c13 0%, #140e0a 48%, #0a0705 100%);
+        color: var(--ink);
+        overflow: hidden;
+      }
+      #app { height: 100dvh; display: flex; flex-direction: column; padding: 18px 18px 26px; }
+      header { display: flex; align-items: center; gap: 8px; }
+      header .dot { width: 7px; height: 7px; border-radius: 99px; background: var(--muted); }
+      header .dot.on { background: #7ecb9a; box-shadow: 0 0 8px rgba(126, 203, 154, 0.7); }
+      header .dot.wait { background: var(--accent); animation: pulse 1.2s infinite; }
+      header .brand { font-size: 10px; letter-spacing: 0.32em; color: var(--muted); }
+      header .name { font-size: 13px; margin-left: auto; color: var(--ink); }
+      main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+      .orb {
+        position: relative; width: 132px; height: 132px; border-radius: 50%;
+        background: radial-gradient(circle at 40% 35%, #f3d2a8 0%, #c78f58 38%, #6b4527 70%, #2a1a10 100%);
+        box-shadow: 0 0 50px rgba(226, 181, 127, 0.18), inset 0 0 30px rgba(0, 0, 0, 0.35);
+        transition: transform 0.25s ease;
+      }
+      .orb::before, .orb::after {
+        content: ''; position: absolute; inset: -12px; border-radius: 50%;
+        border: 1px solid rgba(226, 181, 127, 0.22);
+        animation: ring 2.8s ease-out infinite;
+      }
+      .orb::after { animation-delay: 1.4s; }
+      .orb.listening { transform: scale(1.03); }
+      .orb.speaking { transform: scale(1.06); box-shadow: 0 0 70px rgba(226, 181, 127, 0.35); }
+      .orb.thinking { animation: breathe 1.6s ease-in-out infinite; }
+      @keyframes ring { 0% { transform: scale(0.92); opacity: 0.55; } 100% { transform: scale(1.35); opacity: 0; } }
+      @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+      .state { font-size: 13px; color: var(--muted); min-height: 20px; letter-spacing: 0.06em; }
+      .transcript {
+        width: 100%; max-height: 36vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+        padding: 4px 2px; scrollbar-width: thin;
+      }
+      .bubble {
+        max-width: 86%; padding: 8px 11px; border-radius: 14px; font-size: 13px; line-height: 1.55;
+        white-space: pre-wrap; word-break: break-word; border: 1px solid var(--line);
+      }
+      .bubble.me { align-self: flex-end; background: rgba(226, 181, 127, 0.14); border-color: rgba(226, 181, 127, 0.22); }
+      .bubble.ai { align-self: flex-start; background: rgba(255, 255, 255, 0.045); }
+      .bubble.sys { align-self: center; background: transparent; border: 0; color: var(--muted); font-size: 11px; padding: 0; }
+      .controls { display: flex; align-items: center; justify-content: center; gap: 14px; padding-top: 14px; }
+      button {
+        font: inherit; color: inherit; border: 0; cursor: pointer; background: transparent;
+        -webkit-user-select: none; user-select: none;
+      }
+      .round {
+        width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+        border: 1px solid var(--line); background: rgba(255, 255, 255, 0.045); color: var(--ink);
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+      .round:active { transform: scale(0.94); }
+      .round.on { background: var(--accent-soft); border-color: rgba(226, 181, 127, 0.4); color: var(--accent); }
+      .round.hangup { background: rgba(224, 123, 123, 0.16); border-color: rgba(224, 123, 123, 0.35); color: var(--danger); }
+      .primary {
+        width: 100%; padding: 14px 18px; border-radius: 999px; font-size: 15px; font-weight: 600;
+        color: #1a120b; background: linear-gradient(180deg, #f0c894, #d9a56b);
+        box-shadow: 0 12px 30px rgba(226, 181, 127, 0.18);
+      }
+      .primary:active { transform: scale(0.99); }
+      .hint { font-size: 11px; line-height: 1.6; color: var(--muted); text-align: center; }
+      .error { font-size: 11px; color: var(--danger); text-align: center; min-height: 16px; }
+      .hidden { display: none !important; }
+      .footer { display: flex; gap: 8px; align-items: center; justify-content: center; }
+      .svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <span class="dot" id="dot"></span>
+        <span class="brand">PAIVOICE</span>
+        <span class="name" id="name">白起</span>
+      </header>
+
+      <main>
+        <div class="stage">
+          <div class="orb" id="orb"></div>
+          <div class="state" id="state">准备接通</div>
+          <div class="transcript" id="transcript"></div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div id="start-wrap">
+          <button class="primary" id="start">接通</button>
+          <p class="hint" id="start-hint">麦克风只在通话期间开启，音频不落盘</p>
+        </div>
+
+        <div class="controls hidden" id="controls">
+          <button class="round" id="mute" aria-label="静音">
+            <svg class="svg" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+          </button>
+          <button class="round hangup" id="hangup" aria-label="挂断">
+            <svg class="svg" viewBox="0 0 24 24"><path d="M3 10c5-4 13-4 18 0v3a2 2 0 0 1-2 2h-3l-1-3c-2-.5-4-.5-6 0l-1 3H5a2 2 0 0 1-2-2z"/></svg>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import VoiceCall from './voice-call.js';
+
+      const q = new URLSearchParams(location.search);
+      const ws = q.get('ws') || 'ws://127.0.0.1:8780';
+      const video = q.get('video') === '1';
+      const name = q.get('name') || '白起';
+
+      const $ = (id) => document.getElementById(id);
+      $('name').textContent = name;
+
+      const orb = $('orb');
+      const dot = $('dot');
+      const stateEl = $('state');
+      const transcript = $('transcript');
+      const errorEl = $('error');
+      const startWrap = $('start-wrap');
+      const controls = $('controls');
+      let call = null;
+      let muted = false;
+
+      const LABEL = {
+        idle: '待接通',
+        listening: '在听你说',
+        thinking: '在想…',
+        speaking: '正在说',
+        reconnecting: '断线重连中…',
+        closed: '已挂断',
+      };
+
+      function setMode(mode) {
+        stateEl.textContent = LABEL[mode] || mode || '';
+        orb.className = `orb ${mode || ''}`;
+        dot.className = `dot ${mode === 'idle' || mode === 'closed' ? '' : 'on'}`;
+        if (mode === 'closed') {
+          startWrap.classList.remove('hidden');
+          controls.classList.add('hidden');
+        }
+        window.parent?.postMessage({ type: 'paivoice:state', mode }, '*');
+      }
+
+      function addBubble(kind, text) {
+        const t = String(text || '').trim();
+        if (!t) return;
+        const el = document.createElement('div');
+        el.className = `bubble ${kind}`;
+        el.textContent = t;
+        transcript.appendChild(el);
+        transcript.scrollTop = transcript.scrollHeight;
+      }
+
+      function fail(msg) {
+        errorEl.textContent = String(msg || '');
+      }
+
+      $('start').addEventListener('click', async () => {
+        fail('');
+        errorEl.textContent = '';
+        transcript.innerHTML = '';
+        addBubble('sys', video ? '画面只给 TA 看，不会录下来' : '音频不落盘');
+        call = new VoiceCall({
+          url: ws,
+          video,
+          on: {
+            state: (m) => setMode(m),
+            transcript: (msg) => addBubble('me', msg?.text),
+            reply: (msg) => addBubble('ai', msg?.text),
+            error: (e) => fail(e),
+            reconnecting: () => setMode('reconnecting'),
+            resumed: () => setMode('listening'),
+            closed: () => {
+              setMode('closed');
+              window.parent?.postMessage({ type: 'paivoice:end' }, '*');
+            },
+          },
+        });
+        startWrap.classList.add('hidden');
+        controls.classList.remove('hidden');
+        setMode('thinking');
+        try {
+          await call.start();
+          setMode('listening');
+        } catch (e) {
+          fail(e?.message || String(e));
+          setMode('idle');
+          startWrap.classList.remove('hidden');
+          controls.classList.add('hidden');
+        }
+      });
+
+      $('mute').addEventListener('click', async () => {
+        if (!call) return;
+        muted = !muted;
+        try {
+          await call.setMuted(muted);
+          $('mute').classList.toggle('on', muted);
+          $('mute').setAttribute('aria-label', muted ? '取消静音' : '静音');
+        } catch (e) {
+          fail(e?.message || String(e));
+        }
+      });
+
+      $('hangup').addEventListener('click', () => {
+        try {
+          call?.hangup();
+        } catch {
+          /* ignore */
+        }
+        setMode('closed');
+        window.parent?.postMessage({ type: 'paivoice:end' }, '*');
+      });
+    </script>
+  </body>
+</html>

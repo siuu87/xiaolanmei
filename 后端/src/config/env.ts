@@ -45,6 +45,17 @@ export const env = {
    */
   messageTimestamps: (process.env.MESSAGE_TIMESTAMPS ?? 'on').toLowerCase() !== 'off',
 
+  /**
+   * 心潮·念（2026-10-20）：取代 Ombre Brain 的「此刻 + 记忆 + 驱力」引擎。
+   * 地址/令牌留空则整条链路静默跳过，内心面板回退到旧的本地情绪面板。
+   */
+  xinchaoUrl: (process.env.XINCHAO_URL ?? '').trim().replace(/\/+$/, ''),
+  xinchaoToken: (process.env.XINCHAO_TOKEN ?? '').trim(),
+  xinchaoTimeoutMs: envNum(process.env.XINCHAO_TIMEOUT_MS, 3000, 500),
+
+  /** PaiVoice 实时语音层（2026-10-20）：前端 iframe 的 WebSocket 地址 */
+  paivoiceWsUrl: (process.env.PAIVOICE_WS_URL ?? 'ws://127.0.0.1:8780').trim(),
+
   // 智能编程工作区（阶段 10）：默认后端上一级 = 项目根 d:\小蓝莓
   workspacePath: process.env.WORKSPACE_PATH ?? path.resolve(process.cwd(), '..'),
 } as const;

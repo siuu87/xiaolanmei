@@ -46,12 +46,38 @@ EMOTION_MODEL=
 EMOTION_MAX_TOKENS=100
 EMOTION_ANALYZER=on
 
-# 后端/.env —— Ombre Brain 外部记忆专线（留空 = 整条链路静默跳过）
-OB_BASE_URL=
-OB_API_TOKEN=
+# 后端/.env —— 心潮·念（取代 Ombre Brain；留空 = 回退本地情绪面板）
+XINCHAO_URL=http://127.0.0.1:18110
+XINCHAO_TOKEN=
+
+# 后端/.env —— PaiVoice 实时语音（留空/没起 = 回退旧通话浮层）
+PAIVOICE_WS_URL=ws://127.0.0.1:8780
 ```
 
-配好后可用 `GET /api/ob/status` 自检 OB 连通性。
+配好后可用 `GET /api/xinchao/status` 自检心潮；`GET /api/paivoice/status` 探 PaiVoice。
+
+### 可选侧车：心潮·念 / PaiVoice
+
+**心潮·念**（驱力 + 记忆，取代 OB，端口 18110）：
+
+```bash
+cd xinchao
+node --env-file=.env src/server.js
+```
+
+首次部署参考仓库里的 `docs/从这里开始.md`。本项目本地用最小 `.env` 跑通：
+`SHADOW_MODE=true`、关闭模型与 OB、开启 Dashboard。内心面板读 `/v1/now` 与 `/v1/state`。
+
+**PaiVoice**（实时语音，端口 8780）：
+
+```bash
+cd pai-voice
+PAIVOICE_ASR_PROVIDER=mock PAIVOICE_TTS_PROVIDER=mock \
+  .venv/Scripts/python.exe realtime-core/server.py
+```
+
+mock 只用于跑通链路；真实通话要配 ASR / TTS Key 与回复端 Adapter（见 PaiVoice `docs/`）。
+PaiVoice 没起时语音通话自动回退旧浮层。
 
 ### 可选侧车：Remember-Me 相册
 
@@ -93,8 +119,15 @@ npm run dev
   存档保持干净、重复渲染幂等；`MESSAGE_TIMESTAMPS=off` 可关
 - **情绪与内心**：每轮开流前用轻量模型分析最近 4 条消息（80/20 加权）→ 四维状态机
   （占有欲与醋意 / 紧绷与情欲 / 克制与自控 / 示弱与委屈）平滑累积 → 把数值翻译成**行为策略**
-  注入主模型；**内心**面板（点聊天顶栏名字 / 名字旁小红点）展示六条数值、此刻心绪、心境小剧场与策略标签
-- **Ombre Brain（OB）记忆专线**：可与外部记忆服务并行检索、注入 `[记忆回想]`，流式结束后异步归档（可选）
+  注入主模型；**内心**面板（点聊天顶栏名字 / 名字旁小红点）展示心潮的此刻与 11 股驱力
+  （心潮没起时回退六条本地情绪数值）
+- **心潮·念（Xinchao·Nian）**：自托管的「驱力 + 记忆」引擎。每轮开流前拉 `/v1/now`
+  注入 `[心潮 · 此刻]`，流结束后把「她说 / 他回」写回 `/v1/conversation-event`；
+  **内心面板直接展示 11 股驱力与此刻情绪**（心潮没起时回退本地情绪面板）。
+  取代原来的 Ombre Brain 专线
+- **PaiVoice 实时语音**：语音通话走独立 `/paivoice` 页面（自托管实时语音层，AGPL-3.0，
+  独立于主包），支持打断、断线接回、实时字幕与静音；PaiVoice 没起时自动回退原通话浮层。
+  视频通话仍走旧浮层（PaiVoice 的画面是「给回复端看」，不是双向视频流）
 - **思考链**：接入带推理能力的模型（DeepSeek-R1 / Qwen3 / o1 等）时，实时展示推理过程，可折叠
 - 工具调用：联网搜索 / 读网页、长期记忆（memo）、**灵感待办池**、**开源项目关注清单**、智能编程（读写文件、跑命令、git）、**真·控手机**
 - 多模态：发图识图（截图课表自动录入）、语音输入、表情包
