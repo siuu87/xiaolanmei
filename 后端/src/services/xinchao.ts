@@ -137,8 +137,7 @@ function toDriveEntries(raw: unknown): XinchaoDrive[] {
 }
 
 /** 面板需要的状态（已裁剪，不返回黑匣子/念头原文/人格私密项） */
-export async function getXinchaoState(): Promise<XinchaoState | null> {
-  if (!xinchaoConfigured()) return null;
+export async function getXinchaoState(): Promise<XinchaoState | null> {  if (!xinchaoConfigured()) return null;
   try {
     const res = await xfetch('/v1/state');
     if (!res.ok) return null;
@@ -156,6 +155,29 @@ export async function getXinchaoState(): Promise<XinchaoState | null> {
       lastSettledAt: typeof j.lastSettledAt === 'string' ? j.lastSettledAt : null,
       thoughtCount,
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 心潮本地 Dashboard 的几页数据（2026-10-20）：
+ * snapshot / timeline / cabin / personality。走 `/v1/dashboard/*`，用服务令牌，
+ * 不依赖 dashboard 的 cookie 会话。只允许这四页，别把任意路径透传出去。
+ */
+export const XINCHAO_DASHBOARD_PAGES = ['snapshot', 'timeline', 'cabin', 'personality'] as const;
+export type XinchaoDashboardPage = (typeof XINCHAO_DASHBOARD_PAGES)[number];
+
+export async function getXinchaoDashboard(
+  page: XinchaoDashboardPage,
+  query = '',
+): Promise<unknown | null> {
+  if (!xinchaoConfigured()) return null;
+  try {
+    const suffix = query ? `?${query}` : '';
+    const res = await xfetch(`/v1/dashboard/${page}${suffix}`);
+    if (!res.ok) return null;
+    return (await res.json()) as unknown;
   } catch {
     return null;
   }

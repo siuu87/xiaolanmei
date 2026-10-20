@@ -1,9 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  XINCHAO_DASHBOARD_PAGES,
+  getXinchaoDashboard,
   getXinchaoHealth,
   getXinchaoNow,
   getXinchaoState,
   postXinchaoEvent,
+  type XinchaoDashboardPage,
 } from '../services/xinchao.js';
 
 /**
@@ -35,6 +38,22 @@ export async function xinchaoRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
     return state;
+  });
+
+  /** 心潮本地 Dashboard 的各页：snapshot / timeline / cabin / personality */
+  app.get('/xinchao/dashboard/:page', async (req, reply) => {
+    const { page } = req.params as { page: string };
+    if (!XINCHAO_DASHBOARD_PAGES.includes(page as XinchaoDashboardPage)) {
+      reply.code(404).send({ message: '未知的心潮页面' });
+      return;
+    }
+    const query = new URLSearchParams((req.query ?? {}) as Record<string, string>).toString();
+    const data = await getXinchaoDashboard(page as XinchaoDashboardPage, query);
+    if (!data) {
+      reply.code(503).send({ message: '心潮未启动或该页不可用' });
+      return;
+    }
+    return data;
   });
 
   app.post('/xinchao/event', async (req) => {

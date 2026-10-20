@@ -13,7 +13,6 @@
  *   - Esc 在 window 的 **capture** 阶段拦下来并 `stopPropagation()`，否则一次 Esc 连抽屉一起关。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -49,14 +48,7 @@ import {
   type MemoryCategory,
   type MemoryDTO,
 } from '@/lib/api/memories';
-import {
-  getXinchaoNow,
-  getXinchaoState,
-  getXinchaoStatus,
-  type XinchaoNow,
-  type XinchaoState,
-  type XinchaoStatus,
-} from '@/lib/api/xinchao';
+import { XinchaoPanel } from './XinchaoPanel';
 import { HEALTH_TEXT, probeModelHealth, useModelHealth } from './modelHealth';
 
 export function MindDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -430,167 +422,6 @@ function Sheet({ onClose }: { onClose: () => void }) {
         </section>
       </div>
     </motion.div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// ① 心潮 · 此刻（2026-10-20 起替代原「实时情绪」）
-// ─────────────────────────────────────────────────────────────
-
-/**
- * 心潮·念面板：直接读 `/api/xinchao/now` + `/api/xinchao/state`。
- * 心潮没起时给启动说明，并把旧的本地情绪面板作为 fallback 挂在下面。
- */
-function XinchaoPanel({ fallback }: { fallback: ReactNode }) {
-  const [status, setStatus] = useState<XinchaoStatus | null>(null);
-  const [now, setNow] = useState<XinchaoNow | null>(null);
-  const [xin, setXin] = useState<XinchaoState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErr('');
-    try {
-      const s = await getXinchaoStatus();
-      setStatus(s);
-      if (s.up) {
-        const [n, st] = await Promise.allSettled([getXinchaoNow(), getXinchaoState()]);
-        setNow(n.status === 'fulfilled' ? n.value : null);
-        setXin(st.status === 'fulfilled' ? st.value : null);
-      } else {
-        setNow(null);
-        setXin(null);
-      }
-    } catch (e) {
-      setErr((e as Error).message || '读取心潮失败');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (loading && !status) {
-    return (
-      <section
-        data-testid="xinchao-panel"
-        className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-[13px] text-[#6b7488]"
-      >
-        <Loader2 size={15} className="animate-spin" /> 正在听心潮…
-      </section>
-    );
-  }
-
-  if (!status?.up) {
-    return (
-      <div className="space-y-3">
-        <div data-testid="xinchao-setup" className="rounded-2xl border border-dashed border-white/[0.1] px-3.5 py-3">
-          <div className="flex items-center gap-2 text-[12px] text-[#e8ecf6]">
-            <Heart size={13} className="text-rose-300" /> 心潮还没启动
-          </div>
-          <p className="mt-1.5 text-[11px] leading-4 text-[#6b7488]">
-            {status?.configured ? '服务不可达。' : '没配置 XINCHAO_URL。'} 当前先显示本地情绪。
-          </p>
-          <pre className="mt-2 overflow-x-auto rounded-lg bg-white/[0.04] px-2.5 py-1.5 text-[10px] leading-4 text-[#9aa4bb]">
-            {'cd xinchao\nnode --env-file=.env src/server.js'}
-          </pre>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-2 rounded-lg bg-white/[0.07] px-2.5 py-1 text-[11px] text-[#e8ecf6] transition hover:bg-white/[0.1]"
-          >
-            重试
-          </button>
-        </div>
-        {fallback}
-      </div>
-    );
-  }
-
-  const nowText = (now?.text ?? '')
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith('【'))
-    .join('\n');
-  const drives = xin?.drives ?? [];
-
-  return (
-    <section
-      data-testid="xinchao-panel"
-      className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
-    >
-      <div data-testid="xinchao-head" className="flex flex-nowrap items-center gap-1.5">
-        <Heart size={13} className="shrink-0 text-rose-300" />
-        <h2 className="shrink-0 whitespace-nowrap text-[12px] font-medium text-[#e8ecf6]">
-          心潮 · 此刻
-        </h2>
-        <span
-          data-testid="xinchao-mood"
-          className="shrink-0 whitespace-nowrap rounded-full bg-[#c9a96a]/15 px-2 py-0.5 text-[11px] text-[#e8d3a5]"
-        >
-          {xin?.emotion?.label ?? '—'}
-        </span>
-        <div className="min-w-0 flex-1" />
-        <span className="shrink-0 whitespace-nowrap text-[10px] text-[#6b7488]">
-          rev {xin?.revision ?? 0}
-        </span>
-        <button
-          type="button"
-          onClick={() => void load()}
-          aria-label="刷新心潮"
-          data-testid="xinchao-refresh"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#6b7488] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
-        >
-          <RefreshCw size={12} className={cn(loading && 'animate-spin')} />
-        </button>
-      </div>
-
-      <p
-        data-testid="xinchao-now"
-        className="mt-3 whitespace-pre-wrap rounded-xl bg-white/[0.04] px-3 py-2 text-[12px] leading-5 text-[#9aa4bb]"
-      >
-        {nowText || '心潮暂时没有话说。'}
-      </p>
-
-      <div className="mt-3 space-y-1.5">
-        {drives.map((d) => {
-          const v = Math.round(d.value * 100);
-          return (
-            <div
-              key={d.key}
-              data-testid={`xinchao-drive-${d.key}`}
-              data-value={v}
-              className="flex items-center gap-2"
-            >
-              <span className="w-[5.2rem] shrink-0 whitespace-nowrap text-[10px] text-[#9aa4bb]">
-                {d.label}
-              </span>
-              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                <div
-                  className="h-full rounded-full bg-[#c9a96a] transition-all"
-                  style={{ width: `${v}%` }}
-                />
-              </div>
-              <span className="w-7 shrink-0 text-right text-[10px] tabular-nums text-[#c9a96a]">
-                {v}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-3 flex items-center justify-between border-t border-white/[0.07] pt-2 text-[10px] text-[#6b7488]">
-        <span>心潮念 · {drives.length} 股驱力</span>
-        <span>
-          {status.version ? `v${status.version}` : ''}
-          {status.mode ? ` · ${status.mode}` : ''}
-        </span>
-      </div>
-      {err && <p className="mt-1 text-[10px] text-rose-400/70">{err}</p>}
-    </section>
   );
 }
 
