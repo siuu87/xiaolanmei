@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatSince, formatTimeInterval } from '@/lib/timeAgo';
-import { useProfileStore } from '@/stores/profileStore';
 import {
   getCharacterMeta,
   getCharacterState,
@@ -106,8 +105,7 @@ type StreamCard =
   | { kind: 'thought'; id: string; at: number; data: ThoughtDTO };
 
 function Sheet({ onClose }: { onClose: () => void }) {
-  const partnerName = useProfileStore((s) => s.partnerName);
-  const title = `${partnerName || '白起'}的内心`;
+  const title = '内心';
 
   const health = useModelHealth();
   const [probing, setProbing] = useState(false);
@@ -242,19 +240,22 @@ function Sheet({ onClose }: { onClose: () => void }) {
       transition={{ type: 'spring', damping: 30, stiffness: 320 }}
     >
       {/* ── 标题栏 ─────────────────────────────────────────── */}
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-white/[0.07] px-3">
+      <div
+        data-testid="mind-head"
+        className="flex h-14 shrink-0 items-center gap-1.5 border-b border-white/[0.07] px-2.5"
+      >
         <button
           type="button"
           onClick={onClose}
           aria-label="返回"
           data-testid="mind-back"
-          className="flex items-center gap-0.5 rounded-lg px-2 py-1.5 text-[14px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+          className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-[12px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
           返回
         </button>
         <div
-          className="flex-1 truncate text-center text-[15px] font-medium text-[#e8ecf6]"
+          className="min-w-0 flex-1 whitespace-nowrap text-center text-[14px] font-medium text-[#e8ecf6]"
           data-testid="mind-title"
         >
           {title}
@@ -265,11 +266,11 @@ function Sheet({ onClose }: { onClose: () => void }) {
           aria-label="重探模型通道"
           data-testid="model-health"
           data-health={health}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-[11px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
         >
           <span
             className={cn(
-              'h-1.5 w-1.5 rounded-full',
+              'h-1.5 w-1.5 shrink-0 rounded-full',
               health === 'ok'
                 ? 'bg-emerald-400'
                 : health === 'probing'
@@ -450,17 +451,17 @@ function EmotionPanel({
       data-testid="emotion-panel"
       className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
     >
-      <div className="flex items-center gap-2">
-        <Heart size={15} className="text-rose-300" />
-        <h2 className="text-[14px] font-medium text-[#e8ecf6]">实时情绪</h2>
+      <div data-testid="emotion-head" className="flex flex-nowrap items-center gap-1.5">
+        <Heart size={13} className="shrink-0 text-rose-300" />
+        <h2 className="shrink-0 whitespace-nowrap text-[12px] font-medium text-[#e8ecf6]">实时情绪</h2>
         <span
           data-testid="emotion-mood"
-          className="rounded-full bg-rose-400/15 px-2.5 py-0.5 text-[12px] text-rose-100"
+          className="shrink-0 whitespace-nowrap rounded-full bg-rose-400/15 px-2 py-0.5 text-[11px] text-rose-100"
         >
           {state.currentMood}
         </span>
-        <div className="flex-1" />
-        <span className="text-[11px] text-[#6b7488]">
+        <div className="min-w-0 flex-1" />
+        <span className="shrink-0 whitespace-nowrap text-[10px] text-[#6b7488]">
           {state.turnCount > 0 ? `第 ${state.turnCount} 轮 · ${formatSince(state.updatedAt)}前` : '还没聊过'}
         </span>
         <button
@@ -468,7 +469,7 @@ function EmotionPanel({
           onClick={onReset}
           aria-label="把数值重置为初始值"
           data-testid="emotion-reset"
-          className="rounded-md px-1.5 py-1 text-[11px] text-[#6b7488] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+          className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] text-[#6b7488] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
         >
           重置
         </button>
@@ -506,7 +507,9 @@ function EmotionPanel({
           const style = FIELD_STYLE[f.key];
           return (
             <div key={f.key} className="flex items-center gap-3">
-              <span className="w-12 shrink-0 text-[12px] text-[#9aa4bb]">{f.label}</span>
+              <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-[11px] text-[#9aa4bb]">
+                {f.label}
+              </span>
               <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                 <div
                   className={cn('h-full rounded-full transition-all', style.bar)}

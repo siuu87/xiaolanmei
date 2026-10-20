@@ -105,7 +105,7 @@ function ConnDot() {
     <span
       data-testid="conn-dot"
       role="img"
-      aria-label="白起的内心"
+      aria-label="内心"
       title={HEALTH_TEXT[state]}
       className="inline-flex shrink-0 items-center justify-center"
     >
@@ -1469,7 +1469,7 @@ export function ChatPage() {
             type="button"
             onClick={() => setMindOpen(true)}
             data-testid="chat-title-btn"
-            aria-label={`打开${ownerName}的内心与记忆`}
+            aria-label="打开内心与记忆"
             title={`点开看${ownerName}此刻在想什么`}
             className={cn(
               'pointer-events-auto flex min-w-0 max-w-[54vw] items-center gap-1.5 rounded-full px-1.5 py-0.5 transition md:max-w-[420px]',
