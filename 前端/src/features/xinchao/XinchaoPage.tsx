@@ -8,7 +8,9 @@
  * 视觉走暖暗色（和 PaiVoice / 深夜电台同一套夜色调），并用 PageShell 的 token
  * 覆盖成深色，保证「点开 = 整页不透明」。
  */
+import { useState } from 'react';
 import {
+  ChevronDown,
   Clock,
   Heart,
   Home,
@@ -62,6 +64,8 @@ function Section({
   extra,
   children,
   testid,
+  open,
+  onToggle,
 }: {
   icon: ReactNode;
   title: string;
@@ -69,13 +73,22 @@ function Section({
   extra?: string;
   children: ReactNode;
   testid: string;
+  open: boolean;
+  onToggle: () => void;
 }) {
   return (
     <section
       data-testid={testid}
-      className="rounded-2xl border border-amber-900/25 bg-[#120c08] p-4"
+      data-open={open ? '1' : '0'}
+      className="rounded-2xl border border-amber-900/25 bg-[#120c08]"
     >
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        data-testid={`${testid}-toggle`}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left transition active:bg-white/[0.02]"
+      >
         <span className="text-amber-300/80">{icon}</span>
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <h2 className="whitespace-nowrap text-[13px] font-medium text-amber-50">{title}</h2>
@@ -86,8 +99,12 @@ function Section({
         {extra && (
           <span className="shrink-0 whitespace-nowrap text-[10px] text-amber-200/40">{extra}</span>
         )}
-      </div>
-      <div className="mt-3">{children}</div>
+        <ChevronDown
+          size={14}
+          className={cn('shrink-0 text-amber-200/40 transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
     </section>
   );
 }
@@ -175,6 +192,13 @@ function Flower({
 
 export function XinchaoPage() {
   const { status, now, state, snap, timeline, cabin, persona, loading, err, reload } = useXinchaoData();
+  /** 除花瓣外，下面五个页面都可折叠；默认全收起，页面更清爽 */
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const SECTION_KEYS = ['thoughts', 'emotion', 'timeline', 'cabin', 'personality'] as const;
+  const allOpen = SECTION_KEYS.every((k) => open[k]);
+  const toggle = (k: string) => setOpen((v) => ({ ...v, [k]: !v[k] }));
+  const toggleAll = () =>
+    setOpen(Object.fromEntries(SECTION_KEYS.map((k) => [k, !allOpen])) as Record<string, boolean>);
 
   type UiDrive = { key: string; value: number; short?: string; label?: string };
   const drives: UiDrive[] = (snap?.drives ?? state?.drives ?? []).map((d) => {
@@ -291,6 +315,21 @@ export function XinchaoPage() {
             </div>
           </section>
 
+          {/* 除花瓣外都可折叠 */}
+          <div data-testid="xinchao-fold-controls" className="flex items-center justify-between px-1">
+            <p className="text-[10px] text-amber-200/30">
+              花瓣下面 {SECTION_KEYS.length} 个页面，可单独展开
+            </p>
+            <button
+              type="button"
+              onClick={toggleAll}
+              data-testid="xinchao-fold-all"
+              className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[10px] text-amber-200/60 transition hover:bg-white/[0.09]"
+            >
+              {allOpen ? '全部收起' : '全部展开'}
+            </button>
+          </div>
+
           {/* 念头池：单独一类 */}
           <Section
             icon={<Sparkles size={14} />}
@@ -298,6 +337,8 @@ export function XinchaoPage() {
             eyebrow="THOUGHTS"
             extra={`闪念 ${flashCount} · 执念 ${obsessionCount}`}
             testid="xinchao-thoughts"
+            open={!!open.thoughts}
+            onToggle={() => toggle('thoughts')}
           >
             {thoughtLines.length === 0 ? (
               <p className="text-[11px] leading-5 text-amber-200/35">
@@ -318,7 +359,14 @@ export function XinchaoPage() {
           </Section>
 
           {/* 情绪 */}
-          <Section icon={<Heart size={14} />} title="情绪" eyebrow="EMOTION" testid="xinchao-emotion">
+          <Section
+            icon={<Heart size={14} />}
+            title="情绪"
+            eyebrow="EMOTION"
+            testid="xinchao-emotion"
+            open={!!open.emotion}
+            onToggle={() => toggle('emotion')}
+          >
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-amber-200/80">{emotion?.label ?? '—'}</span>
               <span className="text-[10px] text-amber-200/35">
@@ -354,6 +402,8 @@ export function XinchaoPage() {
             eyebrow="TIMELINE"
             extra={`${timelineItems.length} 条`}
             testid="xinchao-timeline"
+            open={!!open.timeline}
+            onToggle={() => toggle('timeline')}
           >
             {timelineItems.length === 0 ? (
               <p className="text-[11px] text-amber-200/35">还没有结算记录。</p>
@@ -393,6 +443,8 @@ export function XinchaoPage() {
             eyebrow="CABIN"
             extra={`结余 ${cabin?.totals?.net ?? 0}`}
             testid="xinchao-cabin"
+            open={!!open.cabin}
+            onToggle={() => toggle('cabin')}
           >
             {cabinNotes.length === 0 ? (
               <p className="text-[11px] text-amber-200/35">小屋还没有信。</p>
@@ -429,7 +481,14 @@ export function XinchaoPage() {
           </Section>
 
           {/* 内核 */}
-          <Section icon={<Star size={14} />} title="内核" eyebrow="CORE" testid="xinchao-personality">
+          <Section
+            icon={<Star size={14} />}
+            title="内核"
+            eyebrow="CORE"
+            testid="xinchao-personality"
+            open={!!open.personality}
+            onToggle={() => toggle('personality')}
+          >
             {persona?.available === false ? (
               <p className="text-[11px] leading-5 text-amber-200/35">
                 这个月还没做回顾。心潮会在月度回顾时生成内核（18 维 + 锚点），

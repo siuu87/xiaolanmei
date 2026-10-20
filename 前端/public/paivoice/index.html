@@ -102,9 +102,13 @@
         .round { width: 44px; height: 44px; }
         .primary { padding: 11px 16px; font-size: 14px; }
       }
-      /* 悬浮窗外框已经有名字/计时/挂断，页面自己的 header 就不重复了 */
+      /* 悬浮窗外框已经有名字/计时/退出，页面自己的 header 就不重复了 */
       body.compact header { display: none !important; }
       body.compact #app { padding-top: 10px; }
+      /* 悬浮窗里字幕再收一点，保证「接通 / 挂断」两个按钮始终在屏幕内 */
+      body.compact .transcript { max-height: 22vh; }
+      /* 结束后的「重新接通」按钮做小一号，避免和外框的「退出」抢注意力 */
+      body.compact .primary { padding: 10px 16px; font-size: 14px; }
 </style>
   </head>
   <body>

@@ -62,7 +62,6 @@ import { CaptionView } from '@/components/VoiceCaption';
 import { useVoiceCaption } from '@/lib/caption/useVoiceCaption';
 import { useSpeechRecognition } from '@/lib/useSpeechRecognition';
 import { SearchOverlay } from './SearchOverlay';
-import { MindDrawer } from './MindDrawer';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
 import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
@@ -733,8 +732,7 @@ export function ChatPage() {
   /** 打开菜单时这条消息在视口里的位置（浮层要贴着它弹出，微信长按那种） */
   const [menuRect, setMenuRect] = useState<{ top: number; bottom: number; left: number; width: number } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  // 「白起的内心与记忆中枢」：点顶栏那颗小红点打开
-  const [mindOpen, setMindOpen] = useState(false);
+  // 点名字直接进「心潮念」完整页（2026-10-20 起不再开旧的内心中枢抽屉）
   /** 多图堆叠卡片点开的大图查看器（整页、纯色不透明，遵守「点开=新页面」） */
   const [photoView, setPhotoView] = useState<{ urls: string[]; index: number } | null>(null);
   const openDrawer = useShellStore((s) => s.openDrawer);
@@ -1487,7 +1485,7 @@ export function ChatPage() {
               原来那盏红点从最右侧挪到这里当状态指示（`ConnDot` 已改成纯 span）。 */}
           <button
             type="button"
-            onClick={() => setMindOpen(true)}
+            onClick={() => navigate('/xinchao')}
             data-testid="chat-title-btn"
             aria-label="打开内心与记忆"
             title={`点开看${ownerName}此刻在想什么`}
@@ -2267,9 +2265,6 @@ export function ChatPage() {
 
       {/* 微信式全屏搜索 */}
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-
-      {/* 白起的内心与记忆中枢（点顶栏小红点） */}
-      <MindDrawer open={mindOpen} onClose={() => setMindOpen(false)} />
 
       {/* 通话浮层（语音 / 视频共用）。挂断 → endCall 落库 + 往聊天流推卡片 */}
       {/* 通话：语音优先走 PaiVoice 实时语音层；没起 / 视频通话回退旧浮层 */}

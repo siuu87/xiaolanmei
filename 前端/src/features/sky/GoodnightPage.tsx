@@ -7,6 +7,7 @@ import {
   Upload,
   Trash2,
   Volume2,
+  Volume1,
   Wind,
   Clock,
   Music2,
@@ -168,7 +169,9 @@ export function GoodnightPage() {
   const [source, setSource] = useState<'llm' | 'local' | null>(null);
   const [ambient, setAmbient] = useState<AmbientKind | null>(null);
   const [noise, setNoise] = useState<NoiseType | null>(null);
-  const [volume, setVolume] = useState(0.5);
+  /** 环境声（雨/风/炉火/白噪）与 AI 人声分开调；环境声默认压得很低 */
+  const [ambientVolume, setAmbientVolume] = useState(0.18);
+  const [voiceVolume, setVoiceVolume] = useState(0.9);
   const [pillowUnlocked, setPillowUnlocked] = useState(false);
 
   /* ── 书架（故事台） ─────────────────────────────────── */
@@ -199,13 +202,15 @@ export function GoodnightPage() {
   const playingRef = useRef(false);
   const channelRef = useRef<RadioChannel | null>(null);
   const pendingNotesRef = useRef<string[]>([]);
-  const volumeRef = useRef(volume);
+  const ambientVolumeRef = useRef(ambientVolume);
+  const voiceVolumeRef = useRef(voiceVolume);
   const chapterRef = useRef(0);
   const bookRef = useRef<ReadingBook | null>(null);
   playingRef.current = playing;
   channelRef.current = channel;
   pendingNotesRef.current = pendingNotes;
-  volumeRef.current = volume;
+  ambientVolumeRef.current = ambientVolume;
+  voiceVolumeRef.current = voiceVolume;
   chapterRef.current = chapterIdx;
   bookRef.current = book;
 
@@ -242,7 +247,7 @@ export function GoodnightPage() {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = new Ctor();
       const gain = ctx.createGain();
-      gain.gain.value = volumeRef.current;
+      gain.gain.value = ambientVolumeRef.current * 0.8;
       gain.connect(ctx.destination);
       gainRef.current = gain;
       audioCtxRef.current = ctx;
@@ -293,11 +298,11 @@ export function GoodnightPage() {
     [],
   );
 
-  // 音量实时调节（BGM + 上传音频 + TTS 用同一个值）
+  // 音量实时调节：环境声走 gain（再乘 0.8 压低底噪），人声只影响 TTS
   useEffect(() => {
-    if (gainRef.current) gainRef.current.gain.value = volume;
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume]);
+    if (gainRef.current) gainRef.current.gain.value = ambientVolume * 0.8;
+    if (audioRef.current) audioRef.current.volume = ambientVolume;
+  }, [ambientVolume]);
 
   /* ── TTS：Web Speech ───────────────────────────────── */
   function pickVoice(): SpeechSynthesisVoice | undefined {
@@ -337,7 +342,7 @@ export function GoodnightPage() {
       u.lang = 'zh-CN';
       u.rate = opts.rate ?? 0.9;
       u.pitch = opts.pitch ?? 0.92;
-      u.volume = Math.min(1, Math.max(0, opts.volume ?? volumeRef.current));
+      u.volume = Math.min(1, Math.max(0, opts.volume ?? voiceVolumeRef.current));
       // 兜底：某些 WebView / headless 不会触发 onend
       const fallback = window.setTimeout(done, Math.min(20_000, Math.max(2500, clean.length * 230)));
       u.onend = () => {
@@ -449,7 +454,7 @@ export function GoodnightPage() {
         await speakText(seg.text, {
           rate: seg.tone === '耳语' ? 0.78 : seg.tone === '低声' ? 0.84 : 0.9,
           pitch: seg.tone === '耳语' ? 1.04 : 0.92,
-          volume: seg.tone === '耳语' ? volumeRef.current * 0.75 : volumeRef.current,
+          volume: seg.tone === '耳语' ? voiceVolumeRef.current * 0.75 : voiceVolumeRef.current,
         });
       } else if (seg.type === 'pause') {
         await sleep(seg.ms);
@@ -559,7 +564,7 @@ export function GoodnightPage() {
         await speakText(text, {
           rate: tone === '耳语' ? 0.72 : 0.8,
           pitch: tone === '耳语' ? 1.05 : 0.95,
-          volume: volumeRef.current * (tone === '耳语' ? 0.6 : 0.75),
+          volume: voiceVolumeRef.current * (tone === '耳语' ? 0.6 : 0.75),
         });
         await sleep(1600);
       }
@@ -628,7 +633,7 @@ export function GoodnightPage() {
       return;
     }
     audio.src = item.url;
-    audio.volume = volume;
+    audio.volume = ambientVolume;
     audio.play().then(
       () => setPlayingId(item.id),
       () => setError('播放失败，可能是格式不支持'),
@@ -826,18 +831,38 @@ export function GoodnightPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <Volume2 className="h-3.5 w-3.5 shrink-0 text-amber-200/50" />
+                <span className="w-7 shrink-0 text-[10px] text-amber-200/40">环境</span>
                 <input
                   type="range"
                   min={0}
                   max={1}
                   step={0.01}
-                  value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  aria-label="音量"
+                  value={ambientVolume}
+                  onChange={(e) => setAmbientVolume(Number(e.target.value))}
+                  aria-label="环境音量"
+                  data-testid="radio-ambient-volume"
                   className="w-full accent-amber-400"
                 />
                 <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-amber-200/40">
-                  {Math.round(volume * 100)}%
+                  {Math.round(ambientVolume * 100)}%
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2">
+                <Volume1 className="h-3.5 w-3.5 shrink-0 text-amber-200/50" />
+                <span className="w-7 shrink-0 text-[10px] text-amber-200/40">人声</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={voiceVolume}
+                  onChange={(e) => setVoiceVolume(Number(e.target.value))}
+                  aria-label="人声音量"
+                  data-testid="radio-voice-volume"
+                  className="w-full accent-amber-400"
+                />
+                <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-amber-200/40">
+                  {Math.round(voiceVolume * 100)}%
                 </span>
               </div>
               <p className="mt-1 truncate text-[10px] text-amber-200/35">

@@ -92,9 +92,30 @@ cd ..
 bash scripts/start-remember-me.sh        # 默认 http://127.0.0.1:8787
 ```
 
-侧车没起时相册自动回退本地相册，旧数据不受影响。
+侧车没起时相册页会显示启动说明（不再回退本地相册 —— 相册现在只有「记忆相册」一种）。
 
 > 注意：`better-sqlite3` 原生模块按 Node 24（NODE_MODULE_VERSION 137）编译，需用 Node 24 启动。
+
+### 可选侧车：小食谱（recipe-nook）
+
+「今天吃什么」`/food` 由 recipe-nook 提供（FastAPI，端口 8790）：
+
+```bash
+cd recipe-nook
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+cp .env.example .env                      # 估热量的 LLM key 可不填
+.venv/Scripts/python.exe -m uvicorn server:app --port 8790
+```
+
+菜谱库需自行构建，最小可用库用公有领域的 HowToCook（几秒入库，372 道 / 123 张图）：
+
+```bash
+git clone --depth 1 https://github.com/Anduin2017/HowToCook <你的路径>
+.venv/Scripts/python.exe scripts/build_htc.py <你的路径>
+```
+
+侧车没起时 `/food` 会显示上面这几条命令 + 「重新连接 / 先回去」，不会白屏。
 
 ### 前端（端口 5173）
 
@@ -127,9 +148,10 @@ npm run dev
   小屋、内核；「内心」只留摘要卡与入口（心潮没起时回退本地情绪面板）。
   取代原来的 Ombre Brain 专线
 - **PaiVoice 实时语音**：语音通话走独立 `/paivoice` 页面（自托管实时语音层，AGPL-3.0，
-  独立于主包），**默认完整通话页（能看实时对话），一键切 320×440 可拖拽悬浮窗**
-  （可收起成小条且不断线），支持打断、断线接回、实时字幕与静音；
-  PaiVoice 没起时自动回退原通话浮层。
+  独立于主包），**默认完整通话页（能看实时对话），一键切 340 宽可拖拽悬浮窗**
+  （可收起成标题条且不断线，尺寸跟着视口算，矮屏也不会被顶出屏幕），支持打断、断线接回、
+  实时字幕与静音。标题栏最右是一颗带文字的**「✕ 退出」**（Esc 在整页时也等于退出，
+  悬浮窗时只收起不挂断）。PaiVoice 没起时自动回退原通话浮层。
   视频通话仍走旧浮层（PaiVoice 的画面是「给回复端看」，不是双向视频流）
 - **思考链**：接入带推理能力的模型（DeepSeek-R1 / Qwen3 / o1 等）时，实时展示推理过程，可折叠
 - 工具调用：联网搜索 / 读网页、长期记忆（memo）、**灵感待办池**、**开源项目关注清单**、智能编程（读写文件、跑命令、git）、**真·控手机**
@@ -150,14 +172,19 @@ npm run dev
   （正文有字体混淆，需外部下载器导出后粘贴）。进度会标记 `local / pending`，
   不谎报「已同步」。阅读日历下面是**杂志式书架**：书面朝外、透明书架、一行三本、
   分类各一行、可左右滑动，点书直接进阅读器
-- **gallery**：相册 · 图像记忆。优先接入 [Remember-Me](https://github.com/peanutsuee/Remember-Me)
-  的 Dusk Archive Dashboard；侧车没起时自动回退本地相册
+- **gallery**：相册 · 图像记忆。**只接** [Remember-Me](https://github.com/peanutsuee/Remember-Me)
+  的 Dusk Archive Dashboard（整页嵌入，右上角有「退出」键）；不再有本地上传 / 瀑布流
 - **diary**：日记本
 - **goodnight（MIDNIGHT FM）**：四个台的深夜电台 ——
   FM 90.6 故事台（直接读「一起读」书架里的小说正文）、FM 97.3 夜话台（关灯后的第一人称随笔）、
   FM 104.1 音乐台（雨 / 风 / 炉火 / 白粉棕噪音 + 自己导入的哄睡音频）、
   隐藏枕话台（心跳底噪 + 低声耳语）。切台先放程序化 BGM，后台生成广播稿 + Web Speech 朗读；
-  可随时递纸条，让白起在下一段自然回应；保留睡眠定时器与 Wake Lock
+  可随时递纸条，让白起在下一段自然回应；保留睡眠定时器与 Wake Lock。
+  **底噪与 AI 人声分两条音量**（底噪默认 0.18，人声默认 0.9），电流声不再盖过人声
+- **xinchao（心潮·念）**：`/xinchao` 独立完整页 —— 花瓣（11 股驱力）、念头池（单独一类）、
+  情绪、时间线、小屋、内核；除花瓣外全部可折叠（有「全部展开 / 收起」）。
+  **点聊天顶栏的名字直接进这里**
+
 
 ### 酒馆小手机（tavern）
 - 角色卡 / 世界书 / 人设卡（SillyTavern 风格）
@@ -165,9 +192,19 @@ npm run dev
 
 ### 其他
 - **灵感待办池**（`/wishlist`）：灵感 ↔ 待办二态，回车即记；AI 也能直接往里写
-- **今天吃什么**：recipe-nook 外部侧车（食材替代 / 过敏提醒）
+- **今天吃什么**（`/food`，小食谱 recipe-nook）：本机 FastAPI 侧车（127.0.0.1:8790），
+  28 万道菜谱 / 吃什么转盘 / 按餐记饭 / AI 饮食打分。页面套小蓝莓自己的 `PageShell`
+  （返回键 + 标题 + 新窗口打开 / 重新连接），iframe 右上角另钉一颗「退出」；
+  **侧车没起时显示可直接照敲的启动命令 + 「重新连接 / 先回去」**，不会白屏。
+  最小可用库 = 公有领域 HowToCook（`scripts/build_htc.py`，几秒入库）
 - 纪念日、课程表、备忘录、蓝莓信箱、日记本等详情页
 - 设置：模型站子、深浅色主题、MCP、技能、记忆、提示词、同步、编程工作区
+
+### 退出键（整屏页的统一出路）
+凡是「整屏托管的别人的页面」（小食谱 iframe、记忆相册 iframe、PaiVoice 通话），
+右上角都有一颗**带文字的「✕ 退出」**（`components/ExitButton.tsx`，z-1300）。
+整页通话里 Esc 也等于退出；悬浮窗里 Esc 只收起不挂断。
+
 
 > **「世界书」已并入「他的资料 → 语言风格与输出」**：世界设定与说话方式都写成风格条目，
 > 按「前 / 中 / 后」插入 system 提示词。抽屉工具箱里不再有独立世界书入口。
