@@ -1,21 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { formatNoteDate, normalizeLetterTheme, type InspirationNote } from './notesData';
 import { letterParts } from './LetterArt';
+import { EnvelopeArt } from './LetterEnvelope';
 
 /**
- * 「深夜来信 Live」Daily Card
+ * 「深夜来信」信封卡（2026-10-20 重做）
  *
- * 视觉规范：
- * - 容器：圆角 18px，暗色毛玻璃（午夜蓝半透明）+ 1px 极细高光边框 + 柔和外阴影；
- * - 顶部状态栏：左侧胶囊标签「深夜来信 Live」带情绪微光点，右侧信件时间（等宽数字）；
- * - 主视觉 + 标题：标题用 Averia Serif Libre 衬线体，字号稍大、排版疏朗；
- * - 正文：2~3 行摘要，行距与字距舒适，底部渐变截断；
- * - 底部：左侧心境小标签，右侧轻量火漆印章微光图标；
- * - 点击整张卡片 → 沉浸式全屏信件阅读器（/letter/:id）。
+ * 用户要求：「每个信封都是一个卡片，参考恋与制作人的心动邀约的信封，点开是一个弹窗」。
+ * 所以这里不再是「封面图 + 标题 + 摘要」的那种信息卡，而是**一枚信封本身就是卡片**：
  *
- * 纯视觉组件，不读取任何本地真实文件。
+ * - 卡片主体 = `EnvelopeArt`（背板 / 信纸 / 前面板倒 V 口 / 可翻开的封盖 / 火漆 / 丝带）；
+ * - **已读的信封盖是翻开的**（能看见里面的信纸），未读的还是封着的 —— 一眼能分出看过没有，
+ *   这是信封造型比普通卡片最值钱的地方；
+ * - 信封上只留最少的字：顶部「深夜来信 · 第 N 封」，下面日期与心境标签；
+ * - 火漆印跟着 `letter_theme` 换色（素雅暗红 / 纪念日金箔 / 夜色银蓝）。
+ *
+ * 点整张卡 → 弹窗（`LetterReaderLayer`），不再跳整页路由。
  */
 
 /** 收信时间：2026.10.13 01:20 */
@@ -45,21 +47,23 @@ export function mailMoodTag(note: InspirationNote): string {
   return '🌆 黄昏信箱';
 }
 
-/* ------------------------------ 单张卡片 ------------------------------ */
+/* ------------------------------ 单张信封卡 ------------------------------ */
 
 export function DailyLetterCard({
   note,
   unread,
+  seq,
   onClick,
 }: {
   note: InspirationNote;
   unread: boolean;
+  /** 第几封（1 = 最早那封） */
+  seq?: number;
   onClick: () => void;
 }) {
   const title = useMemo(() => mailTitle(note), [note]);
   const mood = useMemo(() => mailMoodTag(note), [note]);
   const time = useMemo(() => formatMailTime(note.createdAt), [note]);
-  // 信封主题：封面 / 月亮 / 星点 / 火漆整套换色
   const theme = normalizeLetterTheme(note.letterTheme);
   const parts = letterParts(theme);
 
@@ -67,102 +71,43 @@ export function DailyLetterCard({
     <motion.button
       type="button"
       onClick={onClick}
-      aria-label={`阅读 ${formatNoteDate(note.createdAt)} 的深夜来信`}
-      data-testid="daily-letter-card"
+      aria-label={`拆开 ${formatNoteDate(note.createdAt)} 的深夜来信`}
+      data-testid="letter-card"
       data-note-id={note.id}
       data-letter-theme={theme}
-      whileTap={{ scale: 0.985 }}
+      data-unread={unread ? '1' : '0'}
+      whileTap={{ scale: 0.97 }}
       className={cn(
-        'group relative block w-full overflow-hidden rounded-[18px] border border-white/[0.09]',
-        'bg-[#0f1424]/70 p-3.5 text-left backdrop-blur-xl',
-        'shadow-[0_10px_30px_-14px_rgba(0,0,0,0.65)] transition-all duration-300',
-        'hover:-translate-y-[2px] hover:border-white/[0.16] hover:bg-[#131a2c]/80',
-        'hover:shadow-[0_16px_38px_-14px_rgba(0,0,0,0.75)]',
+        'group block w-full text-left',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
       )}
     >
-      {/* 顶部极细高光 */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
-      />
-
-      {/* 顶部状态栏 */}
-      <div className="flex items-center justify-between gap-2">
-        <span
-          data-testid="mail-live-pill"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.06] px-2 py-[3px]"
-        >
-          <span
-            aria-hidden
-            data-testid="mail-live-dot"
-            className="block h-1 w-1 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary))]"
-          />
-          <span className="font-letter text-[10px] leading-none tracking-wide text-[#c3cade]">
-            深夜来信 Live
-          </span>
-        </span>
-        <span
-          data-testid="mail-time"
-          className="truncate text-[10px] font-light tabular-nums text-[#6b7488]"
-        >
-          {time}
-        </span>
-      </div>
-
-      {/* 主视觉：极简夜空 + 月亮微光 */}
+      {/* 卡片外壳：深色玻璃托底，让暖色信封在上面「浮」出来 */}
       <div
-        data-testid="mail-cover"
-        className={cn('relative mt-3 h-[72px] overflow-hidden rounded-[12px]', parts.cover)}
+        className={cn(
+          'relative overflow-hidden rounded-[16px] border border-white/[0.08] p-2.5',
+          'bg-[#0f1424]/70 backdrop-blur-xl',
+          'shadow-[0_10px_26px_-14px_rgba(0,0,0,0.7)] transition-all duration-300',
+          'group-hover:-translate-y-[2px] group-hover:border-white/[0.16]',
+          'group-hover:shadow-[0_16px_34px_-14px_rgba(0,0,0,0.8)]',
+        )}
       >
         <span
           aria-hidden
-          className={cn(
-            'absolute right-4 top-3 block h-7 w-7 rounded-full',
-            parts.moon,
-            parts.moonGlow,
-          )}
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
         />
-        {['left-[18%] top-[26%]', 'left-[34%] top-[62%]', 'left-[52%] top-[20%]'].map((pos) => (
-          <span
-            key={pos}
-            aria-hidden
-            className={cn('absolute block h-[2px] w-[2px] rounded-full', parts.star, pos)}
-          />
-        ))}
-        <span
-          aria-hidden
-          className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 h-8',
-            parts.coverFade,
-          )}
-        />
-      </div>
 
-      {/* 标题 + 摘要 */}
-      <div className="mt-3">
-        <h3
-          data-testid="mail-title"
-          className="line-clamp-2 font-letter text-[18px] font-normal leading-snug tracking-[0.01em] text-[#e8ecf6]"
-        >
-          {title}
-        </h3>
-        <div className="relative mt-1.5">
-          <p
-            data-testid="mail-summary"
-            className="line-clamp-3 text-[12px] leading-[19px] tracking-[0.015em] text-[#98a1b6]"
-          >
-            {note.content}
-          </p>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-[#0e1322] via-[#0e1322]/80 to-transparent"
-        />
-        </div>
-      </div>
-
-      {/* 底部：心境标签 + 火漆印章 */}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5">
+        {/* 顶栏：深夜来信 · 第 N 封 ｜ 未读点 */}
+        <div className="flex items-center justify-between gap-1.5 px-0.5">
+          <span className="flex min-w-0 items-center gap-1">
+            <span className="shrink-0 text-[10px] leading-none">💌</span>
+            <span
+              data-testid="mail-live-pill"
+              className="truncate font-letter text-[10px] leading-none tracking-[0.06em] text-[#c3cade]"
+            >
+              深夜来信{seq ? ` · 第 ${seq} 封` : ''}
+            </span>
+          </span>
           {unread && (
             <span
               aria-label="未读"
@@ -170,37 +115,61 @@ export function DailyLetterCard({
               className="block h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]"
             />
           )}
+        </div>
+
+        {/* 信封本体：3:2 实体信封，已读的封盖半掀开（卡片里空间小，掀到底会被裁掉） */}
+        <div className="mt-2 px-0.5">
+          <EnvelopeArt
+            theme={theme}
+            opened={!unread}
+            flapAngle={88}
+            sealClass="h-5 w-5 text-[9px]"
+            className="aspect-[3/2] w-full"
+          >
+            {/* 信封口里露出的那一小截：首句 */}
+            <p
+              data-testid="mail-summary"
+              className={cn(
+                'px-2 pt-2 text-[8px] leading-[13px] tracking-[0.02em]',
+                parts.ink,
+                'opacity-75',
+              )}
+            >
+              {title}
+            </p>
+          </EnvelopeArt>
+        </div>
+
+        {/* 底部：日期 + 心境 */}
+        <div className="mt-2 flex items-center justify-between gap-1.5 px-0.5">
+          <span
+            data-testid="mail-time"
+            className="truncate text-[9px] font-light tabular-nums text-[#6b7488]"
+          >
+            {time}
+          </span>
           <span
             data-testid="mail-mood"
-            className="truncate rounded-full bg-white/[0.04] px-2 py-[3px] text-[9px] font-light tracking-wide text-[#7f879b]"
+            className="shrink-0 truncate rounded-full bg-white/[0.05] px-1.5 py-[2px] text-[8px] font-light tracking-wide text-[#7f879b]"
           >
             {mood}
           </span>
-        </span>
-        <span
-          aria-hidden
-          data-testid="mail-seal"
-          className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
-            'text-[10px] transition-transform duration-300 group-hover:scale-105',
-            parts.seal,
-            parts.sealGlow,
-          )}
-        >
-          🫐
-        </span>
+        </div>
       </div>
     </motion.button>
   );
 }
 
-/* ------------------------------ 横向卡片流 ------------------------------ */
+/* ------------------------------ 信封网格 ------------------------------ */
 
 /**
- * 横向平滑滑动的卡片流：一张卡片 = 一封来信，左右滑动翻阅。
- * `maxLetters` 限制几张（抽屉里地方小，只放最近 5 封，其余走「全部」）。
+ * **每封信一枚信封卡**的网格：一行两张，像一册收着的信。
+ *
+ * 为什么不用原来的横向滑动流：横向流里卡片被裁掉大半（一屏只能完整看到一张），
+ * 而「一枚信封」的乐趣在于**一眼看到一沓**——哪封拆过、哪封还没，扫一眼就知道。
+ * 所以改成两列网格往下排。
  */
-export function LetterSwiper({
+export function LetterGrid({
   notes,
   readIds,
   onOpen,
@@ -214,58 +183,36 @@ export function LetterSwiper({
   emptyHint?: string;
 }) {
   const list = maxLetters ? notes.slice(0, maxLetters) : notes;
-  const [active, setActive] = useState(0);
 
   if (list.length === 0) {
     return (
-      <div className="py-4 text-center text-[10px] text-muted-foreground/60" data-testid="mail-empty">
-        {emptyHint}
+      <div
+        data-testid="mail-empty"
+        className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-5 py-10 text-center"
+      >
+        <span className="text-2xl opacity-40">💌</span>
+        <span className="text-[12px] text-muted-foreground/70">{emptyHint}</span>
       </div>
     );
   }
 
-  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const card = el.firstElementChild as HTMLElement | null;
-    const step = card ? card.getBoundingClientRect().width + 12 : el.clientWidth;
-    setActive(Math.max(0, Math.min(list.length - 1, Math.round(el.scrollLeft / step))));
-  };
+  // 第 N 封：最新的编号最大，跟抽屉收信匣一致
+  const total = notes.length;
 
   return (
-    <div data-testid="mail-swiper">
-      <div
-        onScroll={onScroll}
-        // 抽屉的「左滑关闭」和这里翻信是同一个手势：标记一下，让边缘手势把手让出来
-        data-no-drawer-swipe
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        data-testid="mail-scroller"
-      >
-        {list.map((n, i) => (
-          <div
-            key={n.id}
-            className="w-[78%] shrink-0 snap-center"
-            data-testid="mail-slide"
-            data-slide-index={i}
-          >
-            <DailyLetterCard note={n} unread={!readIds.includes(n.id)} onClick={() => onOpen(n.id)} />
-          </div>
-        ))}
-      </div>
-
-      {/* 页码点 */}
-      {list.length > 1 && (
-        <div className="mt-2 flex items-center justify-center gap-1" data-testid="mail-dots">
-          {list.map((n, i) => (
-            <span
-              key={n.id}
-              className={cn(
-                'h-1 rounded-full transition-all duration-300',
-                i === active ? 'w-3 bg-primary' : 'w-1 bg-white/20',
-              )}
-            />
-          ))}
-        </div>
-      )}
+    <div
+      data-testid="mail-grid"
+      className="grid grid-cols-2 gap-3"
+    >
+      {list.map((n, i) => (
+        <DailyLetterCard
+          key={n.id}
+          note={n}
+          unread={!readIds.includes(n.id)}
+          seq={total - i}
+          onClick={() => onOpen(n.id)}
+        />
+      ))}
     </div>
   );
 }
