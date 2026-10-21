@@ -191,4 +191,26 @@ sudo certbot --nginx -d your.domain.com
 6. nginx 反代 + `certbot` 证书
 7. 浏览器开 `https://域名` 访问
 
+## 九、以后怎么更新 VPS 上的小蓝莓
+
+代码在 VPS 上是 `git clone` 下来的，更新就是「拉新代码 → 重装依赖(如有) → 重新构建 → 重启」：
+
+```bash
+ssh root@<IP>
+cd xiaolanmei
+git pull                         # 拉最新（含你本地 push 的提交）
+# 如果 package.json 变了，重装依赖：
+cd 后端 && npm i && cd ../前端 && npm i
+# 前端是静态构建产物(dist/)，改了界面必须重新 build：
+cd 前端 && npm run build
+# 重启 pm2 进程（构建完前端也要重启 serve）：
+pm2 restart xiaolan-backend xiaolan-frontend
+```
+
+要点：
+- **前端必须 `npm run build` 再重启**，否则你本地改的界面不会生效（生产跑的是 dist/，不是源码）。
+- 只改了后端逻辑：重启 `xiaolan-backend` 即可；若后端改了数据库结构，drizzle 会在启动时自动迁移。
+- 改了 `后端/.env`：重启 `xiaolan-backend` 让新配置生效。
+- 不确定改了哪：两个进程都 restart 最稳。
+
 > 卡在哪一步，把报错贴给我，我帮你定位。
