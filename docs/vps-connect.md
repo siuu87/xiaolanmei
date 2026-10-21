@@ -92,7 +92,11 @@ ssh root@<IP>      # 不再要密码
 
 ```bash
 # 1) 装 Node 24（better-sqlite3 按 NODE_MODULE_VERSION 137 编译，必须用 Node 24，否则 ERR_DLOPEN_FAILED）
-node -v        # 期望 v24.x；用 nvm / 官方二进制都行
+#    Ubuntu/Debian 用 NodeSource 官方二进制（最稳）：
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt-get install -y nodejs
+node -v        # 期望 v24.x
+#    或开发机常用 nvm：`curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash` 后 `nvm install 24`
 
 # 2) 拉代码（已含 Ombre Brain 记忆中枢等全部改动）
 git clone https://github.com/siuu87/xiaolanmei.git
@@ -111,9 +115,12 @@ cp 后端/.env.example 后端/.env
 #     - OMBRE_DASHBOARD_PASSWORD 填 Ombre-Brain Dashboard 的真实密码
 #   注意：.env 已被 gitignore，不会进仓库，但 VPS 上自己要保护好（别 777）
 
-# 5) 启动（生产建议用进程管理器，如 pm2 / nohup / systemd）
-cd 后端 && node --import tsx src/server.ts          # 后端 :3001
-cd 前端 && npm run build && npx vite preview --host --port 5173   # 前端 :5173
+# 5) 启动（生产用 pm2 守护，掉线/重启自动拉起）
+sudo npm i -g pm2
+cd 后端 && pm2 start "node --import tsx src/server.ts" --name xiaolan-backend
+cd 前端 && npm run build
+pm2 serve dist 5173 --name xiaolan-frontend --spa   # 前端生产用静态服务（SPA 回退）
+pm2 save && pm2 startup                            # 开机自启（按提示把生成的 sudo 命令跑一遍）
 ```
 
 **可选侧车**（README 各有启动命令，VPS 上同样用 Node24 / Python 起）：
@@ -121,6 +128,7 @@ cd 前端 && npm run build && npx vite preview --host --port 5173   # 前端 :51
 - 小食谱 `recipe-nook/` → :8790
 - 记忆相册 `remember-me/` → :8787
 - PaiVoice `pai-voice/` → :8780
+- 小食谱 / 相册需要 Python3：`sudo apt install -y python3 python3-venv python3-pip`
 
 ---
 
