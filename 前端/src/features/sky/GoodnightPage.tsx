@@ -18,6 +18,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { StarBackdrop } from './StarBackdrop';
+import { AmbientMixer, type LayerId } from './AmbientMixer';
 import { useWakeLock } from '@/lib/useWakeLock';
 import { cn } from '@/lib/utils';
 import { listSleepAudio, uploadSleepAudio, deleteSleepAudio, type SleepAudioDTO } from '@/lib/api/sleepAudio';
@@ -46,14 +47,17 @@ import {
  * TTS 用浏览器自带的 Web Speech（零依赖、不花钱）；没有可用语音时静默降级为文字。
  */
 
-type NoiseType = 'white' | 'pink' | 'brown';
-type AmbientKind = NoiseType | 'rain' | 'wind' | 'fire' | 'heart';
-
-const NOISE_META: Record<NoiseType, { label: string; hint: string }> = {
-  white: { label: '白噪音', hint: '均匀沙沙声 · 专注' },
-  pink: { label: '粉噪音', hint: '更柔 · 像细雨' },
-  brown: { label: '棕噪音', hint: '低沉 · 像远雷海浪' },
-};
+/**
+ * 环境声＝三条**可叠加**的音轨（雨 / 壁炉 / 风），另有一条不参与混音的心跳底噪。
+ *
+ * 2026-10-21 按用户要求去掉了白 / 粉 / 棕噪音 —— 那三个是「频率颜色」的技术名词，
+ * 听起来像参数而不是场景；现在只留能想象的画面，并且允许同时开几条。
+ */
+type LayerKind = LayerId;
+/** 心跳只给枕话台垫底，不进混音台 */
+type BedKind = 'heart';
+/** 兼容旧调用点：雨/风/炉火走混音台，heart 走单条底噪 */
+type AmbientKind = LayerKind | BedKind;
 
 const CHANNELS: RadioChannelMeta[] = [
   { id: 'story', freq: 'FM 90.6', name: '故事台', subtitle: '听一段故事', accent: '#e9b872' },
@@ -73,54 +77,38 @@ function formatTime(sec: number | null): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/** 生成一段可循环的环境声（2~4 秒）。白/粉/棕之外，再加雨/风/炉火/心跳。 */
+/** 生成一段可无缝循环的环境声（2~4 秒）。只有雨 / 壁炉 / 风 / 心跳。 */
 function makeAmbientBuffer(ctx: AudioContext, kind: AmbientKind): AudioBuffer {
-  const seconds = kind === 'heart' ? 4 : 2;
+  const seconds = kind === 'heart' ? 4 : 3;
   const len = Math.floor(ctx.sampleRate * seconds);
   const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
   const data = buffer.getChannelData(0);
 
-  if (kind === 'white') {
-    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-    return buffer;
-  }
-  if (kind === 'pink') {
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-    for (let i = 0; i < len; i++) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.969 * b2 + white * 0.153852;
-      b3 = 0.8665 * b3 + white * 0.3104856;
-      b4 = 0.55 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.016898;
-      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
-      b6 = white * 0.115926;
-    }
-    return buffer;
-  }
-  if (kind === 'brown' || kind === 'wind' || kind === 'rain' || kind === 'fire') {
+  if (kind === 'rain' || kind === 'fire' || kind === 'wind') {
+    // 三条轨道共用一个「棕噪底」，再各自加特征层，保证低音区不刺耳
     let last = 0;
     for (let i = 0; i < len; i++) {
       const white = Math.random() * 2 - 1;
       last = (last + 0.02 * white) / 1.02;
-      let v = last * 3.5;
+      let v = last * 3.2;
       if (kind === 'rain') {
-        // 雨：棕噪 + 偶尔的水滴
-        v *= 0.55;
-        if (Math.random() < 0.0025) v += (Math.random() * 2 - 1) * 0.8;
+        // 雨：厚底噪 + 细密高音（雨点打在窗上）+ 偶尔一颗大水珠
+        v = v * 0.5 + white * 0.1;
+        if (Math.random() < 0.0022) v += (Math.random() * 2 - 1) * 0.7;
       } else if (kind === 'fire') {
-        // 炉火：低沉底噪 + 随机爆裂
-        v *= 0.5;
-        if (Math.random() < 0.004) v += (Math.random() * 2 - 1) * 0.9;
-      } else if (kind === 'wind') {
-        // 风：慢速起伏
-        v *= 0.45 + 0.25 * Math.sin((i / len) * Math.PI * 2);
+        // 壁炉：很低的燃烧底 + 不规则爆裂（爆裂密度随时间抖一点，像火苗呼吸）
+        v *= 0.42;
+        const density = 0.0035 + 0.002 * Math.sin((i / len) * Math.PI * 2);
+        if (Math.random() < density) v += (Math.random() * 2 - 1) * (0.55 + Math.random() * 0.5);
+      } else {
+        // 风：两条不同周期的正弦做阵风，忽强忽弱
+        const gust =
+          0.34 + 0.2 * Math.sin((i / len) * Math.PI * 2) + 0.1 * Math.sin((i / len) * Math.PI * 6.5);
+        v *= Math.max(0.12, gust);
       }
       data[i] = v;
     }
-    if (kind === 'wind' || kind === 'rain' || kind === 'fire') return buffer;
-    return buffer;
+    return loopSmooth(buffer);
   }
 
   // heart：每 1.1 秒两次低频搏动 + 一层很低的底噪
@@ -146,6 +134,23 @@ function makeAmbientBuffer(ctx: AudioContext, kind: AmbientKind): AudioBuffer {
   return buffer;
 }
 
+/**
+ * 把缓冲的首尾做交叉淡化，循环接缝才不会「咔」一下。
+ * 之前每条噪声都直接首尾相接，雨声里能听到规律的爆点。
+ */
+function loopSmooth(buffer: AudioBuffer): AudioBuffer {
+  const data = buffer.getChannelData(0);
+  const n = data.length;
+  const fade = Math.min(Math.floor(n * 0.08), 4096);
+  const tail = data.slice(n - fade);
+  for (let i = 0; i < fade; i++) {
+    const t = i / fade;
+    // 头部渐变到「尾部同位置」，接缝两侧数值连续
+    data[i] = data[i] * t + tail[i] * (1 - t);
+  }
+  return buffer;
+}
+
 /** 喇叭/耳机的左右耳提示（仅 UI 文案；Web Speech 不支持声道，留给以后接 TTS） */
 function earLabel(ear?: 'left' | 'right'): string {
   return ear === 'left' ? '左耳' : ear === 'right' ? '右耳' : '';
@@ -167,9 +172,11 @@ export function GoodnightPage() {
   const [line, setLine] = useState('');
   const [status, setStatus] = useState('');
   const [source, setSource] = useState<'llm' | 'local' | null>(null);
-  const [ambient, setAmbient] = useState<AmbientKind | null>(null);
-  const [noise, setNoise] = useState<NoiseType | null>(null);
-  /** 环境声（雨/风/炉火/白噪）与 AI 人声分开调；环境声默认压得很低 */
+  /** 心跳底噪（只给枕话台垫底，不进混音台） */
+  const [bed, setBed] = useState<BedKind | null>(null);
+  /** 三条音轨各自的推子位置；>0 就是在播，可以同时开 */
+  const [levels, setLevels] = useState<Record<LayerKind, number>>({ rain: 0, fire: 0, wind: 0 });
+  /** 环境声总线（雨/风/炉火/心跳共用）与 AI 人声分开调；环境声默认压得很低 */
   const [ambientVolume, setAmbientVolume] = useState(0.18);
   const [voiceVolume, setVoiceVolume] = useState(0.9);
   const [pillowUnlocked, setPillowUnlocked] = useState(false);
@@ -192,8 +199,14 @@ export function GoodnightPage() {
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
-  const ambientSrcRef = useRef<AudioBufferSourceNode | null>(null);
+  /** 混音台：每条音轨一个常驻 source + 自己的 gain，推子只改 gain，不重启音源 */
+  const layersRef = useRef<Partial<Record<LayerKind, { src: AudioBufferSourceNode; gain: GainNode }>>>(
+    {},
+  );
+  /** 心跳底噪（单条，不参与混音） */
+  const bedRef = useRef<{ src: AudioBufferSourceNode; gain: GainNode } | null>(null);
   const buffersRef = useRef<Partial<Record<AmbientKind, AudioBuffer>>>({});
+  const levelsRef = useRef(levels);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** 语音代次：切台/暂停时 +1，旧的朗读循环看到代次变了就退出 */
   const tokenRef = useRef(0);
@@ -211,13 +224,16 @@ export function GoodnightPage() {
   pendingNotesRef.current = pendingNotes;
   ambientVolumeRef.current = ambientVolume;
   voiceVolumeRef.current = voiceVolume;
+  levelsRef.current = levels;
   chapterRef.current = chapterIdx;
   bookRef.current = book;
 
   const channelMeta = useMemo(() => CHANNELS.find((c) => c.id === channel) ?? null, [channel]);
   const lightsOff = !!channelMeta?.lightsOff;
 
-  useWakeLock(playing || !!noise);
+  // 有任何一条轨在响就算「还在出声」，别让屏幕睡过去
+  const hasAmbient = !!bed || levels.rain > 0 || levels.fire > 0 || levels.wind > 0;
+  useWakeLock(playing || hasAmbient);
 
   /* ── 加载书架 + 已导入音频 ──────────────────────────── */
   const load = useCallback(async () => {
@@ -255,50 +271,115 @@ export function GoodnightPage() {
     return audioCtxRef.current;
   }
 
-  const stopAmbient = useCallback(() => {
-    if (ambientSrcRef.current) {
-      try {
-        ambientSrcRef.current.stop();
-      } catch {
-        /* already stopped */
-      }
-      ambientSrcRef.current.disconnect();
-      ambientSrcRef.current = null;
+  /** 取一条音轨的缓冲（按需生成并缓存） */
+  const bufferFor = useCallback((ctx: AudioContext, kind: AmbientKind): AudioBuffer => {
+    let buf = buffersRef.current[kind];
+    if (!buf) {
+      buf = makeAmbientBuffer(ctx, kind);
+      buffersRef.current[kind] = buf;
     }
-    setAmbient(null);
-    setNoise(null);
+    return buf;
   }, []);
 
-  const startAmbient = useCallback(
-    (kind: AmbientKind) => {
-      const ctx = getCtx();
-      if (ctx.state === 'suspended') void ctx.resume();
-      if (ambientSrcRef.current) {
+  const stopHeart = useCallback(() => {
+    const cur = bedRef.current;
+    if (!cur) return;
+    try {
+      cur.src.stop();
+    } catch {
+      /* already stopped */
+    }
+    cur.src.disconnect();
+    cur.gain.disconnect();
+    bedRef.current = null;
+    setBed(null);
+  }, []);
+
+  /**
+   * 设某条轨的音量。0 = 停掉这条轨（释放 bufferSource）；
+   * >0 而且还没起过 = 起一条常驻循环音源 —— 之后推子只改 gain，
+   * 所以来回推不会反复重启、也不会有断音。
+   */
+  const applyLevel = useCallback((kind: LayerKind, v: number) => {
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') void ctx.resume();
+    const cur = layersRef.current[kind];
+    if (v <= 0.005) {
+      if (cur) {
         try {
-          ambientSrcRef.current.stop();
+          cur.src.stop();
         } catch {
           /* already stopped */
         }
-        ambientSrcRef.current.disconnect();
+        cur.src.disconnect();
+        cur.gain.disconnect();
+        delete layersRef.current[kind];
       }
-      let buf = buffersRef.current[kind];
-      if (!buf) {
-        buf = makeAmbientBuffer(ctx, kind);
-        buffersRef.current[kind] = buf;
-      }
+      return;
+    }
+    if (!cur) {
       const src = ctx.createBufferSource();
-      src.buffer = buf;
+      src.buffer = bufferFor(ctx, kind);
       src.loop = true;
-      src.connect(gainRef.current!);
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      src.connect(g);
+      g.connect(gainRef.current!);
       src.start();
-      ambientSrcRef.current = src;
-      setAmbient(kind);
-      setNoise(kind === 'white' || kind === 'pink' || kind === 'brown' ? kind : null);
+      // 淡入，别「啪」地一下出现
+      g.gain.setTargetAtTime(v, ctx.currentTime, 0.12);
+      layersRef.current[kind] = { src, gain: g };
+    } else {
+      cur.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.06);
+    }
+  }, [bufferFor]);
+
+  const stopAmbient = useCallback(() => {
+    (Object.keys(layersRef.current) as LayerKind[]).forEach((k) => applyLevel(k, 0));
+    stopHeart();
+    setLevels({ rain: 0, fire: 0, wind: 0 });
+  }, [applyLevel, stopHeart]);
+
+  /** 推子被拖：同时更新 UI 与实际音量 */
+  const setLevel = useCallback(
+    (kind: LayerKind, v: number) => {
+      setLevels((prev) => (prev[kind] === v ? prev : { ...prev, [kind]: v }));
+      applyLevel(kind, v);
     },
-    [],
+    [applyLevel],
   );
 
-  // 音量实时调节：环境声走 gain（再乘 0.8 压低底噪），人声只影响 TTS
+  /** 只留一条轨（切台时的默认垫底）：其余推到 0 */
+  const soloLayer = useCallback(
+    (kind: LayerKind, v = 0.55) => {
+      (['rain', 'fire', 'wind'] as LayerKind[]).forEach((k) => {
+        const next = k === kind ? v : 0;
+        if (levelsRef.current[k] !== next) applyLevel(k, next);
+      });
+      setLevels({ rain: 0, fire: 0, wind: 0, [kind]: v } as Record<LayerKind, number>);
+    },
+    [applyLevel],
+  );
+
+  /** 心跳底噪（枕话台） */
+  const startHeart = useCallback(() => {
+    if (bedRef.current) return;
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') void ctx.resume();
+    const src = ctx.createBufferSource();
+    src.buffer = bufferFor(ctx, 'heart');
+    src.loop = true;
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    src.connect(g);
+    g.connect(gainRef.current!);
+    src.start();
+    g.gain.setTargetAtTime(1, ctx.currentTime, 0.2);
+    bedRef.current = { src, gain: g };
+    setBed('heart');
+  }, [bufferFor]);
+
+  // 音量实时调节：环境声走总线 gain（再乘 0.8 压低底噪），人声只影响 TTS
   useEffect(() => {
     if (gainRef.current) gainRef.current.gain.value = ambientVolume * 0.8;
     if (audioRef.current) audioRef.current.volume = ambientVolume;
@@ -386,12 +467,25 @@ export function GoodnightPage() {
       } catch {
         /* noop */
       }
-      if (ambientSrcRef.current) {
+      // 卸载时把混音台和心跳底噪都停掉，否则切走得留一条音轨在响
+      (Object.keys(layersRef.current) as LayerKind[]).forEach((k) => {
+        const cur = layersRef.current[k];
+        if (!cur) return;
         try {
-          ambientSrcRef.current.stop();
+          cur.src.stop();
         } catch {
           /* noop */
         }
+      });
+      layersRef.current = {};
+      const hb = bedRef.current;
+      if (hb) {
+        try {
+          hb.src.stop();
+        } catch {
+          /* noop */
+        }
+        bedRef.current = null;
       }
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -459,10 +553,14 @@ export function GoodnightPage() {
       } else if (seg.type === 'pause') {
         await sleep(seg.ms);
       } else if (seg.type === 'bgm') {
+        // 广播稿里说的天气 → 换一条主音轨（其余推子归零，保持「一段氛围」而不是越叠越厚）
         const mood = seg.mood;
-        startAmbient(mood.includes('雨') ? 'rain' : mood.includes('风') ? 'wind' : mood.includes('炉') ? 'fire' : 'brown');
+        soloLayer(
+          mood.includes('雨') ? 'rain' : mood.includes('风') ? 'wind' : mood.includes('炉') ? 'fire' : 'rain',
+          0.5,
+        );
       } else if (seg.type === 'se') {
-        if (/心跳/.test(seg.name)) startAmbient('heart');
+        if (/心跳/.test(seg.name)) startHeart();
         setStatus(`音效 · ${seg.name}`);
       } else if (seg.type === 'song') {
         setStatus(`♪ ${seg.name}${seg.artist ? ` · ${seg.artist}` : ''}`);
@@ -591,19 +689,24 @@ export function GoodnightPage() {
     setLine('');
     setStatus('正在调频…');
 
-    // 开场垫底：先出声，不等模型
-    if (id === 'music') startAmbient(noise ?? 'rain');
-    else if (id === 'talk') startAmbient('wind');
-    else if (id === 'story') startAmbient('rain');
-    else startAmbient('heart');
+    // 开场垫底：先出声，不等模型。
+    // 音乐台**尊重你现在的推子**——推过就不动你调好的混音；全在底部才默认给一点雨。
+    if (id === 'music') {
+      if (!hasAmbient) soloLayer('rain', 0.55);
+    } else if (id === 'talk') soloLayer('wind', 0.5);
+    else if (id === 'story') soloLayer('rain', 0.45);
+    else {
+      stopAmbient();
+      startHeart();
+    }
 
     const token = tokenRef.current;
     if (id === 'talk') void runTalkLoop(token);
     else if (id === 'story') void runStoryLoop(token);
     else if (id === 'pillow') void runPillowLoop(token);
     else {
-      setStatus('♪ 雨声 · 炉火');
-      setLine('先放一点雨声。');
+      setStatus('♪ 雨声 · 炉火 · 风');
+      setLine('推子往上推一点，就有声音了。');
     }
   };
 
@@ -866,7 +969,7 @@ export function GoodnightPage() {
                 </span>
               </div>
               <p className="mt-1 truncate text-[10px] text-amber-200/35">
-                {ambient ? `环境声 · ${ambient}` : channel ? '环境声已停' : '还没开台'}
+                {hasAmbient ? '环境声 · 混音中' : channel ? '环境声已停' : '还没开台'}
               </p>
             </div>
           </div>
@@ -956,45 +1059,12 @@ export function GoodnightPage() {
           </section>
         )}
 
-        {/* ── 环境声（白/粉/棕）─────────────────────── */}
+        {/* ── 环境声混音台：雨 / 壁炉 / 风，推子往上就出声，几条可叠加 ── */}
         <section className="mt-6">
           <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-200/50">
             <Wind className="h-3.5 w-3.5" /> 环境声
           </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(NOISE_META) as NoiseType[]).map((t) => {
-              const on = noise === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  data-testid={`noise-${t}`}
-                  onClick={() => {
-                    if (on) {
-                      stopAmbient();
-                      return;
-                    }
-                    startAmbient(t);
-                    if (channel !== 'music') {
-                      setChannel('music');
-                      channelRef.current = 'music';
-                    }
-                  }}
-                  className={cn(
-                    'rounded-2xl border px-2 py-3 text-center transition',
-                    on
-                      ? 'border-amber-300/50 bg-amber-300 text-[#1a120b]'
-                      : 'border-white/[0.07] bg-white/[0.03] text-amber-200/70 hover:bg-white/[0.06]',
-                  )}
-                >
-                  <span className="block text-[12px] font-medium">{NOISE_META[t].label}</span>
-                  <span className={cn('mt-0.5 block text-[9px]', on ? 'text-[#1a120b]/60' : 'text-amber-200/30')}>
-                    {NOISE_META[t].hint}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <AmbientMixer levels={levels} onChange={setLevel} />
         </section>
 
         {/* ── 我的哄睡音频 ──────────────────────────── */}
