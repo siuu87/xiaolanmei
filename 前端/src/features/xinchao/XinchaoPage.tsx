@@ -23,6 +23,7 @@ import type { ReactNode } from 'react';
 import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
 import { useXinchaoData } from './useXinchaoData';
+import { MemoryTab } from './OmbreMemories';
 
 const DRIVE_SHORT: Record<string, string> = {
   possess: '想她',
@@ -194,6 +195,8 @@ export function XinchaoPage() {
   const { status, now, state, snap, timeline, cabin, persona, loading, err, reload } = useXinchaoData();
   /** 除花瓣外，下面五个页面都可折叠；默认全收起，页面更清爽 */
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  /** 置顶导航：心潮（花瓣 + 念头池…）/ 记忆（OB 记忆桶）。切换两个中枢视图 */
+  const [tab, setTab] = useState<'xinchao' | 'memory'>('xinchao');
   const SECTION_KEYS = ['thoughts', 'emotion', 'timeline', 'cabin', 'personality'] as const;
   const allOpen = SECTION_KEYS.every((k) => open[k]);
   const toggle = (k: string) => setOpen((v) => ({ ...v, [k]: !v[k] }));
@@ -247,7 +250,33 @@ export function XinchaoPage() {
         </button>
       }
     >
-      {loading && !status ? (
+      {/* 置顶导航：心潮 / 记忆 —— 同一个中枢的两个视图 */}
+      <div
+        className="sticky top-0 z-20 -mx-4 mb-4 border-b border-amber-900/25 bg-[#0b0805]/95 px-4 py-2.5"
+        data-testid="xinchao-tabs"
+      >
+        <div className="flex gap-1.5">
+          {(['xinchao', 'memory'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              data-testid={`xinchao-tab-${t}`}
+              className={cn(
+                'rounded-full px-3.5 py-1.5 text-[12px] transition',
+                tab === t
+                  ? 'bg-amber-400 text-[#1a120b]'
+                  : 'bg-white/[0.05] text-amber-200/55 hover:bg-white/[0.09]',
+              )}
+            >
+              {t === 'xinchao' ? '心潮' : '记忆'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'xinchao' ? (
+      loading && !status ? (
         <div className="flex items-center gap-2 rounded-2xl border border-amber-900/25 bg-[#120c08] px-4 py-10 text-[13px] text-amber-200/40">
           <Loader2 size={15} className="animate-spin" /> 正在听心潮…
         </div>
@@ -522,6 +551,8 @@ export function XinchaoPage() {
             {status.mode ? ` · ${status.mode}` : ''} · 数据只读
           </p>
         </div>
+      )) : (
+        <MemoryTab />
       )}
       {err && <p className="mt-3 text-center text-[11px] text-rose-400/70">{err}</p>}
     </PageShell>

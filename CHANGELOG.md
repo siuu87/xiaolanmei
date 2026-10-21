@@ -18,6 +18,27 @@
   - 锚点：`ambient-mixer` / `fader-rain|fire|wind`（旧的 `noise-*` 锚点已删）。
 - 顺带修复：`loopSmooth` 之前被传成了 `Float32Array` 而不是 `AudioBuffer`（tsc 抓到）。
 
+### 新增
+
+- **内心（心潮）页接入 Ombre Brain 记忆中枢**：聊天顶栏小红点进入的「内心 / Mind」主页面（即 `/xinchao` 心潮完整页）
+  顶部新增**置顶导航「心潮 / 记忆」**，切换两个中枢视图：
+  - **心潮**：11 股驱力动态花瓣 + 念头池 + 情绪 + 时间线 + 小屋 + 内核（原有，未动）；
+  - **记忆**：经后端代理接入 [Ombre-Brain](https://github.com/P0luz/Ombre-Brain) 的 Dashboard 记忆桶，
+    与心潮情绪在同一个中枢里呼应，保持深夜手账、微光留白风格。
+  - 交互：`OmbreMemories.tsx` 支持 全部 / 动态 / 永久 / 已归档 / 已钉选 标签筛选 + 300ms 搜索防抖；
+    点记忆卡片弹出半透明手账风 `OmbreDetail.tsx`（Bottom Sheet）：状态/钉选/领域/标签 状态条 +
+    效价/唤醒/重要/活跃度 四块统计 + 正文 + 「为什么记住」+ 时间脚注。锚点 `ombre-detail`。
+- **后端 Ombre Dashboard 代理层**（`services/ombreDashboard.ts` + `routes/ombreDashboard.ts`，
+  注册到 `/api/ombre-dashboard`）：读取 `OMBRE_DASHBOARD_URL` / `OMBRE_DASHBOARD_PASSWORD` /
+  `OMBRE_DASHBOARD_TIMEOUT_MS` 三个环境变量；实现**自动会话登录**（捕获 `Set-Cookie`、并发去重锁、
+  401 自动重登重试一次）、`normalizeBucket` 跨版本字段兼容（id/bucket_id、content/content_preview、
+  created/created_at、type/bucket_type，并推导 `state: dynamic|permanent|pinned|archived`）。
+  暴露 `GET /status`（在线状态 + 记忆总数）、`GET /buckets`（type/state 过滤 + sort）、
+  `GET /search`（关键词）、`GET /buckets/:id`（单条详情）、`GET /probe`。`OMBRE_DASHBOARD_URL` 留空时
+  所有接口优雅返回 `configured:false`，前端显示「记忆中枢还没接上」。
+  - 自检：`GET /api/ombre-dashboard/status` 返回 `{configured:false,up:false,...}`（未配置不报错）。
+  - 前置：后端 `.env.example` 补了三个 `OMBRE_*` 变量与注释；`config/env.ts` 加了对应读取。
+
 ## 2026-10-20
 
 ### 新增

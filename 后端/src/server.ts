@@ -55,6 +55,7 @@ import { characterRoutes } from './routes/character.js';
 import { thoughtRoutes } from './routes/thoughts.js';
 import { obRoutes } from './routes/ob.js';
 import { xinchaoRoutes } from './routes/xinchao.js';
+import { ombreDashboardRoutes } from './routes/ombreDashboard.js';
 import { paivoiceRoutes } from './routes/paivoice.js';
 import { deviceRoutes } from './routes/device.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
@@ -128,6 +129,7 @@ async function main(): Promise<void> {
   await app.register(thoughtRoutes, { prefix: '/api' });
   await app.register(obRoutes, { prefix: '/api' });
   await app.register(xinchaoRoutes, { prefix: '/api' });
+  await app.register(ombreDashboardRoutes, { prefix: '/api' });
   await app.register(paivoiceRoutes, { prefix: '/api' });
   await app.register(deviceRoutes, { prefix: '/api' });
 

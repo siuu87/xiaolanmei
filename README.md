@@ -52,9 +52,15 @@ XINCHAO_TOKEN=
 
 # 后端/.env —— PaiVoice 实时语音（留空/没起 = 回退旧通话浮层）
 PAIVOICE_WS_URL=ws://127.0.0.1:8780
+
+# 后端/.env —— Ombre Brain Dashboard 记忆中枢（留空 = 内心页「记忆」标签显示未接入）
+OMBRE_DASHBOARD_URL=
+OMBRE_DASHBOARD_PASSWORD=
+OMBRE_DASHBOARD_TIMEOUT_MS=4000
 ```
 
-配好后可用 `GET /api/xinchao/status` 自检心潮；`GET /api/paivoice/status` 探 PaiVoice。
+配好后可用 `GET /api/xinchao/status` 自检心潮；`GET /api/paivoice/status` 探 PaiVoice；
+`GET /api/ombre-dashboard/status` 自检 Ombre Brain 记忆中枢（含 `/buckets` `/search` `/buckets/:id`）。
 
 ### 可选侧车：心潮·念 / PaiVoice
 
@@ -170,7 +176,11 @@ npm run dev
   注入 `[心潮 · 此刻]`，流结束后把「她说 / 他回」写回 `/v1/conversation-event`；
   **心潮是独立完整页 `/xinchao`**：花瓣（11 股驱力）、念头池（单独一类）、情绪、时间线、
   小屋、内核；「内心」只留摘要卡与入口（心潮没起时回退本地情绪面板）。
-  取代原来的 Ombre Brain 专线
+- **Ombre Brain 记忆中枢（内心页「记忆」标签）**：心潮页顶部置顶导航「心潮 / 记忆」切换两个中枢视图；
+  记忆标签经后端 `/api/ombre-dashboard` 代理接入 [Ombre-Brain](https://github.com/P0luz/Ombre-Brain) 的
+  Dashboard（令牌只在后端，自动会话登录 + 401 重登 + 并发锁）。支持 全部 / 动态 / 永久 / 已归档 / 已钉选
+  筛选与 300ms 搜索防抖，点记忆卡弹出半透明手账风 Bottom Sheet 详情（效价 / 唤醒 / 重要 / 活跃度 + 「为什么记住」）。
+  `OMBRE_DASHBOARD_URL` 没配时该标签显示「记忆中枢还没接上」，不报错。
 - **PaiVoice 实时语音**：语音通话走独立 `/paivoice` 页面（自托管实时语音层，AGPL-3.0，
   独立于主包），**默认完整通话页（能看实时对话），一键切 340 宽可拖拽悬浮窗**
   （可收起成标题条且不断线，尺寸跟着视口算，矮屏也不会被顶出屏幕），支持打断、断线接回、

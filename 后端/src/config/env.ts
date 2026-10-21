@@ -53,6 +53,16 @@ export const env = {
   xinchaoToken: (process.env.XINCHAO_TOKEN ?? '').trim(),
   xinchaoTimeoutMs: envNum(process.env.XINCHAO_TIMEOUT_MS, 3000, 500),
 
+  /**
+   * Ombre Brain Dashboard（OB 记忆中枢）代理（2026-10-21）。
+   * 心潮·念接管了 OB 的「此刻 + 驱力」，但 OB 的**长期记忆桶（buckets）**另有一套
+   * 基于密码 cookie 会话的 Dashboard。这里只做反向代理：小蓝莓后端代持会话，
+   * 前端永远拿不到 Dashboard 密码。没配置就整条链路静默跳过。
+   */
+  ombreDashboardUrl: (process.env.OMBRE_DASHBOARD_URL ?? '').trim().replace(/\/+$/, ''),
+  ombreDashboardPassword: (process.env.OMBRE_DASHBOARD_PASSWORD ?? '').trim(),
+  ombreDashboardTimeoutMs: envNum(process.env.OMBRE_DASHBOARD_TIMEOUT_MS, 4000, 500),
+
   /** PaiVoice 实时语音层（2026-10-20）：前端 iframe 的 WebSocket 地址 */
   paivoiceWsUrl: (process.env.PAIVOICE_WS_URL ?? 'ws://127.0.0.1:8780').trim(),
 
