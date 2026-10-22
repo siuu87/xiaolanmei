@@ -18,6 +18,7 @@ import {
   Copy,
   Menu,
   Globe,
+  Gift,
   Phone,
   User,
   Plus,
@@ -1517,6 +1518,21 @@ export function ChatPage() {
         </div>
         {/* 右侧按钮组：靠 ml-auto 顶到最右（中间槽改成绝对定位后，不再有 flex-1 撑开） */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/gifts')}
+            aria-label="礼物盒"
+            title="礼物盒"
+            data-testid="chat-gift"
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
+          >
+            {/* 呼吸光晕：与记忆 / 情绪中枢入口并列的发光礼物盒 */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-full bg-amber-300/30 blur-[6px] animate-pulse"
+            />
+            <Gift className="relative h-4 w-4 text-amber-200" />
+          </button>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}

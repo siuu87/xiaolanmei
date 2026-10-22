@@ -269,6 +269,17 @@ CREATE TABLE IF NOT EXISTS todos (
   deleted_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS gifts (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  gift_type TEXT NOT NULL DEFAULT 'letter',
+  is_opened INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS plugin_wishlist (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,

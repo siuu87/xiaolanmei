@@ -235,6 +235,22 @@ export const todos = sqliteTable('todos', {
 });
 
 /**
+ * 礼物盒（2026-10-22 新增）：哥哥送来的礼物，拆开前是封着的盒子，拆开后变成纪念架上的摆件。
+ * - giftType：letter（信）/ whisper（悄悄话）/ sticker（表情）/ easter（彩蛋）
+ * - isOpened：是否已拆
+ */
+export const gifts = sqliteTable('gifts', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  giftType: text('gift_type').notNull().default('letter'),
+  isOpened: integer('is_opened', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
  * 灵感与待办池（Inbox & Todo 统一模块 / plugin_wishlist）。
  *
  * 2026-10-18 重构：原三态 `kind`（idea/wish/todo）+ `done` 收敛为二态统一模型：

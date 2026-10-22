@@ -20,6 +20,7 @@ import { WishlistPage } from '@/features/wishlist/WishlistPage';
 import { NotesPage } from '@/features/notes/NotesPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { MemoHomePage } from '@/features/memo/MemoHomePage';
+import { GiftBoxPage } from '@/features/gifts/GiftBoxPage';
 
 /** 聊天是底座常驻层（AppLayout 里直接挂），路由上留个空位只为给个 URL */
 const Noop = () => null;
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'letter/:id', element: <Noop /> },
       { path: 'schedule', element: <SchedulePage /> },
       { path: 'memo', element: <MemoHomePage /> },
+      { path: 'gifts', element: <GiftBoxPage /> },
       // 兜底：未知路径（含已移除的旧路由）回到首页，避免客户端 404
       { path: '*', element: <Navigate to="/" replace /> },
     ],
