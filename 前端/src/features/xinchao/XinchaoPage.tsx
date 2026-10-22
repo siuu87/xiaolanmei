@@ -5,8 +5,7 @@
  * 花瓣（11 股驱力 + 花蕊情绪）、念头池（单独一类）、情绪、时间线、小屋、内核。
  *
  * 数据全部来自本地心潮 `/v1/dashboard/*`，令牌在后端；页面只读。
- * 视觉走暖暗色（和 PaiVoice / 深夜电台同一套夜色调），并用 PageShell 的 token
- * 覆盖成深色，保证「点开 = 整页不透明」。
+ * 视觉跟随全站「暖纸 / 墨色 / 陶土金」主题：页面底与卡片全走 token，深浅色自动换档。
  */
 import { useState } from 'react';
 import {
@@ -81,28 +80,28 @@ function Section({
     <section
       data-testid={testid}
       data-open={open ? '1' : '0'}
-      className="rounded-2xl border border-amber-900/25 bg-[#120c08]"
+      className="paper-card"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
         data-testid={`${testid}-toggle`}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left transition active:bg-white/[0.02]"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left transition active:bg-surface-2"
       >
-        <span className="text-amber-300/80">{icon}</span>
+        <span className="text-gold">{icon}</span>
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <h2 className="whitespace-nowrap text-[13px] font-medium text-amber-50">{title}</h2>
-          <span className="shrink-0 text-[9px] uppercase tracking-[0.2em] text-amber-200/30">
+          <h2 className="whitespace-nowrap text-[13px] font-medium text-foreground">{title}</h2>
+          <span className="shrink-0 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
             {eyebrow}
           </span>
         </div>
         {extra && (
-          <span className="shrink-0 whitespace-nowrap text-[10px] text-amber-200/40">{extra}</span>
+          <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">{extra}</span>
         )}
         <ChevronDown
           size={14}
-          className={cn('shrink-0 text-amber-200/40 transition-transform', open && 'rotate-180')}
+          className={cn('shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
         />
       </button>
       {open && <div className="px-4 pb-4">{children}</div>}
@@ -110,14 +109,14 @@ function Section({
   );
 }
 
-function Bar({ label, value, tone = 'bg-[#c9a96a]' }: { label: string; value: number; tone?: string }) {
+function Bar({ label, value, tone = 'bg-gold' }: { label: string; value: number; tone?: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-[3.4rem] shrink-0 whitespace-nowrap text-[10px] text-amber-200/50">{label}</span>
-      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
+      <span className="w-[3.4rem] shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">{label}</span>
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-3">
         <div className={cn('h-full rounded-full', tone)} style={{ width: `${value}%` }} />
       </div>
-      <span className="w-7 shrink-0 text-right text-[10px] tabular-nums text-amber-200/50">{value}</span>
+      <span className="w-7 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">{value}</span>
     </div>
   );
 }
@@ -174,7 +173,13 @@ function Flower({
         return (
           <g key={d.key}>
             <path d={path} fill="url(#xcp)" opacity={0.3 + v * 0.65} />
-            <text x={lx} y={ly} textAnchor="middle" fontSize="9" fill="#c9b89e">
+            <text
+              x={lx}
+              y={ly}
+              textAnchor="middle"
+              fontSize="9"
+              style={{ fill: 'hsl(var(--muted-foreground))' }}
+            >
               {d.short ?? DRIVE_SHORT[d.key] ?? d.label ?? d.key}
             </text>
           </g>
@@ -236,7 +241,7 @@ export function XinchaoPage() {
       eyebrow="XINCHAO"
       testId="xinchao-page"
       backTo="/chat"
-      className="bg-[#0b0805] [--page-bg:28_18%_5%] [--page-line:30_15%_14%] [--foreground:38_35%_90%] [--muted-foreground:35_10%_55%]"
+      className="bg-page-bg"
       bodyClassName="px-4 py-5 pb-16"
       right={
         <button
@@ -244,7 +249,7 @@ export function XinchaoPage() {
           onClick={() => void reload()}
           aria-label="刷新心潮"
           data-testid="xinchao-page-refresh"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-amber-200/50 transition hover:bg-white/10 hover:text-amber-100"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
         </button>
@@ -252,7 +257,7 @@ export function XinchaoPage() {
     >
       {/* 置顶导航：心潮 / 记忆 —— 同一个中枢的两个视图 */}
       <div
-        className="sticky top-0 z-20 -mx-4 mb-4 border-b border-amber-900/25 bg-[#0b0805]/95 px-4 py-2.5"
+        className="sticky top-0 z-20 -mx-4 mb-4 border-b border-page-line bg-page-bg px-4 py-2.5"
         data-testid="xinchao-tabs"
       >
         <div className="flex gap-1.5">
@@ -265,8 +270,8 @@ export function XinchaoPage() {
               className={cn(
                 'rounded-full px-3.5 py-1.5 text-[12px] transition',
                 tab === t
-                  ? 'bg-amber-400 text-[#1a120b]'
-                  : 'bg-white/[0.05] text-amber-200/55 hover:bg-white/[0.09]',
+                  ? 'border border-gold/30 bg-gold/15 text-foreground'
+                  : 'border border-transparent bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground',
               )}
             >
               {t === 'xinchao' ? '心潮' : '记忆'}
@@ -277,23 +282,23 @@ export function XinchaoPage() {
 
       {tab === 'xinchao' ? (
       loading && !status ? (
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-900/25 bg-[#120c08] px-4 py-10 text-[13px] text-amber-200/40">
+        <div className="paper-card flex items-center gap-2 px-4 py-10 text-[13px] text-muted-foreground">
           <Loader2 size={15} className="animate-spin" /> 正在听心潮…
         </div>
       ) : !status?.up ? (
-        <div data-testid="xinchao-page-setup" className="rounded-2xl border border-dashed border-amber-900/40 bg-[#120c08] p-5">
-          <p className="text-[13px] text-amber-50">心潮还没启动</p>
-          <p className="mt-1 text-[11px] leading-5 text-amber-200/40">
+        <div data-testid="xinchao-page-setup" className="paper-card p-5">
+          <p className="text-[13px] text-foreground">心潮还没启动</p>
+          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
             {status?.configured ? '服务不可达。' : '没配置 XINCHAO_URL。'}
             启动后这边会显示花瓣、念头池、情绪、时间线、小屋和内核。
           </p>
-          <pre className="mt-3 overflow-x-auto rounded-lg bg-white/[0.04] px-3 py-2 text-[10px] leading-4 text-amber-200/50">
+          <pre className="mt-3 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
             {'cd xinchao\nnode --env-file=.env src/server.js'}
           </pre>
           <button
             type="button"
             onClick={() => void reload()}
-            className="mt-3 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-medium text-[#1a120b]"
+            className="mt-3 rounded-full bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground"
           >
             重试
           </button>
@@ -303,19 +308,19 @@ export function XinchaoPage() {
           {/* 花瓣 + 此刻 */}
           <section
             data-testid="xinchao-flower"
-            className="rounded-3xl border border-amber-900/30 bg-gradient-to-b from-[#1a120b] to-[#0f0a06] p-5"
+            className="paper-card p-5"
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[9px] uppercase tracking-[0.35em] text-amber-200/30">
+                <p className="text-[9px] uppercase tracking-[0.35em] text-muted-foreground">
                   {snap?.identity?.agentName ?? '心潮'} · 此刻
                 </p>
-                <p className="mt-1 text-[11px] text-amber-200/40">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   {snap?.runtime?.consciousness ?? state?.consciousness ?? '—'} · 疲劳{' '}
                   {pct(snap?.runtime?.fatigue)}% · 静了 {snap?.runtime?.idleMinutes ?? 0} 分钟
                 </p>
               </div>
-              <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-[10px] text-amber-200/60">
+              <span className="rounded-full bg-gold/15 px-2.5 py-1 text-[10px] text-foreground/80">
                 rev {snap?.revision ?? state?.revision ?? 0}
               </span>
             </div>
@@ -328,17 +333,17 @@ export function XinchaoPage() {
               />
             </div>
 
-            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-amber-100/65">
+            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-5 text-foreground/80">
               {nowText || '心潮暂时没有话说。'}
             </p>
 
             <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-1.5">
               {drives.map((d) => (
                 <div key={d.key} className="flex items-baseline justify-between gap-2 text-[10px]">
-                  <span className="truncate text-amber-200/50">
+                  <span className="truncate text-muted-foreground">
                     {d.short ?? DRIVE_SHORT[d.key] ?? d.label}
                   </span>
-                  <span className="shrink-0 tabular-nums text-amber-300/60">{pct(d.value)}</span>
+                  <span className="shrink-0 tabular-nums text-gold">{pct(d.value)}</span>
                 </div>
               ))}
             </div>
@@ -346,14 +351,14 @@ export function XinchaoPage() {
 
           {/* 除花瓣外都可折叠 */}
           <div data-testid="xinchao-fold-controls" className="flex items-center justify-between px-1">
-            <p className="text-[10px] text-amber-200/30">
+            <p className="text-[10px] text-muted-foreground">
               花瓣下面 {SECTION_KEYS.length} 个页面，可单独展开
             </p>
             <button
               type="button"
               onClick={toggleAll}
               data-testid="xinchao-fold-all"
-              className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[10px] text-amber-200/60 transition hover:bg-white/[0.09]"
+              className="rounded-full bg-surface-2 px-2.5 py-1 text-[10px] text-muted-foreground transition hover:bg-surface-3 hover:text-foreground"
             >
               {allOpen ? '全部收起' : '全部展开'}
             </button>
@@ -370,7 +375,7 @@ export function XinchaoPage() {
             onToggle={() => toggle('thoughts')}
           >
             {thoughtLines.length === 0 ? (
-              <p className="text-[11px] leading-5 text-amber-200/35">
+              <p className="text-[11px] leading-5 text-muted-foreground">
                 念头池还是空的。等心潮自己长出念头，会落在这里。
               </p>
             ) : (
@@ -378,7 +383,7 @@ export function XinchaoPage() {
                 {thoughtLines.slice(0, 12).map((line, i) => (
                   <li
                     key={i}
-                    className="rounded-xl bg-white/[0.035] px-3 py-2 text-[11px] leading-5 text-amber-100/70"
+                    className="rounded-xl bg-surface-2 px-3 py-2 text-[11px] leading-5 text-foreground/85"
                   >
                     {typeof line === 'string' ? line : JSON.stringify(line).slice(0, 120)}
                   </li>
@@ -397,14 +402,14 @@ export function XinchaoPage() {
             onToggle={() => toggle('emotion')}
           >
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-amber-200/80">{emotion?.label ?? '—'}</span>
-              <span className="text-[10px] text-amber-200/35">
+              <span className="text-foreground">{emotion?.label ?? '—'}</span>
+              <span className="text-[10px] text-muted-foreground">
                 最近 {journal.length} 次记录
               </span>
             </div>
             <div className="mt-2 space-y-2">
               <Bar label="效价" value={pct(emotion?.valence)} tone="bg-rose-400" />
-              <Bar label="唤醒" value={pct(emotion?.arousal)} tone="bg-amber-400" />
+              <Bar label="唤醒" value={pct(emotion?.arousal)} tone="bg-gold" />
             </div>
             {journal.length > 0 && (
               <ul className="mt-2 space-y-1">
@@ -412,9 +417,9 @@ export function XinchaoPage() {
                   .slice(-8)
                   .reverse()
                   .map((j, i) => (
-                    <li key={`${j.at}-${i}`} className="flex items-center gap-2 text-[10px] text-amber-200/45">
+                    <li key={`${j.at}-${i}`} className="flex items-center gap-2 text-[10px] text-muted-foreground">
                       <span className="w-8 shrink-0 tabular-nums">{fmtTime(j.at)}</span>
-                      <span className="shrink-0 text-amber-200/80">{j.label}</span>
+                      <span className="shrink-0 text-foreground">{j.label}</span>
                       <span className="min-w-0 truncate">
                         {j.cause || (j.top ? DRIVE_SHORT[j.top] ?? j.top : '')}
                       </span>
@@ -435,7 +440,7 @@ export function XinchaoPage() {
             onToggle={() => toggle('timeline')}
           >
             {timelineItems.length === 0 ? (
-              <p className="text-[11px] text-amber-200/35">还没有结算记录。</p>
+              <p className="text-[11px] text-muted-foreground">还没有结算记录。</p>
             ) : (
               <ul className="space-y-1.5">
                 {timelineItems.slice(0, 30).map((it) => {
@@ -443,15 +448,15 @@ export function XinchaoPage() {
                     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
                     .slice(0, 3);
                   return (
-                    <li key={it.id} className="rounded-xl bg-white/[0.03] px-3 py-2">
+                    <li key={it.id} className="rounded-xl bg-surface-2 px-3 py-2">
                       <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-amber-200/60">{EVENT_LABEL[it.type] ?? it.type}</span>
-                        <span className="tabular-nums text-amber-200/30">{fmtTime(it.at)}</span>
+                        <span className="text-foreground/80">{EVENT_LABEL[it.type] ?? it.type}</span>
+                        <span className="tabular-nums text-muted-foreground">{fmtTime(it.at)}</span>
                       </div>
                       {deltas.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px]">
                           {deltas.map(([k, v]) => (
-                            <span key={k} className={v >= 0 ? 'text-amber-300/80' : 'text-sky-300/80'}>
+                            <span key={k} className={v >= 0 ? 'text-gold' : 'text-sky-700 dark:text-sky-300'}>
                               {DRIVE_SHORT[k] ?? k} {v >= 0 ? '+' : ''}
                               {v.toFixed(2)}
                             </span>
@@ -476,30 +481,30 @@ export function XinchaoPage() {
             onToggle={() => toggle('cabin')}
           >
             {cabinNotes.length === 0 ? (
-              <p className="text-[11px] text-amber-200/35">小屋还没有信。</p>
+              <p className="text-[11px] text-muted-foreground">小屋还没有信。</p>
             ) : (
               <ul className="space-y-1.5">
                 {cabinNotes.slice(0, 10).map((n) => (
-                  <li key={n.id} className="rounded-xl bg-white/[0.03] px-3 py-2">
-                    <div className="flex items-center justify-between text-[10px] text-amber-200/30">
+                  <li key={n.id} className="rounded-xl bg-surface-2 px-3 py-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>{n.from ?? '—'}</span>
                       <span className="tabular-nums">{fmtTime(n.at)}</span>
                     </div>
-                    <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-amber-100/70">
+                    <p className="mt-1 whitespace-pre-wrap text-[11px] leading-5 text-foreground/85">
                       {n.locked ? '（这封信上锁了）' : n.content || '（空）'}
                     </p>
                   </li>
                 ))}
               </ul>
             )}
-            <div className="mt-2 rounded-xl bg-white/[0.03] px-3 py-2">
-              <p className="text-[10px] text-amber-200/30">小账本</p>
+            <div className="mt-2 rounded-xl bg-surface-2 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground">小账本</p>
               {cabinLedger.length === 0 ? (
-                <p className="mt-1 text-[11px] text-amber-200/35">账本还是空的。</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">账本还是空的。</p>
               ) : (
                 <ul className="mt-1 space-y-0.5">
                   {cabinLedger.slice(0, 8).map((l) => (
-                    <li key={l.id} className="flex justify-between text-[10px] text-amber-200/50">
+                    <li key={l.id} className="flex justify-between text-[10px] text-foreground/70">
                       <span className="truncate">{l.note || '—'}</span>
                       <span className="tabular-nums">{l.amount ?? 0}</span>
                     </li>
@@ -519,13 +524,13 @@ export function XinchaoPage() {
             onToggle={() => toggle('personality')}
           >
             {persona?.available === false ? (
-              <p className="text-[11px] leading-5 text-amber-200/35">
+              <p className="text-[11px] leading-5 text-muted-foreground">
                 这个月还没做回顾。心潮会在月度回顾时生成内核（18 维 + 锚点），
                 平时先看花瓣、念头池和情绪就好。
               </p>
             ) : (
               <div className="space-y-1.5">
-                {persona?.month && <p className="text-[10px] text-amber-200/30">{persona.month}</p>}
+                {persona?.month && <p className="text-[10px] text-muted-foreground">{persona.month}</p>}
                 {(persona?.dimensions ?? []).map((d, i) => (
                   <Bar
                     key={`${d.key ?? i}`}
@@ -536,7 +541,7 @@ export function XinchaoPage() {
                 {(persona?.anchors ?? []).length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {(persona?.anchors ?? []).slice(0, 6).map((a, i) => (
-                      <li key={i} className="rounded-xl bg-white/[0.03] px-3 py-2 text-[10px] leading-4 text-amber-100/60">
+                      <li key={i} className="rounded-xl bg-surface-2 px-3 py-2 text-[10px] leading-4 text-foreground/75">
                         {typeof a === 'string' ? a : JSON.stringify(a).slice(0, 100)}
                       </li>
                     ))}
@@ -546,7 +551,7 @@ export function XinchaoPage() {
             )}
           </Section>
 
-          <p className="pb-2 text-center text-[10px] text-amber-200/25">
+          <p className="pb-2 text-center text-[10px] text-muted-foreground">
             {status.version ? `心潮 v${status.version}` : '心潮'}
             {status.mode ? ` · ${status.mode}` : ''} · 数据只读
           </p>
@@ -554,7 +559,7 @@ export function XinchaoPage() {
       )) : (
         <MemoryTab />
       )}
-      {err && <p className="mt-3 text-center text-[11px] text-rose-400/70">{err}</p>}
+      {err && <p className="mt-3 text-center text-[11px] text-destructive">{err}</p>}
     </PageShell>
   );
 }

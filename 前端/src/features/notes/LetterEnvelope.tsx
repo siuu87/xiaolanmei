@@ -19,16 +19,26 @@ import { letterParts, type LetterTheme } from './LetterArt';
  * night 深蓝星空），新增主题只改那张表。
  */
 
+/** 火漆印裂开时的柔光色（inline box-shadow 用，跟主题走） */
+const SEAL_GLOW: Record<LetterTheme, string> = {
+  default: 'rgba(180,85,76,0.85)',
+  memorial: 'rgba(201,162,39,0.85)',
+  night: 'rgba(127,155,209,0.85)',
+};
+
 /** 火漆印：封盖尖上那颗蜡封。拆封后跟着封盖走，所以由调用方决定露不露 */
 export function EnvelopeSeal({
   theme = 'default',
   className,
   glow = true,
+  /** 拆封动画：先裂一道光、蜡封微微抬起淡出，再随封盖掀开 */
+  cracking = false,
   children = '🫐',
 }: {
   theme?: LetterTheme;
   className?: string;
   glow?: boolean;
+  cracking?: boolean;
   children?: React.ReactNode;
 }) {
   const p = letterParts(theme);
@@ -37,13 +47,29 @@ export function EnvelopeSeal({
       aria-hidden
       data-testid="envelope-seal"
       className={cn(
-        'pointer-events-none flex items-center justify-center rounded-full',
+        'pointer-events-none relative flex items-center justify-center rounded-full',
         'shadow-[0_1px_2px_rgba(0,0,0,0.35)]',
         p.seal,
         glow && p.sealGlow,
         className,
       )}
+      style={{
+        transition: 'opacity 0.4s ease-out, box-shadow 0.22s ease-out',
+        opacity: cracking ? 0.45 : 1,
+        boxShadow: cracking ? `0 0 14px 3px ${SEAL_GLOW[theme]}` : undefined,
+      }}
     >
+      {/* 裂痕：拆封瞬间一道细线迅速出现（自带居中，不抢父级的 translate 定位） */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[16%] h-[68%] w-px bg-black/40"
+        style={{
+          transform: cracking ? 'translateX(-50%) scaleY(1)' : 'translateX(-50%) scaleY(0)',
+          transformOrigin: 'top center',
+          transition: 'transform 0.16s ease-out',
+          opacity: cracking ? 0.6 : 0,
+        }}
+      />
       {children}
     </span>
   );
@@ -62,7 +88,8 @@ function backOf(theme: LetterTheme): string {
 }
 
 /**
- * 信封本体。`opened` 控制拆封：封盖翻开、信纸从口子里升出一小截。
+ * 信封本体。`opened` 控制拆封：火漆裂开 → 封盖弹性翻开 → 信纸从口子里升出一小截，
+ * 三段要连贯才像「亲手拆」。
  *
  * 父容器只管给宽高（**建议 5:3**，规整长方形），内部全部按比例定位。
  *
@@ -70,6 +97,10 @@ function backOf(theme: LetterTheme): string {
  * 上半部看着是一整个大三角，整枚信封像「房子 / 五边形」而不是信封。
  * 现在缺口与封盖都收到 **45%**，剩下的 55% 是完整的矩形纸面，
  * 轮廓才是一个清爽的长方形。
+ *
+ * 2026-10-22 富版拆信编排：① `EnvelopeSeal` 接到 `cracking` 先裂一道光、蜡封微淡出；
+ * ② 封盖改用回弹缓动 `cubic-bezier(0.34,1.56,0.64,1)` 并延迟 160ms（翻过头再回正）；
+ * ③ 信纸 `delay-300` 在封盖之后才升。三段由 `opened` 一个状态驱动，靠 transition 延迟错开。
  *
  * `children` 是**信纸内容**（一般是正文摘要或空），不传就只画一枚封好的信封。
  */
@@ -125,9 +156,9 @@ export function EnvelopeArt({
       */}
       <div
         data-testid="envelope-paper-slot"
-        className={cn(
+          className={cn(
           'absolute inset-x-[10%] top-[9%] h-[38%] overflow-hidden rounded-t-[2px]',
-          'transition-transform duration-[450ms] ease-out',
+          'transition-transform duration-[450ms] ease-out delay-300',
           // 未读藏到缺口(45%)以下、已读升到缺口以上 —— 差值就是"露出一角"的量
           opened ? 'translate-y-[6%]' : 'translate-y-[30%]',
           p.paper,
@@ -173,10 +204,12 @@ export function EnvelopeArt({
         className="pointer-events-none absolute inset-x-0 top-0 h-[45%] [perspective:400px]"
       >
         <div
-          className="h-full w-full transition-transform duration-500 ease-out"
+          className="h-full w-full"
           style={{
             transformOrigin: 'top center',
             transformStyle: 'preserve-3d',
+            // 弹性翻开：回弹缓动（开头冲过一点再回正）+ 160ms 延迟，让火漆先裂、封盖再掀
+            transition: 'transform 0.62s cubic-bezier(0.34,1.56,0.64,1) 0.16s',
             // 只翻到 flapAngle（默认 150°）：翻太多（180°）封盖会完全贴在信封背面看不见，
             // 翻太少又还挡着信纸。150° 时它斜立在信封后上方，像被随手掀开的盖子。
             transform: opened ? `rotateX(-${flapAngle}deg)` : 'rotateX(0deg)',
@@ -202,6 +235,7 @@ export function EnvelopeArt({
             {seal && (
               <EnvelopeSeal
                 theme={theme}
+                cracking={opened}
                 className={cn(
                   'absolute left-1/2 top-[74%] -translate-x-1/2 -translate-y-1/2',
                   sealClass,

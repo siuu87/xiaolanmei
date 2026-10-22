@@ -10,7 +10,7 @@ function BookSpine({ book, onOpen }: { book: Book; onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       title={`${book.title} · ${book.author}`}
-      className="group relative flex shrink-0 cursor-pointer flex-col items-center rounded-[3px] transition-transform duration-200 hover:-translate-y-1.5 hover:shadow-[0_8px_16px_rgba(0,0,0,0.45)]"
+      className="group relative flex shrink-0 cursor-pointer flex-col items-center rounded-[3px] transition-transform duration-200 hover:-translate-y-1.5 hover:shadow-lift"
       style={{
         width: 34,
         height: book.height,
@@ -32,7 +32,7 @@ function BookSpine({ book, onOpen }: { book: Book; onOpen: () => void }) {
       <span className="h-2 w-full shrink-0 rounded-b-[3px]" style={{ background: book.band }} />
       {/* 已读小圆点 */}
       {book.progress > 0 && (
-        <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#2a1a10]" />
+        <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-surface-2" />
       )}
     </button>
   );
@@ -50,25 +50,25 @@ export function Bookshelf() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+    <div className="overflow-hidden rounded-2xl border border-border shadow-lift">
       {/* 书架顶板 + 标题 */}
-      <div className="flex items-center justify-between border-b border-black/30 bg-[#3b2416] px-4 py-2.5">
-        <div className="flex items-center gap-2 text-sm font-medium text-amber-100/90">
+      <div className="flex items-center justify-between border-b border-border bg-surface-2 px-4 py-2.5">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Library className="h-4 w-4" /> 书架
         </div>
         <button
           type="button"
           onClick={() => navigate('/library')}
-          className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-amber-100/80 transition hover:bg-white/20"
+          className="flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-xs text-muted-foreground transition hover:bg-surface-3 hover:text-foreground"
         >
           <Settings2 className="h-3.5 w-3.5" /> 管理
         </button>
       </div>
 
       {/* 单层书架：横向滑动 */}
-      <div className="px-3 pb-4 pt-3" style={{ background: 'linear-gradient(to bottom, #3b2416, #2a1a10)' }}>
+      <div className="px-3 pb-4 pt-3" style={{ background: 'linear-gradient(to bottom, hsl(var(--surface-2)), hsl(var(--surface-sunken)))' }}>
         {books.length === 0 ? (
-          <p className="py-10 text-center text-sm text-amber-100/60">书架还空着，点「管理」放上第一本书吧。</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">书架还空着，点「管理」放上第一本书吧。</p>
         ) : (
           <div className="flex items-end gap-1.5 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {books.map((b) => (
@@ -79,8 +79,8 @@ export function Bookshelf() {
         <div
           className="mt-1 h-2.5 rounded-sm"
           style={{
-            background: 'linear-gradient(to bottom, #8a6338, #5a3d20)',
-            boxShadow: '0 3px 7px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18)',
+            background: 'linear-gradient(to bottom, hsl(var(--border)), hsl(var(--surface-3)))',
+            boxShadow: '0 2px 6px hsl(var(--shadow-color) / 0.35)',
           }}
         />
       </div>

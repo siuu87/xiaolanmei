@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Plus, Repeat, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -111,19 +111,23 @@ export function TodoCard() {
       {creating &&
         createPortal(
           <div
-            className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/40 p-2 sm:p-4"
+            className="fixed inset-0 z-[1500] flex items-center justify-center bg-scrim p-3 sm:p-4"
             onClick={() => setCreating(false)}
           >
           <div
-            className="w-full max-w-md rounded-2xl bg-background/90 p-5 backdrop-blur-xl"
+            className="paper-card w-full max-w-md p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-sans text-sm font-medium">新建待办</h3>
+            <div className="mb-1 flex items-start justify-between gap-2">
+              <div>
+                <p className="eyebrow mb-1">New Task</p>
+                <h3 className="display text-[18px] font-semibold text-foreground">新建待办</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setCreating(false)}
-                className="text-muted-foreground"
+                aria-label="关闭"
+                className="icon-btn h-8 w-8"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -183,7 +187,7 @@ export function TodoCard() {
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && confirmCreate()}
                 placeholder="要做什么？"
-                className="h-10 w-full rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-muted/80"
+                className="paper-inset h-10 w-full px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/40"
               />
             </div>
 
@@ -194,7 +198,7 @@ export function TodoCard() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="备注（可选）"
-                className="h-10 w-full rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-muted/80"
+                className="paper-inset h-10 w-full px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/40"
               />
             </div>
 
@@ -203,7 +207,7 @@ export function TodoCard() {
               <button
                 type="button"
                 onClick={() => setCreating(false)}
-                className="h-10 flex-1 rounded-xl bg-muted/60 text-sm font-medium text-foreground/80 transition hover:bg-muted/80"
+                className="h-10 flex-1 rounded-xl border border-border bg-surface-2 text-sm font-medium text-foreground/80 transition hover:bg-surface-3"
               >
                 取消
               </button>

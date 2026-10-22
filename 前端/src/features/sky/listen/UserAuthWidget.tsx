@@ -22,13 +22,13 @@ export function UserAuthWidget() {
     <>
       {user ? (
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#E6C45A] to-[#B8860B] text-base ring-1 ring-white/20">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#E6C45A] to-[#B8860B] text-base ring-1 ring-border">
             {user.avatarUrl}
           </div>
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="max-w-24 truncate text-sm text-slate-100">{user.nickname}</span>
-            <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="max-w-24 truncate text-sm text-foreground">{user.nickname}</span>
+            <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               MCP 已连接
             </span>
           </div>
@@ -37,7 +37,7 @@ export function UserAuthWidget() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="shrink-0 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs text-slate-100 transition hover:bg-white/20"
+          className="shrink-0 rounded-full border border-border bg-surface-2 px-3.5 py-1.5 text-xs text-foreground transition hover:bg-surface-3"
         >
           连接网易云账号
         </button>

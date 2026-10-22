@@ -48,9 +48,9 @@ type Tab = 'characters' | 'worldbook' | 'personas';
 type TavernView = 'phone' | 'config';
 
 const inputCls =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none focus:border-white/30';
+  'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none focus:border-ring';
 const btnCls =
-  'rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-white/15 disabled:opacity-40';
+  'rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground transition hover:bg-surface-3 disabled:opacity-40';
 
 /** 酒馆 = 小手机：进入即呈现拟物手机（聊天 / 群聊 / 朋友圈 / 卡片库） */
 export function TavernPage() {
@@ -106,7 +106,7 @@ export function TavernPage() {
   // 也不放标题栏——只有小手机自己顶部的退出键。配置台入口挪进「卡片库」页右上角。
   if (view === 'phone') {
     return (
-      <div className="relative flex h-full min-h-full flex-col bg-[#070b1a] text-slate-200">
+      <div className="relative flex h-full min-h-full flex-col bg-page-bg text-foreground">
         <StarBackdrop />
         <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
           <PhoneApp onExit={() => navigate('/chat')} onOpenConfig={() => setView('config')} />
@@ -122,7 +122,7 @@ export function TavernPage() {
   ];
 
   return (
-    <div className="relative min-h-full bg-[#070b1a] text-slate-200">
+    <div className="relative min-h-full bg-page-bg text-foreground">
       <StarBackdrop />
       <div className="relative mx-auto w-full max-w-md px-4 py-8">
         <header className="mb-6 flex items-center gap-2">
@@ -130,13 +130,13 @@ export function TavernPage() {
             type="button"
             onClick={() => setView('phone')}
             aria-label="返回小手机"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-1 items-center justify-center gap-2 text-center">
-            <Beer className="h-4 w-4 text-amber-300" />
-            <h1 className="text-xl font-bold text-slate-100">酒馆设置</h1>
+            <Beer className="h-4 w-4 text-gold" />
+            <h1 className="text-xl font-bold text-foreground">酒馆设置</h1>
           </div>
           <span className="w-8" />
         </header>
@@ -149,7 +149,7 @@ export function TavernPage() {
               onClick={() => setTab(t.key)}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition',
-                tab === t.key ? 'bg-white/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+                tab === t.key ? 'bg-surface-3 text-foreground' : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground',
               )}
             >
               <t.icon className="h-4 w-4" /> {t.label}
@@ -196,7 +196,7 @@ function CharacterTab({
       </button>
 
       {characters.length === 0 ? (
-        <p className="py-10 text-center text-sm text-slate-500">还没有角色卡，点上面新建一个吧。</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">还没有角色卡，点上面新建一个吧。</p>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           {characters.map((c) => (
@@ -204,21 +204,21 @@ function CharacterTab({
               <button
                 type="button"
                 onClick={() => onChat(c)}
-                className="flex w-full flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.08]"
+                className="flex w-full flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left transition hover:border-border hover:bg-surface-2"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-2xl">
                   {c.avatar || '🤖'}
                 </span>
                 <span className="w-full">
-                  <span className="block text-sm font-medium text-slate-100">{c.name}</span>
+                  <span className="block text-sm font-medium text-foreground">{c.name}</span>
                   {c.description && (
-                    <span className="mt-1 block text-[11px] leading-4 text-slate-400">{c.description}</span>
+                    <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">{c.description}</span>
                   )}
                 </span>
                 {c.tags.length > 0 && (
                   <span className="mt-auto flex flex-wrap gap-1">
                     {c.tags.map((t) => (
-                      <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-400">
+                      <span key={t} className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-muted-foreground">
                         {t}
                       </span>
                     ))}
@@ -315,7 +315,7 @@ function CharacterForm({
         <Area label="附加指令（可选）" value={form.systemPrompt} onChange={upd('systemPrompt')} placeholder="额外的规则，如“不要使用颜文字”…" rows={2} />
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onClose} className={btnCls}>取消</button>
-          <button type="button" onClick={() => void save()} disabled={busy || !form.name.trim()} className={cn(btnCls, 'bg-amber-400/90 text-slate-900 hover:bg-amber-400')}>
+          <button type="button" onClick={() => void save()} disabled={busy || !form.name.trim()} className={cn(btnCls, 'bg-gold text-gold-on hover:bg-gold')}>
             {busy && <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />} 保存
           </button>
         </div>
@@ -347,23 +347,23 @@ function WorldbookTab({ entries, reload }: { entries: TavernWorldbookEntry[]; re
       </button>
 
       {entries.length === 0 ? (
-        <p className="py-10 text-center text-sm text-slate-500">还没有世界书条目。世界书会在对话命中关键词时自动注入设定。</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">还没有世界书条目。世界书会在对话命中关键词时自动注入设定。</p>
       ) : (
         <div className="space-y-2">
           {entries.map((w) => (
-            <div key={w.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <div key={w.id} className="rounded-xl border border-border bg-card p-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => void toggle(w)}
-                  className={cn('flex h-5 w-9 shrink-0 items-center rounded-full transition', w.enabled ? 'bg-amber-400/80' : 'bg-white/15')}
+                  className={cn('flex h-5 w-9 shrink-0 items-center rounded-full transition', w.enabled ? 'bg-gold' : 'bg-surface-3')}
                   aria-label="开关"
                 >
-                  <span className={cn('block h-4 w-4 rounded-full bg-white transition-transform', w.enabled ? 'translate-x-4' : 'translate-x-0.5')} />
+                  <span className={cn('block h-4 w-4 rounded-full bg-foreground transition-transform', w.enabled ? 'translate-x-4' : 'translate-x-0.5')} />
                 </button>
-                <span className="truncate text-sm font-medium text-slate-100">{w.name}</span>
-                <span className="shrink-0 text-[10px] text-slate-500">优先级 {w.priority}</span>
-                <span className="shrink-0 text-[10px] text-slate-500">{w.position === 'after' ? '后置' : '前置'}</span>
+                <span className="truncate text-sm font-medium text-foreground">{w.name}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">优先级 {w.priority}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">{w.position === 'after' ? '后置' : '前置'}</span>
                 <div className="flex-1" />
                 <IconBtn title="编辑" onClick={() => setEditing(w)}>
                   <Pencil className="h-3.5 w-3.5" />
@@ -375,13 +375,13 @@ function WorldbookTab({ entries, reload }: { entries: TavernWorldbookEntry[]; re
               {w.keywords.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {w.keywords.map((k) => (
-                    <span key={k} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-400">
+                    <span key={k} className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-muted-foreground">
                       {k}
                     </span>
                   ))}
                 </div>
               )}
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{w.content}</p>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{w.content}</p>
             </div>
           ))}
         </div>
@@ -443,11 +443,11 @@ function WorldbookForm({
         <Area label="内容" value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} rows={4} placeholder="注入到对话里的设定…" />
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="mb-1 block text-xs text-slate-400">优先级（越大越靠前）</label>
+            <label className="mb-1 block text-xs text-muted-foreground">优先级（越大越靠前）</label>
             <input type="number" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))} className={inputCls} />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">位置</label>
+            <label className="mb-1 block text-xs text-muted-foreground">位置</label>
             <select value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value as 'before' | 'after' }))} className={inputCls}>
               <option value="before">角色设定前</option>
               <option value="after">角色设定后</option>
@@ -456,7 +456,7 @@ function WorldbookForm({
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onClose} className={btnCls}>取消</button>
-          <button type="button" onClick={() => void save()} disabled={busy || !form.name.trim() || !form.content.trim()} className={cn(btnCls, 'bg-amber-400/90 text-slate-900 hover:bg-amber-400')}>
+          <button type="button" onClick={() => void save()} disabled={busy || !form.name.trim() || !form.content.trim()} className={cn(btnCls, 'bg-gold text-gold-on hover:bg-gold')}>
             {busy && <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />} 保存
           </button>
         </div>
@@ -490,30 +490,30 @@ function PersonaTab({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-500">人设卡是「你」在剧情里扮演的角色，聊天时会告诉 AI 你是谁。</p>
+      <p className="text-xs text-muted-foreground">人设卡是「你」在剧情里扮演的角色，聊天时会告诉 AI 你是谁。</p>
       <button type="button" onClick={() => setEditing('new')} className={cn(btnCls, 'flex w-full items-center justify-center gap-1 py-2')}>
         <Plus className="h-4 w-4" /> 新建人设
       </button>
 
       {personas.length === 0 ? (
-        <p className="py-10 text-center text-sm text-slate-500">还没有人设卡。先建一张「你」的人设吧。</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">还没有人设卡。先建一张「你」的人设吧。</p>
       ) : (
         <div className="space-y-2">
           {personas.map((p) => {
             const active = p.id === activeId;
             return (
-              <div key={p.id} className={cn('flex items-center gap-3 rounded-xl border p-3', active ? 'border-amber-400/40 bg-amber-400/10' : 'border-white/10 bg-white/[0.04]')}>
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl">
+              <div key={p.id} className={cn('flex items-center gap-3 rounded-xl border p-3', active ? 'border-gold bg-gold-soft' : 'border-border bg-card')}>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xl">
                   {p.avatar || '🙂'}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-100">{p.name}</p>
-                  {p.description && <p className="truncate text-[11px] text-slate-400">{p.description}</p>}
+                  <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                  {p.description && <p className="truncate text-[11px] text-muted-foreground">{p.description}</p>}
                 </div>
                 <button
                   type="button"
                   onClick={() => onSelect(active ? null : p.id)}
-                  className={cn('flex items-center gap-1 rounded-full px-3 py-1 text-xs transition', active ? 'bg-amber-400/90 text-slate-900' : 'bg-white/10 text-slate-300 hover:bg-white/15')}
+                  className={cn('flex items-center gap-1 rounded-full px-3 py-1 text-xs transition', active ? 'bg-gold text-gold-on' : 'bg-surface-2 text-muted-foreground hover:bg-surface-3')}
                 >
                   {active && <Check className="h-3 w-3" />} {active ? '使用中' : '使用'}
                 </button>
@@ -579,7 +579,7 @@ function PersonaForm({
         <Area label="人设描述" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} placeholder="你在剧情里是谁…" />
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onClose} className={btnCls}>取消</button>
-          <button type="button" onClick={() => void save()} disabled={busy || !form.name.trim()} className={cn(btnCls, 'bg-amber-400/90 text-slate-900 hover:bg-amber-400')}>
+          <button type="button" onClick={() => void save()} disabled={busy || !form.name.trim()} className={cn(btnCls, 'bg-gold text-gold-on hover:bg-gold')}>
             {busy && <Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" />} 保存
           </button>
         </div>
@@ -644,25 +644,25 @@ function TavernChat({
   };
 
   return (
-    <div className="relative flex min-h-full flex-col bg-[#070b1a] text-slate-200">
+    <div className="relative flex min-h-full flex-col bg-page-bg text-foreground">
       <StarBackdrop />
       <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-4">
         {/* 头部 */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
           <button
             type="button"
             onClick={onExit}
             aria-label="返回"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-xl">
             {character.avatar || '🤖'}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-100">{character.name}</p>
-            {character.description && <p className="truncate text-[11px] text-slate-500">{character.description}</p>}
+            <p className="truncate text-sm font-medium text-foreground">{character.name}</p>
+            {character.description && <p className="truncate text-[11px] text-muted-foreground">{character.description}</p>}
           </div>
         </div>
 
@@ -673,7 +673,7 @@ function TavernChat({
               <div
                 className={cn(
                   'max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-6',
-                  m.role === 'user' ? 'rounded-br-sm bg-amber-400/90 text-slate-900' : 'rounded-bl-sm bg-white/10 text-slate-200',
+                  m.role === 'user' ? 'rounded-br-sm bg-gold text-gold-on' : 'rounded-bl-sm bg-surface-2 text-foreground',
                 )}
               >
                 {m.content}
@@ -682,9 +682,9 @@ function TavernChat({
           ))}
           {streaming && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-white/10 px-3 py-2 text-sm leading-6 text-slate-200">
+              <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-surface-2 px-3 py-2 text-sm leading-6 text-foreground">
                 {streaming}
-                <span className="ml-0.5 inline-block h-3 w-1 animate-pulse bg-slate-400 align-middle" />
+                <span className="ml-0.5 inline-block h-3 w-1 animate-pulse bg-muted-foreground align-middle" />
               </div>
             </div>
           )}
@@ -692,20 +692,20 @@ function TavernChat({
         </div>
 
         {/* 输入区 */}
-        <div className="flex items-center gap-2 border-t border-white/10 pt-3">
+        <div className="flex items-center gap-2 border-t border-border pt-3">
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && send()}
             placeholder={`和 ${character.name} 说点什么…`}
-            className="h-10 flex-1 rounded-full border border-white/10 bg-white/5 px-4 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-white/30"
+            className="h-10 flex-1 rounded-full border border-border bg-surface-2 px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring"
           />
           <button
             type="button"
             onClick={() => void send()}
             disabled={!draft.trim() || sending}
             aria-label="发送"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400/90 text-slate-900 transition hover:bg-amber-400 disabled:opacity-40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-gold-on transition hover:bg-gold disabled:opacity-40"
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
@@ -724,7 +724,7 @@ function IconBtn({ title, onClick, children }: { title: string; onClick: () => v
       onClick={onClick}
       title={title}
       aria-label={title}
-      className="flex h-6 w-6 items-center justify-center rounded-md bg-black/30 text-slate-300 transition hover:bg-black/50 hover:text-white"
+      className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-2 text-muted-foreground transition hover:bg-surface-3 hover:text-foreground"
     >
       {children}
     </button>
@@ -733,14 +733,14 @@ function IconBtn({ title, onClick, children }: { title: string; onClick: () => v
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-scrim sm:items-center sm:p-4" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-[#0d1226] p-5 sm:rounded-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface border border-border p-5 text-foreground sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-100">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="关闭" className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-slate-200">
+          <h2 className="text-lg font-bold text-foreground">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="关闭" className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-surface-2 hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -753,7 +753,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-slate-400">{label}</label>
+      <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
       <input value={value} onChange={onChange} placeholder={placeholder} className={inputCls} />
     </div>
   );
@@ -762,7 +762,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
 function Area({ label, value, onChange, placeholder, rows }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; placeholder?: string; rows?: number }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-slate-400">{label}</label>
+      <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
       <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows ?? 3} className={cn(inputCls, 'resize-none leading-6')} />
     </div>
   );
@@ -771,10 +771,10 @@ function Area({ label, value, onChange, placeholder, rows }: { label: string; va
 function Confirm({ title, text, onCancel, onOk }: { title: string; text: string; onCancel: () => void; onOk: () => void }) {
   return (
     <Modal title={title} onClose={onCancel}>
-      <p className="text-sm text-slate-300">{text}</p>
+      <p className="text-sm text-muted-foreground">{text}</p>
       <div className="mt-5 flex justify-end gap-2">
         <button type="button" onClick={onCancel} className={btnCls}>取消</button>
-        <button type="button" onClick={onOk} className={cn(btnCls, 'bg-rose-500/80 text-white hover:bg-rose-500')}>删除</button>
+        <button type="button" onClick={onOk} className={cn(btnCls, 'bg-destructive text-destructive-foreground hover:bg-destructive')}>删除</button>
       </div>
     </Modal>
   );

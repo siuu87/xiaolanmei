@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Heart, BookMarked, type LucideIcon } from 'lucide-react';
+import { Heart, BookMarked, ArrowUpRight, type LucideIcon } from 'lucide-react';
 
 interface Feature {
   label: string;
@@ -29,11 +29,19 @@ function FeatureButton({
   onClick?: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="flex flex-col items-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/50 bg-white/50 text-primary shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.06]">
-        <Icon className="h-6 w-6" />
+    <button
+      type="button"
+      onClick={onClick}
+      className="paper-card press group flex items-center gap-3 px-3.5 py-3 text-left"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
+        <Icon className="h-[18px] w-[18px]" />
       </span>
-      <span className="mt-1.5 text-xs text-foreground/80">{label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-foreground">{label}</span>
+        <span className="eyebrow mt-0.5 block leading-none">Open</span>
+      </span>
+      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition group-hover:text-primary" />
     </button>
   );
 }

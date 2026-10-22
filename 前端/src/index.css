@@ -37,105 +37,159 @@
 }
 
 @layer base {
+  /* =========================================================
+     小蓝莓 · 白水（Still Water）
+     浅灰韩系：低饱和中性灰 + 雾蓝强调，干净、留白、几乎无暖色。
+     深浅主题全部走 token：
+     - 纸：背景、卡片、抬升面靠 1~3% 明度差分层次，不用阴影堆叠
+     - 墨：正文深灰（不用纯黑）、次要文字中灰、边框极浅
+     - 光：primary / gold 都收成雾蓝灰，只做小面积强调
+     ========================================================= */
   :root {
-    --background: 40 33% 96%;
-    --foreground: 30 12% 20%;
-    --card: 40 45% 98%;
-    --card-foreground: 30 12% 20%;
-    --popover: 40 50% 99%;
-    --popover-foreground: 30 12% 20%;
-    --primary: 350 60% 62%;
+    --background: 210 6% 92%;
+    --foreground: 210 4% 22%;
+    --card: 210 8% 96%;
+    --card-foreground: 210 4% 22%;
+    --popover: 210 8% 97%;
+    --popover-foreground: 210 4% 22%;
+    --primary: 209 9% 46%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 28% 92%;
-    --secondary-foreground: 30 12% 22%;
-    --muted: 40 25% 92%;
-    --muted-foreground: 30 8% 47%;
-    --accent: 40 28% 92%;
-    --accent-foreground: 30 12% 22%;
-    --destructive: 0 70% 56%;
+    --secondary: 210 7% 90%;
+    --secondary-foreground: 210 4% 24%;
+    --muted: 210 6% 91%;
+    --muted-foreground: 213 5% 52%;
+    --accent: 210 7% 89%;
+    --accent-foreground: 210 4% 24%;
+    --destructive: 0 58% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 38 20% 86%;
-    --input: 38 20% 86%;
-    --ring: 350 60% 62%;
-    --bubble-ai: 210 100% 89%;
-    --bubble-me: 0 0% 100%;
-    /* ===== chat 页专用（浅色 = 参考图那套「纯白底 + 浅蓝/浅灰气泡」）=====
-       单独一组而不是复用 --card/--background：聊天页要的是「白纸 + 蓝灰气泡」，
-       和通用卡片语义不完全一样，拆开才能在深浅两套里各自调。
-       注意：bg 和 bar 现在都是纯白，两者之间靠 1px 的 --chat-line 描边分隔。 */
-    --chat-bg: 0 0% 100%;            /* 页面底：纯白纸 */
-    --chat-bar: 0 0% 100%;           /* 顶栏 / 输入栏底：同为纯白，靠描边分界 */
-    --chat-pill: 0 0% 100%;          /* 白色药丸按钮 */
-    --chat-pill-fg: 0 0% 20%;        /* 药丸里的图标色 */
-    --chat-line: 0 0% 90%;           /* 细线 / 描边 / 分隔 */
-    --chat-me: 213 71% 89%;          /* 我的气泡：浅蓝 */
-    --chat-me-fg: 220 26% 16%;
-    --chat-ai: 0 0% 91%;             /* TA 的气泡：浅灰 */
-    --chat-ai-fg: 0 0% 12%;
-    --chat-meta: 220 5% 58%;         /* 时间戳 / 居中日期 / 次要文字 */
-    --chat-quote: 210 24% 96%;       /* 引用卡淡蓝底 */
-    --chat-quote-line: 213 32% 88%;  /* 引用卡描边 */
-    --chat-accent: 213 72% 60%;      /* 蓝强调：选中日 / 圆点 / 高亮 / 发送键 */
+    --border: 210 7% 84%;
+    --input: 210 7% 84%;
+    --ring: 209 9% 46%;
+    --bubble-ai: 210 7% 93%;
+    --bubble-me: 210 8% 88%;
+
+    /* 品牌辅助色：雾蓝灰 / 浅灰蓝 / 冷水墨 */
+    --brand: 209 9% 46%;
+    --brand-soft: 207 12% 90%;
+    --brand-ink: 207 16% 28%;
+    --gold: 210 7% 58%;
+    --gold-soft: 210 10% 92%;
+    /* 灰蓝底上的字色：用深墨保证对比度 */
+    --on-gold: 210 10% 16%;
+    --glow: 214 22% 76%;
+    --shadow-color: 210 10% 28%;
+
+    /* ===== chat 页专用：灰底 + 雾蓝己方气泡 + 浅灰对方气泡 ===== */
+    --chat-bg: 210 6% 92%;
+    --chat-bar: 210 7% 96%;
+    --chat-pill: 210 7% 95%;
+    --chat-pill-fg: 210 4% 25%;
+    --chat-line: 210 7% 84%;
+    --chat-me: 209 9% 43%;
+    --chat-me-fg: 0 0% 100%;
+    --chat-ai: 210 7% 94%;
+    --chat-ai-fg: 210 4% 20%;
+    --chat-meta: 213 5% 52%;
+    --chat-quote: 210 7% 93%;
+    --chat-quote-line: 210 7% 83%;
+    --chat-accent: 209 9% 46%;
     --chat-accent-fg: 0 0% 100%;
-    --chat-call-in: 148 38% 44%;     /* 接听绿 */
-    --chat-call-out: 0 62% 57%;      /* 拒绝红 */
-    /* ===== 覆盖层页面统一底（日记本/纪念日/课程表/吃什么/来信/备忘录/首页）=====
-       双层结构里聊天页是常驻底座，二级页面叠在它上面，所以页面根节点**必须自己铺一层
-       不透明底**——不铺就会透出底下的对话（顶栏「小蓝莓」和输入框直接穿出来）。
-       这一档跟 app 外壳同一张「暖纸」，深色模式随之降档；--page-line 给统一顶栏画分隔线。 */
-    --page-bg: 40 33% 96%;
-    --page-line: 38 20% 86%;
-    /* 抬升面板（卡片/抽屉内块/弹层），比页面底更亮一档，给层次感 */
-    --surface: 0 0% 100%;
-    --surface-2: 40 30% 90%;
+    --chat-call-in: 148 28% 40%;
+    --chat-call-out: 0 54% 53%;
+
+    /* ===== 覆盖层页面统一底：整页不透明，叠在常驻聊天底座之上 ===== */
+    --page-bg: 210 6% 92%;
+    --page-line: 210 7% 84%;
+    --surface: 210 7% 97%;
+    --surface-2: 210 7% 93%;
+    --surface-3: 210 6% 88%;
+    --surface-sunken: 210 7% 90%;
+    /* 弹层背板：纯色不透明（禁止半透明黑遮罩 / 模糊） */
+    --scrim: 210 6% 84%;
+
+    /* 阅读 / 信纸 / 沉浸页面的一对纸墨色，跟随主题换档 */
+    --paper: 210 6% 95%;
+    --ink: 210 4% 22%;
+    --night: 210 8% 10%;
+    --ink-night: 210 6% 86%;
+
+    /* 小手机（iOS 外壳）配色：**独立的一套**，不跟随全站深浅主题；
+       由 themeCore 的 --bb-* 预设（数据中枢 / 外观）单独控制，这里只给默认值兜底 */
+    --phone-bg: 0 0% 100%;
+    --phone-surface: 40 26% 97.5%;
+    --phone-nav: 40 28% 96.5%;
+    --phone-ink: 0 0% 7%;
+    --phone-muted: 240 2% 45%;
+    --phone-sep: 30 12% 87%;
+    --phone-blue: 211 100% 50%;
+    --phone-bubble-me: 211 100% 50%;
+    --phone-bubble-ai: 40 10% 90%;
+    --phone-grouped: 40 26% 96%;
+
     --radius: 1rem;
   }
 
   .dark {
-    --background: 30 18% 9%;
-    --foreground: 35 24% 88%;
-    --card: 30 16% 12%;
-    --card-foreground: 35 24% 88%;
-    --popover: 30 16% 14%;
-    --popover-foreground: 35 24% 88%;
-    --primary: 214 70% 60%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 30 14% 17%;
-    --secondary-foreground: 35 24% 88%;
-    --muted: 30 14% 17%;
-    --muted-foreground: 35 11% 60%;
-    --accent: 30 14% 17%;
-    --accent-foreground: 35 24% 88%;
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 30 12% 22%;
-    --input: 30 12% 22%;
-    --ring: 214 70% 60%;
-    --bubble-ai: 240 2% 18%;
-    --bubble-me: 240 2% 23%;
-    /* chat 页暗色版：结构与浅色完全一致，只把颜色换成深色一档（强调色跟随浅色的蓝） */
-    --chat-bg: 222 16% 11%;
-    --chat-bar: 222 16% 13%;
-    --chat-pill: 222 14% 18%;
-    --chat-pill-fg: 220 12% 88%;
-    --chat-line: 222 12% 24%;
-    --chat-me: 213 34% 30%;
-    --chat-me-fg: 213 60% 96%;
-    --chat-ai: 222 14% 20%;
-    --chat-ai-fg: 220 14% 94%;
-    --chat-meta: 220 10% 62%;
-    --chat-quote: 222 14% 18%;
-    --chat-quote-line: 222 12% 28%;
-    --chat-accent: 213 70% 62%;
-    --chat-accent-fg: 222 20% 10%;
-    --chat-call-in: 148 34% 40%;
-    --chat-call-out: 0 55% 52%;
-    /* 覆盖层页面统一底（深色一档，与 --background 同源） */
-    --page-bg: 30 18% 9%;
-    --page-line: 30 12% 22%;
-    /* 抬升面板（深色一档，比底更亮，给层次感） */
-    --surface: 30 16% 14%;
-    --surface-2: 30 14% 18%;
+    --background: 210 6% 11%;
+    --foreground: 210 8% 88%;
+    --card: 210 6% 14%;
+    --card-foreground: 210 8% 88%;
+    --popover: 210 6% 16%;
+    --popover-foreground: 210 8% 88%;
+    --primary: 209 11% 70%;
+    --primary-foreground: 210 8% 12%;
+    --secondary: 210 6% 18%;
+    --secondary-foreground: 210 8% 88%;
+    --muted: 210 6% 17%;
+    --muted-foreground: 213 5% 60%;
+    --accent: 210 6% 18%;
+    --accent-foreground: 210 8% 88%;
+    --destructive: 0 52% 48%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 210 6% 24%;
+    --input: 210 6% 24%;
+    --ring: 209 11% 70%;
+    --bubble-ai: 210 6% 19%;
+    --bubble-me: 210 8% 27%;
+
+    --brand: 209 11% 66%;
+    --brand-soft: 210 9% 20%;
+    --brand-ink: 210 18% 80%;
+    --gold: 210 8% 60%;
+    --gold-soft: 210 8% 19%;
+    --on-gold: 210 8% 12%;
+    --glow: 210 26% 52%;
+    --shadow-color: 0 0% 0%;
+
+    --chat-bg: 210 7% 10%;
+    --chat-bar: 210 7% 12%;
+    --chat-pill: 210 6% 17%;
+    --chat-pill-fg: 210 8% 84%;
+    --chat-line: 210 6% 23%;
+    --chat-me: 210 9% 28%;
+    --chat-me-fg: 0 0% 100%;
+    --chat-ai: 210 6% 18%;
+    --chat-ai-fg: 210 8% 88%;
+    --chat-meta: 213 5% 58%;
+    --chat-quote: 210 6% 17.5%;
+    --chat-quote-line: 210 6% 27%;
+    --chat-accent: 209 11% 64%;
+    --chat-accent-fg: 210 8% 12%;
+    --chat-call-in: 148 28% 37%;
+    --chat-call-out: 0 48% 49%;
+
+    --page-bg: 210 7% 10%;
+    --page-line: 210 6% 22%;
+    --surface: 210 6% 13.5%;
+    --surface-2: 210 6% 17%;
+    --surface-3: 210 6% 21%;
+    --surface-sunken: 210 7% 11%;
+    --scrim: 210 7% 11.5%;
+
+    --paper: 210 6% 14%;
+    --ink: 210 7% 87%;
+    --night: 210 8% 9%;
+    --ink-night: 210 7% 88%;
   }
 }
 
@@ -149,28 +203,211 @@
     height: 100%;
   }
   :root {
-    /* 数字字体栈（默认：飘逸衬线）—— 设置里可切换 */
-    --font-sans-stack:
-      'Playfair Digits', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
-      'PingFang SC', 'Microsoft YaHei', sans-serif;
-  }
-  :root[data-num-font='sans'] {
+    /* 数字字体栈：默认无衬线（白水主题的干净感），设置里可切回衬线 */
     --font-sans-stack:
       'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC',
       'Microsoft YaHei', sans-serif;
+  }
+  :root[data-num-font='serif'] {
+    --font-sans-stack:
+      'Playfair Digits', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+      'PingFang SC', 'Microsoft YaHei', sans-serif;
   }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans-stack);
     /* 所有数字统一等宽，避免切换时跳动 */
     font-variant-numeric: tabular-nums;
+    /* 极淡的纸纹：只做噪点级纹理，不依赖图片 */
+    background-image:
+      radial-gradient(120% 80% at 50% -10%, hsl(var(--gold) / 0.07), transparent 60%),
+      radial-gradient(80% 60% at 100% 100%, hsl(var(--glow) / 0.05), transparent 65%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+  }
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.55);
+    outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* 毛玻璃卡片（iOS Widget 质感，ins 风暖调） */
+  /* ---------------------------------------------------------
+     纸面卡片 = 浅灰韩系的「磨砂玻璃框」。
+     页面底仍然是整页不透明（见 --page-bg），只有卡片这一层是半透明玻璃，
+     用 backdrop-filter 取背后的灰，形成柔和的层次而不是靠阴影堆。
+     --------------------------------------------------------- */
+  .paper-card {
+    @apply relative rounded-[22px] border;
+    border-color: hsl(0 0% 100% / 0.55);
+    background: linear-gradient(
+      180deg,
+      hsl(210 8% 98% / 0.62) 0%,
+      hsl(210 8% 96% / 0.5) 100%
+    );
+    -webkit-backdrop-filter: blur(20px) saturate(1.25);
+    backdrop-filter: blur(20px) saturate(1.25);
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.7) inset,
+      0 8px 24px -20px hsl(var(--shadow-color) / 0.26);
+  }
+  .dark .paper-card {
+    border-color: hsl(0 0% 100% / 0.09);
+    background: linear-gradient(
+      180deg,
+      hsl(210 8% 22% / 0.55) 0%,
+      hsl(210 7% 18% / 0.45) 100%
+    );
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.06) inset,
+      0 10px 28px -24px #000;
+  }
+  /* 旧类名保留，外观与 paper-card 一致 */
   .glass {
-    @apply rounded-3xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-[0_10px_40px_rgba(90,64,40,0.08)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_10px_40px_rgba(0,0,0,0.45)];
+    @apply relative rounded-[22px] border;
+    border-color: hsl(0 0% 100% / 0.55);
+    background: linear-gradient(
+      180deg,
+      hsl(210 8% 98% / 0.58) 0%,
+      hsl(210 8% 96% / 0.46) 100%
+    );
+    -webkit-backdrop-filter: blur(26px) saturate(1.3);
+    backdrop-filter: blur(26px) saturate(1.3);
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.7) inset,
+      0 8px 24px -20px hsl(var(--shadow-color) / 0.26);
+  }
+  .dark .glass {
+    border-color: hsl(0 0% 100% / 0.09);
+    background: linear-gradient(
+      180deg,
+      hsl(210 8% 22% / 0.52) 0%,
+      hsl(210 7% 18% / 0.42) 100%
+    );
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.06) inset,
+      0 10px 28px -24px #000;
+  }
+  /* 内嵌的「凹陷纸面」：用于输入框、进度槽、列表分组 */
+  .paper-inset {
+    @apply rounded-2xl border border-border/80 bg-surface-2;
+    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.06) inset;
+  }
+  /* 强调卡片：左侧一条陶土色书脊 */
+  .paper-spine {
+    @apply relative overflow-hidden;
+  }
+  .paper-spine::before {
+    content: '';
+    position: absolute;
+    inset-block: 14px;
+    left: 0;
+    width: 3px;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.9), hsl(var(--gold) / 0.55));
+  }
+  /* 英文眉标 */
+  .eyebrow {
+    @apply font-serif text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground;
+  }
+  /* 标题：浅灰韩系用无衬线，靠字距收紧和字重区分层级（不再用宋体/Playfair） */
+  .display {
+    font-family:
+      'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC',
+      'Microsoft YaHei', sans-serif;
+    letter-spacing: -0.02em;
+  }
+  /* 发丝分隔线（渐变收头，比 1px 实线更柔） */
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--border)) 12%,
+      hsl(var(--border)) 88%,
+      transparent
+    );
+  }
+  /* 页面环境光：顶部一圈暖光，给留白一点呼吸 */
+  .page-wash {
+    background:
+      radial-gradient(120% 70% at 50% -12%, hsl(var(--gold) / 0.12), transparent 62%),
+      radial-gradient(90% 55% at 100% 0%, hsl(var(--glow) / 0.07), transparent 60%);
+  }
+  .dark .page-wash {
+    background:
+      radial-gradient(120% 70% at 50% -12%, hsl(var(--gold) / 0.08), transparent 62%),
+      radial-gradient(90% 55% at 100% 0%, hsl(var(--glow) / 0.1), transparent 60%);
+  }
+  /* 小圆钮 / 图标钮：跟随卡片的磨砂质感 */
+  .icon-btn {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition;
+    background: hsl(0 0% 100% / 0.5);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 0 hsl(0 0% 100% / 0.65) inset;
+  }
+  .dark .icon-btn {
+    background: hsl(0 0% 100% / 0.06);
+    box-shadow: 0 1px 0 hsl(0 0% 100% / 0.05) inset;
+  }
+  .icon-btn:hover {
+    @apply text-foreground;
+    background: hsl(var(--surface-2));
+  }
+  .icon-btn:active {
+    transform: scale(0.95);
+  }
+  /* 胶囊标签 */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-border/70 bg-surface px-2.5 py-1 text-[11px] text-muted-foreground;
+  }
+  /* 章节标题：眉标 + 标题 + 细线 */
+  .section-title {
+    @apply flex items-center gap-2 text-[13px] font-semibold text-foreground;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, hsl(var(--border)), transparent);
+  }
+  /* 触感：可点击元素统一的按压反馈 */
+  .press {
+    @apply transition duration-200;
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+  /* 品牌印章 */
+  .brand-seal {
+    @apply inline-flex items-center justify-center rounded-full border border-primary/25 bg-primary/10 font-serif text-primary;
+  }
+  /* 内容入场：轻盈上浮，不用动画库 */
+  .rise-in {
+    animation: rise-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
   }
 }
 
@@ -231,14 +468,14 @@
   }
 }
 
-/* ===== 播放器极细进度条（黑金） ===== */
+/* ===== 播放器极细进度条（跟随主题） ===== */
 .player-range {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 3px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: hsl(var(--foreground) / 0.18);
   outline: none;
   cursor: pointer;
 }
@@ -248,27 +485,27 @@
   height: 12px;
   width: 12px;
   border-radius: 50%;
-  background: #d4af37;
+  background: hsl(var(--gold));
   border: none;
-  box-shadow: 0 0 8px rgba(212, 175, 55, 0.9), 0 0 2px rgba(212, 175, 55, 0.6);
+  box-shadow: 0 0 8px hsl(var(--gold) / 0.6), 0 0 2px hsl(var(--gold) / 0.45);
 }
 .player-range::-moz-range-thumb {
   height: 12px;
   width: 12px;
   border-radius: 50%;
-  background: #d4af37;
+  background: hsl(var(--gold));
   border: none;
-  box-shadow: 0 0 8px rgba(212, 175, 55, 0.9);
+  box-shadow: 0 0 8px hsl(var(--gold) / 0.6);
 }
 .player-range::-moz-range-track {
   height: 3px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: hsl(var(--foreground) / 0.18);
 }
 .player-range::-moz-range-progress {
   height: 3px;
   border-radius: 9999px;
-  background: #d4af37;
+  background: hsl(var(--gold));
 }
 
 /* ===== 播放器进度条·淡灰浅色卡片变体（更细） ===== */
@@ -278,48 +515,48 @@
 .player-range--light::-webkit-slider-thumb {
   height: 9px;
   width: 9px;
-  background: #6b7280;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
+  background: hsl(var(--muted-foreground));
+  box-shadow: 0 0 5px hsl(var(--shadow-color) / 0.25);
 }
 .player-range--light::-moz-range-thumb {
   height: 9px;
   width: 9px;
-  background: #6b7280;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
+  background: hsl(var(--muted-foreground));
+  box-shadow: 0 0 5px hsl(var(--shadow-color) / 0.25);
 }
 .player-range--light::-moz-range-track {
   height: 2px;
 }
 .player-range--light::-moz-range-progress {
   height: 2px;
-  background: #6b7280;
+  background: hsl(var(--muted-foreground));
 }
 
-/* ===== 播放器进度条·暗色毛玻璃卡片变体（白色） ===== */
+/* ===== 播放器进度条·暗色卡片变体（更细） ===== */
 .player-range--dark {
   height: 2px;
 }
 .player-range--dark::-webkit-slider-thumb {
   height: 8px;
   width: 8px;
-  background: #ffffff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  background: hsl(var(--foreground));
+  box-shadow: 0 0 6px hsl(var(--foreground) / 0.35);
 }
 .player-range--dark::-moz-range-thumb {
   height: 8px;
   width: 8px;
-  background: #ffffff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  background: hsl(var(--foreground));
+  box-shadow: 0 0 6px hsl(var(--foreground) / 0.35);
 }
 .player-range--dark::-moz-range-track {
   height: 2px;
 }
 .player-range--dark::-moz-range-progress {
   height: 2px;
-  background: #ffffff;
+  background: hsl(var(--foreground));
 }
 
-/* ===== 一起听声波动画（黑金） ===== */
+/* ===== 一起听声波动画（跟随主题） ===== */
 @keyframes soundwave {
   0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
   50% { transform: scaleY(1); opacity: 1; }

@@ -56,24 +56,24 @@ function TrackRow({
   onPlay?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl px-2 py-2 transition hover:bg-white/5">
+    <div className="flex items-center gap-2 rounded-xl px-2 py-2 transition hover:bg-surface-2">
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 text-sm text-[#E0E0E0]">
+        <p className="flex items-center gap-1.5 text-sm text-foreground">
           <span className="truncate">{track.name}</span>
           {ai && (
-            <span className="shrink-0 rounded-full bg-[#D4AF37]/15 px-1.5 py-0.5 text-[10px] text-[#D4AF37]">
+            <span className="shrink-0 rounded-full bg-gold/10 px-1.5 py-0.5 text-[10px] text-gold">
               AI
             </span>
           )}
         </p>
-        <p className="truncate text-xs text-[#8A8A8A]">{track.artist || '未知歌手'}</p>
+        <p className="truncate text-xs text-muted-foreground">{track.artist || '未知歌手'}</p>
       </div>
       {onPlay && (
         <button
           type="button"
           onClick={onPlay}
           aria-label="播放"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#D4AF37]/15 text-[#D4AF37] transition hover:bg-[#D4AF37]/25"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold transition hover:bg-gold/20"
         >
           <Play className="h-4 w-4" />
         </button>
@@ -85,7 +85,7 @@ function TrackRow({
           aria-label={added ? '已添加' : '添加到队列'}
           className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition',
-            added ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/10 text-[#E0E0E0] hover:bg-white/20',
+            added ? 'bg-gold/15 text-gold' : 'bg-surface-2 text-foreground hover:bg-surface-3',
           )}
         >
           {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -97,7 +97,7 @@ function TrackRow({
 
 function Loading({ text = '加载中…' }: { text?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-10 text-sm text-[#8A8A8A]">
+    <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
       <Loader2 className="h-4 w-4 animate-spin" />
       <span>{text}</span>
     </div>
@@ -105,7 +105,7 @@ function Loading({ text = '加载中…' }: { text?: string }) {
 }
 
 function Empty({ text = '暂无内容' }: { text?: string }) {
-  return <p className="py-10 text-center text-sm text-[#8A8A8A]">{text}</p>;
+  return <p className="py-10 text-center text-sm text-muted-foreground">{text}</p>;
 }
 
 /** 底部列表区：每日推荐 / 我的歌单 / 播放队列 / AI 专属推荐 */
@@ -175,9 +175,9 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#D4AF37]/15 bg-[#121212]">
+    <div className="paper-card overflow-hidden">
       {/* Tab 切换：四等分 */}
-      <div className="grid grid-cols-4 border-b border-white/10">
+      <div className="grid grid-cols-4 border-b border-border">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -185,11 +185,11 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
             onClick={() => setActive(t.key)}
             className={cn(
               'relative py-3 text-center text-xs transition',
-              active === t.key ? 'font-medium text-[#D4AF37]' : 'text-[#8A8A8A] hover:text-[#E0E0E0]',
+              active === t.key ? 'font-medium text-gold' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             {t.label}
-            {active === t.key && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#D4AF37]" />}
+            {active === t.key && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-gold" />}
           </button>
         ))}
       </div>
@@ -225,7 +225,7 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
             ) : (
               playlists.map((p) => (
                 <div key={p.id} className="mb-2">
-                  <p className="px-2 pb-1 text-xs font-medium text-[#8A8A8A]">
+                  <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">
                     {p.name} · {p.tracks.length} 首
                   </p>
                   {p.tracks.map((t) => (
@@ -279,9 +279,9 @@ export function PlaylistSection({ onPlayTrack }: { onPlayTrack: (track: Track) =
                 />
               ))
             ) : aiFallback ? (
-              <p className="whitespace-pre-wrap px-2 py-4 text-sm leading-6 text-[#E0E0E0]">{aiFallback}</p>
+              <p className="whitespace-pre-wrap px-2 py-4 text-sm leading-6 text-foreground">{aiFallback}</p>
             ) : aiError ? (
-              <p className="px-2 py-8 text-center text-sm text-[#8A8A8A]">{aiError}</p>
+              <p className="px-2 py-8 text-center text-sm text-muted-foreground">{aiError}</p>
             ) : (
               <Empty text="点击后 AI 将为你生成专属推荐" />
             )}

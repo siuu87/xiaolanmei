@@ -67,7 +67,7 @@ export function BedtimeNudge() {
     <div
       data-testid="bedtime-nudge"
       role="status"
-      className="fixed bottom-24 left-1/2 z-[1400] w-[min(360px,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-border bg-card p-3 shadow-lg"
+      className="paper-card fixed bottom-24 left-1/2 z-[1400] w-[min(360px,calc(100vw-2rem))] -translate-x-1/2 p-3"
     >
       <div className="flex items-start gap-2.5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-500">

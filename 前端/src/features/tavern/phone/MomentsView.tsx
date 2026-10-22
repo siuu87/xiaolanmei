@@ -47,7 +47,7 @@ function PlaceholderImage({ image, className }: { image: MomentImage; className?
       }}
       aria-label={image.label}
     >
-      <span className="rounded bg-black/20 px-1 py-0.5 backdrop-blur-sm">{image.label}</span>
+      <span className="rounded bg-black/20 px-1 py-0.5">{image.label}</span>
     </span>
   );
 }
@@ -88,7 +88,7 @@ function ActionRow({
         type="button"
         onClick={onComment}
         aria-label="评论"
-        className="flex items-center gap-1 text-[12px] text-[#3C3C43] transition active:opacity-60"
+        className="flex items-center gap-1 text-[12px] text-phone-muted transition active:opacity-60"
       >
         <MessageCircle className="h-[18px] w-[18px]" strokeWidth={1.9} />
       </button>
@@ -98,7 +98,7 @@ function ActionRow({
         aria-label={liked ? '取消赞' : '赞'}
         className={cn(
           'flex items-center gap-1 text-[12px] transition active:scale-90',
-          liked ? 'text-[#FF3B30]' : 'text-[#3C3C43]',
+          liked ? 'text-[#FF3B30]' : 'text-phone-muted',
         )}
       >
         <Heart
@@ -116,11 +116,11 @@ function InteractionBlock({ moment, onReply }: { moment: Moment; onReply: (autho
   const hasComments = moment.comments.length > 0;
   if (!hasLikes && !hasComments) return null;
   return (
-    <div className="mt-2 overflow-hidden rounded-md bg-[#f5f5f7] px-2.5 py-2">
+    <div className="mt-2 overflow-hidden rounded-md bg-phone-grouped px-2.5 py-2">
       {hasLikes && (
         <div className="flex items-start gap-1 text-[12px] leading-5">
-          <Heart className="mt-1 h-3 w-3 shrink-0 fill-[#007AFF] text-[#007AFF]" />
-          <span className="flex-1 text-[#007AFF]">
+          <Heart className="mt-1 h-3 w-3 shrink-0 fill-phone-blue text-phone-blue" />
+          <span className="flex-1 text-phone-blue">
             {moment.likes.map((name, i) => (
               <span key={i}>
                 {i > 0 && '、'}
@@ -130,7 +130,7 @@ function InteractionBlock({ moment, onReply }: { moment: Moment; onReply: (autho
           </span>
         </div>
       )}
-      {hasLikes && hasComments && <div className="my-1.5 border-t border-black/[0.06]" />}
+      {hasLikes && hasComments && <div className="my-1.5 border-t border-phone-sep" />}
       {hasComments && (
         <div className="space-y-1">
           {moment.comments.map((c) => (
@@ -138,11 +138,11 @@ function InteractionBlock({ moment, onReply }: { moment: Moment; onReply: (autho
               <button
                 type="button"
                 onClick={() => onReply(c.author)}
-                className={cn('font-medium', c.mine ? 'text-[#007AFF]' : 'text-[#007AFF]')}
+                className={cn('font-medium', c.mine ? 'text-phone-blue' : 'text-phone-blue')}
               >
                 {c.author}
               </button>
-              <span className="text-[#000000]">：{c.content}</span>
+              <span className="text-phone-ink">：{c.content}</span>
             </div>
           ))}
         </div>
@@ -168,17 +168,17 @@ export function PublishSheet({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col bg-white">
+    <div className="absolute inset-0 z-40 flex flex-col bg-phone-bg">
       <div className="flex h-11 shrink-0 items-center justify-between px-2">
         <button
           type="button"
           onClick={onClose}
           aria-label="取消"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-[#3C3C43] active:bg-black/10"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-phone-muted active:bg-phone-sep"
         >
           <X className="h-5 w-5" />
         </button>
-        <span className="text-[15px] font-semibold text-[#000000]">发表动态</span>
+        <span className="text-[15px] font-semibold text-phone-ink">发表动态</span>
         <button
           type="button"
           disabled={!canPublish}
@@ -188,7 +188,7 @@ export function PublishSheet({ onClose }: { onClose: () => void }) {
           }}
           className={cn(
             'flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium transition',
-            canPublish ? 'bg-[#007AFF] text-white active:scale-95' : 'bg-[#E9E9EB] text-[#8e8e93]',
+            canPublish ? 'bg-phone-blue text-primary-foreground active:scale-95' : 'bg-phone-sep text-phone-muted',
           )}
         >
           <Send className="h-3.5 w-3.5" /> 发表
@@ -201,7 +201,7 @@ export function PublishSheet({ onClose }: { onClose: () => void }) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="这一刻的想法…"
           rows={5}
-          className="w-full resize-none bg-transparent text-[15px] leading-7 text-[#000000] outline-none placeholder:text-[#8e8e93]"
+          className="w-full resize-none bg-transparent text-[15px] leading-7 text-phone-ink outline-none placeholder:text-phone-muted"
         />
 
         {/* 已选图片 */}
@@ -231,15 +231,15 @@ export function PublishSheet({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={addImage}
-              className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-[#C7C7CC] text-[#8e8e93] transition active:bg-black/[0.03]"
+              className="flex aspect-square items-center justify-center rounded-[3px] border border-dashed border-phone-sep text-phone-muted transition active:bg-phone-grouped"
             >
               <PenLine className="h-6 w-6" strokeWidth={1.5} />
             </button>
           )}
         </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-black/[0.06] pt-3">
-          <span className="text-[13px] text-[#8e8e93]">所在位置</span>
+        <div className="mt-5 flex items-center justify-between border-t border-phone-sep pt-3">
+          <span className="text-[13px] text-phone-muted">所在位置</span>
           <div className="flex flex-wrap justify-end gap-1.5">
             {MOMENT_LOCATIONS.map((loc) => (
               <button
@@ -248,7 +248,7 @@ export function PublishSheet({ onClose }: { onClose: () => void }) {
                 onClick={() => setLocation(loc)}
                 className={cn(
                   'rounded-full px-2.5 py-1 text-[12px] transition',
-                  location === loc ? 'bg-[#007AFF]/12 text-[#007AFF] ring-1 ring-[#007AFF]/40' : 'bg-[#E9E9EB] text-[#3C3C43]',
+                  location === loc ? 'bg-phone-grouped text-phone-blue ring-1 ring-phone-blue' : 'bg-phone-grouped text-phone-muted',
                 )}
               >
                 {loc || '不显示'}
@@ -274,8 +274,8 @@ function CommentBar({
 }) {
   const [text, setText] = useState('');
   return (
-    <div className="flex items-center gap-2 border-t border-black/[0.06] bg-white px-3 py-2">
-      <span className="shrink-0 text-[12px] text-[#8e8e93]">回复 {replyTo}</span>
+    <div className="flex items-center gap-2 border-t border-phone-sep bg-phone-surface px-3 py-2">
+      <span className="shrink-0 text-[12px] text-phone-muted">回复 {replyTo}</span>
       <input
         autoFocus
         value={text}
@@ -287,12 +287,12 @@ function CommentBar({
           }
         }}
         placeholder="写评论…"
-        className="h-8 flex-1 rounded-lg bg-[#E9E9EB] px-2.5 text-[13px] text-[#000000] outline-none placeholder:text-[#8e8e93]"
+        className="h-8 flex-1 rounded-lg bg-phone-grouped px-2.5 text-[13px] text-phone-ink outline-none placeholder:text-phone-muted"
       />
       <button
         type="button"
         onClick={onCancel}
-        className="shrink-0 text-[13px] text-[#8e8e93] transition active:opacity-60"
+        className="shrink-0 text-[13px] text-phone-muted transition active:opacity-60"
       >
         取消
       </button>
@@ -302,7 +302,7 @@ function CommentBar({
         onClick={() => onSubmit(text)}
         className={cn(
           'shrink-0 rounded-full px-3 py-1 text-[13px] font-medium transition',
-          text.trim() ? 'bg-[#007AFF] text-white' : 'bg-[#E9E9EB] text-[#8e8e93]',
+          text.trim() ? 'bg-phone-blue text-primary-foreground' : 'bg-phone-sep text-phone-muted',
         )}
       >
         发送
@@ -324,12 +324,12 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
   const sorted = useMemo(() => [...moments].sort((a, b) => b.createdAt - a.createdAt), [moments]);
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-phone-bg">
       {/* 封面头图 */}
       <div className="relative h-40 shrink-0 overflow-hidden bg-gradient-to-br from-[#2b3550] via-[#1d2540] to-[#101528]">
         <div className="absolute inset-0 opacity-70">
-          <div className="absolute right-4 top-6 h-16 w-16 rounded-full bg-[#D4AF37]/25 blur-xl" />
-          <div className="absolute bottom-3 left-6 h-20 w-20 rounded-full bg-[#007AFF]/25 blur-2xl" />
+          <div className="absolute right-4 top-6 h-16 w-16 rounded-full bg-gold/25 blur-xl" />
+          <div className="absolute bottom-3 left-6 h-20 w-20 rounded-full bg-phone-blue/25 blur-2xl" />
         </div>
         <PhoneNavBar
           title=""
@@ -359,14 +359,14 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
           />
         ) : (
           sorted.map((m) => (
-            <div key={m.id} className="group flex gap-2.5 border-b border-black/[0.05] px-3 py-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#E9E9EB] text-xl">
+            <div key={m.id} className="group flex gap-2.5 border-b border-phone-sep px-3 py-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-phone-grouped text-xl">
                 <AvatarContent value={m.authorAvatar ?? ''} fallback="🙂" className="rounded-md" />
               </span>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2">
-                  <span className="min-w-0 flex-1 text-[14px] font-semibold text-[#007AFF]">
+                  <span className="min-w-0 flex-1 text-[14px] font-semibold text-phone-blue">
                     {m.authorName}
                   </span>
                   {m.mine && (
@@ -374,7 +374,7 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
                       type="button"
                       onClick={() => setConfirmDel(m.id)}
                       aria-label="删除动态"
-                      className="shrink-0 text-[#C7C7CC] transition active:text-[#FF3B30]"
+                      className="shrink-0 text-phone-muted transition active:text-[#FF3B30]"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -382,7 +382,7 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
                 </div>
 
                 {m.content && (
-                  <p className="mt-1 whitespace-pre-wrap break-words text-[14px] leading-[1.5] text-[#000000]">
+                  <p className="mt-1 whitespace-pre-wrap break-words text-[14px] leading-[1.5] text-phone-ink">
                     {m.content}
                   </p>
                 )}
@@ -390,11 +390,11 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
                 <MomentImages images={m.images} />
 
                 {m.location && (
-                  <p className="mt-1.5 text-[12px] text-[#8e8e93]">📍 {m.location}</p>
+                  <p className="mt-1.5 text-[12px] text-phone-muted">📍 {m.location}</p>
                 )}
 
                 <div className="mt-1.5 flex items-center gap-3">
-                  <span className="text-[11px] text-[#8e8e93]">{momentTime(m.createdAt)}</span>
+                  <span className="text-[11px] text-phone-muted">{momentTime(m.createdAt)}</span>
                   <div className="flex-1" />
                   <ActionRow
                     moment={m}

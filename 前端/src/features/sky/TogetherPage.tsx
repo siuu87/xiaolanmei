@@ -47,7 +47,7 @@ export function TogetherPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-full bg-[#070b1a] text-slate-200">
+    <div className="relative min-h-full bg-page-bg text-foreground">
       <StarBackdrop />
       <div className="relative mx-auto w-full max-w-md px-4 py-8">
         <header className="relative mb-8 text-center">
@@ -56,12 +56,12 @@ export function TogetherPage() {
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <p className="text-[10px] tracking-[0.4em] text-slate-400/80">TOGETHER</p>
-          <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-slate-100">together</h1>
+          <p className="text-[10px] tracking-[0.4em] text-muted-foreground">TOGETHER</p>
+          <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-foreground">together</h1>
         </header>
 
         <div className="space-y-3">
@@ -70,16 +70,16 @@ export function TogetherPage() {
               key={b.key}
               type="button"
               onClick={() => navigate(b.to)}
-              className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.08]"
+              className="paper-card group flex w-full items-center gap-4 p-5 text-left transition hover:border-gold/30"
             >
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-amber-300 transition group-hover:scale-105">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gold/10 text-gold transition group-hover:scale-105">
                 <b.icon className="h-7 w-7" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-base font-medium tracking-wide text-slate-100">{b.label}</span>
-                <span className="mt-1 block text-[11px] text-slate-400">{b.hint}</span>
+                <span className="block text-base font-medium tracking-wide text-foreground">{b.label}</span>
+                <span className="mt-1 block text-[11px] text-muted-foreground">{b.hint}</span>
               </span>
-              <ChevronRight className="h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-slate-300" />
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
           ))}
         </div>

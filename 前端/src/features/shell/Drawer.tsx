@@ -52,20 +52,31 @@ export function Drawer() {
             />
             {/* 面板 */}
             <motion.div
-              className="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col border-r border-border bg-background shadow-2xl"
+              className="absolute inset-y-0 left-0 flex w-[88%] max-w-[360px] flex-col overflow-hidden rounded-r-[28px] border-r border-border bg-surface shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.9 }}
             >
+              <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-56" />
               {/* 顶部小把手行 */}
-              <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-3">
-                <span className="font-serif text-[15px] font-semibold text-foreground">🫐 小蓝莓</span>
+              <div className="relative flex shrink-0 items-center justify-between px-4 pb-2 pt-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="brand-seal h-9 w-9 text-[17px]" aria-hidden>
+                    🫐
+                  </span>
+                  <div>
+                    <p className="display text-[16px] font-semibold leading-tight text-foreground">
+                      小蓝莓
+                    </p>
+                    <p className="eyebrow mt-0.5 leading-none">My Journal</p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={closeDrawer}
                   aria-label="关闭抽屉"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
+                  className="icon-btn h-8 w-8"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -99,16 +110,21 @@ export function Drawer() {
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 360, damping: 32 }}
             >
-              <div className="flex shrink-0 items-center gap-1 border-b border-border px-2.5 py-2.5">
+              <div className="flex shrink-0 items-center gap-2 border-b border-border bg-page-bg px-3 pb-2.5 pt-3">
                 <button
                   type="button"
                   onClick={closeAppearance}
                   aria-label="返回"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10"
+                  className="icon-btn h-8 w-8 shrink-0"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-                <p className="flex-1 text-center text-[15px] font-semibold text-foreground">外观与全局配置</p>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="eyebrow leading-none">Appearance</span>
+                  <p className="display truncate text-[17px] font-semibold leading-tight text-foreground">
+                    外观与全局配置
+                  </p>
+                </div>
                 <span className="h-8 w-8 shrink-0" aria-hidden />
               </div>
               <div

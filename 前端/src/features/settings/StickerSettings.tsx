@@ -101,7 +101,7 @@ export function StickerSettings() {
   };
 
   return (
-    <Card>
+    <Card className="shadow-sm">
       <CardHeader>
         <CardTitle>表情包</CardTitle>
         <CardDescription>按分类整理：新建分类后把表情传进去，聊天面板里也按分类翻页</CardDescription>

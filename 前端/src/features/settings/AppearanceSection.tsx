@@ -43,6 +43,8 @@ import { IOSSwitch } from '@/components/ios/IOSSwitch';
 
 type SheetKey = 'accent' | 'preset' | 'numfont' | 'font' | 'css';
 
+/* 分组卡磨砂底由 IOSSettingGroup 组件自身处理（.glass + 16px 圆角） */
+
 const NUM_FONT_PRESETS: { key: NumFont; name: string; fontFamily: string }[] = [
   { key: 'serif', name: '飘逸衬线', fontFamily: "'Playfair Display', Georgia, serif" },
   { key: 'sans', name: '现代无衬线', fontFamily: 'Inter, system-ui, sans-serif' },
@@ -78,13 +80,13 @@ function Sheet({
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/55" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-scrim" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative flex w-full flex-col overflow-hidden bg-background shadow-2xl',
+          'relative flex w-full flex-col overflow-hidden bg-surface text-foreground shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
           full
             ? 'h-full max-w-none rounded-none'
             : 'h-[80vh] max-w-md rounded-t-2xl sm:h-[68vh] sm:rounded-2xl',
@@ -99,7 +101,7 @@ function Sheet({
             type="button"
             onClick={onClose}
             aria-label={`关闭${title}`}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground active:opacity-70"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted-foreground active:opacity-70"
           >
             <X className="h-4 w-4" />
           </button>
@@ -188,7 +190,7 @@ export function AppearanceSection() {
           onClick={() => setExpandMode((v) => !v)}
         />
         {expandMode && (
-          <div className="bg-muted/50 px-4 py-3">
+          <div className="bg-surface-2 px-4 py-3">
             <div className="grid grid-cols-2 gap-2">
               {(['dark', 'light'] as Theme[]).map((t) => (
                 <button
@@ -207,7 +209,7 @@ export function AppearanceSection() {
                   <span
                     className={cn(
                       'mb-2 block h-10 w-full rounded-lg',
-                      t === 'dark' ? 'bg-[#171D2B]' : 'bg-[#F2F2F7]',
+                      t === 'dark' ? 'bg-[#17181A]' : 'bg-[#F2F3F4]',
                     )}
                   />
                   <span className="text-[14px] font-medium text-foreground">
@@ -220,7 +222,7 @@ export function AppearanceSection() {
               ))}
             </div>
             <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-              目前整站已统一为深色；浅色保留着，方便以后做美化时对照。
+              浅色为白水灰调，深色为中性石墨灰；切换即时生效。
             </p>
           </div>
         )}
@@ -239,7 +241,7 @@ export function AppearanceSection() {
           icon={<Brush className="h-4 w-4" />}
           iconBg="bg-violet-500"
           title="配色方案"
-          subtitle="卡片、气泡与文字的整体色板"
+          subtitle="小手机内部的配色，不影响全站"
           value={curPreset?.name}
           showChevron
           onClick={() => setSheet('preset')}
@@ -320,7 +322,7 @@ export function AppearanceSection() {
       <Sheet
         open={sheet === 'preset'}
         title="配色方案"
-        subtitle="作用于整个 App，实时生效"
+        subtitle="仅作用于小手机，与全站主题互不影响"
         onClose={() => setSheet(null)}
       >
         <div className="space-y-1">
@@ -353,7 +355,7 @@ export function AppearanceSection() {
             })
           }
           aria-label="恢复默认外观"
-          className="mt-4 w-full rounded-xl bg-muted py-2 text-[13px] text-foreground active:opacity-70"
+          className="mt-4 w-full rounded-xl bg-surface-2 py-2 text-[13px] text-foreground active:opacity-70"
         >
           恢复默认（午夜深蓝）
         </button>
@@ -396,7 +398,7 @@ export function AppearanceSection() {
         onClose={() => setSheet(null)}
       >
         {cfg.fonts.length > 0 && (
-          <div className="mb-4 space-y-1 rounded-xl bg-muted/40 p-1">
+          <div className="mb-4 space-y-1 rounded-xl bg-surface-2 p-1">
             {cfg.fonts.map((f) => (
               <OptionRow
                 key={f.id}
@@ -421,14 +423,14 @@ export function AppearanceSection() {
           onChange={(e) => setFontDraft((s) => ({ ...s, family: e.target.value }))}
           placeholder="字体名，如 LXGW WenKai"
           aria-label="字体名称"
-          className="mb-2 w-full rounded-lg bg-muted px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+          className="mb-2 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
         />
         <input
           value={fontDraft.href}
           onChange={(e) => setFontDraft((s) => ({ ...s, href: e.target.value }))}
           placeholder="https://…/font.ttf"
           aria-label="字体链接"
-          className="mb-2 w-full rounded-lg bg-muted px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+          className="mb-2 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
         />
         <button
           type="button"
@@ -448,7 +450,7 @@ export function AppearanceSection() {
           type="button"
           aria-label="从文件添加字体"
           onClick={() => fileRef.current?.click()}
-          className="mt-2 w-full rounded-xl bg-muted py-2 text-[13px] text-foreground active:opacity-70"
+          className="mt-2 w-full rounded-xl bg-surface-2 py-2 text-[13px] text-foreground active:opacity-70"
         >
           从本地文件添加（ttf / otf）
         </button>
@@ -485,7 +487,7 @@ export function AppearanceSection() {
           rows={10}
           placeholder={'例：\n.bg-white{ box-shadow: 0 1px 6px rgba(0,0,0,.08); }'}
           aria-label="自定义 CSS"
-          className="w-full resize-y rounded-lg bg-muted p-3 font-mono text-[11px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
+          className="w-full resize-y rounded-lg border border-border bg-surface-2 p-3 font-mono text-[11px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
         />
         <div className="mt-3 flex gap-2">
           <button
@@ -503,7 +505,7 @@ export function AppearanceSection() {
               setCssDraft('');
               patch({ customCss: '' });
             }}
-            className="rounded-xl bg-muted px-4 py-2 text-[13px] text-destructive active:opacity-70"
+            className="rounded-xl bg-surface-2 px-4 py-2 text-[13px] text-destructive active:opacity-70"
           >
             清空
           </button>

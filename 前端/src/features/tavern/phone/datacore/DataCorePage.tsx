@@ -3,9 +3,8 @@
  *
  * 四块：数据看板 / 主角可见 / 备份迁移 / 外观美化。
  *
- * 这里的配色刻意沿用 `bg-white`、`text-[#8e8e93]`、`bg-[#F2F2F2]` 这类已被
- * 主题引擎接管的 Tailwind 原子类——所以这一页本身也会跟着主题一起换色，
- * 不需要再单独接一遍变量。
+ * 这里的配色统一走 `phone` 系列语义色（`bg-phone-*` / `text-phone-*`），
+ * 由 tailwind 配置随整体深浅主题切换，不再使用固定的 iOS 硬编码色值。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,6 +60,9 @@ import {
   addFont,
   fontFileToDataUrl,
   imageToDataUrl,
+  saveCurrentAsTheme,
+  deleteSavedTheme,
+  applySavedTheme,
   type ThemeScope,
 } from './themeCore';
 import {
@@ -90,15 +92,15 @@ const PANELS: { key: Panel; label: string; icon: typeof Database }[] = [
 function Group({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="mb-4">
-      <p className="mb-1 px-4 text-[11px] uppercase tracking-wide text-[#8e8e93]">{title}</p>
-      <div className="overflow-hidden rounded-[10px] bg-white">{children}</div>
-      {hint && <p className="mt-1 px-4 text-[11px] leading-relaxed text-[#8e8e93]">{hint}</p>}
+      <p className="mb-1 px-4 text-[11px] uppercase tracking-wide text-phone-muted">{title}</p>
+      <div className="overflow-hidden rounded-[10px] bg-phone-surface">{children}</div>
+      {hint && <p className="mt-1 px-4 text-[11px] leading-relaxed text-phone-muted">{hint}</p>}
     </section>
   );
 }
 
 function Divider() {
-  return <div className="ml-4 h-[1px] bg-black/[0.06]" />;
+  return <div className="ml-4 h-[1px] bg-phone-sep" />;
 }
 
 /**
@@ -129,7 +131,7 @@ function Row({
 }) {
   const interactive = !!onClick && !disabled;
   return (
-    <div className={cn('flex items-center transition', interactive && 'active:bg-black/[0.04]', disabled && 'opacity-40')}>
+    <div className={cn('flex items-center transition', interactive && 'active:bg-phone-grouped', disabled && 'opacity-40')}>
       <button
         type="button"
         onClick={onClick}
@@ -138,10 +140,10 @@ function Row({
         className="flex min-w-0 flex-1 items-center gap-2 py-2.5 pl-4 text-left"
       >
         <span className="min-w-0 flex-1">
-          <span className={cn('block truncate text-[15px]', danger ? 'text-[#FF3B30]' : 'text-black')}>{label}</span>
-          {sub && <span className="mt-0.5 block text-[11px] leading-snug text-[#8e8e93]">{sub}</span>}
+          <span className={cn('block truncate text-[15px]', danger ? 'text-[#FF3B30]' : 'text-phone-ink')}>{label}</span>
+          {sub && <span className="mt-0.5 block text-[11px] leading-snug text-phone-muted">{sub}</span>}
         </span>
-        {!actions && (right ?? <ChevronRight className="h-4 w-4 shrink-0 text-[#C7C7CC]" />)}
+        {!actions && (right ?? <ChevronRight className="h-4 w-4 shrink-0 text-phone-muted" />)}
       </button>
       {actions && <div className="flex shrink-0 items-center gap-2 pr-4">{actions}{right}</div>}
     </div>
@@ -154,11 +156,11 @@ function Toggle({ on, label }: { on: boolean; label: string }) {
       aria-label={label}
       className={cn(
         'relative block h-[31px] w-[51px] shrink-0 rounded-full transition-colors',
-        on ? 'bg-[#34C759]' : 'bg-[#E9E9EB]',
+        on ? 'bg-[#34C759]' : 'bg-phone-sep',
       )}
     >
       <motion.span
-        className="absolute left-[2px] top-[2px] block h-[27px] w-[27px] rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,.2)]"
+        className="absolute left-[2px] top-[2px] block h-[27px] w-[27px] rounded-full bg-phone-surface shadow-[0_2px_4px_rgba(0,0,0,.2)]"
         animate={{ x: on ? 20 : 0 }}
         transition={{ type: 'spring', stiffness: 500, damping: 32 }}
       />
@@ -186,8 +188,8 @@ function Slider({
   return (
     <div className="px-4 py-3">
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-[14px] text-black">{label}</span>
-        <span className="text-[13px] tabular-nums text-[#8e8e93]">{format ? format(value) : value}</span>
+        <span className="text-[14px] text-phone-ink">{label}</span>
+        <span className="text-[13px] tabular-nums text-phone-muted">{format ? format(value) : value}</span>
       </div>
       <input
         type="range"
@@ -197,7 +199,7 @@ function Slider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label={label}
-        className="h-[6px] w-full cursor-pointer appearance-none rounded-full bg-[#E9E9EB] accent-[#007AFF]"
+        className="h-[6px] w-full cursor-pointer appearance-none rounded-full bg-phone-sep accent-phone-blue"
       />
     </div>
   );
@@ -225,21 +227,21 @@ function ConfirmSheet({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-      className="absolute inset-0 z-50 flex flex-col bg-white"
+      className="absolute inset-0 z-50 flex flex-col bg-phone-bg"
       data-testid="confirm-page"
     >
       <PhoneNavBar title={title} onBack={onCancel} />
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5">
-        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-[#3C3C43]">{body}</p>
+        <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-phone-muted">{body}</p>
       </div>
-      <div className="shrink-0 space-y-2 border-t border-black/[0.07] px-4 py-3">
+      <div className="shrink-0 space-y-2 border-t border-phone-sep px-4 py-3">
         <button
           type="button"
           onClick={onConfirm}
           aria-label={confirmText}
           className={cn(
-            'flex h-11 w-full items-center justify-center rounded-xl text-[15px] font-semibold text-white transition active:scale-[0.99]',
-            danger ? 'bg-[#FF3B30]' : 'bg-[#007AFF]',
+            'flex h-11 w-full items-center justify-center rounded-xl text-[15px] font-semibold transition active:scale-[0.99]',
+            danger ? 'bg-[#FF3B30] text-white' : 'bg-phone-blue text-primary-foreground',
           )}
         >
           {confirmText}
@@ -248,7 +250,7 @@ function ConfirmSheet({
           type="button"
           onClick={onCancel}
           aria-label="取消"
-          className="flex h-11 w-full items-center justify-center rounded-xl bg-[#E9E9EB] text-[15px] font-medium text-[#3C3C43] transition active:scale-[0.99]"
+          className="flex h-11 w-full items-center justify-center rounded-xl bg-phone-grouped text-[15px] font-medium text-phone-muted transition active:scale-[0.99]"
         >
           取消
         </button>
@@ -297,7 +299,7 @@ export function DataCorePage({ panels, inline }: { panels?: Panel[]; inline?: bo
   return (
     <div
       className={cn(
-        'relative flex flex-col bg-[#F2F2F7]',
+        'relative flex flex-col bg-phone-grouped',
         inline ? 'rounded-xl' : 'h-full min-h-0',
       )}
       data-inline={inline ? '1' : undefined}
@@ -305,13 +307,13 @@ export function DataCorePage({ panels, inline }: { panels?: Panel[]; inline?: bo
       {/* 顶栏：内联展开时外层设置项已经有标题了，不再重复一行 */}
       {!inline && (
         <div className="flex h-11 shrink-0 items-center justify-between px-4">
-          <p className="text-[17px] font-semibold text-black">数据中枢</p>
+          <p className="text-[17px] font-semibold text-phone-ink">数据中枢</p>
         </div>
       )}
 
       {/* 分段切换 */}
       <div className={cn('shrink-0 px-4 pb-3', inline && 'pt-3')}>
-        <div className="flex rounded-[9px] bg-white p-0.5">
+        <div className="flex rounded-[9px] bg-phone-surface p-0.5">
           {shown.map((p) => (
             <button
               key={p.key}
@@ -321,7 +323,7 @@ export function DataCorePage({ panels, inline }: { panels?: Panel[]; inline?: bo
               aria-pressed={panel === p.key}
               className={cn(
                 'flex flex-1 items-center justify-center gap-1 rounded-[7px] py-1.5 text-[11px] transition',
-                panel === p.key ? 'bg-[#007AFF] font-medium text-white' : 'text-[#8e8e93]',
+                panel === p.key ? 'bg-phone-blue font-medium text-primary-foreground' : 'text-phone-muted',
               )}
             >
               <p.icon className="h-3.5 w-3.5" strokeWidth={2.2} />
@@ -367,12 +369,12 @@ function StoragePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => vo
       <Group title="占用总览" hint="配额按 5MB 估算，浏览器实际上限各家不同；接近上限时应先做清理或导出备份。">
         <div className="px-4 py-3">
           <div className="mb-2 flex items-baseline justify-between">
-            <span className="text-[22px] font-semibold tabular-nums text-black">{humanSize(report?.total ?? 0)}</span>
-            <span className="text-[12px] text-[#8e8e93]">
+            <span className="text-[22px] font-semibold tabular-nums text-phone-ink">{humanSize(report?.total ?? 0)}</span>
+            <span className="text-[12px] text-phone-muted">
               / {humanSize(report?.quotaHint ?? 5 * 1024 * 1024)} · {pct.toFixed(1)}%
             </span>
           </div>
-          <div className="h-[8px] overflow-hidden rounded-full bg-[#E9E9EB]">
+          <div className="h-[8px] overflow-hidden rounded-full bg-phone-sep">
             <motion.div
               className={cn('h-full rounded-full', pct > 80 ? 'bg-[#FF3B30]' : pct > 60 ? 'bg-[#FF9500]' : 'bg-[#34C759]')}
               initial={{ width: 0 }}
@@ -398,8 +400,8 @@ function StoragePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => vo
                 onClick={has ? () => setPending({ key: b.key, label: b.label }) : undefined}
                 right={
                   <span className="flex shrink-0 items-center gap-1">
-                    <span className="text-[13px] tabular-nums text-[#8e8e93]">{humanSize(usage?.bytes ?? 0)}</span>
-                    <Trash2 className="h-3.5 w-3.5 text-[#C7C7CC]" />
+                    <span className="text-[13px] tabular-nums text-phone-muted">{humanSize(usage?.bytes ?? 0)}</span>
+                    <Trash2 className="h-3.5 w-3.5 text-phone-muted" />
                   </span>
                 }
               />
@@ -516,7 +518,7 @@ function BridgePanel() {
           right={<Toggle on={cfg.withDisclaimer} label="免责说明" />}
         />
         <Divider />
-        <Row label="恢复默认" sub="回到初始配置" onClick={() => setCfg(DEFAULT_BRIDGE)} right={<RotateCcw className="h-4 w-4 text-[#007AFF]" />} />
+        <Row label="恢复默认" sub="回到初始配置" onClick={() => setCfg(DEFAULT_BRIDGE)} right={<RotateCcw className="h-4 w-4 text-phone-blue" />} />
       </Group>
 
       <Group
@@ -525,9 +527,9 @@ function BridgePanel() {
       >
         <div className="px-4 py-3">
           {preview.length === 0 ? (
-            <p className="text-[13px] text-[#8e8e93]">当前没有可注入的记录。</p>
+            <p className="text-[13px] text-phone-muted">当前没有可注入的记录。</p>
           ) : (
-            <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed text-[#3C3C43]">
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed text-phone-muted">
               {built.text || '（空）'}
             </pre>
           )}
@@ -599,7 +601,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
             const i = sessions.findIndex((s) => s.id === session?.id);
             setSessionId(sessions[(i + 1) % sessions.length].id);
           }}
-          right={<ChevronRight className="h-4 w-4 text-[#007AFF]" />}
+          right={<ChevronRight className="h-4 w-4 text-phone-blue" />}
         />
         <Divider />
         <div className="flex gap-1 px-4 py-2.5">
@@ -611,7 +613,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
               aria-pressed={mode === m}
               className={cn(
                 'flex-1 rounded-lg py-1.5 text-[12px] transition',
-                mode === m ? 'bg-[#007AFF] text-white' : 'bg-[#E9E9EB] text-[#3C3C43]',
+                mode === m ? 'bg-phone-blue text-primary-foreground' : 'bg-phone-grouped text-phone-muted',
               )}
             >
               {MODE_LABEL[m]}记忆
@@ -619,7 +621,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
           ))}
         </div>
         <div className="px-4 pb-2.5">
-          <p className="text-[11px] leading-relaxed text-[#8e8e93]">
+          <p className="text-[11px] leading-relaxed text-phone-muted">
             切换会同时改变当前会话的相处模式，之后的发言记进对应那条线；
             之前积累的记忆留在线上（或线下）那边，不会被带过来。
           </p>
@@ -655,19 +657,19 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
 
       <Group title="当前状态" hint="「待归档」是已经滚出窗口、但还没变成摘要的条数。它涨到阈值就会自动归档；不想等就点手动切。">
         <Row label="会话消息总数" sub="本地全量保存，一条都不会丢"
-          right={<span className="text-[13px] tabular-nums text-[#8e8e93]">{composed?.stats.totalMsgs ?? 0}</span>} />
+          right={<span className="text-[13px] tabular-nums text-phone-muted">{composed?.stats.totalMsgs ?? 0}</span>} />
         <Divider />
         <Row label="滚动上下文（实际发送）" sub="原文直送，一字不动"
-          right={<span className="text-[13px] tabular-nums text-[#8e8e93]">{composed?.stats.keptTurns ?? 0} 条</span>} />
+          right={<span className="text-[13px] tabular-nums text-phone-muted">{composed?.stats.keptTurns ?? 0} 条</span>} />
         <Divider />
         <Row label="待归档" sub="溢出窗口但还没摘要"
-          right={<span className={cn('text-[13px] tabular-nums', (composed?.stats.pendingCount ?? 0) > 0 ? 'text-[#FF9500]' : 'text-[#8e8e93]')}>{composed?.stats.pendingCount ?? 0} 条</span>} />
+          right={<span className={cn('text-[13px] tabular-nums', (composed?.stats.pendingCount ?? 0) > 0 ? 'text-[#FF9500]' : 'text-phone-muted')}>{composed?.stats.pendingCount ?? 0} 条</span>} />
         <Divider />
         <Row label="本次请求体积" sub="摘要 + 原文，恒定可控"
-          right={<span className="text-[13px] tabular-nums text-[#8e8e93]">{composed?.stats.chars ?? 0} 字</span>} />
+          right={<span className="text-[13px] tabular-nums text-phone-muted">{composed?.stats.chars ?? 0} 字</span>} />
         <Divider />
         <Row label="手动切一刀" sub="把当前待归档的部分立刻归档"
-          onClick={doManualSplit} right={<Scissors className="h-4 w-4 text-[#007AFF]" />} />
+          onClick={doManualSplit} right={<Scissors className="h-4 w-4 text-phone-blue" />} />
       </Group>
 
       <Group title={`长期记忆（${memory.volumes.length} 卷）`} hint="由多条短期归纳而来，卷名自动生成，也可以手改。">
@@ -684,7 +686,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                   const name = window.prompt('给这一卷起个名字', v.name);
                   if (name !== null) { renameVolume(v.id, name); setTick((t) => t + 1); flash('已重命名'); }
                 }}
-                right={<Pencil className="h-4 w-4 text-[#007AFF]" />}
+                right={<Pencil className="h-4 w-4 text-phone-blue" />}
                 actions={
                   <button type="button" aria-label="删除这一卷"
                     onClick={() => { removeVolume(v.id); setTick((t) => t + 1); flash('已删除'); }}>
@@ -693,7 +695,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                 }
               />
               <div className="px-4 pb-2.5">
-                <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-[#8e8e93]">{v.summary}</p>
+                <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-phone-muted">{v.summary}</p>
               </div>
             </div>
           ))
@@ -713,7 +715,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                 onClick={() => setEditing(editing === s.id ? null : s.id)}
                 right={
                   <ChevronRight
-                    className={cn('h-4 w-4 text-[#C7C7CC] transition-transform', editing === s.id && 'rotate-90')}
+                    className={cn('h-4 w-4 text-phone-muted transition-transform', editing === s.id && 'rotate-90')}
                   />
                 }
                 actions={
@@ -727,7 +729,7 @@ function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                 <ShortEditor chip={s} onDone={() => setTick((t) => t + 1)} />
               ) : (
                 <div className="px-4 pb-2.5">
-                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-[#8e8e93]">
+                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-phone-muted">
                     起因 {s.cause}
                     {'\n'}经过 {s.process}
                     {'\n'}结果 {s.result}
@@ -753,25 +755,25 @@ function ShortEditor({ chip, onDone }: { chip: ReturnType<typeof listSessionMemo
     { k: 'relation', label: '关系进展' },
   ];
   return (
-    <div className="border-t border-black/[0.06] px-4 py-3">
+    <div className="border-t border-phone-sep px-4 py-3">
       {fields.map((f) => (
         <div key={f.k} className="mb-2">
-          <label className="mb-1 block text-[11px] text-[#8e8e93]">{f.label}</label>
+          <label className="mb-1 block text-[11px] text-phone-muted">{f.label}</label>
           <textarea
             value={v[f.k]}
             onChange={(e) => setV((x) => ({ ...x, [f.k]: e.target.value }))}
             rows={2}
             aria-label={f.label}
-            className="w-full resize-none rounded-lg bg-[#E9E9EB] px-2.5 py-1.5 text-[12px] text-black outline-none"
+            className="w-full resize-none rounded-lg bg-phone-grouped px-2.5 py-1.5 text-[12px] text-phone-ink outline-none"
           />
         </div>
       ))}
       <div className="flex gap-2">
         <button type="button" aria-label="保存记忆修改"
           onClick={() => { editShort(chip.id, v); onDone(); }}
-          className="flex-1 rounded-xl bg-[#007AFF] py-2 text-[13px] font-medium text-white active:opacity-80">保存</button>
+          className="flex-1 rounded-xl bg-phone-blue py-2 text-[13px] font-medium text-primary-foreground active:opacity-80">保存</button>
         <button type="button" aria-label="放弃修改" onClick={onDone}
-          className="rounded-xl bg-[#E9E9EB] px-4 py-2 text-[13px] text-[#8e8e93] active:opacity-70">收起</button>
+          className="rounded-xl bg-phone-grouped px-4 py-2 text-[13px] text-phone-muted active:opacity-70">收起</button>
       </div>
     </div>
   );
@@ -817,7 +819,7 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
             refresh();
             flash(s ? `已保存：${s.label}` : '暂无数据可备份', s ? 'ok' : 'err');
           }}
-          right={<Plus className="h-4 w-4 text-[#007AFF]" />}
+          right={<Plus className="h-4 w-4 text-phone-blue" />}
         />
         <Divider />
         {snaps.length === 0 ? (
@@ -830,7 +832,7 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                 label={s.label}
                 sub={`${new Date(s.createdAt).toLocaleString('zh-CN')} · ${humanSize(s.bytes)}`}
                 onClick={() => setPending({ kind: 'restore', id: s.id, label: s.label })}
-                right={<RotateCcw className="h-4 w-4 text-[#007AFF]" />}
+                right={<RotateCcw className="h-4 w-4 text-phone-blue" />}
               />
             </div>
           ))
@@ -865,14 +867,14 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
             downloadBackup();
             flash('已开始下载');
           }}
-          right={<Download className="h-4 w-4 text-[#007AFF]" />}
+          right={<Download className="h-4 w-4 text-phone-blue" />}
         />
         <Divider />
         <Row
           label="选择备份文件"
           sub="读取本地 .json"
           onClick={() => fileRef.current?.click()}
-          right={<Upload className="h-4 w-4 text-[#007AFF]" />}
+          right={<Upload className="h-4 w-4 text-phone-blue" />}
         />
         {importText && (
           <>
@@ -886,7 +888,7 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                   aria-pressed={importMode === m}
                   className={cn(
                     'flex-1 rounded-lg py-1.5 text-[12px] transition',
-                    importMode === m ? 'bg-[#007AFF] text-white' : 'bg-[#E9E9EB] text-[#3C3C43]',
+                    importMode === m ? 'bg-phone-blue text-primary-foreground' : 'bg-phone-grouped text-phone-muted',
                   )}
                 >
                   {m === 'merge' ? '合并（推荐）' : '整体替换'}
@@ -904,7 +906,7 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
                 type="button"
                 onClick={doImport}
                 aria-label="执行导入"
-                className="w-full rounded-xl bg-[#007AFF] py-2.5 text-[14px] font-medium text-white active:opacity-80"
+                className="w-full rounded-xl bg-phone-blue py-2.5 text-[14px] font-medium text-primary-foreground active:opacity-80"
               >
                 执行导入
               </button>
@@ -952,6 +954,8 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
   const fileFontRef = useRef<HTMLInputElement>(null);
   const wallRef = useRef<HTMLInputElement>(null);
   const [urlComposer, setUrlComposer] = useState({ family: '', href: '' });
+  const [naming, setNaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
 
   // 外部改动（如恢复快照）同步回编辑框
   useEffect(() => setCssDraft(cfg.customCss), [cfg.customCss]);
@@ -963,6 +967,13 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
     patch({ fonts: addFont(cfg.fonts, { family, source: 'url', href }), activeFontId: null });
     setUrlComposer({ family: '', href: '' });
     flash('已添加');
+  };
+
+  const confirmSaveTheme = () => {
+    patch(saveCurrentAsTheme(cfg, nameDraft));
+    setNaming(false);
+    setNameDraft('');
+    flash('主题已保存');
   };
 
   return (
@@ -980,17 +991,106 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
                 right={
                   <span className="flex shrink-0 items-center gap-2">
                     <span
-                      className="h-5 w-5 rounded-full ring-1 ring-black/10"
+                      className="h-5 w-5 rounded-full ring-1 ring-phone-sep"
                       style={{ background: p.vars['--bb-accent'] }}
                       aria-hidden
                     />
-                    {on ? <Check className="h-4 w-4 text-[#007AFF]" /> : null}
+                    {on ? <Check className="h-4 w-4 text-phone-blue" /> : null}
                   </span>
                 }
               />
             </div>
           );
         })}
+      </Group>
+
+      <Group
+        title="我的主题"
+        hint="把当前「作用域 + 配色 + 自定义 CSS + 壁纸 + 字体」整套存成一个名字，随时一键套用。存进本机设置（localStorage），刷新不丢。"
+      >
+        <Row
+          label="保存当前搭配为新主题"
+          sub="取个名字，记住现在这套外观"
+          onClick={() => {
+            setNameDraft('');
+            setNaming(true);
+          }}
+        />
+        {naming && (
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <input
+              autoFocus
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmSaveTheme();
+                if (e.key === 'Escape') {
+                  setNaming(false);
+                  setNameDraft('');
+                }
+              }}
+              placeholder="例如：奶油薄荷"
+              className="h-9 flex-1 rounded-[10px] bg-phone-grouped px-3 text-[14px] text-phone-ink outline-none placeholder:text-phone-muted"
+            />
+            <button
+              type="button"
+              onClick={confirmSaveTheme}
+              className="h-9 rounded-[10px] bg-phone-blue px-3 text-[13px] font-medium text-primary-foreground active:opacity-80"
+            >
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNaming(false);
+                setNameDraft('');
+              }}
+              className="h-9 rounded-[10px] bg-phone-grouped px-3 text-[13px] text-phone-muted active:opacity-70"
+            >
+              取消
+            </button>
+          </div>
+        )}
+        {cfg.customPresets.length > 0 ? (
+          cfg.customPresets.map((t, i) => {
+            const on = cfg.presetId === t.id;
+            return (
+              <div key={t.id}>
+                {(i > 0 || naming) && <Divider />}
+                <Row
+                  label={t.name}
+                  sub={t.desc}
+                  onClick={() => patch(applySavedTheme(cfg, t))}
+                  right={
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span
+                        className="h-5 w-5 rounded-full ring-1 ring-phone-sep"
+                        style={{ background: t.vars['--bb-accent'] }}
+                        aria-hidden
+                      />
+                      {on ? <Check className="h-4 w-4 text-phone-blue" /> : null}
+                    </span>
+                  }
+                  actions={
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        patch(deleteSavedTheme(cfg, t.id));
+                      }}
+                      aria-label={`删除主题 ${t.name}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[#FF3B30] active:bg-phone-sep"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  }
+                />
+              </div>
+            );
+          })
+        ) : (
+          !naming && <p className="px-4 py-2 text-[12px] text-phone-muted">还没有保存过的主题，点上面那行存一个吧。</p>
+        )}
       </Group>
 
       <Group title="作用域" hint="「仅手机」更安全：写得再野也不会影响其它页面。确认稳定后可切到「整个站点」。">
@@ -1001,7 +1101,7 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
               label={s === 'phone' ? '仅作用于小手机' : '作用于整个站点'}
               sub={s === 'phone' ? '推荐 · 出问题随时可关' : '全局生效，请自行确认兼容性'}
               onClick={() => patch({ scope: s })}
-              right={cfg.scope === s ? <Check className="h-4 w-4 text-[#007AFF]" /> : null}
+              right={cfg.scope === s ? <Check className="h-4 w-4 text-phone-blue" /> : null}
             />
           </div>
         ))}
@@ -1024,7 +1124,7 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
                   label={f.family}
                   sub={f.source === 'url' ? '网络链接' : '本地文件'}
                 onClick={() => patch({ activeFontId: cfg.activeFontId === f.id ? null : f.id })}
-                right={cfg.activeFontId === f.id ? <Check className="h-4 w-4 text-[#007AFF]" /> : null}
+                right={cfg.activeFontId === f.id ? <Check className="h-4 w-4 text-phone-blue" /> : null}
                 actions={
                   <button
                     type="button"
@@ -1041,26 +1141,26 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
           </>
         )}
         <div className="px-4 py-3">
-          <p className="mb-2 text-[13px] text-black">用链接添加</p>
+          <p className="mb-2 text-[13px] text-phone-ink">用链接添加</p>
           <input
             value={urlComposer.family}
             onChange={(e) => setUrlComposer((s) => ({ ...s, family: e.target.value }))}
             placeholder="字体名，如 LXGW WenKai"
             aria-label="字体名称"
-            className="mb-1.5 w-full rounded-lg bg-[#E9E9EB] px-3 py-2 text-[13px] text-black outline-none placeholder:text-[#8e8e93]"
+            className="mb-1.5 w-full rounded-lg bg-phone-grouped px-3 py-2 text-[13px] text-phone-ink outline-none placeholder:text-phone-muted"
           />
           <input
             value={urlComposer.href}
             onChange={(e) => setUrlComposer((s) => ({ ...s, href: e.target.value }))}
             placeholder="https://…/font.ttf"
             aria-label="字体链接"
-            className="mb-2 w-full rounded-lg bg-[#E9E9EB] px-3 py-2 text-[13px] text-black outline-none placeholder:text-[#8e8e93]"
+            className="mb-2 w-full rounded-lg bg-phone-grouped px-3 py-2 text-[13px] text-phone-ink outline-none placeholder:text-phone-muted"
           />
           <button
             type="button"
             onClick={addFontByUrl}
             aria-label="添加字体"
-            className="w-full rounded-xl bg-[#007AFF] py-2 text-[13px] font-medium text-white active:opacity-80"
+            className="w-full rounded-xl bg-phone-blue py-2 text-[13px] font-medium text-primary-foreground active:opacity-80"
           >
             添加
           </button>
@@ -1068,7 +1168,7 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
             type="button"
             onClick={() => fileFontRef.current?.click()}
             aria-label="从文件添加字体"
-            className="mt-2 w-full rounded-xl bg-[#E9E9EB] py-2 text-[13px] text-[#007AFF] active:opacity-70"
+            className="mt-2 w-full rounded-xl bg-phone-grouped py-2 text-[13px] text-phone-blue active:opacity-70"
           >
             从本地文件添加（ttf / otf）
           </button>
@@ -1081,16 +1181,16 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
             value={cssDraft}
             onChange={(e) => setCssDraft(e.target.value)}
             rows={6}
-            placeholder={'例：\n.bg-white{ box-shadow: 0 1px 6px rgba(0,0,0,.08); }'}
+            placeholder={'例：\n.bg-phone-surface{ box-shadow: 0 1px 6px rgba(0,0,0,.08); }'}
             aria-label="自定义 CSS"
-            className="w-full resize-y rounded-lg bg-[#E9E9EB] p-3 font-mono text-[11px] leading-relaxed text-black outline-none placeholder:text-[#8e8e93]"
+            className="w-full resize-y rounded-lg bg-phone-grouped p-3 font-mono text-[11px] leading-relaxed text-phone-ink outline-none placeholder:text-phone-muted"
           />
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={() => patch({ customCss: cssDraft })}
               aria-label="应用 CSS"
-              className="flex-1 rounded-xl bg-[#007AFF] py-2 text-[13px] font-medium text-white active:opacity-80"
+              className="flex-1 rounded-xl bg-phone-blue py-2 text-[13px] font-medium text-primary-foreground active:opacity-80"
             >
               应用
             </button>
@@ -1101,7 +1201,7 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
                 patch({ customCss: '' });
               }}
               aria-label="清空 CSS"
-              className="rounded-xl bg-[#E9E9EB] px-4 py-2 text-[13px] text-[#FF3B30] active:opacity-70"
+              className="rounded-xl bg-phone-grouped px-4 py-2 text-[13px] text-[#FF3B30] active:opacity-70"
             >
               清空
             </button>
@@ -1116,7 +1216,7 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
               type="button"
               onClick={() => wallRef.current?.click()}
               aria-label="选择壁纸"
-              className="flex-1 rounded-xl bg-[#007AFF] py-2 text-[13px] font-medium text-white active:opacity-80"
+              className="flex-1 rounded-xl bg-phone-blue py-2 text-[13px] font-medium text-primary-foreground active:opacity-80"
             >
               选择图片
             </button>
@@ -1125,7 +1225,7 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
                 type="button"
                 onClick={() => patch({ wallpaper: null })}
                 aria-label="移除壁纸"
-                className="rounded-xl bg-[#E9E9EB] px-4 py-2 text-[13px] text-[#FF3B30] active:opacity-70"
+                className="rounded-xl bg-phone-grouped px-4 py-2 text-[13px] text-[#FF3B30] active:opacity-70"
               >
                 移除
               </button>

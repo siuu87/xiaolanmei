@@ -66,7 +66,7 @@ export function VinylPlayer() {
           key={i}
           aria-hidden
           className={cn(
-            'pointer-events-none absolute text-base text-rose-300/80 transition-opacity duration-700',
+            'pointer-events-none absolute text-base text-gold/80 transition-opacity duration-700',
             playing ? 'opacity-100' : 'opacity-40',
           )}
           style={{ left: n.left, top: n.top, animation: `note-float ${n.dur}s ease-in-out ${n.delay}s infinite` }}
@@ -79,7 +79,7 @@ export function VinylPlayer() {
         <span
           key={i}
           aria-hidden
-          className="pointer-events-none absolute h-1 w-1 rounded-full bg-rose-300/80"
+          className="pointer-events-none absolute h-1 w-1 rounded-full bg-gold/80"
           style={{ left: s.left, top: s.top, animation: `sparkle 3s ease-in-out ${s.delay}s infinite` }}
         />
       ))}
@@ -95,10 +95,10 @@ export function VinylPlayer() {
               bumping && 'animate-[bump-left_0.5s_ease]',
             )}
           >
-            <div className="flex h-16 w-16 rotate-6 items-center justify-center rounded-full bg-white/10 text-3xl ring-1 ring-white/20">
+            <div className="flex h-16 w-16 rotate-6 items-center justify-center rounded-full bg-surface-2 text-3xl ring-1 ring-border">
               <span className="drop-shadow-sm">{taAvatar}</span>
             </div>
-            <span className="text-[10px] text-slate-400">TA</span>
+            <span className="text-[10px] text-muted-foreground">TA</span>
           </div>
 
           {/* 我 */}
@@ -109,10 +109,10 @@ export function VinylPlayer() {
               bumping && 'animate-[bump-right_0.5s_ease]',
             )}
           >
-            <div className="flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-white/10 text-3xl ring-1 ring-white/20">
+            <div className="flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-surface-2 text-3xl ring-1 ring-border">
               <span className="drop-shadow-sm">{meAvatar}</span>
             </div>
-            <span className="text-[10px] text-slate-400">{meName}</span>
+            <span className="text-[10px] text-muted-foreground">{meName}</span>
           </div>
         </div>
 
@@ -122,7 +122,7 @@ export function VinylPlayer() {
             type="button"
             onClick={() => skip(-1)}
             aria-label="上一首"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-slate-200 ring-1 ring-white/15 transition hover:bg-white/20 active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-foreground ring-1 ring-border transition hover:bg-surface-3 active:scale-95"
           >
             <SkipBack className="h-4 w-4" />
           </button>
@@ -135,7 +135,7 @@ export function VinylPlayer() {
                 animationPlayState: playing ? 'running' : 'paused',
                 background:
                   'repeating-radial-gradient(circle at 50% 50%, #1c1c20 0px, #1c1c20 1px, #26262b 1px, #26262b 2px)',
-                boxShadow: '0 14px 40px rgba(0,0,0,0.5), 0 0 0 5px rgba(255,255,255,0.18)',
+                boxShadow: '0 14px 30px hsl(var(--shadow-color) / 0.35), 0 0 0 5px hsl(var(--border))',
               }}
             >
               {/* 唱片反光标记：随唱片转动，让旋转更明显 */}
@@ -149,7 +149,7 @@ export function VinylPlayer() {
                 type="button"
                 onClick={onToggle}
                 aria-label={playing ? '暂停' : '播放'}
-                className="absolute flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-500 shadow-md transition hover:scale-105 active:scale-95"
+                className="absolute flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition hover:scale-105 active:scale-95"
               >
                 {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
               </button>
@@ -160,13 +160,13 @@ export function VinylPlayer() {
             type="button"
             onClick={() => skip(1)}
             aria-label="下一首"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-slate-200 ring-1 ring-white/15 transition hover:bg-white/20 active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-foreground ring-1 ring-border transition hover:bg-surface-3 active:scale-95"
           >
             <SkipForward className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mt-3 text-center text-[11px] text-slate-400">{track?.name ?? '一起听'}</div>
+        <div className="mt-3 text-center text-[11px] text-muted-foreground">{track?.name ?? '一起听'}</div>
       </div>
 
       <style>{`

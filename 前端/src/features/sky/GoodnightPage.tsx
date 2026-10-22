@@ -791,8 +791,8 @@ export function GoodnightPage() {
     <div
       data-testid="midnight-fm"
       className={cn(
-        'relative min-h-full text-amber-50 transition-colors duration-700',
-        lightsOff ? 'bg-[#040303]' : 'bg-[#0a0806]',
+        'relative min-h-full text-foreground transition-colors duration-700',
+        lightsOff ? 'bg-surface-sunken' : 'bg-page-bg',
       )}
     >
       <StarBackdrop />
@@ -817,15 +817,15 @@ export function GoodnightPage() {
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-amber-200/60 transition hover:bg-white/10 hover:text-amber-100"
+            className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <p className="text-[10px] tracking-[0.45em] text-amber-200/45">MIDNIGHT FM</p>
-          <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-amber-100">
+          <p className="text-[10px] tracking-[0.45em] text-gold">MIDNIGHT FM</p>
+          <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-foreground">
             深夜电台
           </h1>
-          <p className="mt-1 text-[11px] text-amber-200/50">只放给一个人听 · 你随时可以走</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">只放给一个人听 · 你随时可以走</p>
         </header>
 
         {/* ── 收音机机身 ─────────────────────────────── */}
@@ -866,7 +866,7 @@ export function GoodnightPage() {
                 <span key={c.id}>{c.freq.replace('FM ', '')}</span>
               ))}
             </div>
-            <div className="mt-1 h-1.5 rounded-full bg-black/60 ring-1 ring-white/5">
+            <div className="mt-1 h-1.5 rounded-full bg-black/60 ring-1 ring-amber-100/10">
               <div className="h-full rounded-full bg-gradient-to-r from-amber-800/50 via-amber-500/30 to-amber-800/50" />
             </div>
             <div
@@ -890,7 +890,7 @@ export function GoodnightPage() {
                     'rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.98]',
                     active
                       ? 'border-amber-300/50 bg-amber-300/10'
-                      : 'border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.06]',
+                      : 'border-amber-100/10 bg-amber-100/[0.04] hover:bg-amber-100/[0.07]',
                   )}
                   style={active ? { borderColor: `${c.accent}88` } : undefined}
                 >
@@ -976,11 +976,11 @@ export function GoodnightPage() {
         </section>
 
         {/* ── 纸条 ──────────────────────────────────── */}
-        <section className="mt-6 rounded-2xl border border-amber-900/40 bg-amber-950/20 p-3">
-          <div className="mb-2 flex items-center gap-2 text-[11px] text-amber-200/60">
+        <section className="paper-card mt-6 p-3">
+          <div className="mb-2 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Send className="h-3.5 w-3.5" /> 递一张纸条
             {pendingNotes.length > 0 && (
-              <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] text-amber-200">
+              <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] text-gold">
                 待念 {pendingNotes.length}
               </span>
             )}
@@ -994,14 +994,14 @@ export function GoodnightPage() {
               }}
               placeholder="想对他说的话，下一段会念出来…"
               data-testid="radio-note-input"
-              className="min-w-0 flex-1 rounded-xl border border-amber-900/40 bg-black/25 px-3 py-2 text-[13px] text-amber-50 outline-none placeholder:text-amber-200/25 focus:border-amber-500/50"
+              className="min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
             />
             <button
               type="button"
               onClick={submitNote}
               disabled={!note.trim()}
               data-testid="radio-note-send"
-              className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-[12px] font-medium text-[#1a120b] transition active:scale-95 disabled:opacity-30"
+              className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground transition active:scale-95 disabled:opacity-30"
             >
               递
             </button>
@@ -1009,7 +1009,7 @@ export function GoodnightPage() {
           {delivered.length > 0 && (
             <ul className="mt-2 space-y-1">
               {delivered.slice(-3).map((d, i) => (
-                <li key={`${d.at}-${i}`} className="truncate text-[10px] text-amber-200/35">
+                <li key={`${d.at}-${i}`} className="truncate text-[10px] text-muted-foreground">
                   · {d.text}
                 </li>
               ))}
@@ -1020,13 +1020,13 @@ export function GoodnightPage() {
         {/* ── 故事台：选书 ─────────────────────────── */}
         {channel === 'story' && (
           <section className="mt-6" data-testid="radio-book-picker">
-            <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-200/50">
+            <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
               <Radio className="h-3.5 w-3.5" /> 从书房拿一本
             </h2>
             {loading ? (
-              <p className="text-[12px] text-amber-200/40">正在翻书架…</p>
+              <p className="text-[12px] text-muted-foreground">正在翻书架…</p>
             ) : books.length === 0 ? (
-              <p className="text-[12px] text-amber-200/40">书房里还没有带正文的书，去「一起读」加一本吧。</p>
+              <p className="text-[12px] text-muted-foreground">书房里还没有带正文的书，去「一起读」加一本吧。</p>
             ) : (
               <div className="scrollbar-thin flex gap-2 overflow-x-auto pb-1">
                 {books.map((b) => (
@@ -1044,12 +1044,12 @@ export function GoodnightPage() {
                     className={cn(
                       'shrink-0 rounded-xl border px-3 py-2 text-left text-[12px] transition',
                       book?.id === b.id
-                        ? 'border-amber-400/50 bg-amber-400/10 text-amber-100'
-                        : 'border-white/[0.07] bg-white/[0.03] text-amber-200/60',
+                        ? 'border-gold/50 bg-gold/10 text-foreground'
+                        : 'border-border bg-surface-2 text-muted-foreground hover:bg-surface-3',
                     )}
                   >
                     <span className="block max-w-[9rem] truncate">{b.title}</span>
-                    <span className="mt-0.5 block text-[10px] text-amber-200/35">
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground">
                       {b.author || '佚名'}
                     </span>
                   </button>
@@ -1061,7 +1061,7 @@ export function GoodnightPage() {
 
         {/* ── 环境声混音台：雨 / 壁炉 / 风，推子往上就出声，几条可叠加 ── */}
         <section className="mt-6">
-          <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-200/50">
+          <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
             <Wind className="h-3.5 w-3.5" /> 环境声
           </h2>
           <AmbientMixer levels={levels} onChange={setLevel} />
@@ -1070,11 +1070,11 @@ export function GoodnightPage() {
         {/* ── 我的哄睡音频 ──────────────────────────── */}
         <section className="mt-6">
           <div className="mb-2 flex items-center gap-2">
-            <h2 className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-200/50">
+            <h2 className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
               <Music2 className="h-3.5 w-3.5" /> 我的哄睡音频
             </h2>
             <div className="flex-1" />
-            <label className="flex cursor-pointer items-center gap-1 rounded-full border border-white/[0.07] px-2.5 py-1 text-[10px] text-amber-200/50 transition hover:bg-white/[0.06]">
+            <label className="flex cursor-pointer items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground transition hover:bg-surface-2">
               {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
               导入
               <input type="file" accept="audio/*" className="hidden" onChange={onPickFile} />
@@ -1082,7 +1082,7 @@ export function GoodnightPage() {
           </div>
 
           {items.length === 0 ? (
-            <p className="px-1 text-[12px] text-amber-200/30">还没有导入音频。</p>
+            <p className="px-1 text-[12px] text-muted-foreground">还没有导入音频。</p>
           ) : (
             <ul className="space-y-2">
               {items.map((it) => {
@@ -1091,20 +1091,20 @@ export function GoodnightPage() {
                   <li
                     key={it.id}
                     data-testid="sleep-audio-item"
-                    className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3"
+                    className="rounded-2xl border border-border bg-card p-3"
                   >
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
                         onClick={() => togglePlay(it)}
                         aria-label={isPlaying ? '暂停' : '播放'}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400/15 text-amber-300 transition hover:bg-amber-400/25"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold transition hover:bg-gold/25"
                       >
                         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       </button>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] text-amber-50">{it.title}</p>
-                        <p className="text-[10px] text-amber-200/35">
+                        <p className="truncate text-[13px] text-foreground">{it.title}</p>
+                        <p className="text-[10px] text-muted-foreground">
                           {formatTime(it.duration)}
                           {it.size ? ` · ${(it.size / 1024 / 1024).toFixed(1)} MB` : ''}
                         </p>
@@ -1113,7 +1113,7 @@ export function GoodnightPage() {
                         type="button"
                         onClick={() => void onDelete(it.id)}
                         aria-label="删除"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-amber-200/30 transition hover:bg-rose-500/15 hover:text-rose-400"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1132,7 +1132,7 @@ export function GoodnightPage() {
                         setProgress(v);
                       }}
                       disabled={!isPlaying}
-                      className="mt-2 w-full accent-amber-400 disabled:opacity-30"
+                      className="mt-2 w-full accent-gold disabled:opacity-30"
                     />
                   </li>
                 );
@@ -1143,18 +1143,18 @@ export function GoodnightPage() {
 
         {/* ── 睡眠定时器 ────────────────────────────── */}
         <section className="mt-6">
-          <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-amber-200/50">
+          <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
             <Clock className="h-3.5 w-3.5" /> 睡眠定时器
           </h2>
           {timerMin ? (
-            <div className="flex items-center justify-between rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3">
-              <span className="text-[12px] text-amber-100">
+            <div className="flex items-center justify-between rounded-2xl border border-gold/30 bg-gold/10 p-3">
+              <span className="text-[12px] text-foreground">
                 {timerMin} 分钟后停止 · 剩余 {formatTime(timerLeft)}
               </span>
               <button
                 type="button"
                 onClick={cancelTimer}
-                className="rounded-full px-3 py-1 text-[11px] text-amber-200/60 transition hover:bg-white/10"
+                className="rounded-full px-3 py-1 text-[11px] text-muted-foreground transition hover:bg-surface-2"
               >
                 取消
               </button>
@@ -1166,19 +1166,19 @@ export function GoodnightPage() {
                   key={m}
                   type="button"
                   onClick={() => startTimer(m)}
-                  className="rounded-full border border-white/[0.07] bg-white/[0.03] px-4 py-1.5 text-[12px] text-amber-100/80 transition hover:bg-white/[0.06]"
+                  className="rounded-full border border-border bg-surface-2 px-4 py-1.5 text-[12px] text-foreground transition hover:bg-surface-3"
                 >
                   {m} 分钟
                 </button>
               ))}
             </div>
           )}
-          <p className="mt-2 flex items-center gap-1.5 text-[10px] leading-relaxed text-amber-200/30">
+          <p className="mt-2 flex items-center gap-1.5 text-[10px] leading-relaxed text-muted-foreground">
             <Moon className="h-3 w-3" /> 到点会自动停掉电台与所有声音。
           </p>
         </section>
 
-        {error && <p className="mt-4 text-center text-[11px] text-rose-400/80">{error}</p>}
+        {error && <p className="mt-4 text-center text-[11px] text-destructive">{error}</p>}
       </div>
     </div>
   );

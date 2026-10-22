@@ -50,7 +50,7 @@ function Pill({ icon: Icon, label, onClick, active }: { icon: LucideIcon; label:
       onClick={onClick}
       className={cn(
         'flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] transition',
-        active ? 'bg-rose-400/15 text-rose-300' : 'bg-white/[0.04] text-slate-300 hover:bg-white/10',
+        active ? 'bg-primary/10 text-primary' : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground',
       )}
     >
       <Icon className="h-4 w-4" />
@@ -116,26 +116,26 @@ export function AnnotationCenter({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-scrim" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-3xl bg-[#14121d] shadow-2xl ring-1 ring-white/10 lg:left-auto lg:top-0 lg:max-h-none lg:w-[400px] lg:rounded-l-2xl lg:rounded-t-none"
+        className="paper-card absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-3xl lg:left-auto lg:top-0 lg:max-h-none lg:w-[400px] lg:rounded-l-2xl lg:rounded-t-none"
       >
         {/* 头部 */}
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-100">批注中心</h2>
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold text-foreground">批注中心</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="关闭"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tab 四等分 */}
-        <div className="grid grid-cols-4 border-b border-white/10">
+        <div className="grid grid-cols-4 border-b border-border">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -143,12 +143,12 @@ export function AnnotationCenter({
               onClick={() => setTab(t.key)}
               className={cn(
                 'relative flex flex-col items-center gap-1 py-2.5 text-[11px] transition',
-                tab === t.key ? 'text-rose-300' : 'text-slate-400 hover:text-slate-200',
+                tab === t.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <t.icon className="h-4 w-4" />
               {t.label}
-              {tab === t.key && <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-rose-400" />}
+              {tab === t.key && <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-primary" />}
             </button>
           ))}
         </div>
@@ -158,16 +158,16 @@ export function AnnotationCenter({
           {tab === 'original' && (
             <div className="h-full overflow-y-auto p-3">
               {annotations.length === 0 ? (
-                <p className="py-10 text-center text-xs text-slate-500">还没有划线，长按正文选中文字即可。</p>
+                <p className="py-10 text-center text-xs text-muted-foreground">还没有划线，长按正文选中文字即可。</p>
               ) : (
                 <div className="space-y-1.5">
                   {annotations.map((a) => (
-                    <div key={a.id} className="group flex items-start gap-2 rounded-xl bg-white/[0.04] px-3 py-2.5">
+                    <div key={a.id} className="group flex items-start gap-2 rounded-xl bg-surface-2 px-3 py-2.5">
                       <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_HEX[a.color] }} />
                       <button
                         type="button"
                         onClick={() => onJumpParagraph(a.chapter)}
-                        className="min-w-0 flex-1 text-left text-sm leading-6 text-slate-300 transition hover:text-slate-100"
+                        className="min-w-0 flex-1 text-left text-sm leading-6 text-foreground/80 transition hover:text-foreground"
                       >
                         {a.selectedText}
                       </button>
@@ -175,7 +175,7 @@ export function AnnotationCenter({
                         type="button"
                         onClick={() => onDeleteAnnotation(a)}
                         aria-label="删除划线"
-                        className="shrink-0 text-slate-500 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
+                        className="shrink-0 text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -189,14 +189,14 @@ export function AnnotationCenter({
           {tab === 'thoughts' && (
             <div className="h-full overflow-y-auto p-3">
               {notes.length === 0 ? (
-                <p className="py-10 text-center text-xs text-slate-500">还没有想法，选中文字后留张纸条吧。</p>
+                <p className="py-10 text-center text-xs text-muted-foreground">还没有想法，选中文字后留张纸条吧。</p>
               ) : (
                 <div className="space-y-2">
                   {notes.map((n) => (
-                    <div key={n.id} className="rounded-xl bg-white/[0.04] px-3 py-2.5">
-                      <p className="line-clamp-2 text-xs text-slate-500">「{n.selectedText}」</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-200">{n.content}</p>
-                      <p className="mt-1 text-right text-[10px] text-slate-500">
+                    <div key={n.id} className="rounded-xl bg-surface-2 px-3 py-2.5">
+                      <p className="line-clamp-2 text-xs text-muted-foreground">「{n.selectedText}」</p>
+                      <p className="mt-1 text-sm leading-6 text-foreground">{n.content}</p>
+                      <p className="mt-1 text-right text-[10px] text-muted-foreground">
                         {n.author === 'me' ? '我' : 'TA'} · {formatTime(n.createdAt)}
                       </p>
                     </div>
@@ -210,8 +210,8 @@ export function AnnotationCenter({
             <div className="flex h-full flex-col p-3">
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2">
                 {aiMessages.length === 0 && (
-                  <div className="flex items-start gap-2 rounded-xl bg-white/[0.04] p-3 text-xs leading-5 text-slate-400">
-                    <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-300" />
+                  <div className="flex items-start gap-2 rounded-xl bg-surface-2 p-3 text-xs leading-5 text-muted-foreground">
+                    <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                     和 AI 聊聊这本书，或点击「问伙伴」让它帮你解读。
                   </div>
                 )}
@@ -220,10 +220,10 @@ export function AnnotationCenter({
                     <div
                       className={cn(
                         'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-6',
-                        m.role === 'user' ? 'rounded-br-sm bg-rose-400/20 text-slate-100' : 'rounded-bl-sm bg-white/[0.06] text-slate-200',
+                        m.role === 'user' ? 'rounded-br-sm bg-primary/15 text-foreground' : 'rounded-bl-sm bg-surface-2 text-foreground',
                       )}
                     >
-                      {m.role === 'assistant' && <span className="mb-1 block text-[10px] text-rose-300">🫐 AI</span>}
+                      {m.role === 'assistant' && <span className="mb-1 block text-[10px] text-primary">🫐 AI</span>}
                       {m.text || (aiLoading && m.role === 'assistant' ? '…' : '')}
                     </div>
                   </div>
@@ -241,13 +241,13 @@ export function AnnotationCenter({
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
                   placeholder="问 AI 这本书…"
-                  className="min-w-0 flex-1 rounded-full bg-white/10 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none ring-1 ring-white/10 focus:ring-rose-400/50"
+                  className="min-w-0 flex-1 rounded-full bg-surface-2 px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none ring-1 ring-border focus:ring-primary/50"
                 />
                 <button
                   type="submit"
                   disabled={aiLoading || !aiInput.trim()}
                   aria-label="发送"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-400 text-white transition hover:bg-rose-500 disabled:opacity-40"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
                 >
                   <Send className="h-4 w-4" />
                 </button>
@@ -278,31 +278,31 @@ export function AnnotationCenter({
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-100">{book.title}</p>
-                  <p className="truncate text-xs text-slate-400">{book.author}</p>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-rose-400" style={{ width: `${progress.me}%` }} />
+                  <p className="truncate text-sm font-semibold text-foreground">{book.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{book.author}</p>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${progress.me}%` }} />
                   </div>
-                  <p className="mt-1 text-[10px] text-slate-500">
+                  <p className="mt-1 text-[10px] text-muted-foreground">
                     我 {progress.me}% · TA {progress.ta}%
                   </p>
                 </div>
               </div>
 
-              {book.desc && <p className="rounded-xl bg-white/[0.04] px-3 py-2.5 text-xs leading-6 text-slate-400">{book.desc}</p>}
+              {book.desc && <p className="rounded-xl bg-surface-2 px-3 py-2.5 text-xs leading-6 text-muted-foreground">{book.desc}</p>}
 
               {book.toc.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-xs font-medium text-slate-400">目录</p>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">目录</p>
                   <ol className="space-y-1">
                     {book.toc.map((t, i) => (
                       <li key={i}>
                         <button
                           type="button"
                           onClick={() => onJumpToc(i)}
-                          className="flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-slate-300 transition hover:bg-white/5"
+                          className="flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/80 transition hover:bg-surface-2"
                         >
-                          <span className="text-[10px] text-slate-500">{String(i + 1).padStart(2, '0')}</span>
+                          <span className="text-[10px] text-muted-foreground">{String(i + 1).padStart(2, '0')}</span>
                           {t}
                         </button>
                       </li>

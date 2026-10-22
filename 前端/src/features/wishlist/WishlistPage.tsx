@@ -137,7 +137,7 @@ export function WishlistPage() {
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
           placeholder="记一条灵感，回车即存…"
           aria-label="快捷录入"
-          className="h-11 flex-1 rounded-2xl border border-border/60 bg-card/60 px-4 text-sm text-foreground outline-none backdrop-blur-sm placeholder:text-muted-foreground/60 focus:border-primary/60"
+          className="h-11 flex-1 rounded-2xl border border-border bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
         />
         <button
           type="button"
@@ -192,8 +192,8 @@ export function WishlistPage() {
               <div
                 key={it.id}
                 className={cn(
-                  // 极简毛玻璃卡片（半透明底 + 模糊，铺在 PageShell 的不透明页底上，不会透出聊天）
-                  'flex items-start gap-3 rounded-2xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm transition',
+                  // 实色纸卡（铺在 PageShell 的不透明页底上，不会透出聊天）
+                  'flex items-start gap-3 rounded-2xl border border-border bg-card p-3 transition',
                   it.completed && 'opacity-60',
                 )}
               >

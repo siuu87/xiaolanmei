@@ -23,7 +23,7 @@ export function ReadPage() {
   const [tab, setTab] = useState<Tab>('read');
 
   return (
-    <div className="relative min-h-full bg-[#070b1a] text-slate-200">
+    <div className="relative min-h-full bg-page-bg text-foreground">
       <StarBackdrop />
       <div className="relative mx-auto w-full max-w-md px-4 py-8 md:max-w-3xl">
         <header className="mb-6 flex items-center gap-2">
@@ -31,12 +31,12 @@ export function ReadPage() {
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex-1 text-center">
-            <h1 className="text-xl font-bold text-slate-100">READ</h1>
+            <h1 className="text-xl font-bold text-foreground">READ</h1>
           </div>
           <span className="w-8" />
         </header>
@@ -54,7 +54,7 @@ export function ReadPage() {
               onClick={() => setTab(t.key)}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition',
-                tab === t.key ? 'bg-white/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+                tab === t.key ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground',
               )}
             >
               <t.icon className="h-4 w-4" /> {t.label}
@@ -62,7 +62,7 @@ export function ReadPage() {
           ))}
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
+        <div className="paper-card p-4">
           {tab === 'read' ? <ReaderPanel /> : <QuotesPanel />}
         </div>
       </div>
@@ -126,7 +126,7 @@ function ReaderPanel() {
   };
 
   const inputCls =
-    'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none focus:border-white/30';
+    'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50';
 
   return (
     <div className="space-y-3">
@@ -138,22 +138,22 @@ function ReaderPanel() {
         className={cn(inputCls, 'resize-none')}
       />
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={prepare} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/15">
+        <button type="button" onClick={prepare} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground hover:bg-surface-3">
           <BookOpen className="mr-1 inline h-4 w-4" /> 分段
         </button>
-        <button type="button" onClick={play} disabled={paras.length === 0} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/15 disabled:opacity-40">
+        <button type="button" onClick={play} disabled={paras.length === 0} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground hover:bg-surface-3 disabled:opacity-40">
           <Play className="mr-1 inline h-4 w-4" /> 开始
         </button>
-        <button type="button" onClick={pause} disabled={!playing} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/15 disabled:opacity-40">
+        <button type="button" onClick={pause} disabled={!playing} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground hover:bg-surface-3 disabled:opacity-40">
           <Pause className="mr-1 inline h-4 w-4" /> 暂停
         </button>
-        <button type="button" onClick={stop} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/15">
+        <button type="button" onClick={stop} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground hover:bg-surface-3">
           <Square className="mr-1 inline h-4 w-4" /> 停止
         </button>
-        <button type="button" onClick={() => step(-1)} disabled={paras.length === 0} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/15 disabled:opacity-40">
+        <button type="button" onClick={() => step(-1)} disabled={paras.length === 0} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground hover:bg-surface-3 disabled:opacity-40">
           <SkipBack className="h-4 w-4" />
         </button>
-        <button type="button" onClick={() => step(1)} disabled={paras.length === 0} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/15 disabled:opacity-40">
+        <button type="button" onClick={() => step(1)} disabled={paras.length === 0} className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-foreground hover:bg-surface-3 disabled:opacity-40">
           <SkipForward className="h-4 w-4" />
         </button>
       </div>
@@ -169,7 +169,7 @@ function ReaderPanel() {
             }}
             className={cn(
               'block w-full rounded-lg px-3 py-2 text-left text-sm leading-6 transition',
-              current === i ? 'bg-white/15 text-white ring-1 ring-white/30' : 'bg-white/5 text-slate-300 hover:bg-white/10',
+              current === i ? 'bg-gold/10 text-foreground ring-1 ring-gold/40' : 'bg-surface-2 text-foreground/80 hover:bg-surface-3',
             )}
           >
             {p}
@@ -219,30 +219,30 @@ function QuotesPanel() {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
           placeholder="写下一句想留住的话…"
-          className="h-10 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-200 outline-none focus:border-white/30"
+          className="h-10 flex-1 rounded-lg border border-border bg-surface-2 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
         />
         <button
           type="button"
           onClick={add}
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15 text-slate-100 hover:bg-white/20"
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-2 text-foreground hover:bg-surface-3"
         >
           <Plus className="h-4 w-4" />
         </button>
       </div>
 
       {quotes.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">还没有摘录，写下一句吧。</p>
+        <p className="py-8 text-center text-sm text-muted-foreground">还没有摘录，写下一句吧。</p>
       ) : (
         <div className="space-y-2">
           {quotes.map((q, i) => (
-            <div key={i} className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
-              <Quote className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-              <p className="min-w-0 flex-1 text-sm leading-6 text-slate-200">{q}</p>
+            <div key={i} className="flex items-start gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+              <Quote className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="min-w-0 flex-1 text-sm leading-6 text-foreground">{q}</p>
               <button
                 type="button"
                 onClick={() => remove(i)}
                 aria-label="删除"
-                className="shrink-0 text-slate-500 transition hover:text-rose-300"
+                className="shrink-0 text-muted-foreground transition hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

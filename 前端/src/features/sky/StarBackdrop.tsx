@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-/** 星空背景：深空渐变 + 随机星点（可复现的伪随机），供星空下各功能页复用 */
+/** 星尘背景：跟随主题的暖光晕 + 随机星点（可复现的伪随机），供星空下各功能页复用 */
 export function StarBackdrop() {
   const stars = useMemo(
     () =>
@@ -18,12 +18,12 @@ export function StarBackdrop() {
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(59,73,150,0.35),_transparent_60%),radial-gradient(ellipse_at_bottom,_rgba(30,20,60,0.5),_transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(var(--gold)/0.10),_transparent_60%),radial-gradient(ellipse_at_bottom,_hsl(var(--glow)/0.08),_transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,_hsl(var(--gold)/0.10),_transparent_60%),radial-gradient(ellipse_at_bottom,_hsl(var(--glow)/0.14),_transparent_60%)]" />
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {stars.map((s, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-white/70"
+            className="absolute rounded-full bg-foreground/15 dark:bg-white/55"
             style={{
               left: s.left,
               top: s.top,

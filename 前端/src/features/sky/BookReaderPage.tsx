@@ -235,7 +235,7 @@ export function BookReaderPage() {
 
   if (!book) {
     return (
-      <div className="relative min-h-full bg-night px-4 py-16 text-center text-slate-400">
+      <div className="relative min-h-full bg-page-bg px-4 py-16 text-center text-muted-foreground">
         <StarBackdrop />
         加载中…
         <button type="button" onClick={() => navigate('/chat')} className="mt-3 block text-primary hover:underline">返回对话</button>
@@ -349,19 +349,19 @@ export function BookReaderPage() {
       <StarBackdrop />
 
       {/* 顶部：返回 + 书名 + 双人进度 */}
-      <div className="sticky top-0 z-30 border-b border-black/10 bg-paper/95 px-4 py-2 backdrop-blur dark:border-white/10 dark:bg-night/95">
+      <div className="sticky top-0 z-30 border-b border-border bg-paper px-4 py-2">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink/60 transition hover:bg-black/5 dark:text-ink-night/60 dark:hover:bg-white/10"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{book.title}</div>
-            <div className="mt-1 flex items-center gap-3 text-[11px] text-ink/60 dark:text-ink-night/60">
+            <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <span>{myAvatar}</span> 我 <b className="text-sky-500">{progress.me}%</b>
               </span>
@@ -369,7 +369,7 @@ export function BookReaderPage() {
                 <span>{taAvatar}</span> TA <b className="text-pink-500">{progress.ta}%</b>
               </span>
             </div>
-            <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+            <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3">
               <div className="absolute left-0 top-0 h-full rounded-full bg-sky-400 transition-all" style={{ width: `${progress.me}%` }} />
               <div className="absolute left-0 top-0 h-full rounded-full bg-pink-400 opacity-70 transition-all" style={{ width: `${progress.ta}%` }} />
             </div>
@@ -378,7 +378,7 @@ export function BookReaderPage() {
             type="button"
             onClick={() => setShowToc((v) => !v)}
             aria-label="目录"
-            className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition', showToc ? 'bg-black/10 dark:bg-white/15' : 'text-ink/60 hover:bg-black/5 dark:text-ink-night/60 dark:hover:bg-white/10')}
+            className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition', showToc ? 'bg-surface-2 text-foreground' : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground')}
           >
             <ListOrdered className="h-4 w-4" />
           </button>
@@ -386,7 +386,7 @@ export function BookReaderPage() {
             type="button"
             onClick={() => setShowCenter(true)}
             aria-label="批注中心"
-            className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition', showCenter ? 'bg-black/10 dark:bg-white/15' : 'text-ink/60 hover:bg-black/5 dark:text-ink-night/60 dark:hover:bg-white/10')}
+            className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition', showCenter ? 'bg-surface-2 text-foreground' : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground')}
           >
             <MessageSquareText className="h-4 w-4" />
           </button>
@@ -396,8 +396,8 @@ export function BookReaderPage() {
       {/* 目录抽屉 */}
       {showToc && (
         <div className="absolute inset-x-0 top-[60px] z-20 mx-auto w-full max-w-2xl px-4">
-          <div className="rounded-2xl border border-black/10 bg-paper/95 p-3 shadow-xl backdrop-blur dark:border-white/10 dark:bg-night/95">
-            <div className="flex items-center justify-between px-1 pb-1 text-xs font-medium text-ink/50 dark:text-ink-night/50">
+          <div className="paper-card p-3 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
+            <div className="flex items-center justify-between px-1 pb-1 text-xs font-medium text-muted-foreground">
               <span>目录</span>
               <button type="button" onClick={() => setShowToc(false)} className="hover:opacity-70"><X className="h-3.5 w-3.5" /></button>
             </div>
@@ -407,7 +407,7 @@ export function BookReaderPage() {
                   <button
                     type="button"
                     onClick={() => jumpTo(i, Math.max(1, book.toc.length))}
-                    className="flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/10"
+                    className="flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-surface-2"
                   >
                     <span className="text-[10px] opacity-50">{String(i + 1).padStart(2, '0')}</span>
                     {t}
@@ -422,11 +422,11 @@ export function BookReaderPage() {
       {/* 正文 */}
       <div ref={contentRef} className="reading-body mx-auto w-full max-w-2xl px-5 pb-24 pt-6 text-[17px] leading-[1.9] tracking-wide">
         {book.desc && (
-          <p className="mb-6 rounded-xl bg-black/[0.03] px-4 py-3 text-xs leading-6 text-ink/60 dark:bg-white/[0.04] dark:text-ink-night/60">{book.desc}</p>
+          <p className="mb-6 rounded-xl bg-surface-2 px-4 py-3 text-xs leading-6 text-muted-foreground">{book.desc}</p>
         )}
 
         {paragraphs.length === 0 ? (
-          <div className="py-16 text-center text-sm text-ink/50 dark:text-ink-night/50">
+          <div className="py-16 text-center text-sm text-muted-foreground">
             <BookOpen className="mx-auto mb-2 h-6 w-6 opacity-40" />
             还没有正文，去「书房 · 管理」编辑这本书，粘贴文章即可阅读标画。
           </div>
@@ -450,7 +450,7 @@ export function BookReaderPage() {
                       style={{ backgroundColor: HIGHLIGHT_COLORS[seg.ann.color].hex }}
                     />
                     {seg.ann.notes.length > 0 && (
-                      <span className="absolute -right-5 top-0 rounded-full bg-black/60 px-1 text-[9px] leading-4 text-white dark:bg-white/70 dark:text-black">
+                      <span className="absolute -right-5 top-0 rounded-full bg-primary px-1 text-[9px] leading-4 text-primary-foreground">
                         {seg.ann.notes.length}
                       </span>
                     )}
@@ -463,7 +463,7 @@ export function BookReaderPage() {
           ))
         )}
 
-        <p className="mt-8 text-center text-[11px] text-ink/40 dark:text-ink-night/40">
+        <p className="mt-8 text-center text-[11px] text-muted-foreground">
           长按 / 选中文字可划线 · 留言会同步给 TA
         </p>
       </div>
@@ -505,13 +505,13 @@ export function BookReaderPage() {
 
       {/* 留纸条弹窗 */}
       {noteDlg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setNoteDlg(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-popover p-5 text-popover-foreground shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={() => setNoteDlg(null)}>
+          <div className="paper-card w-full max-w-sm p-5 text-foreground shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">留张纸条</h3>
               <button type="button" onClick={() => setNoteDlg(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </div>
-            <p className="mt-3 line-clamp-2 rounded-xl bg-muted px-3 py-2.5 text-sm leading-6">「{noteDlg.text}」</p>
+            <p className="mt-3 line-clamp-2 rounded-xl bg-surface-2 px-3 py-2.5 text-sm leading-6">「{noteDlg.text}」</p>
 
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs text-muted-foreground">署名</span>
@@ -520,7 +520,7 @@ export function BookReaderPage() {
                   key={v}
                   type="button"
                   onClick={() => setNoteAuthor(v)}
-                  className={cn('rounded-full px-3 py-1 text-xs transition', noteAuthor === v ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/70 hover:bg-muted/80')}
+                  className={cn('rounded-full px-3 py-1 text-xs transition', noteAuthor === v ? 'bg-primary text-primary-foreground' : 'bg-surface-2 text-foreground/70 hover:bg-surface-3')}
                 >
                   {label}
                 </button>
@@ -533,10 +533,10 @@ export function BookReaderPage() {
               rows={3}
               autoFocus
               placeholder="写下你的想法…"
-              className="mt-3 w-full resize-none rounded-xl border border-input bg-background p-3 text-sm outline-none focus:border-ring"
+              className="mt-3 w-full resize-none rounded-xl border border-border bg-surface-2 p-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring"
             />
             <div className="mt-4 flex gap-2">
-              <button type="button" onClick={() => setNoteDlg(null)} className="h-10 flex-1 rounded-xl bg-muted text-sm font-medium text-foreground/80 transition hover:bg-muted/80">取消</button>
+              <button type="button" onClick={() => setNoteDlg(null)} className="h-10 flex-1 rounded-xl bg-surface-2 text-sm font-medium text-foreground transition hover:bg-surface-3">取消</button>
               <button type="button" onClick={saveNote} disabled={!noteDraft.trim()} className="h-10 flex-[1.4] rounded-xl bg-primary text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-40">保存</button>
             </div>
           </div>
@@ -545,8 +545,8 @@ export function BookReaderPage() {
 
       {/* 批注留言 popover（双人气泡） */}
       {notesTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setNotesTarget(null)}>
-          <div className="w-full max-w-sm rounded-2xl bg-popover text-popover-foreground shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={() => setNotesTarget(null)}>
+          <div className="paper-card w-full max-w-sm text-foreground shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 border-b px-4 py-3">
               <Highlighter className="h-4 w-4 shrink-0 text-muted-foreground" />
               <p className="line-clamp-2 flex-1 text-sm">「{notesTarget.selectedText}」</p>
@@ -569,7 +569,7 @@ export function BookReaderPage() {
                   <div
                     className={cn(
                       'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
-                      n.author === 'me' ? 'rounded-tl-sm bg-muted' : 'rounded-tr-sm bg-primary text-primary-foreground',
+                      n.author === 'me' ? 'rounded-tl-sm bg-surface-2' : 'rounded-tr-sm bg-primary text-primary-foreground',
                     )}
                   >
                     <div className="mb-0.5 text-[10px] opacity-70">{n.author === 'me' ? `${myAvatar} ${myName}` : `${taAvatar} TA`}</div>
@@ -588,7 +588,7 @@ export function BookReaderPage() {
                     type="button"
                     onClick={() => setQuickAuthor(v)}
                     aria-label={v}
-                    className={cn('flex h-7 w-7 items-center justify-center rounded-full text-sm transition', quickAuthor === v ? 'bg-primary/20 ring-1 ring-primary' : 'bg-muted hover:bg-muted/80')}
+                    className={cn('flex h-7 w-7 items-center justify-center rounded-full text-sm transition', quickAuthor === v ? 'bg-primary/20 ring-1 ring-primary' : 'bg-surface-2 hover:bg-surface-3')}
                   >
                     {avatar}
                   </button>
@@ -598,7 +598,7 @@ export function BookReaderPage() {
                 value={quickText}
                 onChange={(e) => setQuickText(e.target.value)}
                 placeholder="说点什么…"
-                className="h-9 min-w-0 flex-1 rounded-full bg-muted px-3 text-sm outline-none"
+                className="h-9 min-w-0 flex-1 rounded-full bg-surface-2 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
                 onKeyDown={(e) => e.key === 'Enter' && sendQuickNote()}
               />
               <button type="button" onClick={sendQuickNote} disabled={!quickText.trim()} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40">

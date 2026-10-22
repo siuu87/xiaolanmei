@@ -16,7 +16,7 @@ export function IOSSettingGroup({ title, children, className }: IOSSettingGroupP
           {title}
         </p>
       )}
-      <div className="divide-y divide-border overflow-hidden rounded-2xl bg-card shadow-sm">
+      <div className="glass divide-y divide-border overflow-hidden rounded-2xl">
         {children}
       </div>
     </div>

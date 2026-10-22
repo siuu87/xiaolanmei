@@ -89,16 +89,16 @@ export function DailyLetterCard({
       */}
       <div
         className={cn(
-          'relative overflow-hidden rounded-[16px] border border-white/[0.08]',
-          'bg-[#0f1424]/70 backdrop-blur-xl',
-          'shadow-[0_10px_26px_-14px_rgba(0,0,0,0.7)] transition-all duration-300',
-          'group-hover:-translate-y-[2px] group-hover:border-white/[0.16]',
-          'group-hover:shadow-[0_16px_34px_-14px_rgba(0,0,0,0.8)]',
+          'relative overflow-hidden rounded-[16px] border border-border',
+          'bg-card',
+          'shadow-[0_8px_22px_-18px_hsl(var(--shadow-color)/0.28)] transition-all duration-300',
+          'group-hover:-translate-y-[2px] group-hover:border-primary/30',
+          'group-hover:shadow-[0_12px_26px_-18px_hsl(var(--shadow-color)/0.34)]',
         )}
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"
         />
 
         {/* 顶栏：深夜来信 · 第 N 封 ｜ 未读点 */}
@@ -107,7 +107,7 @@ export function DailyLetterCard({
             <span className="shrink-0 text-[10px] leading-none">💌</span>
             <span
               data-testid="mail-live-pill"
-              className="truncate font-letter text-[10px] leading-none tracking-[0.06em] text-[#c3cade]"
+              className="truncate font-letter text-[10px] leading-none tracking-[0.06em] text-muted-foreground"
             >
               深夜来信{seq ? ` · 第 ${seq} 封` : ''}
             </span>
@@ -149,18 +149,18 @@ export function DailyLetterCard({
         {/*
           底部：日期 + 心境 —— **压在信封底边上**，不单独占一条。
           以前放在信封下面，卡片被撑高、信封显得小，下面那条深色还空着像没渲染出来。
-          现在浮在信封下沿，加一层暗色渐变托底，字在米色/深蓝信封上都读得清。
+          现在浮在信封下沿，用与卡片同色的渐变托底，深浅主题下都读得清。
         */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-1.5 bg-gradient-to-t from-black/40 via-black/20 to-transparent px-2.5 pb-1.5 pt-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-1.5 bg-gradient-to-t from-card via-card/85 to-transparent px-2.5 pb-1.5 pt-4">
           <span
             data-testid="mail-time"
-            className="truncate text-[9px] font-light tabular-nums text-white/85"
+            className="truncate text-[9px] font-light tabular-nums text-muted-foreground"
           >
             {time}
           </span>
           <span
             data-testid="mail-mood"
-            className="shrink-0 truncate rounded-full bg-white/10 px-1.5 py-[2px] text-[8px] font-light tracking-wide text-white/75"
+            className="shrink-0 truncate rounded-full bg-surface-2 px-1.5 py-[2px] text-[8px] font-light tracking-wide text-muted-foreground"
           >
             {mood}
           </span>
@@ -198,10 +198,10 @@ export function LetterGrid({
     return (
       <div
         data-testid="mail-empty"
-        className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-5 py-10 text-center"
+        className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-surface-2 px-5 py-10 text-center"
       >
         <span className="text-2xl opacity-40">💌</span>
-        <span className="text-[12px] text-muted-foreground/70">{emptyHint}</span>
+        <span className="text-[12px] text-muted-foreground">{emptyHint}</span>
       </div>
     );
   }

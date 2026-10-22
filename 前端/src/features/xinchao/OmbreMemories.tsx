@@ -83,10 +83,10 @@ export function OmbreMemories() {
             onClick={() => setTab(t.key)}
             data-testid={`ombre-tab-${t.key}`}
             className={cn(
-              'rounded-full px-3 py-1 text-[11px] transition',
+              'rounded-full px-3 py-1 text-[11px] transition border',
               tab === t.key
-                ? 'bg-amber-400 text-[#1a120b]'
-                : 'bg-white/[0.05] text-amber-200/55 hover:bg-white/[0.09]',
+                ? 'border-gold/30 bg-gold/15 text-foreground'
+                : 'border-transparent bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground',
             )}
           >
             {t.label}
@@ -96,27 +96,27 @@ export function OmbreMemories() {
 
       {/* 搜索 */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-amber-200/35" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="在记忆里翻找…"
           data-testid="ombre-search"
-          className="w-full rounded-xl border border-amber-900/30 bg-[#0f0a06] py-2 pl-9 pr-3 text-[12px] text-amber-50 outline-none placeholder:text-amber-200/25 focus:border-amber-500/50"
+          className="w-full rounded-xl border border-border bg-surface-2 py-2 pl-9 pr-3 text-[12px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
         />
       </div>
 
       {/* 列表 */}
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-amber-200/40">
+        <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-muted-foreground">
           <Loader2 size={15} className="animate-spin" /> 正在翻记忆…
         </div>
       ) : error ? (
-        <p className="rounded-xl border border-rose-900/30 bg-rose-950/20 px-3 py-6 text-center text-[12px] text-rose-300/70">
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-6 text-center text-[12px] text-destructive">
           {error}
         </p>
       ) : sorted.length === 0 ? (
-        <p className="py-10 text-center text-[12px] text-amber-200/35">
+        <p className="py-10 text-center text-[12px] text-muted-foreground">
           {debounced ? '没有匹配的回忆。' : '这片记忆还空着。'}
         </p>
       ) : (
@@ -127,24 +127,24 @@ export function OmbreMemories() {
                 type="button"
                 onClick={() => setSelected(b)}
                 data-testid="ombre-card"
-                className="group w-full rounded-2xl border border-amber-900/25 bg-[#120c08] px-3.5 py-3 text-left transition hover:border-amber-500/40 hover:bg-[#16100a]"
+                className="paper-card group w-full px-3.5 py-3 text-left transition hover:border-primary/40 hover:bg-surface-2"
               >
                 <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-amber-50">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
                     {b.name}
                   </span>
-                  {b.pinned && <Pin size={12} className="shrink-0 fill-rose-300/70 text-rose-300/70" />}
-                  <span className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] text-amber-200/45">
+                  {b.pinned && <Pin size={12} className="shrink-0 fill-primary/70 text-primary" />}
+                  <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] text-muted-foreground">
                     {TYPE_BADGE[b.type] ?? b.type}
                   </span>
                 </div>
-                <p className="mt-1.5 line-clamp-3 text-[11px] leading-5 text-amber-100/55">
+                <p className="mt-1.5 line-clamp-3 text-[11px] leading-5 text-muted-foreground">
                   {b.contentPreview || '（无预览）'}
                 </p>
-                <div className="mt-2 flex items-center gap-2 text-[9px] text-amber-200/30">
+                <div className="mt-2 flex items-center gap-2 text-[9px] text-muted-foreground">
                   <span>活跃 {Math.round(b.score)}</span>
                   {b.domain.slice(0, 2).map((d) => (
-                    <span key={d} className="rounded bg-white/[0.04] px-1.5 py-0.5">
+                    <span key={d} className="rounded bg-surface-2 px-1.5 py-0.5">
                       #{d}
                     </span>
                   ))}
@@ -182,7 +182,7 @@ export function MemoryTab() {
 
   if (!status) {
     return (
-      <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-amber-200/40">
+      <div className="flex items-center justify-center gap-2 py-10 text-[12px] text-muted-foreground">
         <Loader2 size={15} className="animate-spin" /> 正在连记忆中枢…
       </div>
     );
@@ -190,12 +190,12 @@ export function MemoryTab() {
 
   if (!status.configured) {
     return (
-      <div className="rounded-2xl border border-dashed border-amber-900/40 bg-[#120c08] p-5 text-[12px] leading-5 text-amber-200/45">
-        <p className="font-medium text-amber-100/80">记忆中枢还没接上</p>
+      <div className="paper-card p-5 text-[12px] leading-5 text-muted-foreground">
+        <p className="font-medium text-foreground">记忆中枢还没接上</p>
         <p className="mt-1">
-          在后端 <code className="rounded bg-white/10 px-1">.env</code> 里配上{' '}
-          <code className="rounded bg-white/10 px-1">OMBRE_DASHBOARD_URL</code> 与{' '}
-          <code className="rounded bg-white/10 px-1">OMBRE_DASHBOARD_PASSWORD</code>，
+          在后端 <code className="rounded bg-surface-3 px-1">.env</code> 里配上{' '}
+          <code className="rounded bg-surface-3 px-1">OMBRE_DASHBOARD_URL</code> 与{' '}
+          <code className="rounded bg-surface-3 px-1">OMBRE_DASHBOARD_PASSWORD</code>，
           心潮的瓣和记忆桶就是同一个中枢了。
         </p>
       </div>
@@ -204,8 +204,8 @@ export function MemoryTab() {
 
   if (!status.up) {
     return (
-      <div className="rounded-2xl border border-amber-900/40 bg-[#120c08] p-5 text-[12px] leading-5 text-amber-200/45">
-        <p className="font-medium text-amber-100/80">记忆中枢离线</p>
+      <div className="paper-card p-5 text-[12px] leading-5 text-muted-foreground">
+        <p className="font-medium text-foreground">记忆中枢离线</p>
         <p className="mt-1">OB Dashboard 没回应，但心潮还在。等它重新起来，这里会浮现旧的回忆。</p>
       </div>
     );

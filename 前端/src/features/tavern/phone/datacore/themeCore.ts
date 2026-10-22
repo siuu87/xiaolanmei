@@ -10,10 +10,11 @@
  * 3. **可读兜底**——字体缺失自动回落系统字体；自定义 CSS 语法异常不影响其余样式。
  *
  * 为什么主题是「覆盖已知类名」而不是逐个改组件：
- * 现有小手机用的是 Tailwind 原子类（bg-white / text-[#007AFF] / bg-[#F2F2F7]），
- * 32+ 处 bg-white、56 处 text-[#8e8e93]，逐个改极易漏且 diff 巨大。
- * 这里用一层作用域限定的覆盖规则统一接管，组件一行不动；
- * 将来要换实现，也只需要动这一个文件。
+ * 小手机内部统一使用 phone-* 语义 token（bg-phone-bg / text-phone-ink / text-phone-blue …），
+ * 换主题时由 OVERRIDE_MAP 把「token 类名 → --bb-* 变量」一次性接管，组件一行不动；
+ * 将来要加配色，只在这个文件的 PRESETS 里加一条即可。
+ *
+ * 注意：小手机主题只管理小手机自己，与全站（index.css 的 :root/.dark）是两套独立体系。
  */
 import { useEffect, useState } from 'react';
 
@@ -42,22 +43,65 @@ export interface ThemeConfig {
   wallpaperAlpha: number;
   /** 关闭后完全不注入任何样式，用于排查问题 */
   enabled: boolean;
+  /** 用户自建主题（界面内保存，存进 localStorage，刷新不丢） */
+  customPresets: SavedTheme[];
 }
 
 /**
- * v2：默认配色从「iOS 原色（浅）」换成「午夜深蓝」，并把作用域默认改为全站，
- * 这样整个 App（不只是小手机）都是深色。换 key 是为了让老配置自然失效一次；
- * 用户之后在「我 → 外观」里的选择会正常存下来。
+ * v2：默认配色从「iOS 原色（浅）」换成「午夜深蓝」。
+ * 作用域固定默认「仅小手机」——全站配色由前端 index.css 的 :root/.dark 负责，
+ * 两套主题互不干扰；想全局套用仍需用户在外观面板里显式切换。
  */
 const CFG_KEY = 'tavern.support.theme.v2';
 
 /* ------------------------------ 内置主题 ------------------------------ */
 
+/**
+ * 主题的 11 个配色变量。用必填字段（而不是 Record<string,string>）约束，
+ * 新增预设时少写一个变量会直接编译报错，避免出现「半套主题」。
+ */
+export interface PresetVars {
+  /** 页面底色 */
+  '--bb-bg': string;
+  /** 卡片 / 浮层底色 */
+  '--bb-card': string;
+  /** 主文字 */
+  '--bb-text': string;
+  /** 次要文字 / 说明 */
+  '--bb-muted': string;
+  /** 分隔线 / 细边框 */
+  '--bb-border': string;
+  /** 描边 / 禁用态这类需要更实的边 */
+  '--bb-edge': string;
+  /** 强调色（按钮、链接、选中态） */
+  '--bb-accent': string;
+  /** 对方气泡 */
+  '--bb-bubble-in': string;
+  /** 自己气泡 */
+  '--bb-bubble-out': string;
+  /** 自己气泡上的文字 */
+  '--bb-bubble-out-text': string;
+  /** 导航栏 / 底部栏 */
+  '--bb-bar': string;
+}
+
 export interface Preset {
   id: string;
   name: string;
   desc: string;
-  vars: Record<string, string>;
+  vars: PresetVars;
+}
+
+/**
+ * 用户在界面里保存的自定义主题。除了预设那 11 个配色变量，
+ * 还连带存下「整套外观」（作用域 / 自定义 CSS / 壁纸 / 字体），套用时整组还原。
+ */
+export interface SavedTheme extends Preset {
+  scope: ThemeScope;
+  customCss: string;
+  wallpaper: string | null;
+  wallpaperAlpha: number;
+  activeFontId: string | null;
 }
 
 export const PRESETS: Preset[] = [
@@ -151,17 +195,55 @@ export const PRESETS: Preset[] = [
       '--bb-bar': '#121F19',
     },
   },
+  {
+    id: 'mocha',
+    name: '摩卡',
+    desc: '暖棕奶咖调，和小手机一起慢下来',
+    vars: {
+      '--bb-bg': '#F4EDE4',
+      '--bb-card': '#FFFBF6',
+      '--bb-text': '#3B2C22',
+      '--bb-muted': '#917D6A',
+      '--bb-border': 'rgba(90,62,42,0.12)',
+      '--bb-edge': '#D7C3AF',
+      '--bb-accent': '#A9714B',
+      '--bb-bubble-in': '#EFE3D5',
+      '--bb-bubble-out': '#A9714B',
+      '--bb-bubble-out-text': '#FFF9F3',
+      '--bb-bar': '#F8F1E8',
+    },
+  },
+  {
+    id: 'water',
+    name: '白水',
+    desc: '浅浅一层灰的韩系，干净得像一杯放凉的白开水',
+    vars: {
+      '--bb-bg': '#F2F3F4',
+      '--bb-card': '#FFFFFF',
+      '--bb-text': '#2F3235',
+      '--bb-muted': '#8B9095',
+      '--bb-border': 'rgba(24,27,30,0.06)',
+      '--bb-edge': '#DDE0E3',
+      '--bb-accent': '#6E7B87',
+      '--bb-bubble-in': '#ECEEF0',
+      '--bb-bubble-out': '#66737F',
+      '--bb-bubble-out-text': '#FFFFFF',
+      '--bb-bar': '#F7F8F8',
+    },
+  },
 ];
 
 export const DEFAULT_THEME: ThemeConfig = {
   presetId: 'midnight',
-  scope: 'global',
+  // 小手机主题只作用于小手机；全站深浅由 index.css 的 .dark 负责
+  scope: 'phone',
   customCss: '',
   fonts: [],
   activeFontId: null,
   wallpaper: null,
   wallpaperAlpha: 0.45,
   enabled: true,
+  customPresets: [],
 };
 
 export function loadTheme(): ThemeConfig {
@@ -169,7 +251,12 @@ export function loadTheme(): ThemeConfig {
     const raw = localStorage.getItem(CFG_KEY);
     if (!raw) return DEFAULT_THEME;
     const d = JSON.parse(raw) as Partial<ThemeConfig>;
-    return { ...DEFAULT_THEME, ...d, fonts: Array.isArray(d.fonts) ? d.fonts : [] };
+    return {
+      ...DEFAULT_THEME,
+      ...d,
+      fonts: Array.isArray(d.fonts) ? d.fonts : [],
+      customPresets: Array.isArray(d.customPresets) ? d.customPresets : [],
+    };
   } catch {
     return DEFAULT_THEME;
   }
@@ -200,8 +287,8 @@ function upsertStyle(id: string, css: string): void {
   el.textContent = css;
 }
 
-function presetOf(id: string): Preset {
-  return PRESETS.find((p) => p.id === id) ?? PRESETS[0];
+function presetOf(id: string, custom: SavedTheme[] = []): Preset {
+  return PRESETS.find((p) => p.id === id) ?? custom.find((p) => p.id === id) ?? PRESETS[0];
 }
 
 /**
@@ -212,6 +299,18 @@ function presetOf(id: string): Preset {
 const OVERRIDE_MAP: [sel: string, decl: string][] = [
   // 排除 .rounded-full：开关滑块、小圆点这类装饰件必须是纯白，跟着卡片变暗就会看不见
   ['.bg-white:not(.rounded-full)', 'background-color:var(--bb-card)!important'],
+  // 小手机已改用 phone-* token，这里同步接管，保证数据核心里换主题仍然生效
+  ['.bg-phone-surface', 'background-color:var(--bb-card)!important'],
+  ['.bg-phone-bg', 'background-color:var(--bb-bg)!important'],
+  ['.bg-phone-nav', 'background-color:var(--bb-bar)!important'],
+  ['.bg-phone-grouped', 'background-color:var(--bb-bg)!important'],
+  ['.bg-phone-bubble-ai', 'background-color:var(--bb-bubble-in)!important'],
+  ['.bg-phone-bubble-me', 'background-color:var(--bb-bubble-out)!important;color:var(--bb-bubble-out-text)!important'],
+  ['.bg-phone-blue', 'background-color:var(--bb-accent)!important'],
+  ['.text-phone-ink', 'color:var(--bb-text)!important'],
+  ['.text-phone-muted', 'color:var(--bb-muted)!important'],
+  ['.text-phone-blue', 'color:var(--bb-accent)!important'],
+  ['.border-phone-sep', 'border-color:var(--bb-border)!important'],
   ['.bg-black\\/\\[0\\.06\\]', 'background-color:var(--bb-border)!important'],
   ['.bg-\\[\\#F2F2F7\\]', 'background-color:var(--bb-bg)!important'],
   ['.bg-\\[\\#F9F9F9\\]', 'background-color:var(--bb-bar)!important'],
@@ -241,7 +340,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 function buildThemeCss(cfg: ThemeConfig): string {
-  const preset = presetOf(cfg.presetId);
+  const preset = presetOf(cfg.presetId, cfg.customPresets);
   const vars = Object.entries(preset.vars).map(([k, v]) => `${k}:${v}`).join(';');
   const activeFont = cfg.fonts.find((f) => f.id === cfg.activeFontId);
   const fontDecl = activeFont
@@ -340,6 +439,48 @@ export function addFont(
     style: input.style,
   };
   return [...fonts, entry];
+}
+
+/**
+ * 把「当前整套外观」存成一个用户主题（含配色 + 作用域 + 自定义 CSS + 壁纸 + 字体）。
+ * 返回新的 ThemeConfig（已追加到 customPresets 并把 presetId 切到新主题）。
+ */
+export function saveCurrentAsTheme(cfg: ThemeConfig, name: string): ThemeConfig {
+  const base = presetOf(cfg.presetId, cfg.customPresets);
+  const id = `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const saved: SavedTheme = {
+    id,
+    name: name.trim() || '我的主题',
+    desc: '用户保存的搭配',
+    vars: { ...base.vars },
+    scope: cfg.scope,
+    customCss: cfg.customCss,
+    wallpaper: cfg.wallpaper,
+    wallpaperAlpha: cfg.wallpaperAlpha,
+    activeFontId: cfg.activeFontId,
+  };
+  return { ...cfg, customPresets: [...cfg.customPresets, saved], presetId: id };
+}
+
+/** 删除一个用户主题；若删的是当前主题，回退到默认内置主题 */
+export function deleteSavedTheme(cfg: ThemeConfig, id: string): ThemeConfig {
+  const customPresets = cfg.customPresets.filter((t) => t.id !== id);
+  const presetId = cfg.presetId === id ? DEFAULT_THEME.presetId : cfg.presetId;
+  return { ...cfg, customPresets, presetId };
+}
+
+/** 套用一个用户主题：除了换预设 id，还要还原它当时存下的整套外观 */
+export function applySavedTheme(cfg: ThemeConfig, t: SavedTheme): ThemeConfig {
+  const fontStillThere = cfg.fonts.some((f) => f.id === t.activeFontId);
+  return {
+    ...cfg,
+    presetId: t.id,
+    scope: t.scope,
+    customCss: t.customCss,
+    wallpaper: t.wallpaper,
+    wallpaperAlpha: t.wallpaperAlpha,
+    activeFontId: fontStillThere ? t.activeFontId : null,
+  };
 }
 
 function toDataUrl(file: File): Promise<string> {

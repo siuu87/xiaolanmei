@@ -110,15 +110,15 @@ export function LetterInboxCard({
       onPointerUp={onPointerUp}
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden rounded-[18px] border bg-[#0f1424]/70 p-3.5 backdrop-blur-xl',
-        'shadow-[0_10px_30px_-14px_rgba(0,0,0,0.65)] transition-colors duration-300',
-        'border-white/[0.09] hover:border-white/[0.16]',
+        'relative overflow-hidden rounded-[18px] border border-border bg-card p-3.5 text-card-foreground',
+        'shadow-[0_8px_24px_-18px_hsl(var(--shadow-color)/0.28)] transition-colors duration-300',
+        'hover:border-primary/30',
         className,
       )}
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"
       />
 
       {/* 顶栏：左「红点 + 第 N 封」｜右「换信 + 全部来信」
@@ -132,12 +132,12 @@ export function LetterInboxCard({
               'block h-[7px] w-[7px] shrink-0 rounded-full transition-all duration-500',
               dotOn
                 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]'
-                : 'bg-white/15',
+                : 'bg-border',
             )}
           />
           <span
             data-testid="mail-seq"
-            className="font-letter text-[12px] leading-none tracking-[0.08em] text-[#c3cade]"
+            className="font-letter text-[12px] leading-none tracking-[0.08em] text-foreground"
           >
             第 {seq} 封
           </span>
@@ -150,7 +150,7 @@ export function LetterInboxCard({
           onClick={goAll}
           aria-label="查看全部来信"
           title="全部来信"
-          className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade]"
+          className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <Mail className="h-4 w-4" />
         </button>
@@ -159,7 +159,7 @@ export function LetterInboxCard({
       {/* 日期 */}
       <p
         data-testid="mail-date"
-        className="mt-2.5 text-[11px] font-light tabular-nums text-[#6b7488]"
+        className="mt-2.5 text-[11px] font-light tabular-nums text-muted-foreground"
       >
         {shortDate(stamp)}
       </p>
@@ -172,7 +172,7 @@ export function LetterInboxCard({
         {note ? (
           <p
             data-testid="mail-body"
-            className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 text-[13px] leading-[21px] tracking-[0.01em] text-[#aab3c8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 text-[13px] leading-[21px] tracking-[0.01em] text-card-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {note.content}
           </p>
@@ -184,8 +184,8 @@ export function LetterInboxCard({
             aria-label="还没有来信，去全部来信看看"
             className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5"
           >
-            <Mail className="h-9 w-9 text-white/25 transition-colors duration-300 hover:text-white/45" />
-            <span className="text-[10px] font-light tracking-wide text-[#6b7488]">
+            <Mail className="h-9 w-9 text-muted-foreground/50 transition-colors duration-300 hover:text-muted-foreground" />
+            <span className="text-[10px] font-light tracking-wide text-muted-foreground">
               今天还没有信
             </span>
           </button>
@@ -198,7 +198,7 @@ export function LetterInboxCard({
         <div className="mt-2 flex items-center justify-end gap-1" data-no-flip>
           <span
             data-testid="mail-counter"
-            className="mr-0.5 text-[9px] font-light tabular-nums tracking-wider text-[#6b7488]"
+            className="mr-0.5 text-[9px] font-light tabular-nums tracking-wider text-muted-foreground"
           >
             {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
           </span>
@@ -208,7 +208,7 @@ export function LetterInboxCard({
             aria-label="上一封"
             disabled={i === 0}
             onClick={() => setIndex(Math.max(0, i - 1))}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -218,7 +218,7 @@ export function LetterInboxCard({
             aria-label="下一封"
             disabled={i === list.length - 1}
             onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b93a7] transition hover:bg-white/[0.06] hover:text-[#c3cade] disabled:opacity-30 disabled:hover:bg-transparent"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

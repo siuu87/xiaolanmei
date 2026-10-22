@@ -29,7 +29,7 @@ const PALETTE = [
 ];
 
 const inputCls =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none focus:border-white/30';
+  'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50';
 
 const GOAL_KEY = 'blueberry.reading.goal';
 
@@ -60,13 +60,13 @@ function Ring({ value, display, sub, label, size = 72, stroke = 6 }: { value: nu
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2A2A2A" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--border))" strokeWidth={stroke} />
           <circle
             cx={size / 2}
             cy={size / 2}
             r={r}
             fill="none"
-            stroke="#C9A96A"
+            stroke="hsl(var(--gold))"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={c}
@@ -74,26 +74,26 @@ function Ring({ value, display, sub, label, size = 72, stroke = 6 }: { value: nu
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-base font-semibold text-[#E0E0E0]">{display}</span>
-          <span className="text-[10px] text-[#8A8A8A]">{sub}</span>
+          <span className="text-base font-semibold text-foreground">{display}</span>
+          <span className="text-[10px] text-muted-foreground">{sub}</span>
         </div>
       </div>
-      <span className="text-[11px] text-[#8A8A8A]">{label}</span>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
     </div>
   );
 }
 
 function StatCard({ icon: Icon, value, label, onClick }: { icon: LucideIcon; value: string; label: string; onClick?: () => void }) {
-  const cls = 'rounded-2xl bg-[#1E1E1E] p-4 text-center';
+  const cls = 'rounded-2xl bg-card p-4 text-center';
   const inner = (
     <>
-      <Icon className="mx-auto h-4 w-4 text-[#C9A96A]" />
-      <p className="mt-2 text-xl font-semibold text-[#E0E0E0]">{value}</p>
-      <p className="mt-0.5 text-[11px] text-[#8A8A8A]">{label}</p>
+      <Icon className="mx-auto h-4 w-4 text-gold" />
+      <p className="mt-2 text-xl font-semibold text-foreground">{value}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
     </>
   );
   return onClick ? (
-    <button type="button" onClick={onClick} className={cn(cls, 'transition hover:bg-[#262626]')}>
+    <button type="button" onClick={onClick} className={cn(cls, 'transition hover:bg-surface-2')}>
       {inner}
     </button>
   ) : (
@@ -109,7 +109,7 @@ function FlatCover({ book, onOpen, onEdit, onDelete }: { book: Book; onOpen: () 
         <span
           data-testid="book-source"
           data-source={book.source}
-          className="absolute left-1.5 top-1.5 z-10 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-amber-200"
+          className="absolute left-1.5 top-1.5 z-10 rounded bg-black/55 px-1.5 py-0.5 text-[9px] text-gold"
         >
           {book.source === 'fanqie' ? '番茄' : book.source === 'weread' ? '微信读书' : book.source}
         </span>
@@ -361,7 +361,7 @@ export function LibraryPage() {
   const back = () => (view === 'home' ? navigate('/chat') : setView('home'));
 
   return (
-    <div className="relative min-h-full bg-[#121212] pb-16 text-[#E0E0E0]">
+    <div className="relative min-h-full bg-page-bg pb-16 text-foreground">
       {/* 顶部 */}
       <header className="flex items-center justify-between px-5 pb-3 pt-6">
         <div className="flex items-center gap-2.5">
@@ -369,19 +369,19 @@ export function LibraryPage() {
             type="button"
             onClick={back}
             aria-label="返回"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8A8A8A] transition hover:bg-white/10 hover:text-[#E0E0E0]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h1 className="font-serif text-lg font-semibold tracking-wide text-[#E0E0E0]">{title}</h1>
+          <h1 className="font-serif text-lg font-semibold tracking-wide text-foreground">{title}</h1>
         </div>
-        {view === 'home' && <span className="text-sm text-[#8A8A8A]">{dateLabel}</span>}
+        {view === 'home' && <span className="text-sm text-muted-foreground">{dateLabel}</span>}
         {view === 'shelf' && (
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setAiOpen(true)}
-              className="flex h-8 items-center gap-1 rounded-full bg-[#C9A96A]/15 px-3 text-xs text-[#C9A96A] transition hover:bg-[#C9A96A]/25"
+              className="flex h-8 items-center gap-1 rounded-full bg-gold/15 px-3 text-xs text-gold transition hover:bg-gold/25"
             >
               <Sparkles className="h-3.5 w-3.5" /> AI
             </button>
@@ -389,7 +389,7 @@ export function LibraryPage() {
               type="button"
               onClick={openNew}
               aria-label="导入"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1E1E1E] text-[#E0E0E0] transition hover:bg-[#2A2A2A]"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-foreground transition hover:bg-surface-2"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -401,15 +401,15 @@ export function LibraryPage() {
         {view === 'home' && (
           <div className="space-y-4 px-5">
             {/* 每日一句 */}
-            <section className="rounded-2xl bg-[#1E1E1E] p-5">
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#C9A96A]">Daily Insight</p>
-              <p className="mt-3 font-serif text-lg leading-relaxed text-[#E0E0E0]">“{INSIGHT.text}”</p>
-              <p className="mt-2 text-xs text-[#8A8A8A]">— {INSIGHT.author}</p>
+            <section className="paper-card p-5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-gold">Daily Insight</p>
+              <p className="mt-3 font-serif text-lg leading-relaxed text-foreground">“{INSIGHT.text}”</p>
+              <p className="mt-2 text-xs text-muted-foreground">— {INSIGHT.author}</p>
             </section>
 
             {/* 当前在读 */}
-            <section className="rounded-2xl bg-[#1E1E1E] p-5">
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#8A8A8A]">Current Reading</p>
+            <section className="paper-card p-5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground">Current Reading</p>
               {current ? (
                 <div className="mt-4">
                   <div className="flex items-center gap-4">
@@ -425,16 +425,16 @@ export function LibraryPage() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h2 className="truncate font-serif text-lg font-semibold text-[#E0E0E0]">{current.title}</h2>
-                      <p className="truncate text-sm text-[#8A8A8A]">{current.author}</p>
-                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#2A2A2A]">
-                        <div className="h-full rounded-full bg-[#C9A96A]" style={{ width: `${progressPct}%` }} />
+                      <h2 className="truncate font-serif text-lg font-semibold text-foreground">{current.title}</h2>
+                      <p className="truncate text-sm text-muted-foreground">{current.author}</p>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                        <div className="h-full rounded-full bg-gold" style={{ width: `${progressPct}%` }} />
                       </div>
-                      <p className="mt-1.5 text-[11px] text-[#8A8A8A]">{progressPct}% 已读</p>
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">{progressPct}% 已读</p>
                       <button
                         type="button"
                         onClick={() => navigate(`/read/${current.id}`)}
-                        className="mt-2 text-xs font-medium text-[#C9A96A] transition hover:text-[#E0C79A]"
+                        className="mt-2 text-xs font-medium text-gold transition hover:text-gold/80"
                       >
                         继续阅读 →
                       </button>
@@ -442,10 +442,10 @@ export function LibraryPage() {
                   </div>
 
                   {/* 本周目标环 + 可编辑目标 */}
-                  <div className="mt-4 flex items-center justify-between border-t border-[#2A2A2A] pt-4">
+                  <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
                     <Ring value={ringPct} display={String(weekMin)} sub="分钟" label="本周已读" />
                     <div className="text-right">
-                      <p className="text-[11px] text-[#8A8A8A]">本周目标</p>
+                      <p className="text-[11px] text-muted-foreground">本周目标</p>
                       {editingGoal ? (
                         <div className="mt-1 flex items-center justify-end gap-1.5">
                           <input
@@ -454,10 +454,10 @@ export function LibraryPage() {
                             value={Number.isFinite(goalDraft) ? goalDraft : ''}
                             onChange={(e) => setGoalDraft(Number(e.target.value))}
                             onKeyDown={(e) => e.key === 'Enter' && commitGoal()}
-                            className="w-16 rounded bg-[#2A2A2A] px-2 py-1 text-right font-serif text-lg font-semibold text-[#E0E0E0] outline-none"
+                            className="w-16 rounded bg-surface-2 px-2 py-1 text-right font-serif text-lg font-semibold text-foreground outline-none"
                             autoFocus
                           />
-                          <button type="button" onClick={commitGoal} aria-label="保存目标" className="text-[#C9A96A]">
+                          <button type="button" onClick={commitGoal} aria-label="保存目标" className="text-gold">
                             <Check className="h-4 w-4" />
                           </button>
                         </div>
@@ -470,18 +470,18 @@ export function LibraryPage() {
                           }}
                           className="group inline-flex items-center gap-1"
                         >
-                          <p className="font-serif text-lg font-semibold text-[#E0E0E0]">{goal} 分钟</p>
-                          <Pencil className="h-3 w-3 text-[#8A8A8A] transition group-hover:text-[#C9A96A]" />
+                          <p className="font-serif text-lg font-semibold text-foreground">{goal} 分钟</p>
+                          <Pencil className="h-3 w-3 text-muted-foreground transition group-hover:text-gold" />
                         </button>
                       )}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl bg-[#1A1A1A] px-4 py-8 text-center">
-                  <BookOpen className="mx-auto h-6 w-6 text-[#8A8A8A]" />
-                  <p className="mt-2 text-sm text-[#8A8A8A]">还没有在读的书</p>
-                  <button type="button" onClick={() => setView('shelf')} className="mt-3 text-xs font-medium text-[#C9A96A]">
+                <div className="mt-4 rounded-xl bg-surface-2 px-4 py-8 text-center">
+                  <BookOpen className="mx-auto h-6 w-6 text-muted-foreground" />
+                  <p className="mt-2 text-sm text-muted-foreground">还没有在读的书</p>
+                  <button type="button" onClick={() => setView('shelf')} className="mt-3 text-xs font-medium text-gold">
                     去书架看看 →
                   </button>
                 </div>
@@ -496,47 +496,47 @@ export function LibraryPage() {
             </section>
 
             {/* 阅读时间线 */}
-            <section className="rounded-2xl bg-[#1E1E1E] p-5" data-testid="reading-timeline">
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#8A8A8A]">Reading Timeline</p>
+            <section className="paper-card p-5" data-testid="reading-timeline">
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground">Reading Timeline</p>
               <div className="mt-4 flex justify-between">
                 {week.map((d, i) => (
                   <div key={i} className="flex flex-col items-center gap-2">
                     <span
                       className={cn(
                         'h-3 w-3 rounded-full',
-                        d.active ? 'bg-[#C9A96A] shadow-[0_0_10px_rgba(201,169,106,0.9)]' : 'bg-[#2A2A2A]',
+                        d.active ? 'bg-gold shadow-[0_0_10px_hsl(var(--gold)/0.45)]' : 'bg-surface-3',
                       )}
                     />
-                    <span className={cn('text-[10px]', d.today ? 'font-medium text-[#C9A96A]' : 'text-[#8A8A8A]')}>{d.label}</span>
+                    <span className={cn('text-[10px]', d.today ? 'font-medium text-gold' : 'text-muted-foreground')}>{d.label}</span>
                   </div>
                 ))}
               </div>
             </section>
 
             {/* 杂志式书架：书面朝外 + 透明书架；一行三本，分类各一行，可横滑 */}
-            <section className="rounded-2xl bg-[#1E1E1E] p-5" data-testid="reading-shelf">
+            <section className="paper-card p-5" data-testid="reading-shelf">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#8A8A8A]">
+                <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground">
                   Bookshelf
                 </p>
                 <button
                   type="button"
                   onClick={() => setView('shelf')}
-                  className="text-[11px] text-[#C9A96A] transition hover:text-[#E0C79A]"
+                  className="text-[11px] text-gold transition hover:text-gold/80"
                 >
                   全部 →
                 </button>
               </div>
 
               {shelfGroups.length === 0 ? (
-                <p className="mt-4 text-[12px] text-[#8A8A8A]">书架还空着。</p>
+                <p className="mt-4 text-[12px] text-muted-foreground">书架还空着。</p>
               ) : (
                 <div className="mt-4 space-y-5">
                   {shelfGroups.map((g) => (
                     <div key={g.src} data-testid={`shelf-row-${g.src}`}>
                       <div className="mb-2 flex items-baseline gap-2">
-                        <span className="text-[12px] font-medium text-[#E0E0E0]">{g.label}</span>
-                        <span className="text-[10px] text-[#8A8A8A]">{g.books.length} 本</span>
+                        <span className="text-[12px] font-medium text-foreground">{g.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{g.books.length} 本</span>
                       </div>
                       <div className="relative">
                         <div className="scrollbar-thin flex gap-3 overflow-x-auto pb-4">
@@ -577,13 +577,13 @@ export function LibraryPage() {
                                   <span className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/25 to-transparent" />
                                 </div>
                               </div>
-                              <p className="mt-1.5 truncate text-[10px] text-[#C9C9C9]">{b.title}</p>
+                              <p className="mt-1.5 truncate text-[10px] text-muted-foreground">{b.title}</p>
                             </button>
                           ))}
                         </div>
                         {/* 透明书架：书下方一条玻璃亮边（先画柔光，再压亮边） */}
-                        <div className="pointer-events-none absolute inset-x-0 bottom-[27px] h-[10px] bg-gradient-to-b from-white/10 to-transparent" />
-                        <div data-testid="shelf-ledge" className="pointer-events-none absolute inset-x-0 bottom-[35px] h-[2px] rounded-full bg-gradient-to-r from-transparent via-white/70 to-transparent shadow-[0_1px_8px_rgba(255,255,255,0.25)]" />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-[27px] h-[10px] bg-gradient-to-b from-gold/10 to-transparent" />
+                        <div data-testid="shelf-ledge" className="pointer-events-none absolute inset-x-0 bottom-[35px] h-[2px] rounded-full bg-gradient-to-r from-transparent via-gold/40 to-transparent shadow-[0_1px_8px_hsl(var(--gold)/0.25)]" />
                       </div>
                     </div>
                   ))}
@@ -596,7 +596,7 @@ export function LibraryPage() {
         {view === 'shelf' && (
           <div className="px-5">
             {books.length === 0 ? (
-              <div className="rounded-2xl bg-[#1E1E1E] py-16 text-center text-sm text-[#8A8A8A]">书架上还没有书，点右上角 + 放上第一本吧。</div>
+              <div className="paper-card py-16 text-center text-sm text-muted-foreground">书架上还没有书，点右上角 + 放上第一本吧。</div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {books.map((b) => (
@@ -610,7 +610,7 @@ export function LibraryPage() {
         {view === 'reading' && (
           <div className="px-5">
             {inProgress.length === 0 ? (
-              <div className="rounded-2xl bg-[#1E1E1E] py-16 text-center text-sm text-[#8A8A8A]">还没有在读的书</div>
+              <div className="paper-card py-16 text-center text-sm text-muted-foreground">还没有在读的书</div>
             ) : (
               <div className="space-y-3">
                 {inProgress.map((b) => (
@@ -618,7 +618,7 @@ export function LibraryPage() {
                     key={b.id}
                     type="button"
                     onClick={() => navigate(`/read/${b.id}`)}
-                    className="flex w-full items-center gap-3 rounded-2xl bg-[#1E1E1E] p-4 text-left transition hover:bg-[#262626]"
+                    className="flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left transition hover:bg-surface-2"
                   >
                     {b.cover ? (
                       <img src={b.cover} alt={b.title} className="h-16 w-12 shrink-0 rounded-md object-cover" />
@@ -632,12 +632,12 @@ export function LibraryPage() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-sm font-semibold text-[#E0E0E0]">{b.title}</p>
-                      <p className="truncate text-xs text-[#8A8A8A]">{b.author}</p>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#2A2A2A]">
-                        <div className="h-full rounded-full bg-[#C9A96A]" style={{ width: `${Math.round(b.progress * 100)}%` }} />
+                      <p className="truncate font-serif text-sm font-semibold text-foreground">{b.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">{b.author}</p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                        <div className="h-full rounded-full bg-gold" style={{ width: `${Math.round(b.progress * 100)}%` }} />
                       </div>
-                      <p className="mt-1 text-[10px] text-[#8A8A8A]">{Math.round(b.progress * 100)}% 已读</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">{Math.round(b.progress * 100)}% 已读</p>
                     </div>
                   </button>
                 ))}
@@ -651,21 +651,21 @@ export function LibraryPage() {
 
       {/* 导入 / 编辑弹窗 */}
       {editor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditor(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={() => setEditor(null)}>
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-[#1b1626] p-5 shadow-xl ring-1 ring-white/10"
+            className="paper-card max-h-[90vh] w-full max-w-md overflow-y-auto p-5 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-slate-100">{editor.id ? '编辑这本书' : '导入一本书'}</h3>
-              <button type="button" onClick={() => setEditor(null)} aria-label="关闭" className="text-slate-400 hover:text-slate-200">
+              <h3 className="text-sm font-medium text-foreground">{editor.id ? '编辑这本书' : '导入一本书'}</h3>
+              <button type="button" onClick={() => setEditor(null)} aria-label="关闭" className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* 番茄目录导入（只拿元数据+目录；正文有字体混淆，需外部下载器） */}
-            <div data-testid="fanqie-import" className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
-              <p className="text-[10px] leading-4 text-[#8A8A8A]">
+            <div data-testid="fanqie-import" className="mt-3 rounded-xl border border-border bg-surface-2 p-2.5">
+              <p className="text-[10px] leading-4 text-muted-foreground">
                 从番茄导入目录 · 正文需外部下载器导出后粘贴
               </p>
               <div className="mt-1.5 flex gap-2">
@@ -684,13 +684,13 @@ export function LibraryPage() {
                   onClick={() => void doFanqieImport()}
                   disabled={fanqieBusy || !fanqieUrl.trim()}
                   data-testid="fanqie-import-btn"
-                  className="shrink-0 rounded-lg bg-[#C9A96A] px-3 text-[12px] font-medium text-[#1a120b] transition active:scale-95 disabled:opacity-40"
+                  className="shrink-0 rounded-lg bg-primary px-3 text-[12px] font-medium text-primary-foreground transition active:scale-95 disabled:opacity-40"
                 >
                   {fanqieBusy ? '拉取中…' : '拉取'}
                 </button>
               </div>
               {fanqieMsg && (
-                <p data-testid="fanqie-msg" className="mt-1 text-[10px] leading-4 text-[#C9A96A]">
+                <p data-testid="fanqie-msg" className="mt-1 text-[10px] leading-4 text-gold">
                   {fanqieMsg}
                 </p>
               )}
@@ -701,7 +701,7 @@ export function LibraryPage() {
                 <button
                   type="button"
                   onClick={() => coverInputRef.current?.click()}
-                  className="relative h-28 w-[72px] shrink-0 overflow-hidden rounded-md ring-1 ring-white/15"
+                  className="relative h-28 w-[72px] shrink-0 overflow-hidden rounded-md ring-1 ring-border"
                   title="点击导入封面图片"
                 >
                   {editor.cover ? (
@@ -720,18 +720,18 @@ export function LibraryPage() {
 
                 <div className="min-w-0 flex-1 space-y-2">
                   <div>
-                    <label className="mb-1 block text-xs text-slate-400">书名</label>
+                    <label className="mb-1 block text-xs text-muted-foreground">书名</label>
                     <input value={editor.title} onChange={(e) => set({ title: e.target.value })} placeholder="如 小王子" className={inputCls} autoFocus />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-400">作者</label>
+                    <label className="mb-1 block text-xs text-muted-foreground">作者</label>
                     <input value={editor.author} onChange={(e) => set({ author: e.target.value })} placeholder="如 圣埃克苏佩里" className={inputCls} />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-slate-400">封面颜色（无图片时）</label>
+                <label className="mb-1 block text-xs text-muted-foreground">封面颜色（无图片时）</label>
                 <div className="flex flex-wrap gap-2">
                   {PALETTE.map((c, i) => (
                     <button
@@ -739,7 +739,7 @@ export function LibraryPage() {
                       type="button"
                       onClick={() => set({ paletteIdx: i })}
                       aria-label={`颜色 ${i + 1}`}
-                      className={cn('h-7 w-7 rounded-md transition', editor.paletteIdx === i && 'ring-2 ring-white/70 ring-offset-2 ring-offset-[#1b1626]')}
+                      className={cn('h-7 w-7 rounded-md transition', editor.paletteIdx === i && 'ring-2 ring-gold ring-offset-2 ring-offset-surface')}
                       style={{ background: c }}
                     />
                   ))}
@@ -747,21 +747,21 @@ export function LibraryPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-slate-400">详情</label>
+                <label className="mb-1 block text-xs text-muted-foreground">详情</label>
                 <textarea value={editor.desc} onChange={(e) => set({ desc: e.target.value })} rows={2} placeholder="一句话介绍这本书…" className={cn(inputCls, 'resize-none')} />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-slate-400">正文（导入文件即正文）</label>
+                <label className="mb-1 block text-xs text-muted-foreground">正文（导入文件即正文）</label>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/20 bg-white/5 px-3 py-3 text-sm text-slate-300 transition hover:bg-white/10"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-2 px-3 py-3 text-sm text-foreground transition hover:bg-surface-3"
                 >
                   <BookOpen className="h-4 w-4" /> {editor.fileName || '选择文本文件（.txt / .md）'}
                 </button>
                 {editor.content && (
-                  <p className="mt-1 text-[11px] text-slate-500">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {editor.fileName || '已导入正文'} · {editor.content.length} 字
                   </p>
                 )}
@@ -769,37 +769,37 @@ export function LibraryPage() {
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-xs text-slate-400">目录（AI 总结，无需手写）</label>
+                  <label className="text-xs text-muted-foreground">目录（AI 总结，无需手写）</label>
                   <button
                     type="button"
                     onClick={genToc}
                     disabled={tocBusy || !editor.content.trim()}
-                    className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs text-amber-300 transition hover:bg-amber-500/25 disabled:opacity-40"
+                    className="flex items-center gap-1 rounded-full bg-gold/15 px-2.5 py-1 text-xs text-gold transition hover:bg-gold/25 disabled:opacity-40"
                   >
                     {tocBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     AI 生成目录
                   </button>
                 </div>
                 {editor.toc.length > 0 ? (
-                  <ol className="space-y-1 rounded-lg bg-white/5 px-3 py-2">
+                  <ol className="space-y-1 rounded-lg bg-surface-2 px-3 py-2">
                     {editor.toc.map((t, i) => (
-                      <li key={i} className="flex items-baseline gap-2 text-sm text-slate-300">
-                        <span className="text-xs text-slate-500">{String(i + 1).padStart(2, '0')}</span>
+                      <li key={i} className="flex items-baseline gap-2 text-sm text-foreground">
+                        <span className="text-xs text-muted-foreground">{String(i + 1).padStart(2, '0')}</span>
                         {t}
                       </li>
                     ))}
                   </ol>
                 ) : (
-                  <p className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-500">
+                  <p className="flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
                     <ListOrdered className="h-3.5 w-3.5" /> 导入正文后，点「AI 生成目录」自动总结
                   </p>
                 )}
-                {tocError && <p className="mt-1 text-[11px] text-rose-300">{tocError}</p>}
+                {tocError && <p className="mt-1 text-[11px] text-destructive">{tocError}</p>}
               </div>
             </div>
 
             <div className="mt-5 flex gap-2">
-              <button type="button" onClick={() => setEditor(null)} className="h-10 flex-1 rounded-xl bg-white/5 text-sm font-medium text-slate-300 transition hover:bg-white/10">
+              <button type="button" onClick={() => setEditor(null)} className="h-10 flex-1 rounded-xl bg-surface-2 text-sm font-medium text-foreground transition hover:bg-surface-3">
                 取消
               </button>
               <button type="button" onClick={save} disabled={!editor.title.trim()} className="h-10 flex-1 rounded-xl bg-primary text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-40">

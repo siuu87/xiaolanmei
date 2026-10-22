@@ -139,7 +139,7 @@ export function TokenCard() {
 
           {/* 折叠菜单：按 API 站子聚合 */}
           {open && (
-            <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-border/60 bg-popover/95 p-2 shadow-lg backdrop-blur-xl">
+            <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-border bg-popover p-2 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
               <div className="mb-1 px-1 text-[10px] text-muted-foreground">按站子</div>
               <div className="max-h-48 space-y-1 overflow-y-auto">
                 <button

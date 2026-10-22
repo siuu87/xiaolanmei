@@ -199,14 +199,14 @@ function MessageMenu({
         role="menu"
         onClick={(e) => e.stopPropagation()}
         style={pos}
-        className="animate-bb-pop fixed max-h-[62vh] overflow-y-auto overscroll-contain rounded-[10px] bg-[#4c4c4c] py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)]"
+        className="animate-bb-pop fixed max-h-[62vh] overflow-y-auto overscroll-contain rounded-[10px] border border-border bg-popover py-1 text-popover-foreground shadow-lift"
       >
         {children}
         {/* 小尖角：指向被长按的那条消息 */}
         <span
           aria-hidden
           className={cn(
-            'absolute h-2.5 w-2.5 rotate-45 bg-[#4c4c4c]',
+            'absolute h-2.5 w-2.5 rotate-45 border border-border bg-popover',
             placeAbove ? '-bottom-[5px]' : '-top-[5px]',
           )}
           style={{ left: arrowLeft }}
@@ -239,11 +239,11 @@ function MenuAction({
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-[14px] transition',
-        'hover:bg-white/10 active:bg-white/20',
-        danger ? 'text-rose-300' : 'text-white/95',
+        'hover:bg-surface-2 active:bg-surface-3',
+        danger ? 'text-destructive' : 'text-popover-foreground',
       )}
     >
-      <span className={cn('shrink-0', danger ? 'text-rose-300' : 'text-white/70')}>{icon}</span>
+      <span className={cn('shrink-0', danger ? 'text-destructive' : 'text-muted-foreground')}>{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </button>
   );
@@ -290,7 +290,7 @@ function BubbleAvatar({ mine }: { mine: boolean }) {
       className={cn(
         // 参考图里小人「站在白纸上」，不该有阴影；两边统一一层很淡的中性底就够了。
         // 不再用 mb-[18px]——那是旧的「整体底部对齐」遗留，现在头像对齐气泡顶部。
-        'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-chat-line/60 text-chat-pill-fg',
+        'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg',
       )}
     >
       {value ? (
@@ -367,10 +367,12 @@ function MsgRow({
 /** 居中日期分隔（参考图：两侧细线 + 「6月30日 · 00:10」） */
 function DateDivider({ label }: { label: string }) {
   return (
-    <div data-testid="date-divider" className="flex items-center gap-3 px-2 py-3">
-      <span className="h-px flex-1 bg-chat-line" aria-hidden />
-      <span className="shrink-0 text-[11px] text-chat-meta">{label}</span>
-      <span className="h-px flex-1 bg-chat-line" aria-hidden />
+    <div data-testid="date-divider" className="flex items-center gap-3 px-2 py-4">
+      <span className="h-px flex-1 bg-gradient-to-r from-transparent to-chat-line" aria-hidden />
+      <span className="shrink-0 rounded-full border border-chat-line bg-chat-pill px-2.5 py-1 font-serif text-[10px] tracking-wide text-chat-meta">
+        {label}
+      </span>
+      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-chat-line" aria-hidden />
     </div>
   );
 }
@@ -445,7 +447,7 @@ function VoiceBubble({ id, ms, text }: { id: string; ms: number; text: string })
           className={cn(
             // 用 currentColor：这样放在己方（浅蓝）和对方（浅灰）气泡里都跟着气泡的字色走
             'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-current transition',
-            'bg-black/[0.06] hover:bg-black/[0.1] dark:bg-white/[0.08] dark:hover:bg-white/[0.14]',
+            'bg-surface-2 hover:bg-surface-3',
           )}
         >
           {cap.playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="ml-0.5 h-3.5 w-3.5" />}
@@ -661,8 +663,8 @@ function ChatStylePill({ mode, onToggle }: { mode: ChatStyleMode; onToggle: () =
       aria-pressed={mode === 'fragmented'}
       title={`${meta.title} · 点一下换另一种`}
       className={cn(
-        // 用 chat-line 做浅灰底：白底 + 白药丸会糊在一起，看不出是个按钮
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-line/70 shadow-sm transition',
+        // 实色药丸 + 细描边：和输入框同一套纸张语汇
+        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill transition',
         'hover:bg-chat-line active:scale-95',
       )}
     >
@@ -704,7 +706,7 @@ function AttachButton({
       data-testid={testid}
       className="group flex w-full flex-col items-center gap-1.5 rounded-xl py-1 transition duration-150 active:scale-95"
     >
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-chat-pill text-chat-pill-fg shadow-sm transition group-hover:bg-chat-line [&_svg]:h-6 [&_svg]:w-6">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-chat-line bg-chat-pill text-chat-pill-fg shadow-sm transition group-hover:bg-chat-line [&_svg]:h-6 [&_svg]:w-6">
         {icon}
       </span>
       <span className="text-[11px] leading-none text-chat-meta">{label}</span>
@@ -1469,7 +1471,7 @@ export function ChatPage() {
           aria-label="打开菜单"
           title="菜单"
           data-testid="chat-hamburger"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95 md:hidden"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95 md:hidden"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -1490,15 +1492,15 @@ export function ChatPage() {
             aria-label="打开内心与记忆"
             title={`点开看${ownerName}此刻在想什么`}
             className={cn(
-              'pointer-events-auto flex min-w-0 max-w-[54vw] items-center gap-1.5 rounded-full px-1.5 py-0.5 transition md:max-w-[420px]',
-              'hover:bg-chat-line/60 active:scale-[0.98]',
+              'pointer-events-auto flex min-w-0 max-w-[54vw] items-center gap-1.5 rounded-full px-2 py-1 transition md:max-w-[420px]',
+              'hover:bg-chat-line/50 active:scale-[0.98]',
               // 点完不要留一圈浏览器默认黑描边；键盘 Tab 过来才给一圈浅色 focus ring
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
             )}
           >
             <span
               data-testid="chat-title"
-              className="min-w-0 truncate font-serif text-[15px] font-semibold text-foreground"
+              className="display min-w-0 truncate text-[16px] font-semibold tracking-tight text-foreground"
             >
               {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
               {displayName || conversation?.title || '小蓝莓'}
@@ -1508,7 +1510,7 @@ export function ChatPage() {
           {/* 伴侣挂件贴在名字右侧**绝对定位**：挂在布局流里会把名字顶偏半个挂件的宽度。
               必须 `w-max whitespace-nowrap` —— 绝对定位元素的可用宽度是从「容器宽 - left」算的，
               而容器只有名字那么宽，不写死就会缩成一列竖排字。 */}
-          <span className="absolute left-full top-1/2 ml-2 hidden w-max shrink-0 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-chat-pill px-2 py-0.5 text-[10px] text-chat-meta shadow-sm sm:flex">
+          <span className="absolute left-full top-1/2 ml-2 hidden w-max shrink-0 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-chat-line bg-chat-pill px-2 py-0.5 text-[10px] text-chat-meta sm:flex">
             <AvatarContent value={partnerAvatar} fallback="🐰" className="h-3.5 w-3.5 text-[11px]" />
             <span>在一起 {loveDayCount} 天</span>
           </span>
@@ -1520,7 +1522,7 @@ export function ChatPage() {
             onClick={() => setSearchOpen(true)}
             aria-label="搜索记录"
             title="搜索记录"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition hover:bg-chat-line active:scale-95"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -1548,7 +1550,7 @@ export function ChatPage() {
             <DateDivider label={`${fmtDateLabel(Date.now())} · ${fmtTime(Date.now())}`} />
             <MsgRow mine={false} stamp={<InlineStamp ts={Date.now()} />}>
               <div
-                className="rounded-[18px] bg-chat-ai px-4 py-2.5 text-[15px] leading-6 text-chat-ai-fg"
+                className="rounded-[20px] rounded-bl-[8px] border border-chat-line/70 bg-chat-ai px-4 py-3 text-[15px] leading-6 text-chat-ai-fg"
                 style={
                   { '--foreground': 'var(--chat-ai-fg)', '--muted-foreground': 'var(--chat-meta)' } as React.CSSProperties
                 }
@@ -1646,7 +1648,7 @@ export function ChatPage() {
                           <div
                             key={si}
                             data-testid="chat-bubble"
-                            className="select-none rounded-[18px] bg-chat-ai px-3.5 py-2 text-[15px] leading-6 text-chat-ai-fg"
+                            className="select-none rounded-[20px] rounded-bl-[8px] border border-chat-line/70 bg-chat-ai px-3.5 py-2 text-[15px] leading-6 text-chat-ai-fg"
                             style={
                               {
                                 '--foreground': 'var(--chat-ai-fg)',
@@ -1664,13 +1666,13 @@ export function ChatPage() {
                       className={cn(
                         'text-[15px] leading-6',
                         !isEditing && 'select-none',
-                        'rounded-[18px] px-4 py-2.5',
+                        'rounded-[20px] px-4 py-2.5',
                         m.role === 'user'
-                          // 己方：浅蓝气泡、深墨字
-                          ? 'whitespace-pre-wrap bg-chat-me text-chat-me-fg'
-                          // 对方：浅灰气泡、近黑字
-                          : 'bg-chat-ai text-chat-ai-fg',
-                        m.sticker && 'bg-transparent p-0',
+                          // 己方：陶土米色气泡、深墨字
+                          ? 'whitespace-pre-wrap rounded-br-[8px] border border-chat-line/50 bg-chat-me text-chat-me-fg'
+                          // 对方：暖米灰气泡、近黑字
+                          : 'rounded-bl-[8px] border border-chat-line/70 bg-chat-ai text-chat-ai-fg',
+                        m.sticker && 'border-transparent bg-transparent p-0',
                         // 错误仍保持气泡形状，只是把字换成警示红
                         m.status === 'error' && m.role === 'assistant' && 'text-destructive',
                       )}
@@ -1945,7 +1947,7 @@ export function ChatPage() {
             aria-label="回到底部"
             title="回到底部"
             data-testid="scroll-bottom"
-            className="absolute bottom-4 left-1/2 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-md ring-1 ring-chat-line transition active:scale-95"
+            className="absolute bottom-4 left-1/2 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg shadow-md transition active:scale-95"
           >
             <ArrowDown className="h-4 w-4" />
           </button>
@@ -1955,7 +1957,7 @@ export function ChatPage() {
       {/* 输入区：暖奶白底一条（+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 深色发送圆钮） */}
       <div
         data-testid="chat-input-bar"
-        className="shrink-0 border-t border-chat-line bg-chat-bar px-4 pb-3 pt-3"
+        className="shrink-0 border-t border-chat-line bg-chat-bar px-3 pb-3 pt-3"
       >
         {activeSkills.length > 0 && (
           <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
@@ -2074,14 +2076,14 @@ export function ChatPage() {
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
                 stt.listening
                   ? 'animate-pulse bg-red-500 text-white shadow-sm'
-                  : 'bg-chat-pill text-chat-pill-fg shadow-sm hover:bg-chat-line',
+                  : 'border border-chat-line bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
               )}
             >
               <Mic className="h-[18px] w-[18px]" />
             </button>
 
             {/* 中间：输入胶囊（模型药丸 + 输入框） */}
-            <div className="flex min-h-[38px] min-w-0 flex-1 items-center gap-1.5 rounded-[19px] bg-chat-pill px-2 py-1 shadow-sm ring-1 ring-transparent transition focus-within:ring-chat-accent/40">
+            <div className="flex min-h-[42px] min-w-0 flex-1 items-center gap-1.5 rounded-[22px] border border-chat-line bg-chat-pill px-2.5 py-1 shadow-sm ring-1 ring-transparent transition focus-within:border-chat-accent/40 focus-within:ring-chat-accent/25">
               {/* 模型选择跟着参考图搬进输入条，顶栏就不挤了 */}
               <ModelPicker
                 stationId={stationId}
@@ -2202,7 +2204,7 @@ export function ChatPage() {
                 data-testid="chat-attach"
                 className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
-                  attachOpen ? 'bg-chat-accent text-chat-accent-fg' : 'bg-chat-pill text-chat-pill-fg shadow-sm hover:bg-chat-line',
+                  attachOpen ? 'bg-chat-accent text-chat-accent-fg' : 'border border-chat-line bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
                 )}
               >
                 <Plus className="h-5 w-5" />
@@ -2298,18 +2300,18 @@ export function ChatPage() {
 
       {/* 多图堆叠卡点开的大图：整页纯色不透明，带前后翻页 */}
       {photoView && (
-        <div data-testid="photo-viewer" className="fixed inset-0 z-[1400] flex flex-col bg-[#070b1a]">
-          <div className="flex h-14 shrink-0 items-center justify-between px-3 text-slate-200">
+        <div data-testid="photo-viewer" className="fixed inset-0 z-[1400] flex flex-col bg-page-bg text-foreground">
+          <div className="flex h-14 shrink-0 items-center justify-between px-3 text-foreground">
             <button
               type="button"
               onClick={() => setPhotoView(null)}
               aria-label="关闭大图"
               data-testid="photo-viewer-close"
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/10"
+              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-surface-2"
             >
               <X className="h-5 w-5" />
             </button>
-            <span className="text-[12px] tabular-nums text-slate-400">
+            <span className="text-[12px] tabular-nums text-muted-foreground">
               {photoView.urls.length > 1 ? `${photoView.index + 1} / ${photoView.urls.length}` : ''}
             </span>
             <span className="w-9" />
@@ -2325,7 +2327,7 @@ export function ChatPage() {
                   })
                 }
                 aria-label="上一张"
-                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20"
+                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground transition hover:bg-surface-2"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -2345,7 +2347,7 @@ export function ChatPage() {
                   })
                 }
                 aria-label="下一张"
-                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20"
+                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-foreground transition hover:bg-surface-2"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

@@ -113,10 +113,10 @@ function CourseEditor({ course, initial, onClose }: CourseEditorProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-2 sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-2 sm:p-4" onClick={onClose}>
+      <div className="paper-card max-h-[90vh] w-full max-w-md overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">{course ? '编辑课程' : '添加课程'}</h3>
+          <h3 className="display text-[16px] font-semibold">{course ? '编辑课程' : '添加课程'}</h3>
           <button type="button" onClick={onClose} className="text-muted-foreground">
             <X className="h-4 w-4" />
           </button>

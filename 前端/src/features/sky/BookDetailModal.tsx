@@ -13,9 +13,9 @@ export function BookDetailModal({ book, onClose }: { book: Book; onClose: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
-        className="max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-[#16121f] p-5 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl"
+        className="paper-card max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 封面 */}
@@ -35,20 +35,20 @@ export function BookDetailModal({ book, onClose }: { book: Book; onClose: () => 
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h3 className="truncate text-lg font-bold text-slate-100">{book.title}</h3>
-            <p className="mt-0.5 text-xs text-slate-400">{book.author}</p>
+            <h3 className="truncate text-lg font-bold text-foreground">{book.title}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">{book.author}</p>
 
             {/* 阅读进度 */}
             <div className="mt-3">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <BookOpen className="h-3.5 w-3.5" /> 阅读进度
                 </span>
-                <span className="text-slate-200">{pct}%</span>
+                <span className="text-foreground">{pct}%</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-3">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-sky-400 transition-all duration-500"
+                  className="h-full rounded-full bg-primary transition-all duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -58,19 +58,19 @@ export function BookDetailModal({ book, onClose }: { book: Book; onClose: () => 
 
         {/* 详情 */}
         {book.desc && (
-          <p className="mt-4 rounded-xl bg-white/5 px-3.5 py-3 text-sm leading-6 text-slate-300">{book.desc}</p>
+          <p className="mt-4 rounded-xl bg-surface-2 px-3.5 py-3 text-sm leading-6 text-muted-foreground">{book.desc}</p>
         )}
 
         {/* 目录 */}
         {book.toc.length > 0 && (
           <div className="mt-4">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <ListOrdered className="h-3.5 w-3.5" /> 目录
             </div>
             <ol className="mt-2 space-y-1.5">
               {book.toc.map((t, i) => (
-                <li key={i} className="flex items-baseline gap-2 text-sm text-slate-300">
-                  <span className="text-xs text-slate-500">{String(i + 1).padStart(2, '0')}</span>
+                <li key={i} className="flex items-baseline gap-2 text-sm text-foreground/80">
+                  <span className="text-xs text-muted-foreground">{String(i + 1).padStart(2, '0')}</span>
                   {t}
                 </li>
               ))}
@@ -83,7 +83,7 @@ export function BookDetailModal({ book, onClose }: { book: Book; onClose: () => 
           <button
             type="button"
             onClick={onClose}
-            className="h-11 flex-1 rounded-xl bg-white/5 text-sm font-medium text-slate-300 transition hover:bg-white/10"
+            className="h-11 flex-1 rounded-xl bg-surface-2 text-sm font-medium text-muted-foreground transition hover:bg-surface-3 hover:text-foreground"
           >
             关闭
           </button>

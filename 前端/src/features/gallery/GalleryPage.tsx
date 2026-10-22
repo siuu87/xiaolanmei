@@ -41,7 +41,7 @@ export function GalleryPage() {
       title="相册"
       eyebrow="GALLERY"
       testId="gallery-page"
-      className="bg-[#0b0a09] [--page-bg:30_15%_5%] [--page-line:30_12%_14%] [--foreground:35_20%_88%] [--muted-foreground:35_8%_55%]"
+      className="bg-page-bg"
       bodyClassName="p-0"
       right={
         <div className="flex shrink-0 items-center gap-1">
@@ -51,7 +51,7 @@ export function GalleryPage() {
               target="_blank"
               rel="noreferrer"
               aria-label="在新窗口打开记忆相册"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-amber-200/50 transition hover:bg-white/10 hover:text-amber-100"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
             >
               <ExternalLink size={15} />
             </a>
@@ -61,7 +61,7 @@ export function GalleryPage() {
             onClick={() => void check()}
             aria-label="重新检测记忆相册"
             data-testid="gallery-remember-check"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-amber-200/50 transition hover:bg-white/10 hover:text-amber-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
           </button>
@@ -69,7 +69,7 @@ export function GalleryPage() {
       }
     >
       {loading && !status ? (
-        <div className="flex items-center gap-2 px-5 py-10 text-[13px] text-amber-200/40">
+        <div className="flex items-center gap-2 px-5 py-10 text-[13px] text-muted-foreground">
           <Loader2 size={15} className="animate-spin" /> 正在打开记忆相册…
         </div>
       ) : status?.up ? (
@@ -85,7 +85,7 @@ export function GalleryPage() {
           />
           <div
             data-testid="remember-me-frame"
-            className="h-[calc(100dvh-57px)] w-full overflow-hidden bg-[#0b0a09]"
+            className="h-[calc(100dvh-57px)] w-full overflow-hidden bg-page-bg"
           >
             <iframe
               src={status.dashboard}
@@ -100,23 +100,23 @@ export function GalleryPage() {
         <div className="px-4 py-5">
           <div
             data-testid="remember-me-setup"
-            className="rounded-2xl border border-dashed border-amber-900/40 bg-[#120c08] p-5"
+            className="paper-card p-5 text-card-foreground"
           >
-            <div className="flex items-center gap-2 text-[13px] text-amber-50">
-              <HardDrive size={15} className="text-amber-300/70" /> 记忆相册还没启动
+            <div className="flex items-center gap-2 text-[13px] text-foreground">
+              <HardDrive size={15} className="text-gold" /> 记忆相册还没启动
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-amber-200/40">
+            <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
               相册现在只使用 Remember-Me 的图像记忆库（Dusk Archive）。
               侧车默认在 127.0.0.1:8787，启动后点右上角刷新。
             </p>
-            <pre className="mt-3 overflow-x-auto rounded-lg bg-white/[0.04] px-3 py-2 text-[10px] leading-4 text-amber-200/50">
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
               {String.raw`cd remember-me
 .venv\Scripts\python.exe -m remember_me serve --data-root .data`}
             </pre>
             <button
               type="button"
               onClick={() => void check()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3.5 py-1.5 text-[11px] font-medium text-[#1a120b] transition active:scale-95"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-[11px] font-medium text-primary-foreground transition active:scale-95"
             >
               <RefreshCw size={12} className={cn(loading && 'animate-spin')} /> 重新检测
             </button>

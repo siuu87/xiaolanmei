@@ -16,7 +16,7 @@ export function Sheet({
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
       <div
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-scrim"
         onClick={() => onOpenChange(false)}
         aria-hidden
       />
@@ -38,7 +38,10 @@ export function SheetContent({
   return (
     <div
       data-side={side}
-      className={cn('h-full w-full bg-background shadow-xl', className)}
+      className={cn(
+        'h-full w-full bg-surface shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
+        className,
+      )}
     >
       {children}
     </div>

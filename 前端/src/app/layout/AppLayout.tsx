@@ -102,8 +102,12 @@ export function AppLayout() {
     >
       {/* 桌面侧边栏（沉浸式时收起） */}
       {!immersive && (
-        <aside className="hidden w-60 shrink-0 border-r bg-card md:block">
-          <Sidebar />
+        <aside className="relative hidden w-64 shrink-0 border-r border-border bg-surface md:block">
+          {/* 侧栏顶部的暖光，和页面同一套环境光 */}
+          <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-48 opacity-80" />
+          <div className="relative h-full">
+            <Sidebar />
+          </div>
         </aside>
       )}
 

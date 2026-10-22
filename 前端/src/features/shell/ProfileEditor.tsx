@@ -13,11 +13,9 @@
  * 随后按需求去掉页签、只留资料页，再把内容按主题折成上面四个折叠页 ——
  * 所以这里**不再有页签**，页面标题恒为「我的资料 / 他的资料」。
  *
- * 配色：浮层外壳是硬编码深色 `#0f1424`，而内嵌面板（PromptsPanel / StyleRulesPanel /
- * MemoSection）走的是主题 token。为了不出现「深色壳里塞浅色卡」，折叠页正文统一加
- * `dark` 类把 token 局部降到深色一档（`index.css` 的 `.dark` 是普通类选择器，
- * 套在子树上是合法的），于是整套内嵌面板自动变成深色，一行都不用改。
- * 注意：MemoDetailDialog 是 portal 到 body 的，落在 `.dark` 之外，会跟随全局主题——这是有意的。
+ * 配色：浮层外壳与内嵌面板（PromptsPanel / StyleRulesPanel / MemoSection）都走主题 token，
+ * 折叠页正文不再局部降档（原先的 `dark` 类已去掉），于是整个编辑器跟随全局深浅主题。
+ * 注意：MemoDetailDialog 是 portal 到 body 的，同样跟随全局主题。
  *
  * 层级：抽屉是 z-[1200]，这里必须 portal 到 body 并压到它上面，否则被抽屉吃掉。
  */
@@ -67,7 +65,7 @@ const LANGUAGES: { value: string; label: string }[] = [
 ];
 
 const inputCls =
-  'w-full rounded-xl border border-white/[0.09] bg-white/[0.04] px-3 py-2.5 text-[14px] text-[#e8ecf6] outline-none placeholder:text-[#6b7488] focus:border-[#7aa2ff]/60';
+  'w-full rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-[14px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60';
 
 export function ProfileEditor({
   target,
@@ -134,30 +132,30 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
   };
 
   return (
-    <div className="fixed inset-0 z-[1450] flex flex-col bg-[#0f1424]" data-testid="profile-editor">
+    <div className="fixed inset-0 z-[1450] flex flex-col bg-page-bg text-foreground" data-testid="profile-editor">
       <motion.div
         role="dialog"
         aria-label={isMe ? '我的资料' : '他的资料'}
-        className="flex h-full w-full flex-col overflow-hidden bg-[#0f1424]"
+        className="flex h-full w-full flex-col overflow-hidden bg-page-bg"
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', stiffness: 360, damping: 32 }}
       >
         {/* 顶栏：返回 + 标题（参考图二） */}
-        <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.08] px-2.5 py-2.5">
+        <div className="flex shrink-0 items-center gap-1 border-b border-border px-2.5 py-2.5">
           <button
             type="button"
             onClick={onClose}
             aria-label="返回"
             data-testid="profile-editor-back"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#a8b0c4] transition hover:bg-white/[0.08]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <p
             data-testid="profile-editor-title"
-            className="flex-1 text-center text-[15px] font-semibold text-[#e8ecf6]"
+            className="flex-1 text-center text-[15px] font-semibold text-foreground"
           >
             {isMe ? '我的资料' : '他的资料'}
           </p>
@@ -221,7 +219,7 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
                     data-testid="profile-editor-remark"
                     className={inputCls}
                   />
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-[#6b7488]">
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
                     填了之后，聊天顶栏和「小心思」就显示这个名字（AI 也能帮你改）。
                   </p>
                 </Field>
@@ -261,7 +259,7 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
                     data-testid="profile-editor-voice-id"
                     className={inputCls}
                   />
-                  <p className="mt-1.5 text-[10px] text-[#6b7488]">
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
                     💡 在 MiniMax 平台克隆声音后获取 voice_id
                   </p>
                 </Field>
@@ -277,16 +275,16 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
                       value={speed}
                       onChange={(e) => setSpeed(Number(e.target.value))}
                       data-testid="profile-editor-speed"
-                      className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/[0.12] accent-[#7aa2ff]"
+                      className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-surface-3 accent-primary"
                     />
                     <span
                       data-testid="profile-editor-speed-value"
-                      className="w-11 shrink-0 text-right text-[12px] tabular-nums text-[#c3cade]"
+                      className="w-11 shrink-0 text-right text-[12px] tabular-nums text-foreground"
                     >
                       {speed.toFixed(1)}x
                     </span>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-[#6b7488]">
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
                     调整角色语音播放的语速（0.5 倍 - 2.0 倍）
                   </p>
                 </Field>
@@ -304,7 +302,7 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
                     className={cn(inputCls, 'appearance-none')}
                   >
                     {LANGUAGES.map((l) => (
-                      <option key={l.value} value={l.value} className="bg-[#151b2b]">
+                      <option key={l.value} value={l.value} className="bg-surface text-foreground">
                         {l.label}
                       </option>
                     ))}
@@ -337,12 +335,12 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
           )}
         </div>
 
-        <div className="flex shrink-0 items-center border-t border-white/[0.08] px-4 py-3">
+        <div className="flex shrink-0 items-center border-t border-border px-4 py-3">
           <button
             type="button"
             onClick={save}
             data-testid="profile-editor-save"
-            className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[#7aa2ff] py-3 text-[15px] font-medium text-[#0b1020] transition hover:bg-[#8fb1ff]"
+            className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-primary py-3 text-[15px] font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             <Check className="h-4 w-4" /> 保存
           </button>
@@ -357,8 +355,7 @@ function Sheet({ target, onClose }: { target: ProfileTarget; onClose: () => void
 /**
  * 一个折叠页：标题行 + 展开后的正文。
  *
- * 正文加 `dark`：浮层外壳是深色，而里面的面板（人设模块 / 语言风格 / 备忘录）
- * 都是按主题 token 写的。把 token 局部降到深色一档，它们就自动跟着变深色。
+ * 正文不额外加 `dark`：外壳与面板都走同一套主题 token，跟随全局深浅主题。
  */
 function FoldSection({
   title,
@@ -376,22 +373,22 @@ function FoldSection({
     <section
       data-testid={testid}
       data-open={open ? '1' : '0'}
-      className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]"
+      className="paper-card overflow-hidden"
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         data-testid={`${testid}-toggle`}
-        className="flex w-full items-center gap-2 px-3.5 py-3 text-left transition hover:bg-white/[0.05]"
+        className="flex w-full items-center gap-2 px-3.5 py-3 text-left transition hover:bg-surface-2"
       >
-        <span className="flex-1 text-[14px] font-medium text-[#dfe4ef]">{title}</span>
+        <span className="flex-1 text-[14px] font-medium text-foreground">{title}</span>
         <ChevronDown
-          className={cn('h-4 w-4 shrink-0 text-[#8b93a7] transition-transform', open && 'rotate-180')}
+          className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
         />
       </button>
       {open && (
-        <div data-testid={`${testid}-body`} className="dark border-t border-white/[0.08] px-3.5 py-3.5">
+        <div data-testid={`${testid}-body`} className="border-t border-border px-3.5 py-3.5">
           {children}
         </div>
       )}
@@ -434,18 +431,18 @@ function AvatarBlock({
   const hasImage = /^(\/|https?:)/.test(value.trim());
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-4">
-      <p className="text-center text-[13px] font-medium text-[#c3cade]">头像</p>
+    <div className="paper-card px-4 py-4">
+      <p className="text-center text-[13px] font-medium text-foreground">头像</p>
 
       <div className="mt-3 flex justify-center">
         <span
           data-testid="profile-editor-preview"
-          className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-[34px]"
+          className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand/25 to-gold/25 text-[34px] text-foreground"
         >
           {hasImage ? (
             <AvatarContent value={value} fallback={DEFAULT_AVATAR[target]} />
           ) : (
-            <span className="leading-none text-[#dfe4ef]">
+            <span className="leading-none text-foreground">
               {(value || '').trim() || PLACEHOLDER_CHAR[target]}
             </span>
           )}
@@ -458,7 +455,7 @@ function AvatarBlock({
           onClick={() => fileRef.current?.click()}
           disabled={busy}
           data-testid="profile-editor-upload"
-          className="flex w-full max-w-[260px] items-center justify-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.05] py-2.5 text-[13px] text-[#dfe4ef] transition hover:bg-white/[0.1] disabled:opacity-60"
+          className="flex w-full max-w-[260px] items-center justify-center gap-2 rounded-full border border-border bg-surface-2 py-2.5 text-[13px] text-foreground transition hover:bg-surface-3 disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
           {busy ? '上传中…' : '上传头像'}
@@ -475,7 +472,7 @@ function AvatarBlock({
       />
 
       {err && (
-        <p data-testid="profile-editor-upload-error" className="mt-2 text-center text-[11px] text-rose-400">
+        <p data-testid="profile-editor-upload-error" className="mt-2 text-center text-[11px] text-destructive">
           {err}
         </p>
       )}
@@ -487,7 +484,7 @@ function AvatarBlock({
           onClick={() => setEmojiOpen((v) => !v)}
           aria-expanded={emojiOpen}
           data-testid="profile-editor-emoji-toggle"
-          className="text-[11px] text-[#6b7488] underline decoration-dotted underline-offset-2 transition hover:text-[#a8b0c4]"
+          className="text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2 transition hover:text-foreground"
         >
           或挑一个 emoji
         </button>
@@ -505,7 +502,7 @@ function AvatarBlock({
               onClick={() => onChange(e)}
               className={cn(
                 'flex h-9 w-9 items-center justify-center rounded-full text-[18px] transition',
-                value === e ? 'bg-white/[0.16] ring-2 ring-[#7aa2ff]' : 'bg-white/[0.05] hover:bg-white/[0.11]',
+                value === e ? 'bg-primary/15 ring-2 ring-primary' : 'bg-surface-2 hover:bg-surface-3',
               )}
             >
               {e}
@@ -516,7 +513,7 @@ function AvatarBlock({
               type="button"
               onClick={() => onChange('')}
               data-testid="profile-editor-clear"
-              className="flex h-9 items-center rounded-full bg-white/[0.05] px-3 text-[11px] text-[#8b93a7] transition hover:bg-white/[0.11]"
+              className="flex h-9 items-center rounded-full bg-surface-2 px-3 text-[11px] text-muted-foreground transition hover:bg-surface-3"
             >
               清除
             </button>
@@ -542,10 +539,10 @@ function Field({
 }) {
   return (
     <div className="mt-4 first:mt-0">
-      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-[#c3cade]">
+      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-foreground">
         {label}
       </label>
-      {hint && <p className="mt-1 text-[10px] leading-4 text-[#6b7488]">{hint}</p>}
+      {hint && <p className="mt-1 text-[10px] leading-4 text-muted-foreground">{hint}</p>}
       <div className="mt-1.5">{children}</div>
     </div>
   );

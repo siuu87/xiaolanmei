@@ -15,9 +15,10 @@ import { EnvelopeArt } from './LetterEnvelope';
  *
  * - **背景是纯色不透明**（不是 `bg-black/70 + backdrop-blur`）。项目里有一条硬规矩：
  *   叠层不许半透明，否则会透出底下的聊天对话。这里照样做成弹窗的样子
- *   （整屏舞台 + 居中卡片 + 点空白收起），但那层"舞台"是不透明的深色，不透对话。
- * - **拆信动作分两步**：信封先落地（0.24s），封盖再翻开、信纸同时从信封口升出来。
- *   一步到位会变成"弹出一张图"，两步才有"拆开"的感觉。
+ *   （整屏舞台 + 居中卡片 + 点空白收起），但那层"舞台"是页面 token 的纯色底，不透对话。
+ * - **拆信动作分三步**（2026-10-22 富版）：信封先落地（0.24s spring）→ `opened` 置真后
+ *   ① 火漆裂光淡出、② 封盖回弹翻开（delay 160ms）、③ 信纸带 `rotateX` 微展并从信封口抽出来
+ *   （framer `delay 0.18s`，弹簧）。一步到位会变成"弹出一张图"，错开才有"亲手拆"的感觉。
  * - **三种关法**：右上角 ✕、点空白处、Esc。
  * - 打开即已读（红点熄灭），跟以前一致。
  */
@@ -68,7 +69,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
       data-letter-theme={theme}
       data-opened={opened ? '1' : '0'}
     >
-      {/* 舞台：不透明深色（不是为了透出后面，是为了让暖色信封有对比） */}
+      {/* 舞台：纯色不透明 token 底（不是为了透出后面，是为了让信封有对比） */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -76,10 +77,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
         transition={{ duration: 0.18 }}
         onClick={onClose}
         data-testid="letter-page-mask"
-        className="absolute inset-0"
-        style={{
-          background: 'radial-gradient(120% 80% at 50% 0%, #171d2e 0%, #0a0d16 58%, #080a12 100%)',
-        }}
+        className="absolute inset-0 bg-page-bg"
       />
 
       {/* 右上角关闭 */}
@@ -88,13 +86,13 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
         onClick={onClose}
         aria-label="收起这封信"
         data-testid="letter-page-close"
-        className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/60 transition hover:bg-white/[0.12] hover:text-white active:scale-95"
+        className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground transition hover:bg-surface-2 hover:text-foreground active:scale-95"
       >
         <X size={16} />
       </button>
 
       {/* 信封 + 抽出来的信纸 */}
-      <div className="relative w-full max-w-[330px]">
+      <div className="relative w-full max-w-[min(440px,92vw)]">
         {/*
           信封：整枚压在信纸**后面并往下沉**，只露出下半截。
           信纸的底边要落进信封内部（不是贴在信封上沿），否则中间会裂出一条缝，
@@ -121,23 +119,24 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
           {note && (
             <motion.div
               data-testid="letter-paper"
-              initial={{ scaleY: 0.04, y: 62, opacity: 0 }}
+              initial={{ scaleY: 0.04, y: 62, opacity: 0, rotateX: 14 }}
               animate={{
                 scaleY: opened ? 1 : 0.04,
                 y: opened ? 0 : 62,
                 opacity: opened ? 1 : 0,
+                rotateX: opened ? 0 : 14,
               }}
-              exit={{ scaleY: 0.04, y: 62, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 190, damping: 26, mass: 0.9 }}
+              exit={{ scaleY: 0.04, y: 62, opacity: 0, rotateX: 14 }}
+              transition={{ type: 'spring', stiffness: 190, damping: 26, mass: 0.9, delay: 0.18 }}
               style={{ transformOrigin: 'bottom center' }}
               className={cn(
-                'relative z-10 mb-[72px] max-h-[58vh] overflow-y-auto rounded-[4px] px-5 py-6',
-                'shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.45)]',
+                'relative z-10 mb-[72px] max-h-[82vh] overflow-y-auto rounded-[5px] px-7 py-9 ring-1 ring-black/5',
+                'shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
                 parts.paper,
                 parts.ink,
               )}
             >
-              <p className="whitespace-pre-wrap text-[14px] leading-7">{note.content}</p>
+              <p className="whitespace-pre-wrap text-[15px] leading-8">{note.content}</p>
               <div className="mt-6 flex flex-col items-end gap-0.5">
                 <span className={cn('text-[11px]', parts.meta)}>
                   {formatNoteDate(note.createdAt)}
@@ -153,7 +152,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
             data-testid="letter-paper"
             className={cn(
               'relative z-10 flex h-32 items-center justify-center rounded-[4px] px-5',
-              'text-[12px] shadow-[0_16px_44px_rgba(0,0,0,0.5)]',
+              'text-[12px] shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
               parts.paper,
               parts.meta,
             )}
@@ -163,7 +162,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
         )}
       </div>
 
-      <span className="pointer-events-none absolute bottom-6 left-0 right-0 text-center text-[10px] text-white/40">
+      <span className="pointer-events-none absolute bottom-6 left-0 right-0 text-center text-[10px] text-muted-foreground">
         轻点空白处收起
       </span>
     </div>,

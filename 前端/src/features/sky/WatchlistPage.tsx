@@ -80,10 +80,10 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
   const body = (
     <>
         {/* ---------------- 自动检索 ---------------- */}
-        <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+        <section className="paper-card mb-5 p-3">
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-[13px] font-medium text-slate-100">
-              <Sparkles className="h-3.5 w-3.5 text-[#C9A96A]" /> 自动从聊天里检索
+            <p className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-gold" /> 自动从聊天里检索
             </p>
             <button
               type="button"
@@ -93,23 +93,23 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
               onClick={() => setEnabled(!settings.enabled)}
               className={cn(
                 'relative h-6 w-11 shrink-0 rounded-full transition',
-                settings.enabled ? 'bg-[#C9A96A]' : 'bg-white/15',
+                settings.enabled ? 'bg-primary' : 'bg-surface-3',
               )}
             >
               <span
                 className={cn(
-                  'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all',
+                  'absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all',
                   settings.enabled ? 'left-[22px]' : 'left-0.5',
                 )}
               />
             </button>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
             每隔一段时间去看一眼聊天记录，把新提到的作品自动加进来。删掉的不会再加回来。
           </p>
 
           {/* 频率 */}
-          <p className="mb-1.5 mt-3 text-[11px] uppercase tracking-wide text-slate-500">多久看一次</p>
+          <p className="mb-1.5 mt-3 text-[11px] uppercase tracking-wide text-muted-foreground">多久看一次</p>
           <div className="flex gap-1.5">
             {INTERVAL_OPTIONS.map((m) => (
               <button
@@ -120,8 +120,8 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                 className={cn(
                   'flex-1 rounded-lg py-1.5 text-[11px] transition',
                   settings.intervalMin === m
-                    ? 'bg-[#C9A96A]/20 text-[#C9A96A] ring-1 ring-[#C9A96A]/50'
-                    : 'bg-white/5 text-slate-400 hover:bg-white/10',
+                    ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                 )}
               >
                 {intervalLabel(m)}
@@ -135,13 +135,13 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
             onClick={runNow}
             disabled={running}
             aria-label="立即检索一次"
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-white/[0.07] py-2 text-[12px] text-slate-200 transition hover:bg-white/[0.12] disabled:opacity-40"
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-surface-2 py-2 text-[12px] text-foreground transition hover:bg-surface-3 disabled:opacity-40"
           >
             {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             {running ? '正在检索…' : '立即检索一次'}
           </button>
 
-          <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
+          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
             {last
               ? `上次 ${hhmm(last.ranAt)}：${last.added > 0 ? `自动加入 ${last.added} 条${last.titles.length ? `（${last.titles.join('、')}）` : ''}` : last.note || '没有变化'}${last.usedAi ? ' · AI 识别' : ''}`
               : '还没跑过。开启后到点会自动跑，也可以点上面立刻跑一次。'}
@@ -150,13 +150,13 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
 
         {/* ---------------- 搜索 ---------------- */}
         <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={kw}
             onChange={(e) => setKw(e.target.value)}
             placeholder="搜索片名或备注"
             aria-label="搜索片单"
-            className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-[13px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-white/25"
+            className="w-full rounded-xl border border-border bg-surface-2 py-2 pl-9 pr-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
           />
         </div>
 
@@ -172,7 +172,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                 aria-pressed={cat === k}
                 className={cn(
                   'rounded-full px-3 py-1 text-[11px] transition',
-                  cat === k ? 'bg-[#C9A96A] font-medium text-[#2b1c0e]' : 'bg-white/5 text-slate-400 hover:bg-white/10',
+                  cat === k ? 'bg-gold/15 font-medium text-gold ring-1 ring-gold/40' : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                 )}
               >
                 {label}
@@ -191,7 +191,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                 aria-pressed={st === k}
                 className={cn(
                   'rounded-full px-3 py-1 text-[11px] transition',
-                  st === k ? 'bg-[#C9A96A] font-medium text-[#2b1c0e]' : 'bg-white/5 text-slate-400 hover:bg-white/10',
+                  st === k ? 'bg-gold/15 font-medium text-gold ring-1 ring-gold/40' : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                 )}
               >
                 {label}
@@ -202,7 +202,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
 
         {/* ---------------- 列表 ---------------- */}
         {list.length === 0 ? (
-          <p className="px-1 py-8 text-center text-[12px] text-slate-500">
+          <p className="px-1 py-8 text-center text-[12px] text-muted-foreground">
             {items.length === 0 ? '片单还是空的。开启自动检索，聊天里提到片子就会自己进来。' : '没有符合条件的条目。'}
           </p>
         ) : (
@@ -212,10 +212,10 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
               const catLabel = CATEGORIES.find((c) => c.key === it.category)?.label ?? '';
               const on = editing === it.id;
               return (
-                <li key={it.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
+                <li key={it.id} className="rounded-xl border border-border bg-card p-2.5">
                   <div className="flex gap-2.5">
                     <div
-                      className="h-[62px] w-[44px] shrink-0 overflow-hidden rounded-md ring-1 ring-white/10"
+                      className="h-[62px] w-[44px] shrink-0 overflow-hidden rounded-md ring-1 ring-border"
                       style={it.poster ? undefined : { background: `linear-gradient(158deg, ${c1}, ${c2})` }}
                     >
                       {it.poster && <img src={it.poster} alt={it.title} className="h-full w-full object-cover" />}
@@ -228,7 +228,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                             value={form.title}
                             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                             aria-label="编辑片名"
-                            className="w-full rounded-lg bg-black/25 px-2.5 py-1.5 text-[13px] text-slate-200 outline-none"
+                            className="w-full rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-[13px] text-foreground outline-none"
                           />
                           <div className="mt-1.5 flex gap-1.5">
                             {CATEGORIES.map((c) => (
@@ -239,8 +239,8 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                                 className={cn(
                                   'flex-1 rounded-lg py-1.5 text-[11px] transition',
                                   form.category === c.key
-                                    ? 'bg-[#C9A96A]/20 text-[#C9A96A] ring-1 ring-[#C9A96A]/50'
-                                    : 'bg-white/5 text-slate-400 hover:bg-white/10',
+                                    ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                                 )}
                               >
                                 {c.label}
@@ -256,8 +256,8 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                                 className={cn(
                                   'flex-1 rounded-lg py-1.5 text-[11px] transition',
                                   form.status === s.key
-                                    ? 'bg-[#C9A96A]/20 text-[#C9A96A] ring-1 ring-[#C9A96A]/50'
-                                    : 'bg-white/5 text-slate-400 hover:bg-white/10',
+                                    ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                                 )}
                               >
                                 {s.label}
@@ -269,14 +269,14 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                             onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
                             placeholder="备注（可选）"
                             aria-label="编辑备注"
-                            className="mt-1.5 w-full rounded-lg bg-black/25 px-2.5 py-1.5 text-[11px] text-slate-200 outline-none placeholder:text-slate-600"
+                            className="mt-1.5 w-full rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
                           />
                           <div className="mt-2 flex gap-1.5">
                             <button
                               type="button"
                               onClick={() => setEditing(null)}
                               aria-label="取消编辑"
-                              className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-white/5 text-[12px] text-slate-300 transition hover:bg-white/10"
+                              className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-surface-2 text-[12px] text-foreground transition hover:bg-surface-3"
                             >
                               <X className="h-3.5 w-3.5" /> 取消
                             </button>
@@ -284,7 +284,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                               type="button"
                               onClick={() => saveEdit(it.id)}
                               aria-label="保存修改"
-                              className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-[#C9A96A] text-[12px] font-medium text-[#2b1c0e] transition hover:opacity-90"
+                              className="flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-primary text-[12px] font-medium text-primary-foreground transition hover:opacity-90"
                             >
                               <Check className="h-3.5 w-3.5" /> 保存
                             </button>
@@ -292,25 +292,25 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                         </>
                       ) : (
                         <>
-                          <p className="truncate text-[13px] text-slate-100">{it.title}</p>
+                          <p className="truncate text-[13px] text-foreground">{it.title}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-slate-400">{catLabel}</span>
+                            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-muted-foreground">{catLabel}</span>
                             <button
                               type="button"
                               onClick={() => update(it.id, { status: it.status === 'planned' ? 'watched' : 'planned' })}
                               aria-label={`把 ${it.title} 切换为${it.status === 'planned' ? '看完的' : '准备看的'}`}
                               className={cn(
                                 'rounded-full px-2 py-0.5 text-[10px] transition',
-                                it.status === 'watched' ? 'bg-emerald-400/15 text-emerald-300' : 'bg-[#C9A96A]/15 text-[#C9A96A]',
+                                it.status === 'watched' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300' : 'bg-gold/15 text-gold',
                               )}
                             >
                               {STATUSES.find((s) => s.key === it.status)?.label}
                             </button>
                             {it.source === 'ai' && (
-                              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] text-violet-300">自动加入</span>
+                              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] text-violet-600 dark:text-violet-300">自动加入</span>
                             )}
                           </div>
-                          {it.note && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">{it.note}</p>}
+                          {it.note && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{it.note}</p>}
                         </>
                       )}
                     </div>
@@ -321,7 +321,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                           type="button"
                           onClick={() => startEdit(it)}
                           aria-label={`编辑 ${it.title}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/10 hover:text-[#C9A96A]"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-surface-2 hover:text-gold"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -329,7 +329,7 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
                           type="button"
                           onClick={() => drop(it)}
                           aria-label={`删除 ${it.title}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-rose-500/15 hover:text-rose-300"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -354,21 +354,21 @@ export function WatchlistPage({ onClose, inline = false }: { onClose?: () => voi
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-      className="fixed inset-0 z-[60] flex flex-col bg-[#0d1017]"
+      className="fixed inset-0 z-[60] flex flex-col bg-page-bg text-foreground"
     >
       {/* 顶栏 */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 px-3">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
         <button
           type="button"
           onClick={onClose}
           aria-label="返回"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-medium text-slate-100">片单</p>
-          <p className="truncate text-[10px] text-slate-500">共 {items.length} 条 · 自动检索{settings.enabled ? '已开启' : '已关闭'}</p>
+          <p className="truncate text-[15px] font-medium text-foreground">片单</p>
+          <p className="truncate text-[10px] text-muted-foreground">共 {items.length} 条 · 自动检索{settings.enabled ? '已开启' : '已关闭'}</p>
         </div>
       </div>
 

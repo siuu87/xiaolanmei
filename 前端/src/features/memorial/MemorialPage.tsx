@@ -78,11 +78,11 @@ function MemorialEditorModal({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-background/90 p-4 backdrop-blur-xl"
+        className="paper-card w-full max-w-sm p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">

@@ -81,7 +81,7 @@ function PosterCard({ item, onOpen, onEdit }: { item: WatchItem; onOpen: () => v
         whileHover={{ y: -3 }}
         whileTap={{ scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 400, damping: 26 }}
-        className="block w-[86px] overflow-hidden rounded-md text-left shadow-[0_6px_14px_rgba(0,0,0,.6)] ring-1 ring-white/10"
+        className="block w-[86px] overflow-hidden rounded-md text-left shadow-[0_6px_14px_rgba(0,0,0,.6)] ring-1 ring-amber-100/15"
       >
         {item.poster ? (
           <img src={item.poster} alt={item.title} draggable={false} className="h-[124px] w-full object-cover" />
@@ -91,16 +91,16 @@ function PosterCard({ item, onOpen, onEdit }: { item: WatchItem; onOpen: () => v
             className="flex h-[124px] w-full items-center justify-center"
             style={{ background: `linear-gradient(158deg, ${c1}, ${c2})` }}
           >
-            <Film className="h-6 w-6 text-white/50" />
+            <Film className="h-6 w-6 text-amber-50/50" />
           </div>
         )}
       </motion.button>
-      <p className="mt-1 w-[86px] truncate text-[9px] leading-tight text-slate-300/90">{item.title}</p>
+      <p className="mt-1 w-[86px] truncate text-[9px] leading-tight text-amber-100/70">{item.title}</p>
       <button
         type="button"
         onClick={onEdit}
         aria-label={`编辑 ${item.title}`}
-        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-black/60 text-white/90 opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
+        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-black/60 text-amber-50/90 opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
       >
         <Pencil className="h-2.5 w-2.5" />
       </button>
@@ -114,12 +114,12 @@ function DetailModal({ item, onClose, onEdit, onRemove }: { item: WatchItem; onC
   const cat = CATEGORIES.find((c) => c.key === item.category);
   const st = STATUSES.find((s) => s.key === item.status);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.18 }}
-        className="w-full max-w-xs overflow-hidden rounded-2xl bg-[#171717] shadow-2xl ring-1 ring-white/10"
+        className="paper-card w-full max-w-xs overflow-hidden shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
         onClick={(e) => e.stopPropagation()}
       >
         {item.poster ? (
@@ -129,31 +129,31 @@ function DetailModal({ item, onClose, onEdit, onRemove }: { item: WatchItem; onC
             className="flex h-52 w-full items-center justify-center"
             style={{ background: `linear-gradient(158deg, ${tintOf(item.title)[0]}, ${tintOf(item.title)[1]})` }}
           >
-            <Film className="h-10 w-10 text-white/50" />
+            <Film className="h-10 w-10 text-amber-50/50" />
           </div>
         )}
         <div className="p-4">
-          <h3 className="font-serif text-base font-semibold text-[#E0E0E0]">{item.title}</h3>
+          <h3 className="font-serif text-base font-semibold text-foreground">{item.title}</h3>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="rounded-full bg-[#C9A96A]/15 px-2 py-0.5 text-[11px] text-[#C9A96A]">{cat?.label}</span>
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-300">{st?.label}</span>
+            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] text-gold">{cat?.label}</span>
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted-foreground">{st?.label}</span>
             {item.source === 'ai' && (
-              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] text-violet-300">AI 整理</span>
+              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] text-violet-600 dark:text-violet-300">AI 整理</span>
             )}
           </div>
-          {item.note && <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-slate-400">{item.note}</p>}
+          {item.note && <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{item.note}</p>}
           <div className="mt-4 flex gap-2">
             <button
               type="button"
               onClick={onRemove}
-              className="flex h-9 items-center justify-center gap-1 rounded-lg bg-white/5 px-3 text-xs text-rose-300 transition hover:bg-rose-500/15"
+              className="flex h-9 items-center justify-center gap-1 rounded-lg bg-surface-2 px-3 text-xs text-destructive transition hover:bg-destructive/10"
             >
               <Trash2 className="h-3.5 w-3.5" /> 删除
             </button>
             <button
               type="button"
               onClick={onEdit}
-              className="flex h-9 flex-1 items-center justify-center gap-1 rounded-lg bg-[#C9A96A] px-3 text-xs font-medium text-[#2b1c0e] transition hover:opacity-90"
+              className="flex h-9 flex-1 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:opacity-90"
             >
               <Pencil className="h-3.5 w-3.5" /> 编辑
             </button>
@@ -179,7 +179,7 @@ interface Draft {
 const EMPTY_DRAFT: Draft = { id: null, title: '', category: 'movie', status: 'planned', poster: '', note: '', source: 'manual' };
 
 const fieldCls =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-500 focus:border-white/30';
+  'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50';
 
 /** 记住上次停在哪个频道 / 状态，刷新后不再跳回默认 */
 const PREF_KEY = 'blueberry.watchlist.pref';
@@ -232,17 +232,17 @@ function ItemForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={onCancel}>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className="max-h-[88vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-[#171717] p-5 shadow-2xl ring-1 ring-white/10"
+        className="paper-card max-h-[88vh] w-full max-w-sm overflow-y-auto p-5 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-slate-100">{title}</h3>
-          <button type="button" onClick={onCancel} aria-label="关闭" className="text-slate-400 hover:text-slate-200">
+          <h3 className="text-sm font-medium text-foreground">{title}</h3>
+          <button type="button" onClick={onCancel} aria-label="关闭" className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -251,7 +251,7 @@ function ItemForm({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="relative h-[112px] w-[76px] shrink-0 overflow-hidden rounded-md ring-1 ring-white/15"
+            className="relative h-[112px] w-[76px] shrink-0 overflow-hidden rounded-md ring-1 ring-border"
             title="上传海报"
           >
             {draft.poster ? (
@@ -265,7 +265,7 @@ function ItemForm({
           </button>
           <div className="min-w-0 flex-1 space-y-2.5">
             <div>
-              <label className="mb-1 block text-xs text-slate-400">名称</label>
+              <label className="mb-1 block text-xs text-muted-foreground">名称</label>
               <input
                 value={draft.title}
                 onChange={(e) => onChange({ title: e.target.value })}
@@ -275,7 +275,7 @@ function ItemForm({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">海报图片链接（可选）</label>
+              <label className="mb-1 block text-xs text-muted-foreground">海报图片链接（可选）</label>
               <input
                 value={draft.poster.startsWith('data:') ? '' : draft.poster}
                 onChange={(e) => onChange({ poster: e.target.value })}
@@ -287,7 +287,7 @@ function ItemForm({
         </div>
 
         <div className="mt-3">
-          <label className="mb-1.5 block text-xs text-slate-400">分类</label>
+          <label className="mb-1.5 block text-xs text-muted-foreground">分类</label>
           <div className="flex gap-2">
             {CATEGORIES.map((c) => (
               <button
@@ -297,8 +297,8 @@ function ItemForm({
                 className={cn(
                   'flex-1 rounded-lg px-2 py-2 text-xs transition',
                   draft.category === c.key
-                    ? 'bg-[#C9A96A]/20 text-[#C9A96A] ring-1 ring-[#C9A96A]/50'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10',
+                    ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                 )}
               >
                 {c.label}
@@ -308,7 +308,7 @@ function ItemForm({
         </div>
 
         <div className="mt-3">
-          <label className="mb-1.5 block text-xs text-slate-400">状态</label>
+          <label className="mb-1.5 block text-xs text-muted-foreground">状态</label>
           <div className="flex gap-2">
             {STATUSES.map((s) => (
               <button
@@ -318,8 +318,8 @@ function ItemForm({
                 className={cn(
                   'flex-1 rounded-lg px-2 py-2 text-xs transition',
                   draft.status === s.key
-                    ? 'bg-[#C9A96A]/20 text-[#C9A96A] ring-1 ring-[#C9A96A]/50'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10',
+                    ? 'bg-gold/15 text-gold ring-1 ring-gold/40'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-3',
                 )}
               >
                 {s.label}
@@ -329,7 +329,7 @@ function ItemForm({
         </div>
 
         <div className="mt-3">
-          <label className="mb-1 block text-xs text-slate-400">备注</label>
+          <label className="mb-1 block text-xs text-muted-foreground">备注</label>
           <textarea
             value={draft.note}
             onChange={(e) => onChange({ note: e.target.value })}
@@ -340,14 +340,14 @@ function ItemForm({
         </div>
 
         <div className="mt-5 flex gap-2">
-          <button type="button" onClick={onCancel} className="h-10 flex-1 rounded-xl bg-white/5 text-sm font-medium text-slate-300 transition hover:bg-white/10">
+          <button type="button" onClick={onCancel} className="h-10 flex-1 rounded-xl bg-surface-2 text-sm font-medium text-foreground transition hover:bg-surface-3">
             取消
           </button>
           <button
             type="button"
             onClick={onSave}
             disabled={!draft.title.trim()}
-            className="h-10 flex-1 rounded-xl bg-[#C9A96A] text-sm font-medium text-[#2b1c0e] transition hover:opacity-90 disabled:opacity-40"
+            className="h-10 flex-1 rounded-xl bg-primary text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
           >
             保存
           </button>
@@ -500,7 +500,7 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
 
             {/* 屏内顶部：二级状态切换 */}
             <div className="relative z-20 flex items-center gap-1.5 px-2.5 pt-2.5">
-              <div className="flex overflow-hidden rounded-full bg-white/[0.07] p-0.5">
+              <div className="flex overflow-hidden rounded-full bg-amber-100/10 p-0.5">
                 {STATUSES.map((s) => (
                   <button
                     key={s.key}
@@ -509,14 +509,14 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
                     aria-pressed={status === s.key}
                     className={cn(
                       'rounded-full px-2.5 py-1 text-[10px] transition-all duration-200',
-                      status === s.key ? 'bg-[#C9A96A] font-medium text-[#2b1c0e]' : 'text-slate-300/80 hover:text-white',
+                      status === s.key ? 'bg-gold font-medium text-[#2b1c0e]' : 'text-amber-100/60 hover:text-amber-50',
                     )}
                   >
                     {s.label}
                   </button>
                 ))}
               </div>
-              <span className="ml-auto text-[9px] text-slate-500">{catInfo?.hint}</span>
+              <span className="ml-auto text-[9px] text-amber-100/35">{catInfo?.hint}</span>
             </div>
 
             {/* 海报滑动区 */}
@@ -540,14 +540,14 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
                             'repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 2px), repeating-linear-gradient(90deg,#fff 0 1px,transparent 1px 3px)',
                         }}
                       />
-                      <p className="relative font-mono text-[10px] tracking-[0.3em] text-slate-400">NO SIGNAL</p>
-                      <p className="relative mt-1.5 text-[10px] text-slate-500">
+                      <p className="relative font-mono text-[10px] tracking-[0.3em] text-amber-100/45">NO SIGNAL</p>
+                      <p className="relative mt-1.5 text-[10px] text-amber-100/35">
                         「{catInfo?.label} · {STATUSES.find((s) => s.key === status)?.label}」还是空的
                       </p>
                       <button
                         type="button"
                         onClick={openNew}
-                        className="relative mt-2.5 flex items-center gap-1 rounded-full bg-[#C9A96A]/20 px-2.5 py-1 text-[10px] text-[#C9A96A] transition hover:bg-[#C9A96A]/30"
+                        className="relative mt-2.5 flex items-center gap-1 rounded-full bg-gold/20 px-2.5 py-1 text-[10px] text-gold transition hover:bg-gold/30"
                       >
                         <Plus className="h-3 w-3" /> 加一部
                       </button>
@@ -573,7 +573,7 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
                     type="button"
                     onClick={() => slide(-1)}
                     aria-label="向左滑动"
-                    className="absolute left-0.5 top-1/2 z-30 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/85 transition hover:bg-black/80"
+                    className="absolute left-0.5 top-1/2 z-30 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-amber-50/90 transition hover:bg-black/80"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
                   </button>
@@ -581,7 +581,7 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
                     type="button"
                     onClick={() => slide(1)}
                     aria-label="向右滑动"
-                    className="absolute right-0.5 top-1/2 z-30 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/85 transition hover:bg-black/80"
+                    className="absolute right-0.5 top-1/2 z-30 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-amber-50/90 transition hover:bg-black/80"
                   >
                     <ChevronRight className="h-3.5 w-3.5" />
                   </button>
@@ -613,14 +613,14 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
                     <span
                       className={cn(
                         'h-1.5 w-1.5 rounded-full transition-all duration-200',
-                        on ? 'bg-[#C9A96A] shadow-[0_0_6px_rgba(201,169,106,.95)]' : 'bg-amber-100/25',
+                        on ? 'bg-gold shadow-[0_0_6px_rgba(201,169,106,.95)]' : 'bg-amber-100/25',
                       )}
                     />
-                    <span className={cn('text-[10px]', on ? 'text-[#C9A96A]' : 'text-amber-100/60')}>{c.label}</span>
+                    <span className={cn('text-[10px]', on ? 'text-gold' : 'text-amber-100/60')}>{c.label}</span>
                   </span>
                   <span className="mt-0.5 font-mono text-[7px] text-amber-100/35">CH{i + 1}</span>
                   {counts[c.key] > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-3 min-w-3 items-center justify-center rounded-full bg-[#C9A96A] px-[3px] text-[7px] font-bold text-[#2b1c0e]">
+                    <span className="absolute -right-1 -top-1 flex h-3 min-w-3 items-center justify-center rounded-full bg-gold px-[3px] text-[7px] font-bold text-[#2b1c0e]">
                       {counts[c.key]}
                     </span>
                   )}
@@ -636,7 +636,7 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
               onClick={openNew}
               aria-label="手动添加"
               title="手动添加"
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-amber-100/80 ring-1 ring-white/10 transition hover:bg-black/55 hover:text-[#C9A96A]"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-amber-100/80 ring-1 ring-amber-100/15 transition hover:bg-black/55 hover:text-gold"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -647,7 +647,7 @@ export function WatchlistTV({ hidePageButton = false }: { hidePageButton?: boole
                 onClick={() => setPageOpen(true)}
                 aria-label="更多"
                 title="片单"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-amber-100/80 ring-1 ring-white/10 transition hover:bg-black/55 hover:text-[#C9A96A]"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-amber-100/80 ring-1 ring-amber-100/15 transition hover:bg-black/55 hover:text-gold"
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>

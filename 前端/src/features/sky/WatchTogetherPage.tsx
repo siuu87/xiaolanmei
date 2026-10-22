@@ -11,20 +11,20 @@ export function WatchTogetherPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-full bg-[#070b1a] text-slate-200">
+    <div className="relative min-h-full bg-page-bg text-foreground">
       <div className="relative mx-auto w-full max-w-md px-4 py-6">
         <header className="mb-5 flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="flex flex-1 items-center justify-center gap-2">
-            <Tv className="h-4 w-4 text-slate-400" />
-            <h1 className="text-[12px] tracking-[0.35em] text-slate-300">WATCH</h1>
+            <Tv className="h-4 w-4 text-muted-foreground" />
+            <h1 className="text-[12px] tracking-[0.35em] text-foreground">WATCH</h1>
           </div>
           <span className="w-8" />
         </header>
@@ -34,7 +34,7 @@ export function WatchTogetherPage() {
 
         {/* 片单管理（平铺在电视下方） */}
         <div className="mt-8">
-          <p className="mb-3 text-center text-[10px] tracking-[0.35em] text-slate-400/80">片单</p>
+          <p className="mb-3 text-center text-[10px] tracking-[0.35em] text-muted-foreground">片单</p>
           <WatchlistPage inline />
         </div>
       </div>

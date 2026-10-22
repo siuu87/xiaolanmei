@@ -61,12 +61,12 @@ export function MindDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
 /** 六条数值的配色（暖→冷，不带「好坏」含义，纯为可读性） */
 const FIELD_STYLE: Record<EmotionField, { bar: string; text: string }> = {
-  possessiveness: { bar: 'bg-violet-400', text: 'text-violet-200' },
-  tension: { bar: 'bg-orange-400', text: 'text-orange-200' },
-  restraint: { bar: 'bg-sky-400', text: 'text-sky-200' },
-  vulnerability: { bar: 'bg-fuchsia-400', text: 'text-fuchsia-200' },
-  affection: { bar: 'bg-rose-400', text: 'text-rose-200' },
-  longing: { bar: 'bg-amber-400', text: 'text-amber-200' },
+  possessiveness: { bar: 'bg-violet-400', text: 'text-violet-700 dark:text-violet-300' },
+  tension: { bar: 'bg-orange-400', text: 'text-orange-700 dark:text-orange-300' },
+  restraint: { bar: 'bg-sky-400', text: 'text-sky-700 dark:text-sky-300' },
+  vulnerability: { bar: 'bg-fuchsia-400', text: 'text-fuchsia-700 dark:text-fuchsia-300' },
+  affection: { bar: 'bg-rose-400', text: 'text-rose-700 dark:text-rose-300' },
+  longing: { bar: 'bg-gold', text: 'text-amber-700 dark:text-amber-300' },
 };
 
 /** 行为策略标签 → 面板上的中文短名（只暗示，不把规则正文摊给用户看） */
@@ -86,10 +86,10 @@ const CATEGORY_LABEL: Record<MemoryCategory, string> = {
 };
 
 const CATEGORY_CLS: Record<MemoryCategory, string> = {
-  anchor: 'bg-rose-400/15 text-rose-200',
-  fact: 'bg-sky-400/15 text-sky-200',
-  event: 'bg-amber-400/15 text-amber-200',
-  relation: 'bg-violet-400/15 text-violet-200',
+  anchor: 'bg-primary/10 text-primary',
+  fact: 'bg-sky-400/15 text-sky-700 dark:text-sky-300',
+  event: 'bg-gold/15 text-amber-700 dark:text-amber-300',
+  relation: 'bg-violet-400/15 text-violet-700 dark:text-violet-300',
 };
 
 /** 卡片流筛选项：全部 / 只要锚点 / 只要念头 / 除锚点外的其它记忆 */
@@ -234,7 +234,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
   return (
     <motion.div
       data-testid="mind-drawer"
-      className="fixed inset-0 z-[1350] flex flex-col bg-[#0f1424]"
+      className="fixed inset-0 z-[1350] flex flex-col bg-page-bg text-foreground"
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
@@ -243,20 +243,20 @@ function Sheet({ onClose }: { onClose: () => void }) {
       {/* ── 标题栏 ─────────────────────────────────────────── */}
       <div
         data-testid="mind-head"
-        className="flex h-14 shrink-0 items-center gap-1.5 border-b border-white/[0.07] px-2.5"
+        className="flex h-14 shrink-0 items-center gap-1.5 border-b border-border px-2.5"
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="返回"
           data-testid="mind-back"
-          className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-[12px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+          className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-[12px] text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <ChevronLeft size={16} />
           返回
         </button>
         <div
-          className="min-w-0 flex-1 whitespace-nowrap text-center text-[14px] font-medium text-[#e8ecf6]"
+          className="min-w-0 flex-1 whitespace-nowrap text-center text-[14px] font-medium text-foreground"
           data-testid="mind-title"
         >
           {title}
@@ -267,7 +267,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
           aria-label="重探模型通道"
           data-testid="model-health"
           data-health={health}
-          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-[11px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-[11px] text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <span
             className={cn(
@@ -298,15 +298,15 @@ function Sheet({ onClose }: { onClose: () => void }) {
 
         <section className="mt-6" data-testid="mind-stream">
           <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-[14px] font-medium text-[#e8ecf6]">记忆卡片流</h3>
-            <span className="text-[12px] text-[#6b7488]">{cards.length} 张</span>
+            <h3 className="text-[14px] font-medium text-foreground">记忆卡片流</h3>
+            <span className="text-[12px] text-muted-foreground">{cards.length} 张</span>
             <div className="flex-1" />
             <button
               type="button"
               onClick={() => setComposerOpen((v) => !v)}
               aria-label="写一条念头"
               data-testid="mind-composer-open"
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
             >
               {composerOpen ? <X size={14} /> : <Plus size={14} />}
               写一条念头
@@ -316,21 +316,21 @@ function Sheet({ onClose }: { onClose: () => void }) {
               onClick={() => void load()}
               aria-label="刷新"
               data-testid="mind-refresh"
-              className="rounded-lg p-1.5 text-[#9aa4bb] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
             >
               <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
             </button>
           </div>
 
           {composerOpen && (
-            <div className="mb-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3">
+            <div className="mb-3 rounded-2xl border border-border bg-surface-2 p-3">
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 rows={2}
                 placeholder="他心里闪过的一句话……"
                 data-testid="mind-composer-input"
-                className="w-full resize-none bg-transparent text-[13px] text-[#e8ecf6] outline-none placeholder:text-[#6b7488]"
+                className="w-full resize-none bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
               />
               <div className="mt-2 flex justify-end gap-2">
                 <button
@@ -339,7 +339,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
                     setComposerOpen(false);
                     setDraft('');
                   }}
-                  className="rounded-lg px-3 py-1.5 text-[12px] text-[#9aa4bb] hover:bg-white/[0.06]"
+                  className="rounded-lg px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-surface-2"
                 >
                   取消
                 </button>
@@ -348,7 +348,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
                   onClick={() => void saveThought()}
                   disabled={!draft.trim()}
                   data-testid="mind-composer-save"
-                  className="rounded-lg bg-rose-400/90 px-3 py-1.5 text-[12px] font-medium text-[#1b1205] transition hover:bg-rose-300 disabled:opacity-40"
+                  className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40"
                 >
                   记下
                 </button>
@@ -358,21 +358,21 @@ function Sheet({ onClose }: { onClose: () => void }) {
 
           {/* 检索 + 筛选 */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <label className="flex min-w-[10rem] flex-1 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 focus-within:border-[#7aa2ff]/60">
-              <Search size={14} className="shrink-0 text-[#6b7488]" />
+            <label className="flex min-w-[10rem] flex-1 items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2 focus-within:border-primary/60">
+              <Search size={14} className="shrink-0 text-muted-foreground" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="检索记忆与念头…"
                 data-testid="mind-search"
-                className="w-full bg-transparent text-[13px] text-[#e8ecf6] outline-none placeholder:text-[#6b7488]"
+                className="w-full bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
               />
               {q && (
                 <button
                   type="button"
                   onClick={() => setQ('')}
                   aria-label="清空检索"
-                  className="shrink-0 text-[#6b7488] hover:text-[#e8ecf6]"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
                 >
                   <X size={13} />
                 </button>
@@ -388,8 +388,8 @@ function Sheet({ onClose }: { onClose: () => void }) {
                 className={cn(
                   'rounded-full border px-3 py-1.5 text-[12px] transition',
                   filter === f.key
-                    ? 'border-rose-300/40 bg-rose-400/15 text-rose-100'
-                    : 'border-white/[0.08] text-[#9aa4bb] hover:bg-white/[0.06]',
+                    ? 'border-primary/40 bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:bg-surface-2',
                 )}
               >
                 {f.label}
@@ -399,7 +399,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
 
           {/* 卡片 */}
           {cards.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-white/[0.1] px-4 py-8 text-center text-[13px] text-[#6b7488]">
+            <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted-foreground">
               {debouncedQ ? `没有找到和「${debouncedQ}」有关的记忆或念头` : '这里还是空的'}
             </p>
           ) : (
@@ -444,7 +444,7 @@ function EmotionPanel({
     return (
       <section
         data-testid="emotion-panel"
-        className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-6 text-[13px] text-[#6b7488]"
+        className="paper-card flex items-center gap-2 px-4 py-6 text-[13px] text-muted-foreground"
       >
         <Loader2 size={15} className="animate-spin" />
         正在读取他的状态…
@@ -459,19 +459,19 @@ function EmotionPanel({
   return (
     <section
       data-testid="emotion-panel"
-      className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4"
+      className="paper-card p-4"
     >
       <div data-testid="emotion-head" className="flex flex-nowrap items-center gap-1.5">
-        <Heart size={13} className="shrink-0 text-rose-300" />
-        <h2 className="shrink-0 whitespace-nowrap text-[12px] font-medium text-[#e8ecf6]">实时情绪</h2>
+        <Heart size={13} className="shrink-0 text-primary" />
+        <h2 className="shrink-0 whitespace-nowrap text-[12px] font-medium text-foreground">实时情绪</h2>
         <span
           data-testid="emotion-mood"
-          className="shrink-0 whitespace-nowrap rounded-full bg-rose-400/15 px-2 py-0.5 text-[11px] text-rose-100"
+          className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
         >
           {state.currentMood}
         </span>
         <div className="min-w-0 flex-1" />
-        <span className="shrink-0 whitespace-nowrap text-[10px] text-[#6b7488]">
+        <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
           {state.turnCount > 0 ? `第 ${state.turnCount} 轮 · ${formatSince(state.updatedAt)}前` : '还没聊过'}
         </span>
         <button
@@ -479,7 +479,7 @@ function EmotionPanel({
           onClick={onReset}
           aria-label="把数值重置为初始值"
           data-testid="emotion-reset"
-          className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] text-[#6b7488] transition hover:bg-white/[0.06] hover:text-[#e8ecf6]"
+          className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           重置
         </button>
@@ -491,7 +491,7 @@ function EmotionPanel({
           {state.moodTheater && (
             <p
               data-testid="emotion-theater"
-              className="rounded-xl bg-white/[0.04] px-3 py-2 text-[12px] leading-5 text-[#9aa4bb]"
+              className="rounded-xl bg-surface-2 px-3 py-2 text-[12px] leading-5 text-muted-foreground"
             >
               「{state.moodTheater}」
             </p>
@@ -501,7 +501,7 @@ function EmotionPanel({
               {strategyTags.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] text-[#9aa4bb]"
+                  className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                 >
                   {STRATEGY_LABEL[t] ?? t}
                 </span>
@@ -517,10 +517,10 @@ function EmotionPanel({
           const style = FIELD_STYLE[f.key];
           return (
             <div key={f.key} className="flex items-center gap-3">
-              <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-[11px] text-[#9aa4bb]">
+              <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">
                 {f.label}
               </span>
-              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
+              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-3">
                 <div
                   className={cn('h-full rounded-full transition-all', style.bar)}
                   style={{ width: `${v}%` }}
@@ -539,58 +539,58 @@ function EmotionPanel({
       </div>
 
       {/* 为什么 */}
-      <div className="mt-4 border-t border-white/[0.07] pt-3" data-testid="emotion-reasons">
+      <div className="mt-4 border-t border-border pt-3" data-testid="emotion-reasons">
         {evo ? (
           <>
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-[#6b7488]">上一轮（{formatSince(evo.at)}前）：</span>
+              <span className="text-[11px] text-muted-foreground">上一轮（{formatSince(evo.at)}前）：</span>
               {evo.signals.length > 0 ? (
                 evo.signals.map((s) => (
                   <span
                     key={s.id}
-                    className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] text-[#9aa4bb]"
+                    className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     {s.label}
                   </span>
                 ))
               ) : (
-                <span className="text-[11px] text-[#6b7488]">没有特别的事</span>
+                <span className="text-[11px] text-muted-foreground">没有特别的事</span>
               )}
               {evo.gapMs >= 4 * 3600_000 && (
                 <span
                   data-testid="emotion-gap"
-                  className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[11px] text-[#9aa4bb]"
+                  className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                 >
                   隔了 {formatTimeInterval(evo.gapMs)}
                 </span>
               )}
             </div>
             {evo.deltas.length === 0 ? (
-              <p className="text-[12px] text-[#6b7488]">这一轮什么都没变。</p>
+              <p className="text-[12px] text-muted-foreground">这一轮什么都没变。</p>
             ) : (
               <ul className="space-y-1.5">
                 {evo.deltas.map((d, i) => (
                   <li key={i} className="flex items-start gap-2 text-[12px]">
-                    <span className="w-12 shrink-0 text-[#9aa4bb]">{d.label}</span>
-                    <span className="w-20 shrink-0 tabular-nums text-[#6b7488]">
+                    <span className="w-12 shrink-0 text-muted-foreground">{d.label}</span>
+                    <span className="w-20 shrink-0 tabular-nums text-muted-foreground">
                       {d.before} → {d.after}
                     </span>
                     <span
                       className={cn(
                         'w-8 shrink-0 tabular-nums',
-                        d.delta > 0 ? 'text-amber-300' : 'text-sky-300',
+                        d.delta > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-sky-700 dark:text-sky-300',
                       )}
                     >
                       {d.delta > 0 ? `+${d.delta}` : d.delta}
                     </span>
-                    <span className="min-w-0 flex-1 text-[#9aa4bb]">{d.reason}</span>
+                    <span className="min-w-0 flex-1 text-muted-foreground">{d.reason}</span>
                   </li>
                 ))}
               </ul>
             )}
           </>
         ) : (
-          <p className="text-[12px] text-[#6b7488]">
+          <p className="text-[12px] text-muted-foreground">
             还没开始演进 —— 每聊完一轮，他会按你说的话悄悄变一点。
           </p>
         )}
@@ -610,7 +610,7 @@ function MemoryCard({ m, onDelete }: { m: MemoryDTO; onDelete: () => void }) {
       data-kind="memory"
       data-card-id={m.id}
       data-category={m.category}
-      className="group rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3"
+      className="paper-card group px-3.5 py-3"
     >
       <div className="flex items-center gap-2">
         <span
@@ -618,21 +618,21 @@ function MemoryCard({ m, onDelete }: { m: MemoryDTO; onDelete: () => void }) {
         >
           {CATEGORY_LABEL[m.category] ?? m.category}
         </span>
-        <span className="text-[11px] text-[#6b7488]">{formatSince(m.createdAt)}前</span>
+        <span className="text-[11px] text-muted-foreground">{formatSince(m.createdAt)}前</span>
         {m.importance > 0 && (
-          <span className="text-[11px] text-[#6b7488]">重要度 {m.importance}</span>
+          <span className="text-[11px] text-muted-foreground">重要度 {m.importance}</span>
         )}
         <div className="flex-1" />
         <button
           type="button"
           onClick={onDelete}
           aria-label="删除这条记忆"
-          className="rounded-md p-1 text-[#6b7488] opacity-0 transition group-hover:opacity-100 hover:text-rose-300"
+          className="rounded-md p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive"
         >
           <Trash2 size={13} />
         </button>
       </div>
-      <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-6 text-[#dbe2f0]">
+      <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-6 text-foreground">
         {m.content}
       </p>
     </article>
@@ -657,19 +657,19 @@ function ThoughtCard({
       data-resolved={done ? '1' : '0'}
       className={cn(
         'group rounded-2xl border px-3.5 py-3 transition',
-        done ? 'border-white/[0.05] bg-white/[0.015]' : 'border-amber-300/15 bg-amber-400/[0.06]',
+        done ? 'border-border bg-surface-2' : 'border-gold/30 bg-gold/[0.08]',
       )}
     >
       <div className="flex items-center gap-2">
         <span
           className={cn(
             'rounded-full px-2 py-0.5 text-[11px]',
-            done ? 'bg-white/[0.06] text-[#6b7488]' : 'bg-amber-400/15 text-amber-200',
+            done ? 'bg-surface-3 text-muted-foreground' : 'bg-gold/15 text-foreground/85',
           )}
         >
           {done ? '已消化' : '渡口念头'}
         </span>
-        <span className="text-[11px] text-[#6b7488]">{formatSince(t.createdAt)}前</span>
+        <span className="text-[11px] text-muted-foreground">{formatSince(t.createdAt)}前</span>
         <div className="flex-1" />
         <button
           type="button"
@@ -678,7 +678,7 @@ function ThoughtCard({
           data-testid="thought-resolve"
           className={cn(
             'flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[11px] transition',
-            done ? 'text-[#6b7488] hover:text-[#e8ecf6]' : 'text-amber-200 hover:bg-white/[0.06]',
+            done ? 'text-muted-foreground hover:text-foreground' : 'text-foreground hover:bg-surface-2',
           )}
         >
           <Check size={12} />
@@ -688,7 +688,7 @@ function ThoughtCard({
           type="button"
           onClick={onDelete}
           aria-label="删除这条念头"
-          className="rounded-md p-1 text-[#6b7488] opacity-0 transition group-hover:opacity-100 hover:text-rose-300"
+          className="rounded-md p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive"
         >
           <Trash2 size={13} />
         </button>
@@ -696,12 +696,12 @@ function ThoughtCard({
       <p
         className={cn(
           'mt-2 whitespace-pre-wrap break-words text-[13px] leading-6',
-          done ? 'text-[#6b7488] line-through decoration-white/20' : 'text-[#e8ecf6]',
+          done ? 'text-muted-foreground line-through decoration-border' : 'text-foreground',
         )}
       >
         {t.thought}
       </p>
-      {t.context && <p className="mt-1 text-[11px] text-[#6b7488]">（{t.context}）</p>}
+      {t.context && <p className="mt-1 text-[11px] text-muted-foreground">（{t.context}）</p>}
     </article>
   );
 }

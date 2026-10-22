@@ -176,7 +176,7 @@ export function InAppBrowser({ url, onClose }: { url: string; onClose: () => voi
 
         {/* 迟迟没 load：多半是被 X-Frame-Options / CSP 拒了，给个明说的出口 */}
         {slow && !loaded && (
-          <div className="absolute inset-x-4 top-6 rounded-2xl border border-chat-line bg-chat-bar/95 p-3 text-xs text-chat-pill-fg shadow-lg backdrop-blur">
+          <div className="absolute inset-x-4 top-6 rounded-2xl border border-chat-line bg-chat-bar p-3 text-xs text-chat-pill-fg shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
             <div className="flex items-start gap-2">
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-chat-accent" />
               <div className="min-w-0">

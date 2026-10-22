@@ -49,12 +49,41 @@ export default {
         surface: {
           DEFAULT: 'hsl(var(--surface))',
           2: 'hsl(var(--surface-2))',
+          3: 'hsl(var(--surface-3))',
+          sunken: 'hsl(var(--surface-sunken))',
         },
-        // 阅读主题（一起读）：米白纸面 / 暗夜 / 墨色
-        paper: '#FBF7F0',
-        night: '#1A1A1F',
-        ink: '#2E2A26',
-        'ink-night': '#E8E4DD',
+        // 弹层纯色背板（不透明，替代半透明黑遮罩）
+        scrim: 'hsl(var(--scrim))',
+        // 品牌辅助色：陶土主调 / 余晖金 / 蓝莓墨
+        brand: {
+          DEFAULT: 'hsl(var(--brand))',
+          soft: 'hsl(var(--brand-soft))',
+          ink: 'hsl(var(--brand-ink))',
+        },
+        gold: {
+          DEFAULT: 'hsl(var(--gold))',
+          soft: 'hsl(var(--gold-soft))',
+          on: 'hsl(var(--on-gold))',
+        },
+        // 阅读主题（一起读）：米白纸面 / 暗夜 / 墨色（跟随主题换档）
+        paper: 'hsl(var(--paper))',
+        night: 'hsl(var(--night))',
+        ink: 'hsl(var(--ink))',
+        'ink-night': 'hsl(var(--ink-night))',
+        // 小手机（iOS 外壳）：独立的一套配色，不随全站深浅主题切换，
+        // 由 themeCore 的 --bb-* 预设单独控制；这里只做默认值映射
+        phone: {
+          bg: 'hsl(var(--phone-bg))',
+          surface: 'hsl(var(--phone-surface))',
+          nav: 'hsl(var(--phone-nav))',
+          ink: 'hsl(var(--phone-ink))',
+          muted: 'hsl(var(--phone-muted))',
+          sep: 'hsl(var(--phone-sep))',
+          blue: 'hsl(var(--phone-blue))',
+          'bubble-me': 'hsl(var(--phone-bubble-me))',
+          'bubble-ai': 'hsl(var(--phone-bubble-ai))',
+          grouped: 'hsl(var(--phone-grouped))',
+        },
         // chat 页专用调色板：浅色 = 参考图的暖白 + 玫瑰，深色另一档（都在 index.css 的 --chat-* 里）
         chat: {
           bg: 'hsl(var(--chat-bg))',
@@ -81,10 +110,28 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Playfair Digits', 'Inter', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
-        serif: ['"Playfair Display"', 'Georgia', '"Times New Roman"', 'serif'],
+        // 浅灰韩系：全站统一无衬线，数字按设置可切回 Playfair（见 index.css 的 --font-sans-stack）
+        sans: ['Inter', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+        // 眉标 / 小标题沿用同一套无衬线，仅靠字距与字重区分
+        serif: ['Inter', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+        // 页面标题：无衬线 + 收紧字距（.display 里有 letter-spacing）
+        display: ['Inter', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
         // 信箱「深夜来信 Live」卡片专用：复古优雅的衬线体
         letter: ['"Averia Serif Libre"', '"Playfair Display"', 'Georgia', 'serif'],
+      },
+      boxShadow: {
+        paper: '0 1px 0 hsl(0 0% 100% / 0.7) inset, 0 8px 24px -20px hsl(var(--shadow-color) / 0.26)',
+        lift: '0 10px 28px -18px hsl(var(--shadow-color) / 0.3)',
+        glow: '0 0 20px -6px hsl(var(--glow) / 0.3)',
+      },
+      keyframes: {
+        'soft-float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' },
+        },
+      },
+      animation: {
+        'soft-float': 'soft-float 6s ease-in-out infinite',
       },
     },
   },

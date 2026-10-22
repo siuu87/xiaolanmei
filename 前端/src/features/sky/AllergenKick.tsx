@@ -41,13 +41,13 @@ export function AllergenKick({
       data-testid="allergen-kick"
     >
       {/* 背景遮罩 */}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-scrim" />
       {/* 被踢飞的过敏原 */}
       <div className="absolute text-7xl animate-[allergenFly_1.2s_ease-in_forwards]">{emoji}</div>
       {/* 小猫（飞踢） */}
       <div className="absolute -left-10 text-7xl animate-[catKick_1.2s_ease-out_forwards]">🐱💨</div>
       {/* 提示文字 */}
-      <div className="relative mt-40 animate-[popIn_0.4s_ease-out_0.6s_both] rounded-2xl border-2 border-pink-300 bg-white px-6 py-4 shadow-2xl dark:bg-zinc-900">
+      <div className="relative mt-40 animate-[popIn_0.4s_ease-out_0.6s_both] rounded-2xl border-2 border-primary/30 bg-surface px-6 py-4 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
         <div className="text-2xl font-bold text-pink-500">🚫 已拦截过敏原！</div>
         <div className="mt-1 text-sm text-muted-foreground">
           {name ? `禁止投喂${name}！` : '这个碰不得！'}

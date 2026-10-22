@@ -29,14 +29,14 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
   const cycleMode = () => setMode((m) => (((m + 1) % 3) as PlayMode));
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 pb-3 pt-4 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+    <div className="paper-card px-4 pb-3 pt-4">
       {/* 歌曲信息（居中） */}
       <div className="text-center">
-        <h2 className="truncate text-[20px] font-semibold text-white">{track?.name ?? '—'}</h2>
-        <p className="mt-1 truncate text-[13px] text-white/60">{track?.artist ?? '暂无曲目'}</p>
+        <h2 className="truncate text-[20px] font-semibold text-foreground">{track?.name ?? '—'}</h2>
+        <p className="mt-1 truncate text-[13px] text-muted-foreground">{track?.artist ?? '暂无曲目'}</p>
       </div>
 
-      {/* 极细进度条（白色）+ 时间 */}
+      {/* 极细进度条 + 时间 */}
       <div className="mt-3">
         <input
           type="range"
@@ -45,10 +45,10 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           value={progressMs}
           onChange={(e) => onSeek(Number(e.target.value))}
           aria-label="播放进度"
-          className="player-range player-range--dark"
-          style={{ background: `linear-gradient(to right, rgba(255,255,255,0.9) ${pct}%, rgba(255,255,255,0.12) ${pct}%)` }}
+          className="player-range"
+          style={{ background: `linear-gradient(to right, hsl(var(--gold)) ${pct}%, hsl(var(--border)) ${pct}%)` }}
         />
-        <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-white/50">
+        <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-muted-foreground">
           <span>{formatTime(progressMs)}</span>
           <span>{formatTime(duration)}</span>
         </div>
@@ -60,15 +60,15 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           type="button"
           onClick={() => setLiked((v) => !v)}
           aria-label={liked ? '取消收藏' : '收藏'}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-white/10"
+          className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-surface-2"
         >
-          <Star className={cn('h-[18px] w-[18px] transition', liked ? 'fill-[#ff4d4d] text-[#ff4d4d]' : 'text-white/60')} />
+          <Star className={cn('h-[18px] w-[18px] transition', liked ? 'fill-primary text-primary' : 'text-muted-foreground')} />
         </button>
         <button
           type="button"
           onClick={onPrev}
           aria-label="上一曲"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <SkipBack className="h-[18px] w-[18px]" />
         </button>
@@ -76,7 +76,7 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           type="button"
           onClick={onToggle}
           aria-label={playing ? '暂停' : '播放'}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white shadow-md transition hover:bg-white/20 active:scale-95"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition hover:opacity-90 active:scale-95"
         >
           {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
         </button>
@@ -84,7 +84,7 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           type="button"
           onClick={onNext}
           aria-label="下一曲"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           <SkipForward className="h-[18px] w-[18px]" />
         </button>
@@ -94,8 +94,8 @@ export function PlayerCard({ track, playing, progressMs, onToggle, onPrev, onNex
           aria-label="循环模式"
           title={mode === 0 ? '列表循环' : mode === 1 ? '随机播放' : '单曲循环'}
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-white/10',
-            mode !== 0 ? 'text-white' : 'text-white/60',
+            'flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-surface-2',
+            mode !== 0 ? 'text-primary' : 'text-muted-foreground',
           )}
         >
           {mode === 0 ? <Repeat className="h-[18px] w-[18px]" /> : mode === 1 ? <Shuffle className="h-[18px] w-[18px]" /> : <Repeat1 className="h-[18px] w-[18px]" />}

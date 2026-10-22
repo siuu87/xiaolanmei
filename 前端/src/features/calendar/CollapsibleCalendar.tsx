@@ -267,9 +267,9 @@ export function CollapsibleCalendar({
                     className={cn(
                       'relative flex h-12 min-w-9 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full px-2 font-serif text-sm transition',
                       selected
-                        ? 'bg-primary text-primary-foreground shadow-[0_4px_10px_rgba(0,0,0,0.25)]'
+                        ? 'bg-primary text-primary-foreground shadow-[0_4px_10px_-6px_hsl(var(--shadow-color)/0.35)]'
                         : isCurrent
-                          ? 'bg-muted text-foreground shadow-[0_2px_6px_rgba(0,0,0,0.3)]'
+                          ? 'bg-muted text-foreground shadow-[0_2px_6px_-4px_hsl(var(--shadow-color)/0.3)]'
                           : 'bg-muted text-muted-foreground',
                       isToday && !selected && 'ring-2 ring-primary/60',
                     )}
@@ -327,7 +327,7 @@ export function CollapsibleCalendar({
                     className={cn(
                       'flex h-7 w-7 items-center justify-center rounded-full font-serif text-sm transition',
                       selected
-                        ? 'bg-primary text-primary-foreground shadow-[0_2px_6px_rgba(0,0,0,0.25)]'
+                        ? 'bg-primary text-primary-foreground shadow-[0_2px_6px_-4px_hsl(var(--shadow-color)/0.3)]'
                         : dec?.period === 'solid'
                           ? 'text-rose-400'
                           : dec?.memorial

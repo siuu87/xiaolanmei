@@ -18,7 +18,7 @@ function SoundWave({ playing }: { playing: boolean }) {
       {heights.map((h, i) => (
         <span
           key={i}
-          className={cn('w-[3px] rounded-full bg-white transition-all duration-300', playing && 'soundwave-bar')}
+          className={cn('w-[3px] rounded-full bg-primary transition-all duration-300', playing && 'soundwave-bar')}
           style={{ height: playing ? h : 4, animationDelay: `${i * 0.2}s` }}
         />
       ))}
@@ -29,11 +29,11 @@ function SoundWave({ playing }: { playing: boolean }) {
 /** 一起听单边耳机头像（白色耳机塞，戴在外侧）：left 戴左耳机塞，right 戴右耳机塞 */
 function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right' }) {
   return (
-    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-2xl ring-1 ring-white/20">
+    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-2xl ring-1 ring-border">
       {emoji}
       <span
         className={cn(
-          'absolute top-1/2 h-3.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.35)]',
+          'absolute top-1/2 h-3.5 w-1.5 rounded-full bg-foreground shadow-sm',
           side === 'left' ? '-left-1.5' : '-right-1.5',
         )}
       />
@@ -73,7 +73,7 @@ export function ListenPage() {
   }, [track]);
 
   return (
-    <div className="relative min-h-full bg-black text-[#E0E0E0]">
+    <div className="relative min-h-full bg-page-bg text-foreground">
       <div className="relative mx-auto w-full max-w-md px-4 py-6">
         {/* 顶部导航栏：标题 + 用户状态 */}
         <header className="flex items-center justify-between gap-3">
@@ -82,11 +82,11 @@ export function ListenPage() {
               type="button"
               onClick={() => navigate('/chat')}
               aria-label="返回"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[#8A8A8A] transition hover:bg-white/10 hover:text-[#E0E0E0]"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <h1 className="text-xl font-bold text-[#E0E0E0]">LISTEN</h1>
+            <h1 className="text-xl font-bold text-foreground">LISTEN</h1>
           </div>
           <UserAuthWidget />
         </header>
@@ -119,14 +119,14 @@ export function ListenPage() {
 
             {/* 耳机线：z-20 覆盖在卡片之上，从耳机塞垂落并收口在歌曲名两侧 */}
             <svg
-              className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[116px]"
+              className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[116px] text-border"
               viewBox="0 0 416 116"
               preserveAspectRatio="none"
               fill="none"
               aria-hidden
             >
-              <path d="M121 42 C 100 76 112 88 146 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M295 42 C 316 76 304 88 270 116" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M121 42 C 100 76 112 88 146 116" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M295 42 C 316 76 304 88 270 116" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
           {/* 歌词：一屏 5 行、当前行恒定在正中；上下拖动可直接调进度 */}

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 主抽屉内容：A 伴侣档案卡 / B 日常生活看板 / C 模块卡 / D 底部固定栏
  *
  * 原则：这里只做「收纳与排版」，所有业务卡片都是直接复用现有组件
@@ -25,6 +25,7 @@ import {
   Puzzle,
   Star,
   Lightbulb,
+  Heart,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -57,49 +58,60 @@ export function ProfileHeader() {
   const days = useMemo(() => loveDays(), []);
 
   return (
-    <div className="shrink-0 px-4 pb-3 pt-4" data-testid="anniversary-block">
+    <div className="shrink-0 px-4 pb-4 pt-3" data-testid="anniversary-block">
       <div className="flex flex-col items-center">
         {/* 两个人的头像挨着（可点）——按需求**他在左、我在右** */}
-        <div className="flex items-center gap-1.5">
+        <div className="relative flex items-center gap-3">
           <button
             type="button"
             onClick={() => setEditing('partner')}
             aria-label="调整他的资料"
             title="调整他的资料"
             data-testid="avatar-partner"
-            className="rounded-full transition hover:ring-2 hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
+            className="group relative rounded-full transition focus-visible:outline-none"
           >
-            <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#5b3f6e] to-[#7a4a63] text-[22px]">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-serif text-[8px] uppercase tracking-[0.2em] text-muted-foreground/60">
+              TA
+            </span>
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-surface-2 to-surface text-[22px] shadow-paper transition group-hover:border-primary/40">
               <AvatarContent value={partnerAvatar} fallback="🐰" />
             </span>
           </button>
+
+          <span className="relative -mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary/70">
+            <Heart className="h-3 w-3" />
+          </span>
+
           <button
             type="button"
             onClick={() => setEditing('me')}
             aria-label="调整我的资料"
             title="调整我的资料"
             data-testid="avatar-me"
-            className="rounded-full transition hover:ring-2 hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-[#7aa2ff]"
+            className="group relative rounded-full transition focus-visible:outline-none"
           >
-            <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3b4a7a] to-[#5b3f6e] text-[22px]">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-serif text-[8px] uppercase tracking-[0.2em] text-muted-foreground/60">
+              ME
+            </span>
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-surface-2 to-surface text-[22px] shadow-paper transition group-hover:border-primary/40">
               <AvatarContent value={avatar} fallback="🫐" />
             </span>
           </button>
         </div>
 
-        {/* 在一起 N 天：数字给到 32px，一眼看到 */}
-        <div className="mt-2.5 flex items-baseline gap-1.5">
-          <span className="text-[12px] text-muted-foreground">在一起</span>
+        {/* 在一起 N 天：数字给到 34px，一眼看到 */}
+        <div className="mt-4 flex items-baseline gap-1.5">
+          <span className="eyebrow leading-none">在一起</span>
           <span
             data-testid="love-days"
-            className="font-serif text-[32px] font-semibold leading-none text-foreground"
+            className="display text-[34px] font-semibold leading-none tracking-tight text-foreground"
           >
             {days}
           </span>
-          <span className="text-[12px] text-muted-foreground">天</span>
+          <span className="eyebrow leading-none">天</span>
         </div>
 
-        <span className="mt-1 text-[10px] text-muted-foreground">
+        <span className="mt-1.5 font-serif text-[10px] tracking-wide text-muted-foreground/80">
           {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
         </span>
       </div>
@@ -115,9 +127,10 @@ export function ProfileHeader() {
 export function DailyBoard() {
   return (
     <section className="px-4 pb-3">
-      <h3 className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        日常生活
-      </h3>
+      <div className="mb-2.5 flex items-center gap-2 px-0.5">
+        <span className="eyebrow">日常生活 · Daily</span>
+        <span className="h-px flex-1 bg-border/70" aria-hidden />
+      </div>
       <div className="space-y-3">
         {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
         <CalendarCard />
@@ -209,23 +222,24 @@ export function ModuleCards() {
 
   return (
     <section className="px-4 pb-3">
-      <h3 className="mb-2 px-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        模块
-      </h3>
+      <div className="mb-2.5 flex items-center gap-2 px-0.5">
+        <span className="eyebrow">模块 · Modules</span>
+        <span className="h-px flex-1 bg-border/70" aria-hidden />
+      </div>
       <div className="space-y-2.5">
         {MODULE_GROUPS.map((g) => {
           const open = expanded === g.title;
           // 只有一项的分组（如酒馆小手机）不再展开：直接点分组头进入
           const direct = g.entries.length === 1;
           return (
-            <div key={g.title} className="overflow-hidden rounded-2xl border border-border bg-surface">
+            <div key={g.title} className="paper-card overflow-hidden">
               {/* 分组头：尺寸和下面的「工具箱」按键完全一致；单项分组点击即进入 */}
               <button
                 type="button"
                 onClick={() => (direct ? go(g.entries[0].to) : setExpanded(open ? null : g.title))}
                 aria-expanded={direct ? undefined : open}
                 data-testid={`module-group-${g.title}`}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-foreground/10"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-surface-2"
               >
                 <g.icon className="h-4 w-4 text-muted-foreground" />
                 <span className="text-[12px] font-medium text-foreground">{g.title}</span>
@@ -274,13 +288,13 @@ export function ModuleCards() {
 
         {/* 工具箱：插件 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板）
             「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签 */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+        <div className="paper-card overflow-hidden">
           <button
             type="button"
             onClick={() => setExpanded(expanded === 'toolbox' ? null : 'toolbox')}
             aria-expanded={expanded === 'toolbox'}
             data-testid="module-group-toolbox"
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-foreground/10"
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-surface-2"
           >
             <Puzzle className="h-4 w-4 text-muted-foreground" />
             <span className="text-[12px] font-medium text-foreground">工具箱</span>
@@ -308,7 +322,7 @@ export function ModuleCards() {
                           type="button"
                           onClick={() => setToolboxSection(isOpen ? null : s.key)}
                           aria-expanded={isOpen}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-foreground/10"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-surface-2"
                         >
                           <s.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="text-[12px] font-medium text-foreground">{s.label}</span>
@@ -345,7 +359,7 @@ export function StickyFooter() {
   const openAppearance = useShellStore((s) => s.openAppearance);
 
   return (
-    <div className="sticky bottom-0 flex shrink-0 items-center gap-2 border-t border-border bg-background/95 px-4 py-2.5 backdrop-blur">
+    <div className="sticky bottom-0 flex shrink-0 items-center gap-2 border-t border-border bg-surface px-4 py-2.5">
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <CalendarDays className="h-3 w-3" />
@@ -358,7 +372,7 @@ export function StickyFooter() {
           closeDrawer();
           navigate('/settings');
         }}
-        className="rounded-full px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-foreground/10"
+        className="rounded-full px-2.5 py-1 text-[11px] text-muted-foreground transition hover:bg-surface-2"
       >
         全部设置
       </button>

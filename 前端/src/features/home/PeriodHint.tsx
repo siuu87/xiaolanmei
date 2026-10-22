@@ -22,12 +22,12 @@ export function PeriodHint() {
   const summary = periodSummary(records, settings, today);
 
   return (
-    <div className="rounded-2xl bg-gradient-to-r from-rose-500/15 via-pink-500/10 to-transparent px-4 py-3 ring-1 ring-rose-400/25">
+    <div className="rounded-[22px] bg-gradient-to-r from-rose-500/15 via-pink-500/10 to-transparent px-4 py-3 ring-1 ring-rose-400/25">
       <div className="flex items-center gap-2.5">
         <span className="text-lg leading-none">💗</span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-rose-100/90">{care}</p>
-          {summary && <p className="mt-0.5 text-xs text-rose-200/50">{summary}</p>}
+          <p className="text-sm font-medium text-rose-700/90">{care}</p>
+          {summary && <p className="mt-0.5 text-xs text-rose-600/70">{summary}</p>}
         </div>
       </div>
     </div>

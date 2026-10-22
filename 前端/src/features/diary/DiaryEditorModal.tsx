@@ -22,11 +22,11 @@ export function DiaryEditorModal({ initialDate, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-2 sm:p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-2 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="flex h-full w-full max-w-md flex-col overflow-hidden rounded-2xl bg-background/90 backdrop-blur-xl"
+        className="flex h-full w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-page-bg shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">

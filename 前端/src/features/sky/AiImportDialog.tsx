@@ -31,13 +31,13 @@ export function AiImportDialog({ title, placeholder, systemPrompt, onResult, onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-[#1b1626] p-5 shadow-xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={onClose}>
+      <div className="paper-card w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-1.5 text-sm font-medium text-slate-100">
-            <Sparkles className="h-4 w-4 text-amber-300" /> {title}
+          <h3 className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+            <Sparkles className="h-4 w-4 text-gold" /> {title}
           </h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-200">
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -47,11 +47,11 @@ export function AiImportDialog({ title, placeholder, systemPrompt, onResult, onC
           rows={5}
           autoFocus
           placeholder={placeholder}
-          className="mt-3 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 outline-none focus:border-white/30"
+          className="mt-3 w-full resize-none rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-gold/40"
         />
-        {error && <p className="mt-2 text-xs text-rose-300">{error}</p>}
+        {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         <div className="mt-4 flex gap-2">
-          <button type="button" onClick={onClose} className="h-10 flex-1 rounded-xl bg-white/5 text-sm font-medium text-slate-300 transition hover:bg-white/10">
+          <button type="button" onClick={onClose} className="h-10 flex-1 rounded-xl bg-surface-2 text-sm font-medium text-muted-foreground transition hover:bg-surface-3 hover:text-foreground">
             取消
           </button>
           <button

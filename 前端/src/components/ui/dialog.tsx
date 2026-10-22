@@ -32,7 +32,7 @@ export function Dialog({
       {createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-scrim"
             onClick={() => onOpenChange(false)}
             aria-hidden
           />
@@ -53,7 +53,12 @@ export function DialogContent({
 }) {
   const { onOpenChange } = useDialog();
   return (
-    <div className={cn('relative rounded-2xl bg-background p-5 shadow-xl', className)}>
+    <div
+      className={cn(
+        'relative rounded-2xl bg-surface p-5 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={() => onOpenChange(false)}

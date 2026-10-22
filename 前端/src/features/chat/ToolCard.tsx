@@ -103,11 +103,11 @@ function TerminalBox({
   const hidden = clamp ? lines.length - shown.length : 0;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="overflow-hidden rounded-xl border border-border bg-surface-sunken">
       {step.command && (
         <div className="flex gap-1.5 px-3 pt-2.5 font-mono text-[11px] leading-relaxed">
-          <span className="select-none text-emerald-400">$</span>
-          <span className="min-w-0 flex-1 whitespace-pre-wrap break-all text-[#e6e6e6]">
+          <span className="select-none text-emerald-600 dark:text-emerald-400">$</span>
+          <span className="min-w-0 flex-1 whitespace-pre-wrap break-all text-foreground">
             {step.command}
           </span>
         </div>
@@ -115,12 +115,12 @@ function TerminalBox({
       {step.output && (
         <div
           className={cn(
-            'mt-1.5 overflow-auto px-3 pb-2.5 font-mono text-[11px] leading-relaxed text-[#a1a1aa]',
+            'mt-1.5 overflow-auto px-3 pb-2.5 font-mono text-[11px] leading-relaxed text-muted-foreground',
             clamp ? 'max-h-24' : 'max-h-56',
           )}
         >
           <pre className="whitespace-pre">{shown.join('\n')}</pre>
-          {hidden > 0 && <div className="mt-0.5 select-none text-[#52525b]">... 还有 {hidden} 行</div>}
+          {hidden > 0 && <div className="mt-0.5 select-none text-muted-foreground/70">... 还有 {hidden} 行</div>}
         </div>
       )}
     </div>
@@ -143,7 +143,7 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-2xl border border-white/[0.08] bg-[#161b28] shadow-[0_1px_2px_rgba(0,0,0,0.3)]',
+        'paper-card overflow-hidden',
         className,
       )}
       data-testid="tool-card"
@@ -152,7 +152,7 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
       {/* 顶部状态栏 */}
       <div className="flex items-center gap-2 px-3 py-2.5">
         <StatusIcon status={status} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[#e6e6e6]">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
           {steps.length} 个操作 · {STATUS_TEXT[status]}
         </span>
         <button
@@ -160,7 +160,7 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-label={open ? '收起执行详情' : '展开执行详情'}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b8b93] transition hover:bg-white/[0.06] hover:text-[#e6e6e6]"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
         >
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
@@ -169,7 +169,7 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
       {/* 收起态：只给最近一条的摘要 */}
       {!open && latest && (
         <div className="px-3 pb-2.5">
-          <div className="flex items-center gap-1.5 text-[11px] text-[#8b8b93]">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <StatusDot status={latest.status} />
             <span className="truncate">{latest.label}</span>
           </div>
@@ -178,19 +178,19 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
 
       {/* 展开态：子任务药丸 + 终端框 */}
       {open && (
-        <div className="space-y-2.5 border-t border-white/[0.06] px-3 py-2.5">
+        <div className="space-y-2.5 border-t border-border px-3 py-2.5">
           {steps.map((s) => {
             const meta = TYPE_META[s.type];
             return (
               <div key={s.id} className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#a1a1aa]">
+                  <span className="flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-muted-foreground">
                     <meta.icon className="h-2.5 w-2.5" />
                     {meta.pill}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[11px] text-[#8b8b93]">{s.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{s.label}</span>
                   <StatusDot status={s.status} />
-                  <span className="text-[10px] text-[#8b8b93]">
+                  <span className="text-[10px] text-muted-foreground">
                     {s.status === 'completed' ? '完成' : s.status === 'running' ? '执行中' : '失败'}
                   </span>
                 </div>
@@ -201,7 +201,7 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
 
           {/* 底部：进度条 + 折叠入口 */}
           <div className="space-y-2 pt-0.5">
-            <div className="h-0.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <div className="h-0.5 w-full overflow-hidden rounded-full bg-surface-3">
               <div
                 className="h-full rounded-full bg-emerald-500/70 transition-[width] duration-500 ease-out"
                 style={{ width: `${progress}%` }}
@@ -210,7 +210,7 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="mx-auto flex items-center gap-1 text-[11px] text-[#8b8b93] transition hover:text-[#e6e6e6]"
+              className="mx-auto flex items-center gap-1 text-[11px] text-muted-foreground transition hover:text-foreground"
             >
               <ChevronUp className="h-3 w-3" />
               收起详细输出
@@ -221,11 +221,11 @@ export function ToolCard({ steps, collapsedByDefault = true, className }: ToolCa
 
       {/* 收起态的「查看全部」入口：只在有多条时给 */}
       {!open && steps.length > 1 && (
-        <div className="border-t border-white/[0.06] px-3 py-2">
+        <div className="border-t border-border px-3 py-2">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="mx-auto flex items-center gap-1 text-[11px] text-[#8b8b93] transition hover:text-[#e6e6e6]"
+            className="mx-auto flex items-center gap-1 text-[11px] text-muted-foreground transition hover:text-foreground"
           >
             ↗ 查看全部 {steps.length} 个操作
           </button>

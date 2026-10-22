@@ -139,7 +139,7 @@ export function CallOverlay({
       data-state={connected ? 'connected' : 'calling'}
       data-kind={kind}
       data-camera={stream ? 'on' : 'off'}
-      className="fixed inset-0 z-50 flex flex-col items-center bg-chat-bg/85 backdrop-blur-2xl"
+      className="fixed inset-0 z-50 flex flex-col items-center bg-chat-bg"
     >
       {/* 「● INCOMING CALL」 */}
       <div className="mt-[max(4rem,env(safe-area-inset-top))] flex items-center gap-2">
@@ -152,7 +152,7 @@ export function CallOverlay({
       {/* 大头像 + 一圈光晕（没有远端视频，所以头像始终是主视觉） */}
       <div className="relative mt-12 flex items-center justify-center">
         <span className="absolute h-56 w-56 rounded-full bg-chat-pill/70" aria-hidden />
-        <span className="relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-full bg-chat-pill shadow-xl">
+        <span className="relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-full bg-chat-pill shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
           <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[76px]" />
         </span>
       </div>

@@ -47,7 +47,7 @@ export function ExitButton({
         data-testid={testId}
         className={cn(
           'flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition',
-          'text-amber-200/60 hover:bg-white/10 hover:text-amber-100 active:scale-95',
+          'text-muted-foreground hover:bg-surface-2 hover:text-foreground active:scale-95',
           className,
         )}
       >
@@ -64,10 +64,9 @@ export function ExitButton({
       data-testid={testId}
       className={cn(
         'pointer-events-auto fixed z-[1300] inline-flex items-center gap-1 rounded-full',
-        'border border-white/15 bg-black/55 px-3 py-1.5 text-[12px] font-medium text-white/90',
-        'backdrop-blur-sm transition hover:bg-black/70 active:scale-95',
-        'dark:border-white/15 dark:bg-black/55 dark:text-white/90',
-        // 浅色主题下也要能看清：黑底白字在两种主题里都成立，所以不跟主题反色
+        // 实色药丸：不透明、无模糊，深浅主题下都保持足够对比
+        'border border-border bg-foreground px-3 py-1.5 text-[12px] font-medium text-background shadow-lift',
+        'transition hover:opacity-90 active:scale-95',
         corner === 'top-right' ? 'right-3 top-3' : 'left-3 top-3',
         className,
       )}

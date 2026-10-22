@@ -60,6 +60,10 @@ import { useLocalSwitch } from '@/lib/useLocalSwitch';
 const inputCls =
   'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
 
+/**
+ * 分组卡的磨砂玻璃底由 IOSSettingGroup 组件自身统一处理（.glass），
+ * 这里不再需要调用处的子选择器覆盖。
+ */
 interface ModelFormState {
   temperature: string;
   visionStationId: string;
@@ -313,20 +317,24 @@ export function SettingsPage() {
   const notifyCount = memos.filter((m) => m.needNotify).length;
 
   return (
-    <div className="min-h-full bg-page-bg pb-12">
+    <div className="relative min-h-full bg-page-bg pb-12">
+      <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-52" />
       {/* 标题栏 */}
-      <div className="sticky top-0 z-10 bg-page-bg/90 backdrop-blur">
-        <div className="relative flex items-center px-4 pt-6 pb-2">
+      <div className="sticky top-0 z-10 border-b border-page-line bg-page-bg">
+        <div className="relative flex items-center gap-2.5 px-4 pb-2.5 pt-3">
           <button
             type="button"
             onClick={() => navigate('/chat')}
             aria-label="返回"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-foreground/5"
+            className="icon-btn h-8 w-8 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="pointer-events-none absolute inset-x-0 text-center text-[17px] font-semibold text-foreground">
-            设置
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="eyebrow mb-0.5 leading-none">Settings</span>
+            <h1 className="display truncate text-[22px] font-semibold leading-tight tracking-tight text-foreground">
+              设置
+            </h1>
           </div>
         </div>
       </div>
@@ -540,7 +548,7 @@ export function SettingsPage() {
         {expanded === 'stations' && (
           <div className="space-y-3 bg-muted/60 px-4 py-4">
             {stations.map((s) => (
-              <div key={s.id} className="rounded-xl border bg-card p-3">
+              <div key={s.id} className="paper-card rounded-xl p-3">
                 <div className="flex items-center gap-1.5">
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.name}</span>
                   {s.isDefault && (
@@ -616,7 +624,7 @@ export function SettingsPage() {
             <InlineError text={stationErr} />
 
             {editing ? (
-              <div className="space-y-2 rounded-xl border border-primary/40 bg-card p-3">
+              <div className="paper-card space-y-2 rounded-xl border-primary/40 p-3">
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">名称</label>
                   <input

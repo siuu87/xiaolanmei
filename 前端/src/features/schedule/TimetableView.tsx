@@ -141,10 +141,10 @@ function PeriodTimesModal({ onClose }: { onClose: () => void }) {
   const inputCls =
     'h-9 flex-1 rounded-lg border bg-background px-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-2 sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-background p-5" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-2 sm:p-4" onClick={onClose}>
+      <div className="paper-card max-h-[90vh] w-full max-w-md overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">上下课时间</h3>
+          <h3 className="display text-[16px] font-semibold">上下课时间</h3>
           <button type="button" onClick={onClose} className="text-muted-foreground">
             <X className="h-4 w-4" />
           </button>

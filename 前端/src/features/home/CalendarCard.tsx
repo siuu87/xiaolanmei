@@ -149,7 +149,7 @@ export function CalendarCard() {
   };
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-background shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+    <div className="paper-card overflow-hidden rounded-3xl">
       {/* 黄历详情页（点拓展页里的农历打开） */}
       {almanacOpen && selectedDate && (
         <AlmanacPage y={sy} m={sm} d={sd} onBack={() => setAlmanacOpen(false)} />

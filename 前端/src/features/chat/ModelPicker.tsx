@@ -45,7 +45,7 @@ export function ModelPicker({ stationId, model, onChange }: Props) {
       </button>
 
       {open && (
-        <div className="absolute bottom-full right-0 z-20 mb-1 max-h-72 w-56 overflow-y-auto scrollbar-thin rounded-xl border border-chat-line bg-popover/95 p-1 shadow-lg backdrop-blur-xl">
+        <div className="absolute bottom-full right-0 z-20 mb-1 max-h-72 w-56 overflow-y-auto scrollbar-thin rounded-xl border border-chat-line bg-popover p-1 shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
           <button
             type="button"
             onClick={() => pick(null, null)}

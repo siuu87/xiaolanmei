@@ -37,7 +37,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       theme: 'light',
-      numFont: 'serif',
+      numFont: 'sans',
       accent: 'blue',
       setTheme: (theme) => set({ theme }),
       setNumFont: (numFont) => set({ numFont }),
@@ -45,7 +45,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'blueberry.app',
-      version: 3,
+      version: 4,
       migrate: (persisted, from) => {
         // 清理旧版手动填的 tokenBudget / accountBalance（余额已改为后端自动查询，不再本地存）
         const s = (persisted ?? {}) as Record<string, unknown>;
@@ -58,6 +58,12 @@ export const useAppStore = create<AppState>()(
          * 所以在这里显式改一次；之后用户自己切回深色仍然会被尊重（不会再动）。
          */
         if ((from ?? 0) < 3) next.theme = 'light';
+        /**
+         * v4：全站改成浅灰韩系，标题与数字统一走无衬线（Inter / 系统黑体）。
+         * 老用户存着的 'serif' 会让日期、计数继续用 Playfair 衬线，和这套风格打架，
+         * 所以迁移时改一次；之后用户在设置里手动选回衬线仍然有效。
+         */
+        if ((from ?? 0) < 4) next.numFont = 'sans';
         return next as unknown as AppState;
       },
     },

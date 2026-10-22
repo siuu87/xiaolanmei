@@ -49,11 +49,11 @@ function FilterBar({
   const chip = (active: boolean) =>
     cn(
       'shrink-0 rounded-full px-3 py-1 text-[12px] transition active:scale-95',
-      active ? 'bg-[#007AFF]/12 font-medium text-[#007AFF] ring-1 ring-[#007AFF]/40' : 'bg-[#E9E9EB] text-[#3C3C43]',
+      active ? 'bg-phone-surface font-medium text-phone-blue ring-1 ring-phone-blue' : 'bg-phone-grouped text-phone-muted',
     );
 
   return (
-    <div className="shrink-0 bg-white px-3 pb-2.5">
+    <div className="shrink-0 bg-phone-bg px-3 pb-2.5">
       {/* 一级：类型（独立行，避免与二级标签行竞争高度） */}
       <div className="flex items-center gap-2 overflow-x-auto pb-0.5 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button type="button" className={chip(filter.type === 'all')} onClick={() => onChange({ type: 'all' })}>
@@ -119,9 +119,9 @@ function CardTile({
         aria-label={pickable ? `${picked ? '取消选择' : '选择'} ${card.name}` : undefined}
         aria-pressed={pickable ? picked : undefined}
         className={cn(
-          'flex h-full w-full flex-col overflow-hidden rounded-xl bg-white p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition active:scale-[0.98]',
+          'flex h-full w-full flex-col overflow-hidden rounded-xl bg-phone-surface p-3 text-left shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition active:scale-[0.98]',
           card.kind === 'persona' && 'ring-1 ring-inset',
-          pickable && picked && 'ring-2 ring-[#007AFF]',
+          pickable && picked && 'ring-2 ring-phone-blue',
         )}
         style={card.kind === 'persona' ? { borderColor: 'transparent' } : undefined}
       >
@@ -137,8 +137,8 @@ function CardTile({
               <AvatarContent value={card.avatar ?? ''} fallback={card.kind === 'character' ? '🤖' : '🙂'} />
             </span>
             {active && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#007AFF] ring-2 ring-white">
-                <Check className="h-2.5 w-2.5 text-white" strokeWidth={3.5} />
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-phone-blue ring-2 ring-phone-surface">
+                <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3.5} />
               </span>
             )}
           </span>
@@ -153,15 +153,15 @@ function CardTile({
           </span>
         </div>
 
-        <p className="mt-2 truncate text-[14px] font-semibold text-[#000000]">{card.name}</p>
-        <p className="mt-0.5 line-clamp-2 min-h-[32px] text-[11px] leading-4 text-[#8e8e93]">
+        <p className="mt-2 truncate text-[14px] font-semibold text-phone-ink">{card.name}</p>
+        <p className="mt-0.5 line-clamp-2 min-h-[32px] text-[11px] leading-4 text-phone-muted">
           {card.intro || card.description || '还没有简介'}
         </p>
 
         {card.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {card.tags.slice(0, 3).map((t) => (
-              <span key={t} className="rounded bg-black/[0.05] px-1.5 py-0.5 text-[10px] text-[#8e8e93]">
+              <span key={t} className="rounded bg-phone-grouped px-1.5 py-0.5 text-[10px] text-phone-muted">
                 {t}
               </span>
             ))}
@@ -174,8 +174,8 @@ function CardTile({
         <span
           aria-hidden
           className={cn(
-            'pointer-events-none absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white transition',
-            picked ? 'border-[#007AFF] bg-[#007AFF] text-white' : 'border-[#C7C7CC] text-transparent',
+            'pointer-events-none absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-phone-surface transition',
+            picked ? 'border-phone-blue bg-phone-blue text-primary-foreground' : 'border-phone-sep text-transparent',
           )}
         >
           <Check className="h-3 w-3" strokeWidth={3} />
@@ -186,7 +186,7 @@ function CardTile({
           type="button"
           onClick={onMore}
           aria-label={`${card.name} 更多操作`}
-          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-[#8e8e93] transition hover:bg-black/[0.06] active:bg-black/10"
+          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-phone-muted transition hover:bg-phone-grouped active:bg-phone-sep"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
@@ -218,7 +218,7 @@ function CardPreview({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-      className="absolute inset-0 z-40 flex flex-col bg-[#F2F2F7]"
+      className="absolute inset-0 z-40 flex flex-col bg-phone-grouped"
       data-testid="card-preview"
     >
       <PhoneNavBar title="卡片详情" onBack={onClose} />
@@ -228,14 +228,14 @@ function CardPreview({
           className={cn(
             'flex shrink-0 flex-col items-center gap-2 px-5 pb-4 pt-6',
             card.kind === 'character'
-              ? 'bg-gradient-to-b from-[#eef2ff] to-white'
-              : 'bg-gradient-to-b from-[#fff4e8] to-white',
+              ? 'bg-gradient-to-b from-[#eef2ff] to-phone-bg'
+              : 'bg-gradient-to-b from-[#fff4e8] to-phone-bg',
           )}
         >
-          <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white text-5xl shadow-sm">
+          <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-phone-surface text-5xl shadow-sm">
             <AvatarContent value={card.avatar ?? ''} fallback={card.kind === 'character' ? '🤖' : '🙂'} />
           </span>
-          <p className="text-[17px] font-semibold text-[#000000]">{card.name}</p>
+          <p className="text-[17px] font-semibold text-phone-ink">{card.name}</p>
           <span
             className={cn(
               'flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
@@ -248,7 +248,7 @@ function CardPreview({
           {card.tags.length > 0 && (
             <div className="flex flex-wrap justify-center gap-1">
               {card.tags.map((t) => (
-                <span key={t} className="rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] text-[#6b7280]">
+                <span key={t} className="rounded-full bg-phone-grouped px-2 py-0.5 text-[10px] text-phone-muted">
                   #{t}
                 </span>
               ))}
@@ -271,18 +271,18 @@ function CardPreview({
         </div>
 
         {/* 操作 */}
-        <div className="flex shrink-0 items-center gap-2 border-t border-black/[0.06] px-4 py-2.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-phone-sep px-4 py-2.5">
           <button
             type="button"
             onClick={onEdit}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-[#E9E9EB] px-3 text-[13px] text-[#3C3C43] transition active:scale-95"
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-phone-grouped px-3 text-[13px] text-phone-muted transition active:scale-95"
           >
             <Pencil className="h-3.5 w-3.5" /> 编辑
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-[#E9E9EB] px-3 text-[13px] text-[#FF3B30] transition active:scale-95"
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-phone-grouped px-3 text-[13px] text-[#FF3B30] transition active:scale-95"
           >
             <X className="h-3.5 w-3.5" /> 删除
           </button>
@@ -291,7 +291,7 @@ function CardPreview({
             <button
               type="button"
               onClick={onChat}
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-[#007AFF] px-4 text-[13px] font-medium text-white transition active:scale-95"
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-phone-blue px-4 text-[13px] font-medium text-primary-foreground transition active:scale-95"
             >
               <MessageCircle className="h-4 w-4" /> 开始聊天
             </button>
@@ -301,7 +301,7 @@ function CardPreview({
               onClick={onSetPersona}
               className={cn(
                 'flex h-9 items-center gap-1.5 rounded-lg px-4 text-[13px] font-medium transition active:scale-95',
-                card.active ? 'bg-[#007AFF]/15 text-[#007AFF]' : 'bg-[#007AFF] text-white',
+                card.active ? 'bg-phone-grouped text-phone-blue' : 'bg-phone-blue text-primary-foreground',
               )}
             >
               <Check className="h-4 w-4" /> {card.active ? '使用中' : '设为我的'}
@@ -317,8 +317,8 @@ function Detail({ label, value }: { label: string; value: string | null | undefi
   if (!value) return null;
   return (
     <div>
-      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-[#8e8e93]">{label}</p>
-      <p className="whitespace-pre-wrap rounded-lg bg-[#F2F2F7] px-3 py-2 text-[13px] leading-6 text-[#3C3C43]">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-phone-muted">{label}</p>
+      <p className="whitespace-pre-wrap rounded-lg bg-phone-surface px-3 py-2 text-[13px] leading-6 text-phone-muted">
         {value}
       </p>
     </div>
@@ -400,7 +400,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
       : '新建面具';
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col bg-white" data-testid="card-editor">
+    <div className="absolute inset-0 z-40 flex flex-col bg-phone-bg" data-testid="card-editor">
       {/* 顶栏：< 返回 + 居中标题（对齐参考图二） */}
       <div className="flex h-11 shrink-0 items-center px-2">
         <button
@@ -408,11 +408,11 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
           onClick={onClose}
           aria-label="返回"
           data-testid="card-editor-back"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-[#3C3C43] active:bg-black/10"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-phone-muted active:bg-phone-sep"
         >
           <ChevronLeft className="h-6 w-6" strokeWidth={2} />
         </button>
-        <span data-testid="card-editor-title" className="flex-1 text-center text-[17px] font-semibold text-[#000000]">
+        <span data-testid="card-editor-title" className="flex-1 text-center text-[17px] font-semibold text-phone-ink">
           {title}
         </span>
         <span className="h-8 w-8 shrink-0" aria-hidden />
@@ -436,17 +436,17 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
                 aria-pressed={kind === o.k}
                 className={cn(
                   'flex flex-1 items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition',
-                  kind === o.k ? 'border-[#007AFF] bg-[#007AFF]/8' : 'border-black/[0.08] bg-white',
+                  kind === o.k ? 'border-phone-blue bg-phone-grouped' : 'border-phone-sep bg-phone-surface',
                 )}
               >
-                <o.icon className={cn('h-4 w-4', kind === o.k ? 'text-[#007AFF]' : 'text-[#8e8e93]')} />
+                <o.icon className={cn('h-4 w-4', kind === o.k ? 'text-phone-blue' : 'text-phone-muted')} />
                 <span>
                   <span
-                    className={cn('block text-[13px] font-medium', kind === o.k ? 'text-[#007AFF]' : 'text-[#000000]')}
+                    className={cn('block text-[13px] font-medium', kind === o.k ? 'text-phone-blue' : 'text-phone-ink')}
                   >
                     {o.label}
                   </span>
-                  <span className="block text-[10px] text-[#8e8e93]">{o.desc}</span>
+                  <span className="block text-[10px] text-phone-muted">{o.desc}</span>
                 </span>
               </button>
             ))}
@@ -454,13 +454,13 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
         )}
 
         {/* ---- 头像区块（参考图里是个描边卡片） ---- */}
-        <div className="rounded-2xl border border-black/[0.08] px-4 py-4">
-          <p className="text-center text-[13px] font-medium text-[#000000]">头像</p>
+        <div className="rounded-2xl border border-phone-sep px-4 py-4">
+          <p className="text-center text-[13px] font-medium text-phone-ink">头像</p>
 
           <div className="mt-3 flex justify-center">
             <span
               data-testid="card-editor-preview"
-              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#F2F2F7] text-[26px] font-medium text-[#8FA3D9]"
+              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-phone-grouped text-[26px] font-medium text-phone-muted"
             >
               {hasImageAvatar ? (
                 <AvatarContent value={form.avatar} fallback={isChar ? '🤖' : '🙂'} />
@@ -476,7 +476,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
               data-testid="card-editor-upload"
-              className="flex w-full max-w-[240px] items-center justify-center gap-2 rounded-full border border-black/[0.1] bg-white py-2.5 text-[13px] text-[#000000] transition active:scale-[0.98] disabled:opacity-60"
+              className="flex w-full max-w-[240px] items-center justify-center gap-2 rounded-full border border-phone-sep bg-phone-surface py-2.5 text-[13px] text-phone-ink transition active:scale-[0.98] disabled:opacity-60"
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
               {uploading ? '上传中…' : '上传头像'}
@@ -504,7 +504,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
               onClick={() => setPick((v) => !v)}
               aria-expanded={pick}
               data-testid="card-editor-emoji-toggle"
-              className="text-[11px] text-[#8e8e93] underline decoration-dotted underline-offset-2"
+              className="text-[11px] text-phone-muted underline decoration-dotted underline-offset-2"
             >
               或用 emoji
             </button>
@@ -523,7 +523,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
                   }}
                   className={cn(
                     'flex h-8 items-center justify-center rounded-lg text-lg transition',
-                    a === form.avatar ? 'bg-[#007AFF]/15 ring-1 ring-[#007AFF]' : 'bg-[#F2F2F7] active:bg-black/[0.06]',
+                    a === form.avatar ? 'bg-phone-grouped ring-1 ring-phone-blue' : 'bg-phone-grouped active:bg-phone-sep',
                   )}
                 >
                   {a}
@@ -556,10 +556,10 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
             />
 
             {/* 开场白（可选） */}
-            <p className="mt-4 text-[13px] font-medium text-[#000000]">
-              开场白<span className="text-[#8e8e93]">（可选）</span>
+            <p className="mt-4 text-[13px] font-medium text-phone-ink">
+              开场白<span className="text-phone-muted">（可选）</span>
             </p>
-            <p className="mt-1 text-[11px] leading-4 text-[#8e8e93]">
+            <p className="mt-1 text-[11px] leading-4 text-phone-muted">
               创建对话时可选择使用开场白，角色会按顺序发送每条消息
             </p>
             {showOpening ? (
@@ -574,12 +574,12 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
               />
             ) : (
               <>
-                <p className="mt-3 text-center text-[12px] text-[#8e8e93]">暂无开场白，点击下方按钮添加</p>
+                <p className="mt-3 text-center text-[12px] text-phone-muted">暂无开场白，点击下方按钮添加</p>
                 <button
                   type="button"
                   onClick={() => setShowOpening(true)}
                   data-testid="card-editor-opening-add"
-                  className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[#007AFF]/45 bg-[#007AFF]/[0.06] py-2.5 text-[13px] font-medium text-[#007AFF] transition active:scale-[0.98]"
+                  className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-phone-blue bg-phone-grouped py-2.5 text-[13px] font-medium text-phone-blue transition active:scale-[0.98]"
                 >
                   <Plus className="h-4 w-4" /> 添加开场白
                 </button>
@@ -615,16 +615,16 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
           onClick={() => setMoreOpen((v) => !v)}
           aria-expanded={moreOpen}
           data-testid="card-editor-more"
-          className="mt-5 flex w-full items-center justify-center gap-1 text-[12px] text-[#8e8e93]"
+          className="mt-5 flex w-full items-center justify-center gap-1 text-[12px] text-phone-muted"
         >
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', moreOpen && 'rotate-180')} />
           更多设定（可选）
         </button>
 
         {moreOpen && (
-          <div className="mt-2 space-y-3 rounded-2xl border border-black/[0.08] px-3.5 py-3.5">
+          <div className="mt-2 space-y-3 rounded-2xl border border-phone-sep px-3.5 py-3.5">
             <div>
-              <label className="mb-1.5 block text-[12px] text-[#8e8e93]">标签（逗号分隔）</label>
+              <label className="mb-1.5 block text-[12px] text-phone-muted">标签（逗号分隔）</label>
               <input
                 value={form.tags}
                 onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
@@ -636,7 +636,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
             {isChar && (
               <>
                 <div>
-                  <label className="mb-1.5 block text-[12px] text-[#8e8e93]">一句话简介</label>
+                  <label className="mb-1.5 block text-[12px] text-phone-muted">一句话简介</label>
                   <input
                     value={form.intro}
                     onChange={(e) => setForm((f) => ({ ...f, intro: e.target.value }))}
@@ -645,7 +645,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[12px] text-[#8e8e93]">场景</label>
+                  <label className="mb-1.5 block text-[12px] text-phone-muted">场景</label>
                   <textarea
                     value={form.scenario}
                     onChange={(e) => setForm((f) => ({ ...f, scenario: e.target.value }))}
@@ -655,7 +655,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-[12px] text-[#8e8e93]">附加指令</label>
+                  <label className="mb-1.5 block text-[12px] text-phone-muted">附加指令</label>
                   <textarea
                     value={form.systemPrompt}
                     onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))}
@@ -671,7 +671,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
       </div>
 
       {/* 底部保存（对齐参考图二的大按钮） */}
-      <div className="shrink-0 border-t border-black/[0.06] px-4 py-3">
+      <div className="shrink-0 border-t border-phone-sep px-4 py-3">
         <button
           type="button"
           disabled={!form.name.trim()}
@@ -679,7 +679,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
           data-testid="card-editor-save"
           className={cn(
             'w-full rounded-2xl py-3 text-[15px] font-medium transition',
-            form.name.trim() ? 'bg-[#007AFF] text-white active:scale-[0.99]' : 'bg-[#E9E9EB] text-[#8e8e93]',
+            form.name.trim() ? 'bg-phone-blue text-primary-foreground active:scale-[0.99]' : 'bg-phone-sep text-phone-muted',
           )}
         >
           保存
@@ -691,10 +691,10 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
 
 /** 参考图的输入框：白底 + 浅灰描边 + 圆角（小手机整体就是浅色 iOS 风） */
 const inputCls =
-  'w-full rounded-[10px] border border-black/[0.12] bg-white px-3 py-2.5 text-[14px] leading-5 text-[#000000] outline-none placeholder:text-[#8e8e93] focus:border-[#007AFF]/60';
+  'w-full rounded-[10px] border border-phone-sep bg-phone-surface px-3 py-2.5 text-[14px] leading-5 text-phone-ink outline-none placeholder:text-phone-muted focus:border-phone-blue';
 
 function FieldLabel({ text }: { text: string }) {
-  return <p className="mt-4 mb-1.5 text-[13px] font-medium text-[#000000]">{text}</p>;
+  return <p className="mt-4 mb-1.5 text-[13px] font-medium text-phone-ink">{text}</p>;
 }
 
 /* ============================== 卡片页 ============================== */
@@ -702,6 +702,7 @@ function FieldLabel({ text }: { text: string }) {
 export function CardsPage({
   onCreateChat,
   onOpenConfig,
+  onBack,
   pickMode = false,
   checkedIds = [],
   onCheckedChange,
@@ -711,7 +712,9 @@ export function CardsPage({
   onCreateChat?: (contactId: string) => void;
   /** 进入配置台：外层标题栏收起后，入口挪到这里，避免功能失联 */
   onOpenConfig?: () => void;
-  /** 选人模式：只列角色卡，点卡片 = 勾选（通讯录 Tab 移除后，「发起聊天」的选人落在这里） */
+  /** 返回上一页（作为二级栈页挂载时由编排层传入；Tab 页时代没有返回键） */
+  onBack?: () => void;
+  /** 选人模式：只列角色卡，点卡片 = 勾选（「发起聊天」的选人页，由导轨底部按钮 / 信息页 + 进入） */
   pickMode?: boolean;
   /** 选人模式下已勾选的联系人 id */
   checkedIds?: string[];
@@ -793,16 +796,17 @@ export function CardsPage({
   const previewCard = withActive.find((c) => c.id === preview) ?? null;
 
   return (
-    <div data-testid="cards-page" data-pick-mode={pickMode ? '1' : '0'} className="relative flex h-full flex-col bg-white">
+    <div data-testid="cards-page" data-pick-mode={pickMode ? '1' : '0'} className="relative flex h-full flex-col bg-phone-bg">
       <PhoneNavBar
         title={pickMode ? '选择联系人' : '卡片库'}
+        onBack={onBack}
         right={
           pickMode ? (
             <button
               type="button"
               onClick={onTogglePick}
               aria-label="完成"
-              className="flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[13px] font-semibold text-[#007AFF] transition active:bg-black/10"
+              className="flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[13px] font-semibold text-phone-blue transition active:bg-phone-sep"
             >
               完成
             </button>
@@ -814,7 +818,7 @@ export function CardsPage({
                   onClick={onOpenConfig}
                   aria-label="角色卡设置"
                   title="角色卡 / 世界书 / 人设卡"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[#3C3C43] active:bg-black/10"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-phone-muted active:bg-phone-sep"
                 >
                   <Settings className="h-[18px] w-[18px]" strokeWidth={2} />
                 </button>
@@ -823,7 +827,7 @@ export function CardsPage({
                 type="button"
                 onClick={() => setEditing('new')}
                 aria-label="新建卡片"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-[#000000] active:bg-black/10"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-phone-ink active:bg-phone-sep"
               >
                 <Plus className="h-5 w-5" strokeWidth={2.2} />
               </button>
@@ -832,16 +836,16 @@ export function CardsPage({
         }
       />
       <div className="shrink-0 px-3 pb-2">
-        <div className="flex h-8 items-center gap-1.5 rounded-lg bg-[#E9E9EB] px-2.5">
-          <Search className="h-4 w-4 shrink-0 text-[#8e8e93]" />
+        <div className="flex h-8 items-center gap-1.5 rounded-lg bg-phone-grouped px-2.5">
+          <Search className="h-4 w-4 shrink-0 text-phone-muted" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={pickMode ? '搜索联系人' : '搜索卡片'}
-            className="h-full flex-1 bg-transparent text-[14px] text-[#000000] outline-none placeholder:text-[#8e8e93]"
+            className="h-full flex-1 bg-transparent text-[14px] text-phone-ink outline-none placeholder:text-phone-muted"
           />
           {query && (
-            <button type="button" onClick={() => setQuery('')} aria-label="清空" className="text-[#8e8e93]">
+            <button type="button" onClick={() => setQuery('')} aria-label="清空" className="text-phone-muted">
               <X className="h-3.5 w-3.5" />
             </button>
           )}
@@ -903,13 +907,13 @@ export function CardsPage({
 
       {/* 选人模式底部操作条：与原来的通讯录选人条同款 */}
       {pickMode && (
-        <div className="shrink-0 border-t border-black/[0.06] bg-white px-3 py-2.5">
+        <div className="shrink-0 border-t border-phone-sep bg-phone-surface px-3 py-2.5">
           <button
             type="button"
             onClick={onTogglePick}
             disabled={checkedIds.length === 0}
             data-testid="pick-cta"
-            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#007AFF] text-[14px] font-medium text-white transition active:scale-[0.99] disabled:bg-[#C7C7CC]"
+            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-phone-blue text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:bg-phone-sep disabled:text-phone-muted"
           >
             {checkedIds.length >= 2 ? (
               <>
@@ -923,7 +927,7 @@ export function CardsPage({
               </>
             )}
           </button>
-          <p className="mt-1.5 text-center text-[11px] text-[#8e8e93]">
+          <p className="mt-1.5 text-center text-[11px] text-phone-muted">
             {checkedIds.length === 0
               ? '选择 1 位联系人开始私聊，2 位及以上创建群聊'
               : checkedIds.length === 1

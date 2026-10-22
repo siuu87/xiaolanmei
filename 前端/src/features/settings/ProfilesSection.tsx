@@ -10,7 +10,7 @@ const EMOJIS = ['🙂', '😽', '🐱', '🐶', '🫐', '🐺', '🐻', '🐰', 
 const COLORS = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6', '#f97316'];
 
 const inputCls =
-  'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
+  'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary';
 
 interface Form {
   nickname: string;
@@ -65,7 +65,7 @@ export function ProfilesSection() {
   };
 
   return (
-    <Card>
+    <Card className="shadow-sm">
       <CardHeader>
         <CardTitle>💞 我们的档案</CardTitle>
         <CardDescription>两个人的昵称与头像，备忘录里的「谁为谁记的」专属徽章会用它们。</CardDescription>
@@ -74,7 +74,7 @@ export function ProfilesSection() {
         {profiles.map((p) => {
           const f = forms[p.id] ?? { nickname: p.nickname, emoji: p.emoji ?? '', avatarColor: p.avatarColor };
           return (
-            <div key={p.id} className="rounded-xl border p-3">
+            <div key={p.id} className="rounded-xl border border-border bg-surface p-3">
               <div className="flex items-center gap-3">
                 <MemoAvatar
                   seed={p.avatarSeed}
@@ -115,7 +115,7 @@ export function ProfilesSection() {
                         aria-label={`头像 ${em}`}
                         className={cn(
                           'flex h-8 w-8 items-center justify-center rounded-lg text-lg transition',
-                          f.emoji === em ? 'bg-primary/15 ring-2 ring-primary' : 'bg-muted hover:bg-muted/70',
+                          f.emoji === em ? 'bg-primary/15 ring-2 ring-primary' : 'bg-surface-2 hover:bg-surface-3',
                         )}
                       >
                         {em}
@@ -126,7 +126,7 @@ export function ProfilesSection() {
                       onChange={(e) => set(p.id, 'emoji', e.target.value)}
                       maxLength={4}
                       aria-label="自定义 emoji"
-                      className="h-8 w-14 rounded-lg bg-muted text-center text-lg outline-none focus:ring-1 focus:ring-primary"
+                      className="h-8 w-14 rounded-lg border border-border bg-surface-2 text-center text-lg text-foreground outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export function ProfilesSection() {
                       value={f.avatarColor}
                       onChange={(e) => set(p.id, 'avatarColor', e.target.value)}
                       aria-label="自定义颜色"
-                      className="h-7 w-10 cursor-pointer rounded border bg-background"
+                      className="h-7 w-10 cursor-pointer rounded border border-border bg-surface-2"
                     />
                   </div>
                 </div>

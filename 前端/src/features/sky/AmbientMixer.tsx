@@ -98,7 +98,7 @@ function Fader({
       <span
         className={cn(
           'text-[10px] tabular-nums transition-colors',
-          on ? 'text-amber-100/80' : 'text-amber-200/25',
+          on ? 'text-foreground' : 'text-muted-foreground/40',
         )}
       >
         {pct}
@@ -139,9 +139,9 @@ function Fader({
         }}
         className={cn(
           'relative w-8 cursor-ns-resize touch-none select-none rounded-full',
-          'bg-black/45 ring-1 ring-inset transition-shadow',
-          on ? 'ring-white/20' : 'ring-white/[0.07]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60',
+          'bg-surface-sunken ring-1 ring-inset transition-shadow',
+          on ? 'ring-gold/40' : 'ring-border',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60',
         )}
         style={{
           height: TRACK_H,
@@ -162,26 +162,26 @@ function Fader({
           style={{
             bottom: `calc(${pct}% - 5px)`,
             background: on
-              ? 'linear-gradient(to bottom, #f6ead6, #cbb79a)'
-              : 'linear-gradient(to bottom, #8c8378, #5d564d)',
+              ? 'linear-gradient(to bottom, hsl(var(--gold)), hsl(var(--gold) / 0.72))'
+              : 'linear-gradient(to bottom, hsl(var(--muted-foreground) / 0.75), hsl(var(--muted-foreground) / 0.45))',
             boxShadow: on
               ? `0 1px 4px rgba(0,0,0,.55), 0 0 10px ${meta.glow}`
               : '0 1px 3px rgba(0,0,0,.5)',
           }}
         />
         {/* 中线刻度 */}
-        <span className="pointer-events-none absolute inset-x-2 top-1/2 h-px bg-white/[0.08]" />
+        <span className="pointer-events-none absolute inset-x-2 top-1/2 h-px bg-border" />
       </div>
 
       <span
         className={cn(
           'text-[11px] font-medium transition-colors',
-          on ? 'text-amber-50' : 'text-amber-200/35',
+          on ? 'text-foreground' : 'text-muted-foreground/50',
         )}
       >
         {meta.label}
       </span>
-      <span className="text-[9px] text-amber-200/25">{meta.hint}</span>
+      <span className="text-[9px] text-muted-foreground/50">{meta.hint}</span>
     </div>
   );
 }
@@ -196,12 +196,12 @@ export function AmbientMixer({
   const active = AMBIENT_LAYERS.filter((l) => levels[l.id] > 0);
   return (
     <div data-testid="ambient-mixer">
-      <div className="flex items-start justify-around gap-2 rounded-2xl border border-amber-900/35 bg-black/25 px-2 py-3">
+      <div className="flex items-start justify-around gap-2 rounded-2xl border border-border bg-surface-2 px-2 py-3">
         {AMBIENT_LAYERS.map((m) => (
           <Fader key={m.id} meta={m} value={levels[m.id]} onChange={(v) => onChange(m.id, v)} />
         ))}
       </div>
-      <p className="mt-1.5 truncate text-[10px] text-amber-200/30">
+      <p className="mt-1.5 truncate text-[10px] text-muted-foreground">
         {active.length === 0
           ? '往上推就出声，几条一起推会叠在一起'
           : `正在播 · ${active.map((l) => l.label).join(' + ')}`}

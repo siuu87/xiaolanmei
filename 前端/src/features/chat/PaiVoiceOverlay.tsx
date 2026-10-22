@@ -167,9 +167,9 @@ export function PaiVoiceOverlay({
           : undefined
       }
       className={cn(
-        'fixed z-[1400] bg-[#0a0705]',
+        'fixed z-[1400] bg-page-bg',
         floating
-          ? 'overflow-hidden rounded-2xl border border-amber-900/50 shadow-[0_24px_70px_rgba(0,0,0,.65)]'
+          ? 'overflow-hidden rounded-2xl border border-border shadow-lift'
           : 'inset-0',
       )}
     >
@@ -183,7 +183,7 @@ export function PaiVoiceOverlay({
           if (floating) setCollapsed((v) => !v);
         }}
         className={cn(
-          'flex select-none items-center gap-2 border-b border-amber-200/10 bg-[#160f09] px-3',
+          'flex select-none items-center gap-2 border-b border-border bg-surface px-3',
           floating ? 'cursor-grab touch-none active:cursor-grabbing' : '',
         )}
         style={{ height: HEAD_H }}
@@ -193,17 +193,17 @@ export function PaiVoiceOverlay({
           className={cn(
             'h-1.5 w-1.5 shrink-0 rounded-full',
             callState === 'live'
-              ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
-              : 'bg-amber-500/60',
+              ? 'bg-emerald-500 shadow-[0_0_6px_hsl(160_65%_45%/0.6)] dark:bg-emerald-400'
+              : 'bg-gold/60',
           )}
         />
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate text-[13px] font-medium text-amber-50">{name}</span>
-          <span className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-amber-200/55">
+          <span className="truncate text-[13px] font-medium text-foreground">{name}</span>
+          <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
             {mmss(seconds)}
           </span>
           {floating && collapsed && (
-            <span className="shrink-0 text-[10px] text-amber-200/35">{collapsedHint}</span>
+            <span className="shrink-0 text-[10px] text-muted-foreground/70">{collapsedHint}</span>
           )}
         </div>
 
@@ -217,7 +217,7 @@ export function PaiVoiceOverlay({
           aria-label={floating ? '全屏通话' : '悬浮窗通话'}
           title={floating ? '全屏通话' : '悬浮窗通话'}
           data-testid="paivoice-mode"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-200/55 transition hover:bg-white/10 hover:text-amber-100 active:scale-95"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground active:scale-95"
         >
           {floating ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
         </button>
@@ -229,7 +229,7 @@ export function PaiVoiceOverlay({
             aria-label={collapsed ? '展开通话' : '收起通话'}
             title={collapsed ? '展开通话' : '收起通话'}
             data-testid="paivoice-collapse"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-200/55 transition hover:bg-white/10 hover:text-amber-100 active:scale-95"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground active:scale-95"
           >
             {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
@@ -242,7 +242,7 @@ export function PaiVoiceOverlay({
           aria-label="退出通话"
           title="退出通话"
           data-testid="paivoice-end"
-          className="ml-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full bg-rose-500/15 px-2.5 text-[11px] font-medium text-rose-200/90 transition hover:bg-rose-500/25 hover:text-rose-100 active:scale-95"
+          className="ml-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2.5 text-[11px] font-medium text-destructive transition hover:bg-destructive/20 active:scale-95"
         >
           <PhoneOff size={12} />
           退出

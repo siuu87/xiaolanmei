@@ -8,8 +8,8 @@ import { WatchlistTV } from './WatchlistTV';
 function SectionTitle({ eyebrow, icon: Icon }: { eyebrow: string; icon: LucideIcon }) {
   return (
     <div className="mb-3 flex items-center justify-center gap-2 text-center">
-      <Icon className="h-4 w-4 text-slate-400" />
-      <p className="text-[10px] tracking-[0.35em] text-slate-400/80">{eyebrow}</p>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <p className="text-[10px] tracking-[0.35em] text-muted-foreground">{eyebrow}</p>
     </div>
   );
 }
@@ -19,14 +19,14 @@ function EntryCard({ label, hint, icon: Icon, onClick }: { label: string; hint: 
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col items-start gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.08]"
+      className="paper-card group flex flex-col items-start gap-2.5 p-4 text-left transition hover:border-gold/30"
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-amber-300 transition group-hover:scale-105">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 text-gold transition group-hover:scale-105">
         <Icon className="h-5 w-5" />
       </span>
       <span>
-        <span className="block text-sm font-medium text-slate-100">{label}</span>
-        <span className="mt-0.5 block text-[11px] text-slate-400">{hint}</span>
+        <span className="block text-sm font-medium text-foreground">{label}</span>
+        <span className="mt-0.5 block text-[11px] text-muted-foreground">{hint}</span>
       </span>
     </button>
   );
@@ -40,7 +40,7 @@ export function StarrySkyPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-full bg-[#070b1a] text-slate-200">
+    <div className="relative min-h-full bg-page-bg text-foreground">
       <StarBackdrop />
 
       <div className="relative mx-auto w-full max-w-md px-4 py-6">
@@ -53,9 +53,9 @@ export function StarrySkyPage() {
               title="进入一起听"
               className="mx-auto mb-3 flex items-center justify-center gap-2 text-center transition hover:opacity-70"
             >
-              <Headphones className="h-4 w-4 text-slate-400" />
-              <p className="text-[10px] tracking-[0.35em] text-slate-400/80">LISTEN</p>
-              <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
+              <Headphones className="h-4 w-4 text-muted-foreground" />
+              <p className="text-[10px] tracking-[0.35em] text-muted-foreground">LISTEN</p>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
             <VinylPlayer />
           </section>

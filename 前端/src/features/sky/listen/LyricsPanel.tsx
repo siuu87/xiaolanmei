@@ -52,7 +52,7 @@ export function LyricsPanel({ progressMs, lines, onSeek }: Props) {
   };
 
   if (lines.length === 0) {
-    return <p className="py-4 text-center text-sm text-[#8A8A8A]">暂无歌词</p>;
+    return <p className="py-4 text-center text-sm text-muted-foreground">暂无歌词</p>;
   }
 
   const offset = -(displayIdx - CENTER) * ROW_H;
@@ -90,13 +90,13 @@ export function LyricsPanel({ progressMs, lines, onSeek }: Props) {
               data-testid={`lyric-row-${i}`}
               className={cn(
                 'flex flex-col items-center justify-center text-center',
-                on ? 'text-[#D4AF37]' : 'text-[#8A8A8A]',
+                on ? 'text-gold' : 'text-muted-foreground',
               )}
               style={{ height: ROW_H }}
             >
               <p className={cn('text-sm leading-6', on && 'font-medium')}>{line.text}</p>
               {line.translation && (
-                <p className={cn('text-xs leading-5', on ? 'text-[#D4AF37]/70' : 'text-[#8A8A8A]/70')}>
+                <p className={cn('text-xs leading-5', on ? 'text-gold/70' : 'text-muted-foreground/70')}>
                   {line.translation}
                 </p>
               )}
@@ -109,16 +109,16 @@ export function LyricsPanel({ progressMs, lines, onSeek }: Props) {
       {drag && (
         <div
           data-testid="lyrics-scrub"
-          className="pointer-events-none absolute bottom-4 right-1.5 top-4 w-px rounded-full bg-white/15"
+          className="pointer-events-none absolute bottom-4 right-1.5 top-4 w-px rounded-full bg-border"
         >
           <div
             data-testid="lyrics-scrub-knob"
-            className="absolute -left-[4px] h-[9px] w-[9px] -translate-y-1/2 rounded-full bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.6)]"
+            className="absolute -left-[4px] h-[9px] w-[9px] -translate-y-1/2 rounded-full bg-gold shadow-glow"
             style={{ top: `${pct}%` }}
           >
             <span
               data-testid="lyrics-scrub-time"
-              className="absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap text-[10px] tabular-nums text-[#D4AF37]"
+              className="absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap text-[10px] tabular-nums text-gold"
             >
               {formatTime(targetMs)}
             </span>
