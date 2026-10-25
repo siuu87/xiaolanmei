@@ -24,13 +24,17 @@ import { ExitButton } from '@/components/ExitButton';
 import { cn } from '@/lib/utils';
 import { sendToPartner } from '@/features/chat/sendToPartner';
 
-const RECIPE_NOOK_BASE = 'http://127.0.0.1:8790/';
-const RECIPE_NOOK_ORIGIN = 'http://127.0.0.1:8790';
+// 跟随访问域名：本地开发走 127.0.0.1/localhost，VPS 远程访问自动用公网 IP。
+// 这样小食谱在「手机开 VPS 地址」时也能正确连到侧车，而不是去连手机自己的 127.0.0.1。
+const RECIPE_NOOK_HOST = window.location.hostname;
+const RECIPE_NOOK_PORT = '8790';
+const RECIPE_NOOK_BASE = `${window.location.protocol}//${RECIPE_NOOK_HOST}:${RECIPE_NOOK_PORT}/`;
+const RECIPE_NOOK_ORIGIN = `${window.location.protocol}//${RECIPE_NOOK_HOST}:${RECIPE_NOOK_PORT}`;
 
 const START_CMDS = `cd recipe-nook
 python -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
-.venv\\Scripts\\python.exe -m uvicorn server:app --port 8790`;
+.venv\\Scripts\\python.exe -m uvicorn server:app --host 0.0.0.0 --port 8790`;
 
 export function FoodPage() {
   const navigate = useNavigate();
