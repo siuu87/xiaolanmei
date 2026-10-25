@@ -12,6 +12,7 @@
 ### 调整
 
 - 侧车部署说明收拢到 `docs/vps-deploy-sidecars.md`（心潮·念 / 记忆相册 / 小食谱 / PaiVoice 四个侧车在 VPS 上的安装、pm2 守护、主后端 `.env` 回填与安全组放行）。
+- **`remember-me/` 与 `pai-voice/` 源码入库**（此前被 `.gitignore` 排除导致 VPS 克隆后缺失、侧车无法部署）：`.gitignore` 改为放行源码、继续排除运行产物（`remember-me/.venv/`、`remember-me/.data/`（相册照片）、`pai-voice/.venv/`）；心潮·念（`/xinchao/`）保持本地不入库。
 
 ## 2026-10-22
 

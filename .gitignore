@@ -21,10 +21,12 @@ data/
 # 组件临时预览页（frontend/preview-*.html），只给本地冒烟看效果
 前端/preview-*.html
 
-# 外部侧车：Remember-Me（图像记忆 / 相册 Dashboard），本地安装，不进版本库
-/remember-me/
+# 外部侧车：Remember-Me / PaiVoice 源码入库（2026-10-25 起，VPS 部署需要）；
+# 但本地运行产物（venv 虚拟环境、相册照片数据）绝不入库
+remember-me/.venv/
+remember-me/.data/
+pai-voice/.venv/
 
-# 外部侧车：心潮·念 / PaiVoice（本地服务 + venv），不进版本库
+# 外部侧车：心潮·念（本地服务 + node 依赖），仍不进版本库（VPS 上已单独克隆 xinchao-nian）
 # 注意必须锚定仓库根：否则会把 前端/src/features/xinchao 也忽略掉
 /xinchao/
-/pai-voice/
