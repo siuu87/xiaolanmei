@@ -79,7 +79,6 @@ import { useChatStyle, CHAT_STYLE_META, CHAT_STYLE_STORAGE_KEY, type ChatStyleMo
 import { useDietStore } from '@/features/diet/dietStore';
 import { matchDietHits } from '@/features/diet/dietHits';
 import { DietHitBar } from '@/features/diet/DietBadge';
-import { loveDays } from '@/features/shell/loveDays';
 
 /**
  * 顶栏右侧连接指示器：只给一个 6px 小灯，不占宽度。
@@ -111,6 +110,25 @@ function ConnDot() {
       className="inline-flex shrink-0 items-center justify-center"
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', color)} />
+    </span>
+  );
+}
+
+/**
+ * 顶栏名字下方的时间（草图：名字下方显示当前时间）。
+ * 独立成小组件，每 30s 自己 tick 一次，不拖累整页重渲染。
+ */
+function ClockLabel() {
+  const [t, setT] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setT(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const d = new Date(t);
+  const p = (n: number) => n.toString().padStart(2, '0');
+  return (
+    <span className="text-[11px] tabular-nums text-chat-meta">
+      {`${p(d.getHours())}:${p(d.getMinutes())}`}
     </span>
   );
 }
@@ -761,7 +779,6 @@ export function ChatPage() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, [syncChatStyle]);
-  const loveDayCount = useMemo(() => loveDays(), []);
   const [confirming, setConfirming] = useState<{ confirmId: string; toolName: string; summary: string } | null>(
     null,
   );
@@ -1459,11 +1476,11 @@ export function ChatPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-chat-bg text-foreground">
-      {/* 顶栏：纯白底 + 一排白色圆形药丸按钮（参考图那套语言）。
-          底和栏现在都是白的，所以靠这条 1px 描边分界。 */}
+      {/* 顶栏：草图样式——正中大头像 + 名字 + 名字下方时间，点头像/名字进「内心（心潮）」。
+          左右只留汉堡（移动端）与礼物 / 搜索，不再堆按钮，保持干净。 */}
       <div
         data-testid="chat-topbar"
-        className="relative flex shrink-0 items-center gap-2 border-b border-chat-line bg-chat-bar px-3 py-2.5"
+        className="relative flex min-h-[100px] shrink-0 items-center gap-2 border-b border-chat-line bg-chat-bar px-3"
       >
         {/* 移动端：汉堡 → 主抽屉（桌面有左侧常驻栏，不给重复入口） */}
         <button
@@ -1476,16 +1493,12 @@ export function ChatPage() {
         >
           <Menu className="h-4 w-4" />
         </button>
-        {/* 会话名字：**绝对定位到顶栏正中**（2026-10-19 用户要求「聊天名字居中」）。
-            以前是 flex-1 + justify-center，居中基准其实是「左右按钮夹出来的剩余空间」——
-            左边只有汉堡、右边有滑块 + 搜索，名字就会明显偏左。改成绝对居中后，
-            左右两侧按钮增减都不再影响名字的位置。 */}
+        {/* 会话名字：**绝对定位到顶栏正中**（无论左右按钮增减，名字始终真正居中）。 */}
         <div
           data-testid="chat-title-slot"
-          className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
+          className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
         >
-          {/* 标题本身就是入口：点名字进「白起的内心与记忆中枢」。
-              原来那盏红点从最右侧挪到这里当状态指示（`ConnDot` 已改成纯 span）。 */}
+          {/* 整块都是入口：点开看 {ownerName} 此刻在想什么（内心 / 心潮） */}
           <button
             type="button"
             onClick={() => navigate('/xinchao')}
@@ -1493,30 +1506,34 @@ export function ChatPage() {
             aria-label="打开内心与记忆"
             title={`点开看${ownerName}此刻在想什么`}
             className={cn(
-              'pointer-events-auto flex min-w-0 max-w-[54vw] items-center gap-1.5 rounded-full px-2 py-1 transition md:max-w-[420px]',
-              'hover:bg-chat-line/50 active:scale-[0.98]',
+              'pointer-events-auto flex flex-col items-center gap-1 rounded-2xl px-3 py-1 transition',
+              'hover:bg-chat-line/40 active:scale-[0.98]',
               // 点完不要留一圈浏览器默认黑描边；键盘 Tab 过来才给一圈浅色 focus ring
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
             )}
           >
+            {/* 大头像 + 角落状态灯（绿 / 黄 / 红 = 通道状态） */}
+            <span className="relative inline-flex">
+              <AvatarContent
+                value={partnerAvatar}
+                fallback="🐰"
+                className="h-11 w-11 shrink-0 border border-chat-line bg-chat-pill shadow-sm"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar">
+                <ConnDot />
+              </span>
+            </span>
             <span
               data-testid="chat-title"
-              className="display min-w-0 truncate text-[16px] font-semibold tracking-tight text-foreground"
+              className="display min-w-0 max-w-[60vw] truncate text-[15px] font-semibold tracking-tight text-foreground md:max-w-[420px]"
             >
               {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
               {displayName || conversation?.title || '小蓝莓'}
             </span>
-            <ConnDot />
+            <ClockLabel />
           </button>
-          {/* 伴侣挂件贴在名字右侧**绝对定位**：挂在布局流里会把名字顶偏半个挂件的宽度。
-              必须 `w-max whitespace-nowrap` —— 绝对定位元素的可用宽度是从「容器宽 - left」算的，
-              而容器只有名字那么宽，不写死就会缩成一列竖排字。 */}
-          <span className="absolute left-full top-1/2 ml-2 hidden w-max shrink-0 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-chat-line bg-chat-pill px-2 py-0.5 text-[10px] text-chat-meta sm:flex">
-            <AvatarContent value={partnerAvatar} fallback="🐰" className="h-3.5 w-3.5 text-[11px]" />
-            <span>在一起 {loveDayCount} 天</span>
-          </span>
         </div>
-        {/* 右侧按钮组：靠 ml-auto 顶到最右（中间槽改成绝对定位后，不再有 flex-1 撑开） */}
+        {/* 右侧按钮组：礼物盒 + 搜索，功能不丢（ml-auto 顶到最右，desktop 汉堡隐藏也不影响） */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
@@ -1543,7 +1560,6 @@ export function ChatPage() {
             <Search className="h-4 w-4" />
           </button>
         </div>
-        {/* 通话入口**不在这里**：按需求顶栏保持简洁，通话已收进输入框的「+」面板 */}
       </div>
 
       {/* 消息列表 + 右下角「回到底部」圆钮 */}
@@ -2071,33 +2087,6 @@ export function ChatPage() {
             {/* 最左：对白风格 💕/🩷 双态药丸（点一下翻面，全站唯一入口） */}
             <ChatStylePill mode={chatStyleMode} onToggle={toggleChatStyle} />
 
-            {/* 左·靠输入框：麦克风 → 语音识别（STT），定稿直接发出去 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (stt.listening) {
-                  stt.stop();
-                  return;
-                }
-                setAttachOpen(false);
-                setStickerOpen(false);
-                stt.start();
-              }}
-              aria-label={stt.listening ? '停止语音输入' : '语音输入'}
-              aria-pressed={stt.listening}
-              title={stt.listening ? '正在听，点一下停止' : '语音输入'}
-              data-testid="chat-mic"
-              data-listening={stt.listening ? 'true' : 'false'}
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
-                stt.listening
-                  ? 'animate-pulse bg-red-500 text-white shadow-sm'
-                  : 'border border-chat-line bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
-              )}
-            >
-              <Mic className="h-[18px] w-[18px]" />
-            </button>
-
             {/* 中间：输入胶囊（模型药丸 + 输入框） */}
             <div className="flex min-h-[42px] min-w-0 flex-1 items-center gap-1.5 rounded-[22px] border border-chat-line bg-chat-pill px-2.5 py-1 shadow-sm ring-1 ring-transparent transition focus-within:border-chat-accent/40 focus-within:ring-chat-accent/25">
               {/* 模型选择跟着参考图搬进输入条，顶栏就不挤了 */}
@@ -2165,6 +2154,33 @@ export function ChatPage() {
                 className="h-8 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
               />
             </div>
+
+            {/* 右·贴着输入框：麦克风 → 语音识别（STT），定稿直接发出去 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (stt.listening) {
+                  stt.stop();
+                  return;
+                }
+                setAttachOpen(false);
+                setStickerOpen(false);
+                stt.start();
+              }}
+              aria-label={stt.listening ? '停止语音输入' : '语音输入'}
+              aria-pressed={stt.listening}
+              title={stt.listening ? '正在听，点一下停止' : '语音输入'}
+              data-testid="chat-mic"
+              data-listening={stt.listening ? 'true' : 'false'}
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                stt.listening
+                  ? 'animate-pulse bg-red-500 text-white shadow-sm'
+                  : 'border border-chat-line bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
+              )}
+            >
+              <Mic className="h-[18px] w-[18px]" />
+            </button>
 
             {/* 右·贴着输入框：表情 😊（点了面板向下展开） */}
             <button
