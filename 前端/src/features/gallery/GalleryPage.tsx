@@ -20,6 +20,8 @@ export function GalleryPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<RememberMeStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  // 记忆相册经后端反代挂在同源 3001 的 /dashboard，浏览器走公网 3001 即可，侧车 8787 不必对外暴露
+  const galleryUrl = `${window.location.origin}/dashboard`;
 
   const check = useCallback(async () => {
     setLoading(true);
@@ -47,7 +49,7 @@ export function GalleryPage() {
         <div className="flex shrink-0 items-center gap-1">
           {status?.up && (
             <a
-              href={status.dashboard}
+              href={galleryUrl}
               target="_blank"
               rel="noreferrer"
               aria-label="在新窗口打开记忆相册"
@@ -95,7 +97,7 @@ export function GalleryPage() {
                 点击下方按钮在新标签页打开，看完随时可返回。
               </p>
               <a
-                href={status.dashboard}
+                href={galleryUrl}
                 target="_blank"
                 rel="noreferrer"
                 data-testid="remember-me-open"

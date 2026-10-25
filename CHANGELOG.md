@@ -12,7 +12,7 @@
   在 `HomePage` 底部（`FeatureGrid` 之后）补一份 `ModuleCards`，用 `hidden md:block` 包裹，仅桌面端显示，避免与移动端抽屉重复。
 - **相册（Remember-Me）远程访问「127.0.0.1 拒绝连接」且无法内嵌**：根因是记住我侧车默认只监听 `127.0.0.1`，且其所有响应强制 `X-Frame-Options: DENY` + `frame-ancestors 'none'`，
   浏览器既连不到内网回环、也禁止 iframe 内嵌。`GalleryPage` 改为不再用 iframe，改为就位时给出「打开记忆相册」按钮，在新标签页打开独立运行的 Dusk Archive（顶层导航不受 framing 头限制）。
-  要让远程能打开，还需在 VPS 上：remember-me 监听改 `0.0.0.0`、安全组放行 8787、后端 `.env` 的 `REMEMBER_ME_URL` 指向公网地址。
+  打开地址改为同源的 `/dashboard`，由**后端反向代理**（新增 `后端/src/routes/rememberMeProxy.ts`）转发到内部 `127.0.0.1:8787`——侧车保持 loopback、无需改监听、无需在云安全组再开 8787、无需设 Bearer Token；与 xinchao / Ombre 代理思路一致。远程上传暂未纳入代理，查看 / 检索不受影响。
 
 ### 调整
 

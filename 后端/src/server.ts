@@ -59,6 +59,7 @@ import { xinchaoRoutes } from './routes/xinchao.js';
 import { ombreDashboardRoutes } from './routes/ombreDashboard.js';
 import { paivoiceRoutes } from './routes/paivoice.js';
 import { deviceRoutes } from './routes/device.js';
+import { rememberMeProxyRoutes } from './routes/rememberMeProxy.js';
 import { seedBuiltinSkills } from './services/skillEngine.js';
 import { seedPersonaModules } from './persona/seed.js';
 import { startMailScheduler } from './services/mailScheduler.js';
@@ -134,6 +135,10 @@ async function main(): Promise<void> {
   await app.register(ombreDashboardRoutes, { prefix: '/api' });
   await app.register(paivoiceRoutes, { prefix: '/api' });
   await app.register(deviceRoutes, { prefix: '/api' });
+
+  // Remember-Me 反向代理（记忆相册）：浏览器走 3001，后端转发到内部 8787 侧车。
+  // 必须在 SPA fallback 之前注册，路径 /dashboard、/dashboard/static/*、/api/v1/* 才不会被回退成 index.html。
+  await rememberMeProxyRoutes(app);
 
   /*
    * Host 化（阶段 1）：前端产物就托管在这里，一个进程=完整应用。
