@@ -8,6 +8,7 @@ import { FeatureGrid } from './FeatureGrid';
 import { PeriodHint } from './PeriodHint';
 import { useMemorialStore } from './memorialStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { ModuleCards } from '@/features/shell/DrawerSections';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -63,6 +64,11 @@ export function HomePage() {
             </div>
           </div>
           <FeatureGrid />
+          {/* 桌面端抽屉是 md:hidden，生活趣味 / 小酒馆 / 工具箱只收在抽屉里，
+              宽屏上点不到。这里补一份模块入口给桌面用户（移动端抽屉已有，故 md:block 避免重复）。 */}
+          <div className="hidden md:block">
+            <ModuleCards />
+          </div>
         </div>
       </div>
     </div>

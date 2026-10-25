@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, HardDrive, Loader2, RefreshCw } from 'lucide-react';
+import { ExternalLink, HardDrive, Images, Loader2, RefreshCw } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { ExitButton } from '@/components/ExitButton';
 import { cn } from '@/lib/utils';
@@ -73,8 +73,9 @@ export function GalleryPage() {
           <Loader2 size={15} className="animate-spin" /> 正在打开记忆相册…
         </div>
       ) : status?.up ? (
-        <div className="relative">
-          {/* 记忆相册是整屏 iframe，退出键钉在右上角，任何时候都能点到 */}
+        <div className="relative min-h-[calc(100dvh-120px)]">
+          {/* Remember-Me 出于安全策略禁止内嵌（X-Frame-Options: DENY + frame-ancestors 'none'），
+              所以这里不嵌 iframe，改为在新标签页打开独立运行的 Dusk Archive 仪表盘。 */}
           <ExitButton
             variant="solid"
             label="退出"
@@ -83,17 +84,26 @@ export function GalleryPage() {
             testId="gallery-exit"
             className="top-[54px]"
           />
-          <div
-            data-testid="remember-me-frame"
-            className="h-[calc(100dvh-57px)] w-full overflow-hidden bg-page-bg"
-          >
-            <iframe
-              src={status.dashboard}
-              title="Remember-Me"
-              data-testid="remember-me-iframe"
-              allow="clipboard-read; clipboard-write"
-              className="h-full w-full border-0"
-            />
+          <div className="flex h-[calc(100dvh-140px)] flex-col items-center justify-center px-6 text-center">
+            <div className="paper-card w-full max-w-sm p-6" data-testid="remember-me-launch">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
+                <Images size={22} />
+              </div>
+              <h2 className="text-[15px] font-semibold text-foreground">记忆相册 · Dusk Archive</h2>
+              <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                Remember-Me 的图像记忆库以独立页面运行，出于安全策略不允许内嵌到本应用。
+                点击下方按钮在新标签页打开，看完随时可返回。
+              </p>
+              <a
+                href={status.dashboard}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="remember-me-open"
+                className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-[12px] font-medium text-primary-foreground transition active:scale-[0.98]"
+              >
+                <ExternalLink size={14} /> 打开记忆相册
+              </a>
+            </div>
           </div>
         </div>
       ) : (
@@ -107,7 +117,7 @@ export function GalleryPage() {
             </div>
             <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
               相册现在只使用 Remember-Me 的图像记忆库（Dusk Archive）。
-              侧车默认在 127.0.0.1:8787，启动后点右上角刷新。
+              侧车监听 8787 端口，启动后点右上角刷新。
             </p>
             <pre className="mt-3 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
               {String.raw`cd remember-me

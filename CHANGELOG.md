@@ -8,6 +8,11 @@
 
 - **小食谱（recipe-nook）VPS 远程访问**：`FoodPage.tsx` 里侧车地址从写死的 `http://127.0.0.1:8790` 改为跟随 `window.location`（域名 + 端口 8790）。
   这样从手机开 VPS 公网地址时，小食谱 iframe / postMessage 会正确指向 `http://<公网IP>:8790`，而不是去连手机自己的回环地址。本地开发（localhost/127.0.0.1）行为不变。
+- **桌面端首页缺失「生活趣味 / 小酒馆 / 工具箱」入口**：主抽屉（`DrawerSections`）是 `md:hidden`，宽屏上完全不可见，而这些模块入口只收在抽屉里，导致桌面用户点不到。
+  在 `HomePage` 底部（`FeatureGrid` 之后）补一份 `ModuleCards`，用 `hidden md:block` 包裹，仅桌面端显示，避免与移动端抽屉重复。
+- **相册（Remember-Me）远程访问「127.0.0.1 拒绝连接」且无法内嵌**：根因是记住我侧车默认只监听 `127.0.0.1`，且其所有响应强制 `X-Frame-Options: DENY` + `frame-ancestors 'none'`，
+  浏览器既连不到内网回环、也禁止 iframe 内嵌。`GalleryPage` 改为不再用 iframe，改为就位时给出「打开记忆相册」按钮，在新标签页打开独立运行的 Dusk Archive（顶层导航不受 framing 头限制）。
+  要让远程能打开，还需在 VPS 上：remember-me 监听改 `0.0.0.0`、安全组放行 8787、后端 `.env` 的 `REMEMBER_ME_URL` 指向公网地址。
 
 ### 调整
 

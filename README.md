@@ -228,7 +228,7 @@ npm run dev
   不谎报「已同步」。阅读日历下面是**杂志式书架**：书面朝外、透明书架、一行三本、
   分类各一行、可左右滑动，点书直接进阅读器
 - **gallery**：相册 · 图像记忆。**只接** [Remember-Me](https://github.com/peanutsuee/Remember-Me)
-  的 Dusk Archive Dashboard（整页嵌入，右上角有「退出」键）；不再有本地上传 / 瀑布流
+  的 Dusk Archive Dashboard；出于安全策略（禁止内嵌）改为**在新标签页打开**独立运行的仪表盘（不再用 iframe），右上角有「退出」键返回；不再有本地上传 / 瀑布流
 - **diary**：日记本
 - **goodnight（MIDNIGHT FM）**：四个台的深夜电台 ——
   FM 90.6 故事台（直接读「一起读」书架里的小说正文）、FM 97.3 夜话台（关灯后的第一人称随笔）、
@@ -259,7 +259,7 @@ npm run dev
 - 设置：模型站子、深浅色主题、MCP、技能、记忆、提示词、同步、编程工作区
 
 ### 退出键（整屏页的统一出路）
-凡是「整屏托管的别人的页面」（小食谱 iframe、记忆相册 iframe、PaiVoice 通话），
+凡是「整屏托管的别人的页面」（小食谱 iframe、记忆相册新标签页打开、PaiVoice 通话），
 右上角都有一颗**带文字的「✕ 退出」**（`components/ExitButton.tsx`，z-1300）。
 整页通话里 Esc 也等于退出；悬浮窗里 Esc 只收起不挂断。
 
