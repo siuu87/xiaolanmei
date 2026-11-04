@@ -21,6 +21,8 @@ import { NotesPage } from '@/features/notes/NotesPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { MemoHomePage } from '@/features/memo/MemoHomePage';
 import { GiftBoxPage } from '@/features/gifts/GiftBoxPage';
+import { MePage } from '@/features/me/MePage';
+import { CallsPage, CallDetailPage } from '@/features/chat/CallsPage';
 
 /** 聊天是底座常驻层（AppLayout 里直接挂），路由上留个空位只为给个 URL */
 const Noop = () => null;
@@ -66,6 +68,11 @@ export const router = createBrowserRouter([
       { path: 'schedule', element: <SchedulePage /> },
       { path: 'memo', element: <MemoHomePage /> },
       { path: 'gifts', element: <GiftBoxPage /> },
+      // 我的 · 个人主页（设计稿 130:62 版式；入口在设置页「个人」分区）
+      { path: 'me', element: <MePage /> },
+      // 通话记录两级页（设计稿 130:4 / 126:58；入口在角色页 / 我的页统计卡「通话」）
+      { path: 'calls', element: <CallsPage /> },
+      { path: 'calls/:id', element: <CallDetailPage /> },
       // 兜底：未知路径（含已移除的旧路由）回到首页，避免客户端 404
       { path: '*', element: <Navigate to="/" replace /> },
     ],

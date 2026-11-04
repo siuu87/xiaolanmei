@@ -100,11 +100,12 @@ export function AppLayout() {
       // 有 --app-h 时以它为准（键盘/地址栏变化），没有就退回 h-dvh
       style={{ height: 'var(--app-h, 100dvh)' }}
     >
-      {/* 桌面侧边栏（沉浸式时收起） */}
+      {/* 桌面侧边栏（沉浸式时收起）。不做「实体」：无边框，底色直接用聊天页的
+          --chat-bg——在聊天页上与页面背景完全同色，导航就像悬浮在页面本身上
+          （2026-10-29：之前用 bg-transparent 透出的是 --background，和聊天页差 4%，
+          看起来仍是一条实体柱）。 */}
       {!immersive && (
-        <aside className="relative hidden w-64 shrink-0 border-r border-border bg-surface md:block">
-          {/* 侧栏顶部的暖光，和页面同一套环境光 */}
-          <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-48 opacity-80" />
+        <aside className="relative hidden w-64 shrink-0 bg-chat-bg md:block">
           <div className="relative h-full">
             <Sidebar />
           </div>

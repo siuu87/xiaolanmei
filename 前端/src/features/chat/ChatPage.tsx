@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import {
   ArrowDown,
+  ArrowUp,
   Trash2,
   Pencil,
   RefreshCw,
@@ -14,13 +15,12 @@ import {
   ChevronDown,
   Check,
   X,
-  MoreHorizontal,
   Copy,
   Menu,
+  Heart,
   Globe,
   Gift,
   Phone,
-  User,
   Plus,
   Image,
   Camera,
@@ -66,8 +66,11 @@ import { SearchOverlay } from './SearchOverlay';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
 import { ModelPicker } from './ModelPicker';
 import { StickerPanel } from './StickerPanel';
-import { BottomSheet } from '@/components/BottomSheet';
+import { MoodPopover } from './MoodPopover';
+import { ChatSheet } from './ChatSheet';
 import { CallOverlay, type CallResult } from './CallOverlay';
+import { CallDetailSheet } from './CallDetailSheet';
+import { CharacterPage } from './CharacterPage';
 import { PaiVoiceOverlay } from './PaiVoiceOverlay';
 import { createCall, fmtDuration, type CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
@@ -75,7 +78,7 @@ import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
-import { useChatStyle, CHAT_STYLE_META, CHAT_STYLE_STORAGE_KEY, type ChatStyleMode } from '@/stores/chatStyleStore';
+import { useChatStyle, CHAT_STYLE_META, CHAT_STYLE_STORAGE_KEY } from '@/stores/chatStyleStore';
 import { useDietStore } from '@/features/diet/dietStore';
 import { matchDietHits } from '@/features/diet/dietHits';
 import { DietHitBar } from '@/features/diet/DietBadge';
@@ -110,25 +113,6 @@ function ConnDot() {
       className="inline-flex shrink-0 items-center justify-center"
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', color)} />
-    </span>
-  );
-}
-
-/**
- * 顶栏名字下方的时间（草图：名字下方显示当前时间）。
- * 独立成小组件，每 30s 自己 tick 一次，不拖累整页重渲染。
- */
-function ClockLabel() {
-  const [t, setT] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setT(Date.now()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-  const d = new Date(t);
-  const p = (n: number) => n.toString().padStart(2, '0');
-  return (
-    <span className="text-[11px] tabular-nums text-chat-meta">
-      {`${p(d.getHours())}:${p(d.getMinutes())}`}
     </span>
   );
 }
@@ -208,7 +192,6 @@ function MessageMenu({
   const pos: React.CSSProperties = placeAbove
     ? { left, bottom: vh - a.top + GAP, width: W }
     : { left, top: a.bottom + GAP, width: W };
-  const arrowLeft = Math.min(Math.max(14, centerX - left - 5), W - 19);
 
   return createPortal(
     <div data-testid="msg-menu-layer" className="fixed inset-0 z-[1400]" onClick={onClose}>
@@ -218,18 +201,9 @@ function MessageMenu({
         role="menu"
         onClick={(e) => e.stopPropagation()}
         style={pos}
-        className="animate-bb-pop fixed max-h-[62vh] overflow-y-auto overscroll-contain rounded-[10px] border border-border bg-popover py-1 text-popover-foreground shadow-lift"
+        className="animate-bb-pop fixed max-h-[62vh] overflow-y-auto overscroll-contain rounded-[16px] border border-chat-line/70 bg-popover py-1.5 text-popover-foreground shadow-[0_14px_34px_-18px_hsl(var(--shadow-color)/0.35)]"
       >
         {children}
-        {/* 小尖角：指向被长按的那条消息 */}
-        <span
-          aria-hidden
-          className={cn(
-            'absolute h-2.5 w-2.5 rotate-45 border border-border bg-popover',
-            placeAbove ? '-bottom-[5px]' : '-top-[5px]',
-          )}
-          style={{ left: arrowLeft }}
-        />
       </div>
     </div>,
     document.body,
@@ -278,88 +252,102 @@ function StickerBubble({ emoji }: { emoji: string }) {
   );
 }
 
-/** Claude 星形 Logo（陶土橙），近似 Claude.ai 的八芒星标志 */
-function ClaudeMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <g fill="currentColor">
-        <path d="M12 1.6c.32 3.2.4 6.4 0 9.6-.4 3.2-.32 6.4 0 9.6.32-3.2.4-6.4 0-9.6-.4-3.2-.32-6.4 0-9.6Z" />
-        <path d="M1.6 12c3.2.32 6.4.4 9.6 0 3.2-.4 6.4-.32 9.6 0-3.2.32-6.4.4-9.6 0-3.2-.4-6.4-.32-9.6 0Z" />
-        <path d="M4.6 4.6c2.6 2.6 4.6 4.6 7.4 7.4 2.8 2.8 4.8 4.8 7.4 7.4-2.6-2.6-4.6-4.6-7.4-7.4-2.8-2.8-4.8-4.8-7.4-7.4Z" />
-        <path d="M19.4 4.6c-2.6 2.6-4.6 4.6-7.4 7.4-2.8 2.8-4.8 4.8-7.4 7.4 2.6-2.6 4.6-4.6 7.4-7.4 2.8-2.8 4.8-4.8 7.4-7.4Z" />
-      </g>
-    </svg>
-  );
-}
-
 /**
- * 气泡前的圆形头像：两边都用「各自的头像」。
+ * 气泡外侧的时间（设计稿：对方在气泡右边、我方在气泡左边，贴着底部）。
  *
- * 参考图里左右两边都是有脸的（右边是那只兔子），所以这里不再给我方画一个通用小人，
- * 而是取「我」的头像（默认 🫐）；抽屉/设置里换过就立刻同步。
- * 头像可能是 emoji 也可能是图片 URL，一律交给 AvatarContent 判。
- */
-function BubbleAvatar({ mine }: { mine: boolean }) {
-  const myAvatar = useProfileStore((s) => s.avatar);
-  const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
-  const value = mine ? myAvatar : partnerAvatar;
-  return (
-    <span
-      data-testid={mine ? 'bubble-avatar-me' : 'bubble-avatar-partner'}
-      className={cn(
-        // 参考图里小人「站在白纸上」，不该有阴影；两边统一一层很淡的中性底就够了。
-        // 不再用 mb-[18px]——那是旧的「整体底部对齐」遗留，现在头像对齐气泡顶部。
-        'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg',
-      )}
-    >
-      {value ? (
-        <AvatarContent value={value} fallback={mine ? '🫐' : '🐰'} className="text-[19px]" />
-      ) : mine ? (
-        <User className="h-4 w-4" />
-      ) : (
-        <ClaudeMark className="h-4 w-4" />
-      )}
-    </span>
-  );
-}
-
-/**
- * 分组时间戳（参考图那行「03/26 23:20」）。
- *
- * 关键：它**不是**独立一行，而是跟在气泡**内侧**（你那条在气泡左边、TA 那条在右边），
- * 并且和气泡底部对齐——父级 `items-end` 负责底对齐，所以这里只需 `shrink-0`。
+ * 只显示 `H:MM` —— 日期已经由跨天分隔线交代，气泡旁再挂一遍 `MM/DD HH:MM`
+ * 会把留白挤没；这也是原稿里「8:06」那种轻量写法。
  */
 function InlineStamp({ ts }: { ts?: number }) {
   const d = ts ? new Date(ts) : null;
   if (!d) return null;
-  const p = (n: number) => n.toString().padStart(2, '0');
   return (
     <span
       data-testid="msg-stamp"
-      className="shrink-0 self-end pb-0.5 text-[11px] tabular-nums text-chat-meta"
+      className="shrink-0 self-end pb-1.5 text-[11px] tabular-nums text-chat-meta"
     >
-      {`${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
+      {`${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`}
     </span>
   );
 }
 
 /**
- * 一条消息的行容器（参考图那套排版）：
+ * 对方气泡上方那行小字：「〉哥哥想说」。
  *
- *     [头像] [气泡][时间戳]      ← TA 的（我们的 `flex-row`）
- *     [时间戳][气泡] [头像]      ← 我的（`flex-row-reverse` 整体镜像）
+ * 原稿里每条 AI 消息组的第一条上方都有这行（不是头像），
+ * 流式期间换成「哥哥在想」+ 三个跳点；有思考链时整行可点开下弹窗。
+ */
+function SenderLabel({
+  name,
+  thinking,
+  onClick,
+  testid,
+}: {
+  name: string;
+  thinking?: boolean;
+  onClick?: () => void;
+  testid?: string;
+}) {
+  const inner = (
+    <>
+      <span aria-hidden className="text-chat-meta/80">
+        〉
+      </span>
+      <span>{`${name}${thinking ? '在想' : '想说'}`}</span>
+      {thinking ? (
+        <span className="ml-0.5 flex items-center gap-[3px]">
+          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '0ms' }} />
+          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '150ms' }} />
+          <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '300ms' }} />
+        </span>
+      ) : null}
+    </>
+  );
+
+  const cls = 'flex items-center gap-1 pb-1.5 pl-1 pr-1 text-[11px] leading-none text-chat-meta';
+
+  if (!onClick) {
+    return (
+      <span data-testid={testid} className={cls}>
+        {inner}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      title={thinking ? `${name}正在想，点开看已经想到哪了` : `点开看${name}的小心思`}
+      aria-label={`${name}的小心思`}
+      className={cn(cls, 'transition hover:text-chat-pill-fg active:opacity-70')}
+    >
+      {inner}
+    </button>
+  );
+}
+
+/**
+ * 一条消息的行容器（对齐设计稿）：
  *
- * 头像与气泡**顶部**对齐，时间戳贴气泡**内侧**并与气泡**底部**对齐。
- * 时间戳做成气泡行的兄弟节点而不是外层列里的独立行，就是为了让它横向落在气泡旁边。
+ *     〉哥哥想说
+ *     [气泡][时间]
+ *
+ *     [时间][黑色气泡]
+ *
+ * 原稿没有头像，代之以「发送者那行小字」；时间戳落在气泡**外侧**并与气泡底对齐，
+ * 所以它仍然作为气泡行的兄弟节点存在，而不是外层列里的独立一行。
  */
 function MsgRow({
   mine,
+  label,
   stamp,
   above,
   below,
   children,
 }: {
   mine: boolean;
+  label?: React.ReactNode;
   stamp?: React.ReactNode;
   /** 气泡**上方**的整宽内容（引用卡） */
   above?: React.ReactNode;
@@ -368,8 +356,8 @@ function MsgRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('flex items-start gap-2', mine ? 'flex-row-reverse' : 'flex-row')}>
-      <BubbleAvatar mine={mine} />
+    <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
+      {label}
       <div className={cn('flex min-w-0 max-w-[78%] flex-col', mine ? 'items-end' : 'items-start')}>
         {above}
         <div className="flex min-w-0 items-end gap-2">
@@ -383,12 +371,12 @@ function MsgRow({
   );
 }
 
-/** 居中日期分隔（参考图：两侧细线 + 「6月30日 · 00:10」） */
+/** 居中日期分隔（极简：两侧细线 + 灰色小字） */
 function DateDivider({ label }: { label: string }) {
   return (
     <div data-testid="date-divider" className="flex items-center gap-3 px-2 py-4">
       <span className="h-px flex-1 bg-gradient-to-r from-transparent to-chat-line" aria-hidden />
-      <span className="shrink-0 rounded-full border border-chat-line bg-chat-pill px-2.5 py-1 font-serif text-[10px] tracking-wide text-chat-meta">
+      <span className="shrink-0 text-[10px] tracking-wide text-chat-meta">
         {label}
       </span>
       <span className="h-px flex-1 bg-gradient-to-l from-transparent to-chat-line" aria-hidden />
@@ -505,29 +493,56 @@ function VoiceBubble({ id, ms, text }: { id: string; ms: number; text: string })
 }
 
 /** 通话记录卡：通话 02:17 / 已拒接 / 未接来电 已回拨 */
-function CallRecordCard({ call }: { call: NonNullable<ChatMessage['call']> }) {
+/**
+ * 通话记录卡（对齐设计稿第 8 页）：
+ * 白卡片 + 左侧圆形电话图标 + 两行文字（「通话 · 12 分 04 秒」/「之后那几个字 · 23:41」）。
+ * 它不是气泡，所以在消息行里独占一张卡，宽度跟着内容走。
+ */
+function CallRecordCard({
+  call,
+  ts,
+  onClick,
+}: {
+  call: NonNullable<ChatMessage['call']>;
+  ts?: number;
+  onClick?: () => void;
+}) {
   const missed = call.state === 'missed';
   const declined = call.state === 'declined';
   const secs = call.seconds ?? 0;
-  const dur = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
-  const label =
-    call.state === 'answered' ? `通话 ${dur}`
-    : declined ? '已拒接'
-    : '未接来电 已回拨';
+  const dur = secs > 0 ? (secs >= 60 ? `${Math.floor(secs / 60)} 分 ${String(secs % 60).padStart(2, '0')} 秒` : `${secs} 秒`) : '';
+  const title =
+    call.state === 'answered' ? (dur ? `通话 · ${dur}` : '通话') : missed ? '未接来电' : '已拒接';
+  const sub = `${call.state === 'answered' ? '已接通' : missed ? '未接来电' : '已拒接'}${
+    ts ? ` · ${fmtTime(ts)}` : ''
+  }`;
   const Icon = missed ? PhoneMissed : declined ? PhoneOutgoing : PhoneIncoming;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={(e) => {
+        // 别让长按菜单 / 列表的点击处理跟着响
+        e.stopPropagation();
+        onClick?.();
+      }}
       data-testid="call-record"
       data-state={call.state}
-      className={cn(
-        'inline-flex items-center gap-2 rounded-2xl border border-chat-line bg-chat-pill px-3 py-2 text-[14px] text-chat-pill-fg',
-        missed && 'border-transparent bg-chat-line/70',
-      )}
+      className="inline-flex min-w-[232px] items-center gap-3 rounded-[20px] bg-chat-ai px-3.5 py-3 text-left shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)] transition active:scale-[0.99]"
     >
-      <Icon className={cn('h-4 w-4 shrink-0', missed ? 'text-destructive' : 'text-chat-call-in')} />
-      <span>{label}</span>
-    </div>
+      <span
+        className={cn(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill',
+          missed ? 'text-destructive' : 'text-chat-ai-fg',
+        )}
+      >
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-[14px] font-medium text-chat-ai-fg">{title}</span>
+        <span className="truncate text-[12px] text-chat-meta">{sub}</span>
+      </span>
+    </button>
   );
 }
 
@@ -564,50 +579,13 @@ function isSameDay(a?: number, b?: number): boolean {
 }
 
 /**
- * 思考链入口（**气泡上方一行**）。
+ * 思考链入口 —— 就是气泡上方那行「〉哥哥想说」。
  *
- * 2026-10-18 两次调整（都按用户要求）：
- * ① 位置：从「内联接在正文第一句后面」搬到「每条带 reasoning 的回复气泡正上方」；
- * ② 名字：从「思考链」改成「{称呼}的小心思」——称呼跟随抽屉里设置的名字，
- *    没设就用「哥哥」（用户一直这么叫他）。文案统一走 `owner` 参数，不要在这里写死。
- *
- * 流式期间只显示三个跳动的点（气泡里另有「{称呼}在想…」文案，避免两处都写字重复），
- * 收完之后变成 ✓ + 名字 + 右箭头，暗示可以点开。
+ * 设计稿里没有额外的思考药丸：这行小字本身可点，点开就是「思考链」下弹窗。
+ * 流式期间自动变成「哥哥在想」+ 三个跳点，收完后回到「哥哥想说」。
  */
 function ThoughtEntry({ owner, active, onClick }: { owner: string; active: boolean; onClick: () => void }) {
-  const label = `${owner}的小心思`;
-  return (
-    <button
-      type="button"
-      data-testid="thought-entry"
-      title={active ? `${owner}正在想，点开看已经想到哪了` : `点开看${label}`}
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        'mb-1 inline-flex items-center gap-1 rounded-full bg-chat-pill px-2 py-[3px] text-[11px] leading-none',
-        'text-chat-meta shadow-sm transition hover:text-chat-pill-fg active:scale-95',
-      )}
-    >
-      {/* 思考中：「{称呼}在想」+ 三个跳动点（2026-10-18 用户要求：把末尾的省略号删掉，
-          因为省略号和动点都是点，摆一起重复）。收完之后换成 ✓ + 「{称呼}的小心思」+ 箭头 */}
-      {active ? (
-        <>
-          <span>{owner}在想</span>
-          <span className="flex items-center gap-[3px]">
-            <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '0ms' }} />
-            <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '150ms' }} />
-            <span className="think-dot h-1 w-1 rounded-full bg-current" style={{ animationDelay: '300ms' }} />
-          </span>
-        </>
-      ) : (
-        <>
-          <Check className="h-3 w-3 shrink-0 text-chat-accent" />
-          <span>{label}</span>
-          <ChevronRight className="h-3 w-3 shrink-0 opacity-60" />
-        </>
-      )}
-    </button>
-  );
+  return <SenderLabel name={owner} thinking={active} onClick={onClick} testid="thought-entry" />;
 }
 
 /**
@@ -616,94 +594,59 @@ function ThoughtEntry({ owner, active, onClick }: { owner: string; active: boole
  * 思考链已经搬到气泡上方（见 `ThoughtEntry`），这里只管正文与「{称呼}在想…」占位。
  * 还没出正文且没有思考链时给一句占位，否则气泡会是空的。
  */
-function AssistantBody({ content, streaming, owner }: { content: string; streaming: boolean; owner: string }) {
+function AssistantBody({ content, streaming, owner, plain }: { content: string; streaming: boolean; owner: string; plain?: boolean }) {
   if (!content) {
     return streaming ? <span className="text-chat-meta">{owner}在想…</span> : null;
   }
+  // 短对话模式（空心爱心）：像发消息一样 —— 纯文本，不走 Markdown
+  if (plain) return <span className="whitespace-pre-wrap">{content}</span>;
   return <Markdown>{content}</Markdown>;
 }
 
 /**
- * 思考链**下弹窗**（2026-10-18 用户要求：从居中卡片改成从底部滑上来）。
- * 遮罩点一下就关；底部再给一颗「收起」，手机上够得着。
+ * 思考链**下弹窗**（对齐设计稿：白纸弹层、左标题 + 右上 ✕、正文是一块浅灰预览块）。
  */
 function ThoughtSheet({ reasoning, owner, onClose }: { reasoning: string; owner: string; onClose: () => void }) {
+  const hasReasoning = reasoning.trim().length > 0;
   return (
-    <BottomSheet
-      open
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-      title={`${owner}的小心思`}
-      testid="thought-sheet"
-      maxHeight="max-h-[72vh]"
-    >
-      <div className="px-5 pb-3 pt-1">
-        <p
-          data-testid="thought-text"
-          className="whitespace-pre-wrap text-[14px] leading-relaxed text-chat-ai-fg/80"
-        >
-          {reasoning}
-        </p>
-      </div>
-      <div className="px-4 pb-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full rounded-xl bg-chat-pill py-2.5 text-[14px] font-medium text-chat-pill-fg transition active:scale-[0.99]"
-        >
-          收起
-        </button>
-      </div>
-    </BottomSheet>
-  );
-}
-
-/**
- * 对白风格**双态药丸**（最开始的需求：💕 / 🩷，单颗药丸点一下翻面，不带文字）。
- *
- * - 💕 `fragmented` 微信碎片流（一句一条、拆成多条气泡）
- * - 🩷 `immersive`  沉浸纯对话流（整段一条、只写台词）
- *
- * 只有两个状态，所以点一下就翻面（`onToggle` 直接调 store 的 `toggle`），
- * 不弹面板、不解释。极简到只剩一个 emoji，靠 `aria-label` / `title` 补语义——
- * 视觉上不占地方，读屏和鼠标用户也不会一头雾水。
- * 状态存 localStorage（见 `stores/chatStyleStore`），刷新后仍是你上次选的那个。
- */
-function ChatStylePill({ mode, onToggle }: { mode: ChatStyleMode; onToggle: () => void }) {
-  const meta = CHAT_STYLE_META[mode];
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      data-testid="chat-style-pill"
-      data-mode={mode}
-      aria-label={`对白风格：${meta.title}，点一下切换`}
-      aria-pressed={mode === 'fragmented'}
-      title={`${meta.title} · 点一下换另一种`}
-      className={cn(
-        // 实色药丸 + 细描边：和输入框同一套纸张语汇
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill transition',
-        'hover:bg-chat-line active:scale-95',
+    <ChatSheet open onOpenChange={(v) => !v && onClose()} title="思考链" testid="thought-sheet" maxHeight="max-h-[72vh]">
+      {hasReasoning ? (
+        <>
+          <p className="mb-2 text-[13px] text-chat-meta">{owner}开口前想到的：</p>
+          <div
+            data-testid="thought-text"
+            className="rounded-2xl bg-chat-pill px-4 py-3 text-[14px] leading-relaxed text-chat-pill-fg"
+          >
+            <p className="whitespace-pre-wrap">{reasoning}</p>
+          </div>
+        </>
+      ) : (
+        <div data-testid="thought-empty" className="flex flex-col items-center gap-2 py-10 text-center">
+          <p className="text-[14px] font-medium text-foreground">这条消息没有留下思考过程</p>
+          <p className="text-[12px] leading-5 text-chat-meta">
+            有的回复是脱口而出的，没有经过思考链；<br />
+            生成时想过什么，这里就会留下什么。
+          </p>
+        </div>
       )}
-    >
-      <span data-testid="chat-style-icon" className="text-[15px] leading-none" aria-hidden>
-        {meta.icon}
-      </span>
-    </button>
+    </ChatSheet>
   );
 }
 
 /**
- * 底部面板里的单个入口（微信式：白色圆角方块 + 方块下方一行小字）。
- * `[&_svg]` 是为了不用挨个改 4 个调用点的图标尺寸。
- */
-/**
- * 「+」面板里的一张功能卡。
+ * 对白风格切换（💕 碎片流 / 🩷 沉浸流）。
  *
- * 统一规格：单元格内**居中**、图标方块 h-14 w-14 定尺、圆角 2xl、标签 11px。
+ * 设计稿的输入条没有额外药丸，所以入口收进「+」面板（同为一张功能卡，`data-testid`
+ * 保留 `chat-style-pill`，行为不变：点一下翻面，状态照旧存 localStorage）。
+ */
+
+/**
+ * 底部面板里的单个入口（设计稿：浅灰圆角方块 + 方块下方一行小字，无描边无投影）。
+ *
+ * 统一规格：单元格内**居中**、图标方块 h-14 w-14 定尺、圆角 20px、标签 11px。
  * 卡片宽度由父级等宽网格给（`w-full`），所以每格一样宽 —— 不要再在按钮上写死宽度。
  * 触控反馈走整卡 `active:scale-95`（比只缩图标方块更跟手）。
+ * `[&_svg]` 是为了不用挨个改调用点的图标尺寸。
  */
 function AttachButton({
   icon,
@@ -723,9 +666,9 @@ function AttachButton({
       aria-label={label}
       title={label}
       data-testid={testid}
-      className="group flex w-full flex-col items-center gap-1.5 rounded-xl py-1 transition duration-150 active:scale-95"
+      className="group flex w-full flex-col items-center gap-2 rounded-xl py-1 transition duration-150 active:scale-95"
     >
-      <span className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-chat-line bg-chat-pill text-chat-pill-fg shadow-sm transition group-hover:bg-chat-line [&_svg]:h-6 [&_svg]:w-6">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-chat-pill text-chat-pill-fg transition group-hover:bg-chat-line [&_svg]:h-6 [&_svg]:w-6">
         {icon}
       </span>
       <span className="text-[11px] leading-none text-chat-meta">{label}</span>
@@ -753,6 +696,10 @@ export function ChatPage() {
   /** 打开菜单时这条消息在视口里的位置（浮层要贴着它弹出，微信长按那种） */
   const [menuRect, setMenuRect] = useState<{ top: number; bottom: number; left: number; width: number } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  /** 心情浮层：点顶栏头像蹦出「ta 的心情/状态」（数据用心潮，见 MoodPopover） */
+  const [moodOpen, setMoodOpen] = useState(false);
+  /** 角色页（设计稿 11 页）：从心情浮层底部进去，只读 + 复用编辑浮层 */
+  const [charOpen, setCharOpen] = useState(false);
   // 点名字直接进「心潮念」完整页（2026-10-20 起不再开旧的内心中枢抽屉）
   /** 多图堆叠卡片点开的大图查看器（整页、纯色不透明，遵守「点开=新页面」） */
   const [photoView, setPhotoView] = useState<{ urls: string[]; index: number } | null>(null);
@@ -765,8 +712,8 @@ export function ChatPage() {
    * 备注存在后端 settings（`profile.partnerRemark`），AI 也能改；本名兜底，再兜会话标题。
    */
   const displayName = partnerRemark || partnerName;
-  /** 「小心思 / 在想…」里的人称：跟聊天名字走，没设就用「哥哥」（用户一直这么叫） */
-  const ownerName = displayName || '哥哥';
+  /** 「小心思 / 在想…」里的人称：跟聊天名字走；预设称呼已清空（2026-10-29），没设就中性叫「对方」 */
+  const ownerName = displayName || '对方';
   /** 说话风格（💕 碎片流 / 🩷 沉浸流），存 localStorage，刷新保持 */
   const chatStyleMode = useChatStyle((s) => s.mode);
   const toggleChatStyle = useChatStyle((s) => s.toggle);
@@ -783,6 +730,14 @@ export function ChatPage() {
     null,
   );
   const [web] = useState(true);
+
+  /** 长短对话（顶栏爱心键）：实心 = 长对话（工具 + Markdown，默认）；空心 = 短对话，像发消息一样。存 localStorage */
+  const [longChat, setLongChat] = useState(() => localStorage.getItem('bb-long-chat') !== '0');
+  const toggleLongChat = () =>
+    setLongChat((v) => {
+      localStorage.setItem('bb-long-chat', v ? '0' : '1');
+      return !v;
+    });
   const [stationId, setStationId] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [vision, setVision] = useState<{ model: string | null } | null>(null);
@@ -805,6 +760,11 @@ export function ChatPage() {
   });
   /** 正在进行的通话类型（null = 没在通话）。语音/视频共用这一个浮层。 */
   const [callKind, setCallKind] = useState<CallKind | null>(null);
+  /** 通话记录详情（设计稿 9 页）：点聊天里那张通话卡打开 */
+  const [callDetail, setCallDetail] = useState<{
+    call: NonNullable<ChatMessage['call']>;
+    ts?: number;
+  } | null>(null);
   /** PaiVoice 实时语音层状态：起来了就让语音通话走它，否则回退旧通话浮层 */
   const [paiVoice, setPaiVoice] = useState<{ up: boolean; wsUrl: string } | null>(null);
   /** 呼出时刻，挂断时作为 startedAt 落库 */
@@ -834,6 +794,15 @@ export function ChatPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileDocRef = useRef<HTMLInputElement>(null);
   const pressTimerRef = useRef<number | null>(null);
+  /** 爱心键长按 = 切对白风格（对白键已并入爱心，2026-10-29） */
+  const stylePressRef = useRef<number | null>(null);
+  const styleLongFiredRef = useRef(false);
+  const cancelStylePress = () => {
+    if (stylePressRef.current) {
+      window.clearTimeout(stylePressRef.current);
+      stylePressRef.current = null;
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -877,6 +846,23 @@ export function ChatPage() {
   }, [input]);
 
   const path = useMemo(() => (conversation ? activePath(conversation) : []), [conversation]);
+
+  /** 通话整屏中间那颗引用气泡：对方最后说的一句话（跳过通话卡那条占位文案） */
+  const lastAssistantLine = useMemo(() => {
+    const line =
+      [...path]
+        .reverse()
+        .find(
+          (m) =>
+            m.role === 'assistant' &&
+            m.content.trim() &&
+            !m.call &&
+            !/^（通话/.test(m.content.trim()) &&
+            !/^⚠/.test(m.content.trim()),
+        )?.content ?? '';
+    const one = line.replace(/\s+/g, ' ').trim();
+    return one.length > 46 ? `${one.slice(0, 46)}…` : one;
+  }, [path]);
 
   // 平滑贴底：新消息 / 流式内容增长时都跟到底部（仅当用户已在底部附近，避免打断上翻阅读）
   useEffect(() => {
@@ -997,13 +983,6 @@ export function ChatPage() {
       pressTimerRef.current = null;
     }
   };
-  const toggleMenu = (id: string, el: HTMLElement | null) => {
-    if (menuForId === id) {
-      closeMenu();
-      return;
-    }
-    openMenu(id, el);
-  };
   const openMenu = (id: string, el: HTMLElement | null) => {
     // 锚点优先取**气泡本身**（而不是整行）：整行是满宽的，按它的中心算会把菜单
     // 摆到屏幕正中，而微信那种观感是贴着气泡边缘出来的
@@ -1090,6 +1069,8 @@ export function ChatPage() {
       web,
       // 对白风格按请求带：存 localStorage，后端据此拼提示词（不依赖服务端设置）
       chatStyle: useChatStyle.getState().mode,
+      // 短对话（空心爱心）：不挂工具、纯文本口语回复
+      longChat,
       onDelta: (delta) => {
         updateMessage(assistantId, (prev) => ({ content: prev.content + delta }));
       },
@@ -1476,11 +1457,11 @@ export function ChatPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-chat-bg text-foreground">
-      {/* 顶栏：草图样式——正中大头像 + 名字 + 名字下方时间，点头像/名字进「内心（心潮）」。
-          左右只留汉堡（移动端）与礼物 / 搜索，不再堆按钮，保持干净。 */}
+      {/* 顶栏：设计稿布局——左「菜单 + 爱心」、正中「大头像 + 名字 + ▾」、右「通话 + 搜索」。
+          容器透明（不再自带底色），头像/名字仍是「心潮」入口。 */}
       <div
         data-testid="chat-topbar"
-        className="relative flex min-h-[100px] shrink-0 items-center gap-2 border-b border-chat-line bg-chat-bar px-3"
+        className="relative flex min-h-[104px] shrink-0 items-center gap-2.5 bg-transparent px-4"
       >
         {/* 移动端：汉堡 → 主抽屉（桌面有左侧常驻栏，不给重复入口） */}
         <button
@@ -1489,16 +1470,84 @@ export function ChatPage() {
           aria-label="打开菜单"
           title="菜单"
           data-testid="chat-hamburger"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95 md:hidden"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95 md:hidden"
         >
-          <Menu className="h-4 w-4" />
+          <Menu className="h-[18px] w-[18px]" />
+        </button>
+        {/* 汉堡旁：爱心键（二合一，2026-10-29）
+            点击 = 长短对话切换（实心 = 长对话：工具 + Markdown；空心 = 短对话，像发消息一样）
+            长按 500ms = 切对白风格（💕 碎片流 / 🩷 沉浸流）——原对白键的功能并到这里 */}
+        <button
+          type="button"
+          onClick={() => {
+            if (styleLongFiredRef.current) {
+              styleLongFiredRef.current = false;
+              return;
+            }
+            toggleLongChat();
+          }}
+          onPointerDown={() => {
+            styleLongFiredRef.current = false;
+            if (stylePressRef.current) window.clearTimeout(stylePressRef.current);
+            stylePressRef.current = window.setTimeout(() => {
+              styleLongFiredRef.current = true;
+              toggleChatStyle();
+            }, 500);
+          }}
+          onPointerUp={() => {
+            if (stylePressRef.current) {
+              window.clearTimeout(stylePressRef.current);
+              stylePressRef.current = null;
+            }
+          }}
+          onPointerLeave={cancelStylePress}
+          onPointerCancel={cancelStylePress}
+          aria-pressed={longChat}
+          aria-label={`爱心：点击切长短对话（当前${longChat ? '长' : '短'}），长按切对白风格（当前${CHAT_STYLE_META[chatStyleMode].title}）`}
+          title={`点击：长短对话（当前${longChat ? '长对话' : '短对话'}）\n长按：切对白风格（当前${CHAT_STYLE_META[chatStyleMode].title}）`}
+          data-testid="chat-mode-toggle"
+          data-mode={longChat ? 'long' : 'short'}
+          data-style={chatStyleMode}
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill transition hover:bg-chat-line active:scale-95',
+            longChat ? 'text-chat-pill-fg' : 'text-chat-meta',
+          )}
+        >
+          <Heart className={cn('h-[18px] w-[18px]', longChat && 'fill-current')} />
         </button>
         {/* 会话名字：**绝对定位到顶栏正中**（无论左右按钮增减，名字始终真正居中）。 */}
         <div
           data-testid="chat-title-slot"
           className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
         >
-          {/* 整块都是入口：点开看 {ownerName} 此刻在想什么（内心 / 心潮） */}
+          {/* 头像：点头像 = 蹦出「ta 的心情/状态」浮层（名字仍进心潮，见下） */}
+          <button
+            type="button"
+            onClick={() => setMoodOpen((v) => !v)}
+            data-testid="mood-popover-trigger"
+            data-mood-popover-keep
+            aria-label="看看 ta 现在的心情"
+            title={`看看${ownerName}现在的心情`}
+            className={cn(
+              'pointer-events-auto relative mt-1 inline-flex rounded-full transition',
+              'hover:opacity-90 active:scale-[0.97]',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
+              moodOpen && 'ring-2 ring-chat-accent/60',
+            )}
+          >
+            {/* 大头像 + 角落状态灯（绿 / 黄 / 红 = 通道状态）。
+                圆形框套在**外层 span**：AvatarContent 的 emoji 分支只负责内容，
+                尺寸/圆角/裁切必须由这里给，否则 emoji 会变成一个方方块。 */}
+            <span className="relative inline-flex">
+              <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-sm">
+                <AvatarContent value={partnerAvatar} fallback="🐰" className="text-[30px]" />
+              </span>
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar">
+                <ConnDot />
+              </span>
+            </span>
+          </button>
+          {/* 名字 + ▾：仍是心潮入口（chat-title-btn 回归锚点保持不动） */}
           <button
             type="button"
             onClick={() => navigate('/xinchao')}
@@ -1506,61 +1555,57 @@ export function ChatPage() {
             aria-label="打开内心与记忆"
             title={`点开看${ownerName}此刻在想什么`}
             className={cn(
-              'pointer-events-auto flex flex-col items-center gap-1 rounded-2xl px-3 py-1 transition',
+              'pointer-events-auto mt-1 flex items-center gap-1 rounded-2xl px-2.5 py-1 transition',
               'hover:bg-chat-line/40 active:scale-[0.98]',
               // 点完不要留一圈浏览器默认黑描边；键盘 Tab 过来才给一圈浅色 focus ring
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
             )}
           >
-            {/* 大头像 + 角落状态灯（绿 / 黄 / 红 = 通道状态） */}
-            <span className="relative inline-flex">
-              <AvatarContent
-                value={partnerAvatar}
-                fallback="🐰"
-                className="h-11 w-11 shrink-0 border border-chat-line bg-chat-pill shadow-sm"
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar">
-                <ConnDot />
-              </span>
-            </span>
             <span
               data-testid="chat-title"
-              className="display min-w-0 max-w-[60vw] truncate text-[15px] font-semibold tracking-tight text-foreground md:max-w-[420px]"
+              className="display min-w-0 max-w-[40vw] truncate text-[16px] font-semibold tracking-tight text-foreground md:max-w-[420px]"
             >
               {/* 称呼：抽屉里改过就用自定义的，没改过还是沿用会话标题 */}
               {displayName || conversation?.title || '小蓝莓'}
             </span>
-            <ClockLabel />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-chat-meta" aria-hidden />
           </button>
         </div>
-        {/* 右侧按钮组：礼物盒 + 搜索，功能不丢（ml-auto 顶到最右，desktop 汉堡隐藏也不影响） */}
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        {/* 右侧按钮组：通话 + 搜索（设计稿布局：礼物盒挪进「+」面板，顶栏不堆按钮） */}
+        <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <button
             type="button"
-            onClick={() => navigate('/gifts')}
-            aria-label="礼物盒"
-            title="礼物盒"
-            data-testid="chat-gift"
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
+            onClick={() => startCall('voice')}
+            aria-label="语音通话"
+            title="语音通话"
+            data-testid="chat-call"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
           >
-            {/* 呼吸光晕：与记忆 / 情绪中枢入口并列的发光礼物盒 */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-full bg-amber-300/30 blur-[6px] animate-pulse"
-            />
-            <Gift className="relative h-4 w-4 text-amber-200" />
+            <Phone className="h-[18px] w-[18px]" />
           </button>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="搜索记录"
             title="搜索记录"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-[18px] w-[18px]" />
           </button>
         </div>
       </div>
+
+      {/* 心情浮层：点头像蹦出，点空白 / Esc / 再点头像关闭（数据用心潮，无遮罩不挡聊天） */}
+      <MoodPopover
+        open={moodOpen}
+        onClose={() => setMoodOpen(false)}
+        partnerName={displayName || conversation?.title || '小蓝莓'}
+        partnerAvatar={partnerAvatar}
+        onOpenCharacter={() => {
+          setMoodOpen(false);
+          setCharOpen(true);
+        }}
+      />
 
       {/* 消息列表 + 右下角「回到底部」圆钮 */}
       <div className="relative min-h-0 flex-1">
@@ -1580,9 +1625,13 @@ export function ChatPage() {
           <>
             {/* 顶部居中时间戳 */}
             <DateDivider label={`${fmtDateLabel(Date.now())} · ${fmtTime(Date.now())}`} />
-            <MsgRow mine={false} stamp={<InlineStamp ts={Date.now()} />}>
+            <MsgRow
+              mine={false}
+              label={<SenderLabel name={ownerName} />}
+              stamp={<InlineStamp ts={Date.now()} />}
+            >
               <div
-                className="rounded-[20px] rounded-bl-[8px] border border-chat-line/70 bg-chat-ai px-4 py-3 text-[15px] leading-6 text-chat-ai-fg"
+                className="rounded-[22px] bg-chat-ai px-4 py-3 text-[15px] leading-6 text-chat-ai-fg shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]"
                 style={
                   { '--foreground': 'var(--chat-ai-fg)', '--muted-foreground': 'var(--chat-meta)' } as React.CSSProperties
                 }
@@ -1630,6 +1679,24 @@ export function ChatPage() {
             /** 刚发出、正文还没到的 AI 消息：只留上方「{称呼}在想…」，不再给一个空气泡 */
             const waitingFirstToken =
               m.role === 'assistant' && m.status === 'streaming' && !m.content && !!m.reasoning;
+            /**
+             * 设计稿：对方每条**消息组的第一条**上方都有「〉{称呼}想说」。
+             * 有思考链时这行本身就是入口（可点），流式期间自动变成「在想」+ 跳点。
+             */
+            /**
+             * 设计稿：对方每条**消息组的第一条**上方都有「〉{称呼}想说」。
+             * 这行本身就是思考链入口（一律可点，没留下思考过程时弹层里给空态说明）；
+             * 流式期间自动变成「在想」+ 跳点。通话记录卡不挂这行（2026-10-29：通话不要思考链）。
+             */
+            const groupStart = needStamp || !prev || prev.role !== m.role;
+            const senderLabel =
+              m.role === 'assistant' && groupStart && !isEditing && !m.call ? (
+                <ThoughtEntry
+                  owner={ownerName}
+                  active={m.status === 'streaming' && !m.content}
+                  onClick={() => setThoughtReasoning(m.reasoning ?? '')}
+                />
+              ) : null;
 
             return (
               <div key={m.id} className="flex flex-col" data-msg-row={m.id}>
@@ -1637,7 +1704,7 @@ export function ChatPage() {
                 {needDate && (
                   <DateDivider label={`${fmtDateLabel(m.createdAt)} · ${fmtTime(m.createdAt)}`} />
                 )}
-                {/* 消息行：参考图排版——头像对齐气泡顶部、时间戳贴气泡内侧且底对齐 */}
+                {/* 消息行：设计稿排版——没有头像，代之以气泡上方的「〉{称呼}想说」，时间贴气泡外侧 */}
                 <div
                   className="mb-2"
                   {...(!isEditing
@@ -1653,25 +1720,18 @@ export function ChatPage() {
                 >
                   <MsgRow
                     mine={m.role === 'user'}
+                    label={senderLabel}
                     stamp={needStamp && !waitingFirstToken ? <InlineStamp ts={m.createdAt} /> : null}
-                    above={
-                      <>
-                        {/* 思考链：挂在这条回复的最上面（有 reasoning 才出现） */}
-                        {m.role === 'assistant' && m.reasoning ? (
-                          <ThoughtEntry
-                            owner={ownerName}
-                            active={m.status === 'streaming'}
-                            onClick={() => setThoughtReasoning(m.reasoning ?? '')}
-                          />
-                        ) : null}
-                        {m.quote ? <QuoteCard label={m.quote.label} /> : null}
-                      </>
-                    }
+                    above={m.quote ? <QuoteCard label={m.quote.label} /> : null}
                     below={m.inner ? <InnerNote text={m.inner} /> : null}
                   >
                     {/* 通话记录卡：不是气泡，是一张卡 */}
                     {m.call ? (
-                      <CallRecordCard call={m.call} />
+                      <CallRecordCard
+                        call={m.call}
+                        ts={m.createdAt}
+                        onClick={() => setCallDetail({ call: m.call!, ts: m.createdAt })}
+                      />
                     ) : waitingFirstToken ? null : multiBubble ? (
                       /* 即兴聊天：一条 AI 消息按行拆成多条气泡，一条条往外蹦。
                          间距用 gap-1、内边距 py-2，比整段气泡更紧 —— 碎片流本来就是这种密度 */
@@ -1680,7 +1740,7 @@ export function ChatPage() {
                           <div
                             key={si}
                             data-testid="chat-bubble"
-                            className="select-none rounded-[20px] rounded-bl-[8px] border border-chat-line/70 bg-chat-ai px-3.5 py-2 text-[15px] leading-6 text-chat-ai-fg"
+                            className="select-none rounded-[22px] bg-chat-ai px-3.5 py-2 text-[15px] leading-6 text-chat-ai-fg shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]"
                             style={
                               {
                                 '--foreground': 'var(--chat-ai-fg)',
@@ -1688,7 +1748,7 @@ export function ChatPage() {
                               } as React.CSSProperties
                             }
                           >
-                            <Markdown>{seg}</Markdown>
+                            {!longChat ? <span className="whitespace-pre-wrap">{seg}</span> : <Markdown>{seg}</Markdown>}
                           </div>
                         ))}
                       </div>
@@ -1698,13 +1758,13 @@ export function ChatPage() {
                       className={cn(
                         'text-[15px] leading-6',
                         !isEditing && 'select-none',
-                        'rounded-[20px] px-4 py-2.5',
+                        'rounded-[22px] px-4 py-2.5',
                         m.role === 'user'
-                          // 己方：陶土米色气泡、深墨字
-                          ? 'whitespace-pre-wrap rounded-br-[8px] border border-chat-line/50 bg-chat-me text-chat-me-fg'
-                          // 对方：暖米灰气泡、近黑字
-                          : 'rounded-bl-[8px] border border-chat-line/70 bg-chat-ai text-chat-ai-fg',
-                        m.sticker && 'border-transparent bg-transparent p-0',
+                          // 己方：纯黑气泡、白字（设计稿极简黑白）
+                          ? 'whitespace-pre-wrap bg-chat-me text-chat-me-fg'
+                          // 对方：纯白气泡、近黑字 + 一层几乎看不见的投影
+                          : 'bg-chat-ai text-chat-ai-fg shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]',
+                        m.sticker && 'border-transparent bg-transparent p-0 shadow-none',
                         // 错误仍保持气泡形状，只是把字换成警示红
                         m.status === 'error' && m.role === 'assistant' && 'text-destructive',
                       )}
@@ -1727,7 +1787,7 @@ export function ChatPage() {
                             rows={3}
                             className={cn(
                               'w-full resize-none select-text rounded-lg px-2 py-1 text-[15px] outline-none',
-                              m.role === 'user' ? 'bg-black/[0.06] text-chat-me-fg' : 'bg-chat-line/60 text-chat-ai-fg',
+                              m.role === 'user' ? 'bg-white/10 text-chat-me-fg' : 'bg-chat-line/60 text-chat-ai-fg',
                             )}
                           />
                           <div className="flex justify-end gap-1">
@@ -1758,7 +1818,7 @@ export function ChatPage() {
                       ) : m.voiceMs ? (
                         <VoiceBubble id={m.id} ms={m.voiceMs} text={m.content} />
                       ) : m.role === 'assistant' ? (
-                        <AssistantBody content={m.content} streaming={m.status === 'streaming'} owner={ownerName} />
+                        <AssistantBody content={m.content} streaming={m.status === 'streaming'} owner={ownerName} plain={!longChat} />
                       ) : m.sticker ? (
                         <StickerBubble emoji={m.sticker} />
                       ) : (
@@ -1812,7 +1872,7 @@ export function ChatPage() {
 
                 {/* 已记入备忘录提示 */}
                 {m.role === 'assistant' && (memoAdded[m.id]?.length ?? 0) > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1.5 pl-10">
+                  <div className="mt-1 flex flex-wrap gap-1.5 pl-1">
                     {memoAdded[m.id].map((mm, i) => (
                       <button
                         key={i}
@@ -1843,7 +1903,7 @@ export function ChatPage() {
                 <div
                   className={cn(
                     'mt-1 flex items-center gap-1.5',
-                    m.role === 'user' ? 'justify-end pr-10' : 'pl-10',
+                    m.role === 'user' ? 'justify-end pr-1' : 'pl-1',
                   )}
                 >
                   {showSwitch && (
@@ -1869,20 +1929,10 @@ export function ChatPage() {
                       </button>
                     </div>
                   )}
-                  <button
-                    type="button"
-                    data-menu
-                    onClick={(e) =>
-                      toggleMenu(m.id, e.currentTarget.closest('[data-msg-row]') as HTMLElement | null)
-                    }
-                    aria-label="更多操作"
-                    className="flex h-5 w-5 items-center justify-center rounded text-chat-meta transition hover:bg-chat-line/70 hover:text-foreground"
-                  >
-                    <MoreHorizontal className="h-3.5 w-3.5" />
-                  </button>
                 </div>
+                {/* 「更多操作」的三个点按钮已删（2026-10-29）：长按消息 = 同一个菜单，入口只留长按 */}
 
-                {/* 长按消息 / 点 ⋯ → **贴着这条消息弹出的深色菜单**（微信长按那种）。
+                {/* 长按消息 → **贴着这条消息弹出的深色菜单**（微信长按那种）。
                     portal 到 body，位置由 `menuRect` 算，所以不会被气泡或滚动容器裁掉。 */}
                 {menuOpen && (
                   <MessageMenu anchor={menuRect} onClose={closeMenu}>
@@ -1986,10 +2036,10 @@ export function ChatPage() {
         )}
       </div>
 
-      {/* 输入区：暖奶白底一条（+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 深色发送圆钮） */}
+      {/* 输入区：与画布同底的 #F4F4F4 一条（+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 发送圆钮） */}
       <div
         data-testid="chat-input-bar"
-        className="shrink-0 border-t border-chat-line bg-chat-bar px-3 pb-3 pt-3"
+        className="shrink-0 bg-chat-bg px-4 pb-4 pt-3"
       >
         {activeSkills.length > 0 && (
           <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
@@ -2083,12 +2133,10 @@ export function ChatPage() {
           </div>
         )}
         <div className="mx-auto w-full max-w-3xl">
-          <div className="flex items-end gap-2">
-            {/* 最左：对白风格 💕/🩷 双态药丸（点一下翻面，全站唯一入口） */}
-            <ChatStylePill mode={chatStyleMode} onToggle={toggleChatStyle} />
-
-            {/* 中间：输入胶囊（模型药丸 + 输入框） */}
-            <div className="flex min-h-[42px] min-w-0 flex-1 items-center gap-1.5 rounded-[22px] border border-chat-line bg-chat-pill px-2.5 py-1 shadow-sm ring-1 ring-transparent transition focus-within:border-chat-accent/40 focus-within:ring-chat-accent/25">
+          {/* 设计稿：一整条胶囊输入（左「模型 ▾」+ 中间输入 + 右「表情 / 语音」），
+              右侧再单拎一颗圆形「+」。对白风格入口搬进 + 面板，输入条不再挂药丸。 */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex min-h-[52px] min-w-0 flex-1 items-center gap-1 rounded-full bg-chat-pill pl-3.5 pr-1.5 transition focus-within:ring-1 focus-within:ring-chat-line">
               {/* 模型选择跟着参考图搬进输入条，顶栏就不挤了 */}
               <ModelPicker
                 stationId={stationId}
@@ -2096,6 +2144,10 @@ export function ChatPage() {
                 onChange={(sid, m) => {
                   setStationId(sid);
                   setModel(m);
+                }}
+                onBeforeOpen={() => {
+                  setAttachOpen(false);
+                  setStickerOpen(false);
                 }}
               />
               <input
@@ -2150,66 +2202,65 @@ export function ChatPage() {
                   if (e.nativeEvent.isComposing || e.keyCode === 229) return;
                   if (e.key === 'Enter' && !busy) void send();
                 }}
-                placeholder={replyToId ? '回复这条消息…' : 'Message...'}
-                className="h-8 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
+                placeholder={replyToId ? '回复这条消息…' : '说点什么…'}
+                className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
               />
+              {/* 右·表情 😊（点了面板向下展开）—— 设计稿里在胶囊内部、语音左边 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStickerOpen((v) => !v);
+                  setAttachOpen(false);
+                }}
+                aria-label="表情"
+                aria-expanded={stickerOpen}
+                title="表情"
+                data-testid="chat-emoji"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                  stickerOpen ? 'text-chat-pill-fg' : 'text-chat-meta hover:text-chat-pill-fg',
+                )}
+              >
+                <Smile className="h-[19px] w-[19px]" />
+              </button>
+
+              {/* 右·语音 → 语音识别（STT），定稿直接发出去 */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (stt.listening) {
+                    stt.stop();
+                    return;
+                  }
+                  setAttachOpen(false);
+                  setStickerOpen(false);
+                  stt.start();
+                }}
+                aria-label={stt.listening ? '停止语音输入' : '语音输入'}
+                aria-pressed={stt.listening}
+                title={stt.listening ? '正在听，点一下停止' : '语音输入'}
+                data-testid="chat-mic"
+                data-listening={stt.listening ? 'true' : 'false'}
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                  stt.listening
+                    ? 'animate-pulse bg-red-500 text-white shadow-sm'
+                    : 'text-chat-meta hover:text-chat-pill-fg',
+                )}
+              >
+                <Mic className="h-[19px] w-[19px]" />
+              </button>
             </div>
 
-            {/* 右·贴着输入框：麦克风 → 语音识别（STT），定稿直接发出去 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (stt.listening) {
-                  stt.stop();
-                  return;
-                }
-                setAttachOpen(false);
-                setStickerOpen(false);
-                stt.start();
-              }}
-              aria-label={stt.listening ? '停止语音输入' : '语音输入'}
-              aria-pressed={stt.listening}
-              title={stt.listening ? '正在听，点一下停止' : '语音输入'}
-              data-testid="chat-mic"
-              data-listening={stt.listening ? 'true' : 'false'}
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
-                stt.listening
-                  ? 'animate-pulse bg-red-500 text-white shadow-sm'
-                  : 'border border-chat-line bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
-              )}
-            >
-              <Mic className="h-[18px] w-[18px]" />
-            </button>
-
-            {/* 右·贴着输入框：表情 😊（点了面板向下展开） */}
-            <button
-              type="button"
-              onClick={() => {
-                setStickerOpen((v) => !v);
-                setAttachOpen(false);
-              }}
-              aria-label="表情"
-              aria-expanded={stickerOpen}
-              title="表情"
-              data-testid="chat-emoji"
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition',
-                stickerOpen ? 'text-chat-accent' : 'text-chat-meta hover:text-chat-pill-fg',
-              )}
-            >
-              <Smile className="h-[18px] w-[18px]" />
-            </button>
-
-            {/* 最右：微信式三态 —— 空=「+」开面板 / 有字=「发送」 / 生成中=「停止」。
-                平时没打字是「+」，点开唤起更多小工具；一打字「+」顺滑变成「发送」。 */}
+            {/* 最右·独立圆钮：空=「+」开面板 / 有字=「↑」发送 / 生成中=「■」停止。
+                设计稿里这颗钮在胶囊**外面**，并随输入状态换成黑底白箭头。 */}
             {busy ? (
               <button
                 type="button"
                 onClick={stop}
                 aria-label="停止"
                 data-testid="chat-stop"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-me text-chat-me-fg transition active:scale-95"
               >
                 <span className="block h-[11px] w-[11px] rounded-[2px] bg-current" />
               </button>
@@ -2219,9 +2270,9 @@ export function ChatPage() {
                 onClick={() => void send()}
                 aria-label="发送"
                 data-testid="chat-send"
-                className="flex h-9 shrink-0 items-center justify-center rounded-full bg-chat-accent px-4 text-[14px] font-medium text-chat-accent-fg shadow-sm transition active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-me text-chat-me-fg transition active:scale-95"
               >
-                发送
+                <ArrowUp className="h-5 w-5" />
               </button>
             ) : (
               <button
@@ -2235,60 +2286,76 @@ export function ChatPage() {
                 title="更多功能"
                 data-testid="chat-attach"
                 className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
-                  attachOpen ? 'bg-chat-accent text-chat-accent-fg' : 'border border-chat-line bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                  attachOpen ? 'bg-chat-me text-chat-me-fg' : 'bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
                 )}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className={cn('h-5 w-5 transition-transform', attachOpen && 'rotate-45')} />
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ===== 微信式底部面板：`+` 与表情包都**往下**长，铺满宽度 =====
-          两个面板共用同一个固定高度，来回切不会把消息区顶得一跳一跳。
-          内容再收进 max-w-3xl 跟输入行对齐（桌面端不会把方块甩到天边）。 */}
+      {/* ===== 底部面板（设计稿：白色纸面上滑，顶部一撮抓手） =====
+          两个面板共用同一块白纸底，来回切不会把消息区顶得一跳一跳。
+          内容收进 max-w-[430px]，手机上铺满、桌面端不散。 */}
       {(attachOpen || stickerOpen) && (
         <div
           data-testid="chat-bottom-panel"
           data-panel={attachOpen ? 'attach' : 'sticker'}
-          className="h-64 shrink-0 border-t border-chat-line bg-chat-bg pb-[env(safe-area-inset-bottom)]"
+          className={cn(
+            'flex shrink-0 flex-col rounded-t-[26px] bg-chat-sheet pb-[env(safe-area-inset-bottom)]',
+            // 表情包要给格子留出高度；「+」面板按内容自适应（设计稿本来就矮一截）
+            stickerOpen && 'h-[19rem]',
+          )}
         >
-          <div className="mx-auto h-full w-full max-w-3xl">
+          <div className="flex justify-center pt-2.5">
+            <span className="h-1 w-10 rounded-full bg-chat-line" aria-hidden />
+          </div>
+          <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
             {attachOpen ? (
-              /* 等宽网格：4 列、每格同宽（卡片自身相对单元格居中）。
-                 `w-full` + `max-w-[340px]`：手机上铺满、桌面端封顶 —— 否则 max-w-3xl 里
-                 等分会把 56px 的方块甩得东一个西一个。
-                 表情包**不放这里**（入口是输入框旁那颗笑脸），所以只剩 图片/拍照/文件/通话。 */
-              <div
-                className="grid w-full max-w-[340px] grid-cols-4 gap-x-1 gap-y-2.5 p-3"
-                data-testid="attach-panel"
-              >
-                <AttachButton
-                  icon={<Image className="h-5 w-5" />}
-                  label="图片"
-                  onClick={() => fileRef.current?.click()}
-                />
-                <AttachButton
-                  icon={<Camera className="h-5 w-5" />}
-                  label="拍照"
-                  onClick={() => cameraRef.current?.click()}
-                />
-                <AttachButton
-                  icon={<FileText className="h-5 w-5" />}
-                  label="文件"
-                  onClick={() => fileDocRef.current?.click()}
-                />
-                <AttachButton
-                  icon={<Phone className="h-5 w-5" />}
-                  label="通话"
-                  testid="attach-call"
-                  onClick={() => {
-                    setAttachOpen(false);
-                    startCall('voice');
-                  }}
-                />
+              <div className="px-4 pb-3 pt-2">
+                {/* 5 列：前 5 个严格对齐设计稿（表情包 / 通话 / 图片 / 拍照 / 文件），
+                    礼物盒与对白风格排在第二行，功能不丢。 */}
+                <div className="mx-auto grid w-full max-w-[430px] grid-cols-5 gap-x-2 gap-y-3" data-testid="attach-panel">
+                  <AttachButton
+                    icon={<Smile className="h-6 w-6" />}
+                    label="表情包"
+                    testid="attach-sticker"
+                    onClick={() => {
+                      setAttachOpen(false);
+                      setStickerOpen(true);
+                    }}
+                  />
+                  <AttachButton
+                    icon={<Phone className="h-6 w-6" />}
+                    label="通话"
+                    testid="attach-call"
+                    onClick={() => {
+                      setAttachOpen(false);
+                      startCall('voice');
+                    }}
+                  />
+                  <AttachButton icon={<Image className="h-6 w-6" />} label="图片" onClick={() => fileRef.current?.click()} />
+                  <AttachButton icon={<Camera className="h-6 w-6" />} label="拍照" onClick={() => cameraRef.current?.click()} />
+                  <AttachButton
+                    icon={<FileText className="h-6 w-6" />}
+                    label="文件"
+                    onClick={() => fileDocRef.current?.click()}
+                  />
+                  <AttachButton
+                    icon={<Gift className="h-6 w-6" />}
+                    label="礼物盒"
+                    testid="attach-gift"
+                    onClick={() => {
+                      setAttachOpen(false);
+                      navigate('/gifts');
+                    }}
+                  />
+                  {/* 对白风格入口在顶栏汉堡右边（chat-style-pill），这里不再重复 */}
+                </div>
+                <p className="mt-3 text-center text-[11px] text-chat-meta">表情包可继续导入 · 长按可管理</p>
               </div>
             ) : (
               <StickerPanel onPick={(emoji) => void sendSticker(emoji)} />
@@ -2297,8 +2364,30 @@ export function ChatPage() {
         </div>
       )}
 
-      {/* 微信式全屏搜索 */}
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {/* 微信式全屏搜索（搜索页里能看通话记录；「再打一通」由这里发起） */}
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onCallAgain={() => startCall('voice')}
+      />
+
+      {/* 角色页（设计稿 11 页）：从心情浮层底部的「查看角色」进入 */}
+      <CharacterPage open={charOpen} onClose={() => setCharOpen(false)} />
+
+      {/* 通话记录详情（设计稿 9 页）：点聊天里那张通话卡打开 */}
+      {callDetail && (
+        <CallDetailSheet
+          call={callDetail.call}
+          ts={callDetail.ts}
+          name={displayName || conversation?.title || '小蓝莓'}
+          avatar={partnerAvatar}
+          onClose={() => setCallDetail(null)}
+          onCallAgain={() => {
+            setCallDetail(null);
+            startCall('voice');
+          }}
+        />
+      )}
 
       {/* 通话浮层（语音 / 视频共用）。挂断 → endCall 落库 + 往聊天流推卡片 */}
       {/* 通话：语音优先走 PaiVoice 实时语音层；没起 / 视频通话回退旧浮层 */}
@@ -2314,6 +2403,7 @@ export function ChatPage() {
             kind={callKind}
             name={displayName || '小蓝莓'}
             avatar={partnerAvatar}
+            subtitle={lastAssistantLine}
             onEnd={(r) => void endCall(r)}
           />
         ))}

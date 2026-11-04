@@ -79,23 +79,33 @@
     --glow: 214 22% 76%;
     --shadow-color: 210 10% 28%;
 
-    /* ===== chat 页专用：灰底 + 雾蓝己方气泡 + 浅灰对方气泡 ===== */
-    --chat-bg: 210 6% 92%;
-    --chat-bar: 210 7% 96%;
-    --chat-pill: 210 7% 95%;
-    --chat-pill-fg: 210 4% 25%;
-    --chat-line: 210 7% 84%;
-    --chat-me: 209 9% 43%;
+    /* ===== chat 页专用：极简黑白（对齐设计稿 741201928223786：#F4F4F4 底 / 黑白气泡 / #EAEAEA 圆钮） ===== */
+    --chat-bg: 0 0% 96%;
+    --chat-bar: 0 0% 96%;
+    --chat-pill: 0 0% 92%;
+    --chat-pill-fg: 0 0% 10%;
+    --chat-line: 0 0% 91%;
+    --chat-me: 0 0% 4%;
     --chat-me-fg: 0 0% 100%;
-    --chat-ai: 210 7% 94%;
-    --chat-ai-fg: 210 4% 20%;
-    --chat-meta: 213 5% 52%;
-    --chat-quote: 210 7% 93%;
-    --chat-quote-line: 210 7% 83%;
-    --chat-accent: 209 9% 46%;
+    --chat-ai: 0 0% 100%;
+    --chat-ai-fg: 0 0% 4%;
+    --chat-meta: 0 0% 63%;
+    --chat-quote: 0 0% 94%;
+    --chat-quote-line: 0 0% 85%;
+    --chat-accent: 0 0% 10%;
     --chat-accent-fg: 0 0% 100%;
     --chat-call-in: 148 28% 40%;
     --chat-call-out: 0 54% 53%;
+    /* 底部弹层（思考链 / 模型切换 / 表情包）：设计稿里是纯白纸面 */
+    --chat-sheet: 0 0% 100%;
+
+    /* 通话整屏：设计稿里两种主题都是同一块深色，所以两处取同一套值 */
+    --call-bg: 0 0% 5%;
+    --call-surface: 0 0% 14%;
+    --call-fg: 0 0% 96%;
+    --call-meta: 0 0% 52%;
+    --call-bubble: 0 0% 17%;
+    --call-hang: 0 70% 56%;
 
     /* ===== 覆盖层页面统一底：整页不透明，叠在常驻聊天底座之上 ===== */
     --page-bg: 210 6% 92%;
@@ -177,6 +187,15 @@
     --chat-accent-fg: 210 8% 12%;
     --chat-call-in: 148 28% 37%;
     --chat-call-out: 0 48% 49%;
+    --chat-sheet: 210 7% 13%;
+
+    /* 通话整屏：深色主题下与浅色主题保持一致（设计稿就是固定深色） */
+    --call-bg: 0 0% 5%;
+    --call-surface: 0 0% 14%;
+    --call-fg: 0 0% 96%;
+    --call-meta: 0 0% 52%;
+    --call-bubble: 0 0% 17%;
+    --call-hang: 0 70% 56%;
 
     --page-bg: 210 7% 10%;
     --page-line: 210 6% 22%;
@@ -564,6 +583,19 @@
 .soundwave-bar {
   animation: soundwave 1s ease-in-out infinite;
   transform-origin: center;
+}
+
+/* ===== 通话整屏的波形（设计稿 6 页：一束白条上下呼吸） ===== */
+@keyframes call-wave {
+  0%, 100% { transform: scaleY(0.34); opacity: 0.55; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+.call-wave-bar {
+  animation: call-wave 1.05s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .call-wave-bar { animation: none; }
 }
 
 /* 阅读正文衬线字体栈（中文衬线优先，回退系统宋体） */

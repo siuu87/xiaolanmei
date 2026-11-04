@@ -12,7 +12,7 @@ const REPEAT_LABEL: Record<RepeatType, string> = {
   monthly: '每月',
 };
 
-export function TodoCard() {
+export function TodoCard({ embedded = false }: { embedded?: boolean }) {
   // 待办抽到共享 store（AI 聊天也能改）；已接后端 todos 表
   const todos = useTodoStore((s) => s.todos);
   const toggleTodo = useTodoStore((s) => s.toggleTodo);
@@ -46,7 +46,7 @@ export function TodoCard() {
   const pending = todos.filter((t) => !isTodoDone(t)).length;
 
   return (
-    <div className="glass rounded-[18px] border border-border/70 p-4">
+    <div className={embedded ? undefined : 'glass rounded-[18px] border border-border/70 p-4'}>
       {/* 头部：标题 + 右侧加号 */}
       <div className="flex items-center justify-between">
         <h2 className="font-serif text-xs tracking-[0.18em] text-muted-foreground">TO-DO</h2>
@@ -60,8 +60,14 @@ export function TodoCard() {
         </button>
       </div>
 
-      {/* 弹性竖向滚动区：超出后内部滚动，松手回弹 */}
-      <div className="mt-2 max-h-[244px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* 弹性竖向滚动区：超出后内部滚动，松手回弹（embedded 时由外层右栏统一滚动） */}
+      <div
+        className={cn(
+          'mt-2',
+          !embedded &&
+            'max-h-[244px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        )}
+      >
         {todos.length === 0 ? (
           <p className="py-6 text-center text-[12px] font-light tracking-wide text-muted-foreground/60">
             还没有待办，点右上角加一件

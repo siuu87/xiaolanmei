@@ -102,6 +102,16 @@ export default {
           'accent-fg': 'hsl(var(--chat-accent-fg))',
           'call-in': 'hsl(var(--chat-call-in))',
           'call-out': 'hsl(var(--chat-call-out))',
+          sheet: 'hsl(var(--chat-sheet))',
+        },
+        // 通话整屏（设计稿 6/16 页）：固定深色，不随主题换档
+        call: {
+          bg: 'hsl(var(--call-bg))',
+          surface: 'hsl(var(--call-surface))',
+          fg: 'hsl(var(--call-fg))',
+          meta: 'hsl(var(--call-meta))',
+          bubble: 'hsl(var(--call-bubble))',
+          hang: 'hsl(var(--call-hang))',
         },
       },
       borderRadius: {

@@ -106,11 +106,14 @@ export function CollapsibleCalendar({
   onChange,
   dayDecoration,
   onCollapsedChange,
+  compact = false,
 }: {
   value: string | null; // yyyy-mm-dd（选中日期）
   onChange: (date: string | null) => void;
   dayDecoration?: (date: string) => CalendarDayDecoration | undefined;
   onCollapsedChange?: (collapsed: boolean) => void;
+  /** 紧凑模式：缩小格子与间距，用于单卡两栏布局的左栏（约 186px 宽） */
+  compact?: boolean;
 }) {
   const today = new Date();
   const todayKey = toKey(today.getFullYear(), today.getMonth() + 1, today.getDate());
@@ -191,9 +194,15 @@ export function CollapsibleCalendar({
   }
 
   return (
-    <div>
+    <div
+      className={
+        compact
+          ? 'compact-cal [&_.cal-head]:!px-2 [&_.cal-head]:!pt-3 [&_.cal-body]:!px-2 [&_.cal-body]:!pt-2 [&_.cal-grid]:!gap-0.5 [&_.cal-cell]:!h-5 [&_.cal-cell]:!w-5 [&_.cal-cell-text]:!text-[11px] [&_.cal-week]:!text-[8px] [&_.cal-pill]:!h-10 [&_.cal-pill]:!min-w-7 [&_.cal-pill]:!text-[12px] [&_.cal-marker]:!h-2 [&_.cal-month]:!text-base'
+          : undefined
+      }
+    >
       {/* 头部：◀ 月份 ▶ 分列最上行两端，back to today 居中在其下 */}
-      <div className="px-4 pt-4">
+      <div className="cal-head px-4 pt-4">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
@@ -210,7 +219,7 @@ export function CollapsibleCalendar({
             type="button"
             onClick={toggleCollapsed}
             title={collapsed ? '展开整月' : '收起日历'}
-            className="min-w-0 flex-1 truncate text-center font-serif text-lg font-medium tracking-wide text-foreground transition hover:text-primary"
+            className="cal-month min-w-0 flex-1 truncate text-center font-serif text-lg font-medium tracking-wide text-foreground transition hover:text-primary"
           >
             {monthLabel}
           </button>
@@ -239,7 +248,7 @@ export function CollapsibleCalendar({
       </div>
 
       {/* 内容 */}
-      <div className="px-4 pt-3">
+      <div className="cal-body px-4 pt-3">
         {collapsed ? (
           <div className="flex items-center gap-2 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {strip.map(({ y, m, d, isMonthStart }) => {
@@ -265,7 +274,7 @@ export function CollapsibleCalendar({
                     aria-pressed={selected}
                     aria-label={ds}
                     className={cn(
-                      'relative flex h-12 min-w-9 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full px-2 font-serif text-sm transition',
+                      'cal-pill relative flex h-12 min-w-9 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full px-2 font-serif text-sm transition',
                       selected
                         ? 'bg-primary text-primary-foreground shadow-[0_4px_10px_-6px_hsl(var(--shadow-color)/0.35)]'
                         : isCurrent
@@ -280,7 +289,7 @@ export function CollapsibleCalendar({
                     </span>
                     <span
                       className={cn(
-                        'leading-none',
+                        'cal-cell-text leading-none',
                         isToday && !selected && 'text-primary',
                         dec?.period === 'solid' && 'text-rose-400',
                         // 纪念日：数字着琥珀色（不在下面标点）；选中/经期实心优先
@@ -298,11 +307,11 @@ export function CollapsibleCalendar({
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-7 gap-1">
+          <div className="cal-grid grid grid-cols-7 gap-1">
             {WEEKDAYS.map((w) => (
               <div
                 key={w}
-                className="py-1 text-center font-serif text-[10px] uppercase tracking-wide text-muted-foreground"
+                className="cal-week py-1 text-center font-serif text-[10px] uppercase tracking-wide text-muted-foreground"
               >
                 {w}
               </div>
@@ -325,7 +334,7 @@ export function CollapsibleCalendar({
                   {dec?.workFlag && <WorkBadge flag={dec.workFlag} />}
                   <span
                     className={cn(
-                      'flex h-7 w-7 items-center justify-center rounded-full font-serif text-sm transition',
+                      'cal-cell flex h-7 w-7 items-center justify-center rounded-full font-serif text-sm transition',
                       selected
                         ? 'bg-primary text-primary-foreground shadow-[0_2px_6px_-4px_hsl(var(--shadow-color)/0.3)]'
                         : dec?.period === 'solid'
@@ -342,7 +351,7 @@ export function CollapsibleCalendar({
                   >
                     {d}
                   </span>
-                  <span className="flex h-2.5 items-center justify-center">
+                  <span className="cal-marker flex h-2.5 items-center justify-center">
                     {dec?.label && (
                       <span
                         className={cn(

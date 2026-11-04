@@ -243,7 +243,8 @@ export function ModuleCards() {
               >
                 <g.icon className="h-4 w-4 text-muted-foreground" />
                 <span className="text-[12px] font-medium text-foreground">{g.title}</span>
-                <span className="ml-auto text-[10px] text-muted-foreground">{direct ? '进入' : `${g.entries.length} 项`}</span>
+                {/* 单项分组（酒馆）点击即进，不再写「进入」二字（2026-11-04 设计稿） */}
+                <span className="ml-auto text-[10px] text-muted-foreground">{direct ? '' : `${g.entries.length} 项`}</span>
                 {direct ? (
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 ) : (

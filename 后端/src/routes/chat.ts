@@ -46,6 +46,8 @@ interface ChatStreamBody {
    * 消息落库时 `evolveForMessage()` 若发现它已分析过，就不再按关键词叠一次。
    */
   userMessageId?: string | null;
+  /** 长短对话（2026-10-28）：`false` = 短对话——不挂任何工具，并要求模型纯文本口语回复（不写 Markdown） */
+  longChat?: boolean;
 }
 
 const WEB_NOTE =
@@ -53,6 +55,10 @@ const WEB_NOTE =
 
 const MEMO_NOTE =
   '你拥有长期记忆能力。对话中出现重要信息（偏好、约定、计划、经历、重要个人信息等）时，主动调用 memo_add 工具写入共享备忘录。检索到的相关知识会自动注入到对话上下文中。';
+
+/** 短对话模式（2026-10-28）：空心爱心 = 像发消息一样聊，不写 Markdown、不调工具 */
+const SHORT_CHAT_NOTE =
+  '【短对话模式】现在是轻快的日常短聊：像发消息一样直接说话，不要使用任何 Markdown 格式（不要标题、列表、代码块、加粗、引用），一次只说一两句，口语化、自然、简短。不要调用任何工具。';
 
 const MEMO_RULES = `【备忘录记录规则】你是小蓝莓 🫐，一个细心温柔的陪伴者。
 
@@ -259,6 +265,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     const adapter = openaiCompatibleAdapter(getAdapterConfig(station?.id));
     const web = body.web === true;
     const ragOn = body.rag !== false;
+    /** 长短对话（2026-10-28）：实心爱心=长对话（工具 + Markdown，默认）；空心=短对话，像发消息一样 */
+    const longChat = body.longChat !== false;
     const convId = body.conversationId ?? null;
 
     // 阶段 5/6：注入 system 提示词（全局 + 该模型）+ 长期记忆 + 最近摘要
@@ -393,6 +401,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       buildSummaryContext(convId),
       CODE_NOTE,
       web ? WEB_NOTE : '',
+      longChat ? '' : SHORT_CHAT_NOTE,
       courseNote,
       partnerStateNote ? `【对方状态】${partnerStateNote}` : '',
       draftNote ? draftNote : '',
@@ -481,13 +490,16 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     let replyText = '';
 
     try {
-      // 编程工具常开（融合进日常对话）；联网工具按 web（默认开）；课表识别按是否带图；RAG 工具按 rag（默认开）
-      const builtin = listBuiltinTools().filter((t) => {
-        if (t.name === 'save_courses') return hasImage;
-        if (t.name.startsWith('memo_')) return ragOn;
-        return web;
-      });
-      const defs = [...listCodeTools().map(codeToolDef), ...builtin.map(builtinToolDef)];
+      // 长对话（默认）：编程工具常开；联网按 web；课表按是否带图；RAG 按 rag。
+      // 短对话（longChat=false）：一颗工具都不挂，纯聊天。
+      const builtin = longChat
+        ? listBuiltinTools().filter((t) => {
+            if (t.name === 'save_courses') return hasImage;
+            if (t.name.startsWith('memo_')) return ragOn;
+            return web;
+          })
+        : [];
+      const defs = longChat ? [...listCodeTools().map(codeToolDef), ...builtin.map(builtinToolDef)] : [];
       const resolveTool = async (name: string, args: Record<string, unknown>): Promise<string> => {
         const code = getCodeTool(name);
         if (code) {

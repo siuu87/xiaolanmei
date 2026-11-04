@@ -1,22 +1,35 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react';
+import {
+  ChevronUp,
+  Mic,
+  MicOff,
+  Minimize2,
+  MonitorUp,
+  Phone,
+  PhoneOff,
+  Video,
+  VideoOff,
+  Volume2,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AvatarContent } from '@/components/AvatarContent';
 import { fmtDuration, type CallKind } from '@/lib/api/calls';
 
 /**
- * 通话浮层（统一入口：默认语音，进去后可点摄像头升级视频）。
+ * 通话整屏（对齐设计稿第 6 / 16 页）。
  *
- * 视觉照参考图那屏来：磨砂底 + 「● INCOMING CALL」字距拉开的小标 + 带光晕的大圆头像
- * + 衬线大名字 + 一红一绿两颗圆钮（拒绝 / 接听）。
+ * 视觉：整屏纯深色（两种主题同一套 token，见 `--call-*`）。
+ * - 顶栏：左「收起」药丸、右「端侧加密 · 不落地 / 视频 · 端侧加密」；
+ * - 语音态：中间一束白色波形 + 名字 + 计时 + 对方最后一句话的引用气泡；
+ * - 视频态（开了摄像头）：左上名字/计时/「他正在看着你」、右上对方白色圆形头像；
+ * - 底部五颗圆钮：摄像头 / 屏幕 / 静音 / 免提 / 挂断（挂断是红钮）。
+ * - 「收起」把整屏收成左上角一条深色药丸（计时继续走），点它展开。
  *
  * **能力边界（重要，别当成已实现的实时通话）**：
- * - 没有 WebRTC，也没接模型音频 —— 本机还没有可用的模型 Key，
- *   所以「接通」是本地状态机：呼出后自动接通、本地计时，**双方没有真实音频通路**。
- * - **麦克风故意不采集**：没有音频通路时开麦只是白白占用设备并点亮系统指示灯，
- *   静音键做成 UI 状态就够了。
+ * - 没有 WebRTC，也没接模型音频 —— 「接通」是本地状态机：呼出后自动接通、本地计时，
+ *   **双方没有真实音频通路**。所以「静音 / 免提 / 屏幕」只是 UI 状态，不采集也不外放。
  * - **摄像头是真的**：`getUserMedia({video:true, audio:false})`，开了会弹系统权限，
- *   本地画面以画中画悬浮窗回显；关掉/卸载一律停轨。默认不开摄像头，可随时点「摄像头」升级。
+ *   本地画面以画中画回显；关掉/卸载一律停轨。
  * - 挂断把时长交回 `onEnd`，由 ChatPage 落库 + 往聊天流推一张内联卡片。
  */
 
@@ -26,21 +39,30 @@ export interface CallResult {
   seconds: number;
 }
 
+/** 波形高度（px）：中间高、两侧收，照设计稿那束白条 */
+const WAVE = [8, 14, 22, 32, 44, 34, 26, 40, 52, 42, 30, 22, 30, 20, 14, 10, 6];
+
 export function CallOverlay({
   name,
   avatar,
   kind = 'voice',
+  subtitle,
   onEnd,
 }: {
   name: string;
   avatar?: string;
   /** 兼容旧参数：kind='video' 会一进来就请求摄像头；当前统一入口按 voice 进入 */
   kind?: CallKind;
+  /** 对方最后一句话：语音态中间那颗引用气泡（没有就不渲染） */
+  subtitle?: string;
   onEnd: (result: CallResult) => void;
 }) {
   const [connected, setConnected] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [speaker, setSpeaker] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [camErr, setCamErr] = useState('');
   const [camBusy, setCamBusy] = useState(false);
@@ -133,164 +155,250 @@ export function CallOverlay({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [connected, finish]);
 
+  const videoOn = !!stream;
+  const encLabel = videoOn ? '视频 · 端侧加密' : '端侧加密 · 不落地';
+
   return (
     <div
       data-testid="call-overlay"
       data-state={connected ? 'connected' : 'calling'}
       data-kind={kind}
-      data-camera={stream ? 'on' : 'off'}
-      className="fixed inset-0 z-50 flex flex-col items-center bg-chat-bg"
+      data-camera={videoOn ? 'on' : 'off'}
+      data-collapsed={collapsed ? '1' : '0'}
+      className="fixed inset-0 z-[1400] flex flex-col bg-call-bg text-call-fg"
     >
-      {/* 「● INCOMING CALL」 */}
-      <div className="mt-[max(4rem,env(safe-area-inset-top))] flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-foreground" aria-hidden />
-        <span className="text-[11px] uppercase tracking-[0.28em] text-foreground/80">
-          {connected ? 'In Call' : 'Incoming Call'}
-        </span>
-      </div>
-
-      {/* 大头像 + 一圈光晕（没有远端视频，所以头像始终是主视觉） */}
-      <div className="relative mt-12 flex items-center justify-center">
-        <span className="absolute h-56 w-56 rounded-full bg-chat-pill/70" aria-hidden />
-        <span className="relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-full bg-chat-pill shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]">
-          <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[76px]" />
-        </span>
-      </div>
-
-      {/* 衬线大名字 + 状态 / 计时 */}
-      <div className="mt-8 flex flex-col items-center px-8">
-        <h2
-          data-testid="call-name"
-          className="font-serif text-[30px] font-semibold leading-tight text-foreground"
+      {/* 收起后只剩左上角一条药丸：计时继续走，点它展开 */}
+      {collapsed ? (
+        <button
+          type="button"
+          data-testid="call-expand"
+          onClick={() => setCollapsed(false)}
+          className="mt-[max(0.9rem,env(safe-area-inset-top))] ml-4 flex w-fit items-center gap-2 rounded-full bg-call-surface px-4 py-2.5 text-[12px] text-call-fg transition active:scale-95"
         >
-          {name}
-        </h2>
-        <p data-testid="call-status" className="mt-2 text-sm text-chat-meta">
-          {connected ? fmtDuration(seconds) : '邀请你通话…'}
-        </p>
-        {camErr && (
-          <p data-testid="call-cam-error" className="mt-2 max-w-[260px] text-center text-xs text-destructive">
-            {camErr}
-          </p>
-        )}
-      </div>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+          <span>通话中</span>
+          <span className="tabular-nums text-call-meta">{fmtDuration(seconds)}</span>
+          <ChevronUp size={14} className="text-call-meta" aria-hidden />
+        </button>
+      ) : (
+        <>
+          {/* 顶栏：左「收起」药丸，右「端侧加密」小字 */}
+          <header className="flex shrink-0 items-center justify-between px-4 pt-[max(0.9rem,env(safe-area-inset-top))]">
+            <button
+              type="button"
+              data-testid="call-collapse"
+              onClick={() => setCollapsed(true)}
+              className="flex h-9 items-center gap-1.5 rounded-full bg-call-surface px-3.5 text-[12px] text-call-fg transition active:scale-95"
+            >
+              <Minimize2 size={13} aria-hidden />
+              收起
+            </button>
+            <span className="text-[11px] tracking-wide text-call-meta">{encLabel}</span>
+          </header>
 
-      {/* 本地画面：画中画悬浮窗（右下角），只在我方开摄像头时出现 */}
-      {stream && (
-        <div
-          data-testid="call-pip"
-          className="fixed bottom-40 right-4 z-10 h-44 w-32 overflow-hidden rounded-2xl border border-white/20 bg-black/60 shadow-2xl"
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            data-testid="call-pip-video"
-            className="h-full w-full object-cover"
-          />
-          <span className="absolute left-1.5 top-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[9px] tracking-wide text-white/90">
-            我
-          </span>
-        </div>
+          {/* 中间：语音态 = 波形 / 视频态 = 名字 + 对方白色大圆头像 */}
+          {connected ? (
+            videoOn ? (
+              <div className="flex flex-1 flex-col px-5 pt-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2
+                      data-testid="call-name"
+                      className="truncate text-[22px] font-semibold leading-tight text-call-fg"
+                    >
+                      {name}
+                    </h2>
+                    <p data-testid="call-status" className="mt-1.5 text-[12px] tabular-nums text-call-meta">
+                      {fmtDuration(seconds)} · 他正在看着你
+                    </p>
+                  </div>
+                  <span className="flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+                    <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[40px]" />
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center px-8">
+                {/* 一束白色波形 */}
+                <div className="flex items-center gap-[5px]" aria-hidden>
+                  {WAVE.map((h, i) => (
+                    <span
+                      key={i}
+                      className="call-wave-bar w-[3px] rounded-full bg-call-fg"
+                      style={{ height: h, animationDelay: `${(i % 7) * 0.085}s` }}
+                    />
+                  ))}
+                </div>
+                <h2
+                  data-testid="call-name"
+                  className="mt-7 truncate text-[22px] font-semibold leading-tight text-call-fg"
+                >
+                  {name}
+                </h2>
+                <p data-testid="call-status" className="mt-2 text-[13px] tabular-nums text-call-meta">
+                  {fmtDuration(seconds)}
+                </p>
+                {subtitle && (
+                  <p className="mt-5 max-w-[280px] rounded-2xl bg-call-bubble px-4 py-2.5 text-center text-[13px] leading-5 text-call-fg">
+                    「{subtitle}」
+                  </p>
+                )}
+              </div>
+            )
+          ) : (
+            /* 呼出中：深色底上仍然是「大头像 + 名字 + 两颗圆钮」 */
+            <div className="flex flex-1 flex-col items-center justify-center px-8">
+              <span className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full bg-call-surface">
+                <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[60px]" />
+              </span>
+              <h2
+                data-testid="call-name"
+                className="mt-7 truncate text-[22px] font-semibold leading-tight text-call-fg"
+              >
+                {name}
+              </h2>
+              <p data-testid="call-status" className="mt-2 text-[12px] text-call-meta">
+                邀请你通话…
+              </p>
+            </div>
+          )}
+
+          {camErr && (
+            <p
+              data-testid="call-cam-error"
+              className="mx-auto mt-2 max-w-[280px] shrink-0 text-center text-[11px] text-call-hang"
+            >
+              {camErr}
+            </p>
+          )}
+
+          {/* 本地画面：右下角画中画，只在我方开摄像头时出现 */}
+          {stream && (
+            <div
+              data-testid="call-pip"
+              className="fixed bottom-40 right-4 z-10 h-40 w-28 overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/15"
+            >
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                data-testid="call-pip-video"
+                className="h-full w-full object-cover"
+              />
+              <span className="absolute left-1.5 top-1.5 rounded bg-black/50 px-1.5 py-0.5 text-[9px] text-white/90">
+                我
+              </span>
+            </div>
+          )}
+
+          {/* 底部：五颗圆钮——挂断居中（2026-10-29）：媒体类在左、音频类在右 */}
+          <div
+            className={cn(
+              'mb-[max(1.5rem,env(safe-area-inset-bottom))] mt-auto flex shrink-0 items-start px-6',
+              connected ? 'justify-between' : 'justify-center gap-16',
+            )}
+          >
+            {connected ? (
+              <>
+                <RoundBtn
+                  label="摄像头"
+                  testid="call-camera-toggle"
+                  active={videoOn}
+                  onClick={() => (videoOn ? stopCam() : void startCam())}
+                >
+                  {videoOn ? <Video className="h-[22px] w-[22px]" /> : <VideoOff className="h-[22px] w-[22px]" />}
+                </RoundBtn>
+                <RoundBtn
+                  label="屏幕"
+                  testid="call-share"
+                  active={sharing}
+                  onClick={() => setSharing((v) => !v)}
+                >
+                  <MonitorUp className="h-[22px] w-[22px]" />
+                </RoundBtn>
+                <RoundBtn label="挂断" testid="call-hangup" danger onClick={() => finish('answered')}>
+                  <PhoneOff className="h-[22px] w-[22px]" />
+                </RoundBtn>
+                <RoundBtn
+                  label="静音"
+                  testid="call-mute"
+                  active={muted}
+                  onClick={() => setMuted((v) => !v)}
+                >
+                  {muted ? <MicOff className="h-[22px] w-[22px]" /> : <Mic className="h-[22px] w-[22px]" />}
+                </RoundBtn>
+                <RoundBtn
+                  label="免提"
+                  testid="call-speaker"
+                  active={speaker}
+                  onClick={() => setSpeaker((v) => !v)}
+                >
+                  <Volume2 className="h-[22px] w-[22px]" />
+                </RoundBtn>
+              </>
+            ) : (
+              <>
+                <RoundBtn label="拒绝" testid="call-decline" danger big onClick={() => finish('declined')}>
+                  <PhoneOff className="h-8 w-8" />
+                </RoundBtn>
+                <RoundBtn label="接听" testid="call-accept" big light onClick={() => setConnected(true)}>
+                  <Phone className="h-8 w-8" />
+                </RoundBtn>
+              </>
+            )}
+          </div>
+        </>
       )}
-
-      {/* 未接通：拒绝 / 接听；已接通：静音 / 摄像头 / 挂断 / 扬声器 */}
-      <div className="mb-[max(4rem,env(safe-area-inset-bottom))] mt-auto flex items-start gap-6 px-4">
-        {connected ? (
-          <>
-            <RoundBtn
-              label="静音"
-              testid="call-mute"
-              onClick={() => setMuted((v) => !v)}
-              className={muted ? 'bg-foreground text-background' : 'bg-chat-pill text-chat-pill-fg shadow-md'}
-            >
-              {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
-            </RoundBtn>
-
-            {/* 摄像头开关：开了就出画中画；再点关掉并停轨 */}
-            <RoundBtn
-              label={stream ? '关摄像头' : '摄像头'}
-              testid="call-camera-toggle"
-              onClick={() => (stream ? stopCam() : void startCam())}
-              className={stream ? 'bg-chat-call-in text-white shadow-md' : 'bg-chat-pill text-chat-pill-fg shadow-md'}
-            >
-              {stream ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
-            </RoundBtn>
-
-            <RoundBtn
-              label="挂断"
-              testid="call-hangup"
-              onClick={() => finish('answered')}
-              className="bg-chat-call-out text-white shadow-lg"
-            >
-              <PhoneOff className="h-6 w-6" />
-            </RoundBtn>
-
-            <RoundBtn label="扬声器" testid="call-speaker" className="bg-chat-pill text-chat-pill-fg shadow-md">
-              <Volume2 className="h-6 w-6" />
-            </RoundBtn>
-          </>
-        ) : (
-          <>
-            <RoundBtn
-              label="拒绝"
-              testid="call-decline"
-              onClick={() => finish('declined')}
-              className="bg-chat-call-out text-white shadow-lg"
-              big
-            >
-              <PhoneOff className="h-8 w-8" />
-            </RoundBtn>
-            <RoundBtn
-              label="接听"
-              testid="call-accept"
-              onClick={() => setConnected(true)}
-              className="animate-pulse bg-chat-call-in text-white shadow-lg"
-              big
-            >
-              <Phone className="h-8 w-8" />
-            </RoundBtn>
-          </>
-        )}
-      </div>
     </div>
   );
 }
 
-/** 圆形按钮 + 下方文字标签（参考图里标签在按钮下面，而不是 aria-label） */
+/** 圆形按钮 + 下方文字标签（设计稿里标签在按钮下面，而不是 aria-label） */
 function RoundBtn({
   label,
   testid,
   onClick,
-  className,
+  active,
+  danger,
+  light,
   big,
   children,
 }: {
   label: string;
   testid?: string;
   onClick?: () => void;
-  className?: string;
+  /** 选中态：白底黑图标 */
+  active?: boolean;
+  /** 挂断 / 拒绝：红底白图标 */
+  danger?: boolean;
+  /** 接听：白底黑图标（呼出态专用） */
+  light?: boolean;
   big?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex w-[62px] flex-col items-center gap-2">
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
+        aria-pressed={active}
         title={label}
         data-testid={testid}
         className={cn(
           'flex shrink-0 items-center justify-center rounded-full transition active:scale-95',
           big ? 'h-[72px] w-[72px]' : 'h-14 w-14',
-          className,
+          danger
+            ? 'bg-call-hang text-white'
+            : active || light
+              ? 'bg-call-fg text-call-bg'
+              : 'bg-call-surface text-call-fg',
         )}
       >
         {children}
       </button>
-      <span className="text-xs text-foreground/70">{label}</span>
+      <span className="text-[11px] text-call-meta">{label}</span>
     </div>
   );
 }

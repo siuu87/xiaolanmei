@@ -30,3 +30,7 @@ pai-voice/.venv/
 # 外部侧车：心潮·念（本地服务 + node 依赖），仍不进版本库（VPS 上已单独克隆 xinchao-nian）
 # 注意必须锚定仓库根：否则会把 前端/src/features/xinchao 也忽略掉
 /xinchao/
+
+# 过程产物：会话截图 / 预览拼图，只做本地自检，不入库
+/previews/
+/screenshots/

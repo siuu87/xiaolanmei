@@ -19,10 +19,13 @@ import { DIET_GRADING_BLOCK, DIET_VAR_ALLERGIES, DIET_VAR_DISLIKES } from '../di
  */
 const ANNIVERSARY = PERSONA_ANNIVERSARY_FALLBACK;
 
-/** 距恋爱起点的整天数（按本地日期算，避免时区把日期算偏一天） */
+/** 距恋爱起点的整天数（按本地日期算，避免时区把日期算偏一天）；起点未设置/无效时返回 0 */
 function loveDaysSince(iso: string, now: Date): number {
+  if (!iso) return 0;
   const [y, m, d] = iso.split('-').map(Number);
+  if (!y) return 0;
   const start = new Date(y, (m || 1) - 1, d || 1);
+  if (Number.isNaN(start.getTime())) return 0;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.max(0, Math.round((today.getTime() - start.getTime()) / 86_400_000));
 }

@@ -29,6 +29,7 @@ import {
   formatMemorialDate,
   type MemorialDay,
 } from './memorialStore';
+import { TodoCard } from './TodoCard';
 /**
  * 心情在这里**只读**：选心情的入口已经统一收到首页日历上方的 MOOD 卡片。
  * 三种心情（高兴·黄 / 平静·绿 / 难过·蓝）与首页用的是同一份定义、同一份存储。
@@ -149,22 +150,30 @@ export function CalendarCard() {
   };
 
   return (
-    <div className="paper-card overflow-hidden rounded-3xl">
-      {/* 黄历详情页（点拓展页里的农历打开） */}
+    <div className="paper-card overflow-hidden rounded-3xl relative">
+      {/* 黄历详情页浮层（点拓展页里的农历打开），覆盖整卡 */}
       {almanacOpen && selectedDate && (
-        <AlmanacPage y={sy} m={sm} d={sd} onBack={() => setAlmanacOpen(false)} />
+        <div className="absolute inset-0 z-10">
+          <AlmanacPage y={sy} m={sm} d={sd} onBack={() => setAlmanacOpen(false)} />
+        </div>
       )}
 
-      {/* 折叠日历（无外壳，与下方详情同卡相接） */}
-      <CollapsibleCalendar
-        value={selectedDate}
-        onChange={handleSelectDate}
-        dayDecoration={dayDecoration}
-        onCollapsedChange={() => setSelectedDate(null)} // 展开/收起日历 → 自动关闭日期详情
-      />
+      {/* 左栏：折叠日历，占卡片 3/4 */}
+      <div className="relative w-3/4 shrink-0 border-r border-border/70">
+        <CollapsibleCalendar
+          value={selectedDate}
+          onChange={handleSelectDate}
+          dayDecoration={dayDecoration}
+          onCollapsedChange={() => setSelectedDate(null)} // 展开/收起日历 → 自动关闭日期详情
+        />
+      </div>
 
-      {selectedDate != null && (
-        <div className="border-t border-border p-4">
+      {/* 右栏：1/4 窄竖条 —— 默认待办，选中日期后切到日详情；显示滚动条（竖条），高度与左栏日历一致，内容超出即滚动 */}
+      <div className="absolute inset-y-0 right-0 left-[75%] overflow-y-auto overscroll-contain px-2 py-3">
+        {selectedDate == null ? (
+          <TodoCard embedded />
+        ) : (
+          <>
           {/* 记日记入口（原 X 收起按钮改）：进入当天日记，无则新建 */}
           <div className="flex items-center justify-end">
             <button
@@ -400,8 +409,9 @@ export function CalendarCard() {
               </button>
             </div>
           )}
-        </div>
-      )}
+          </>)
+        }
+      </div>
     </div>
   );
 }

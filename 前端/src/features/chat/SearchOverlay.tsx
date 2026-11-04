@@ -7,11 +7,16 @@ import {
   CalendarDays,
   Clock,
   Trash2,
+  PhoneIncoming,
+  PhoneMissed,
+  PhoneOutgoing,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { searchMessages, type SearchResultDTO } from '@/lib/api/conversations';
+import { listCalls, fmtDuration, type CallDTO } from '@/lib/api/calls';
 import { useChatStore } from './chatStore';
 import { ChatCalendar } from './ChatCalendar';
+import { CallDetailSheet } from './CallDetailSheet';
 
 const RECENT_KEY = 'blueberry.search.recent';
 
@@ -79,8 +84,18 @@ function fmtDateShort(ds: string): string {
  * 微信式全屏搜索页（阶段 4）：关键词 / 日期 / 图片三合一。
  * 空条件显示「最近搜索」；有任一条件实时（防抖）搜索；命中关键词绿色高亮。
  */
-export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SearchOverlay({
+  open,
+  onClose,
+  onCallAgain,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** 详情页「再打一通」：由 ChatPage 提供（关搜索 + 发起通话） */
+  onCallAgain?: () => void;
+}) {
   const setActiveMessage = useChatStore((s) => s.setActiveMessage);
+  const conversationId = useChatStore((s) => s.conversation?.id);
 
   const [q, setQ] = useState('');
   const [date, setDate] = useState('');
@@ -90,6 +105,9 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [recent, setRecent] = useState<string[]>(loadRecent);
+  /** 通话记录：打开时拉一次（只看本会话的），点条目进详情 */
+  const [calls, setCalls] = useState<CallDTO[]>([]);
+  const [callDetail, setCallDetail] = useState<{ call: CallDTO; ts: number } | null>(null);
 
   const hasFilter = q.trim() !== '' || !!date || hasImage;
 
@@ -133,6 +151,22 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, date, hasImage, open]);
 
+  // 打开时拉一次本会话的通话记录（最多 8 条，倒序），给「通话记录」区块用
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    listCalls(conversationId)
+      .then((rows) => {
+        if (alive) setCalls(rows.slice(0, 8));
+      })
+      .catch(() => {
+        if (alive) setCalls([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open, conversationId]);
+
   // Esc 关闭
   useEffect(() => {
     if (!open) return;
@@ -151,6 +185,8 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
     setCalendarOpen(false);
     setResults([]);
     setSearched(false);
+    setCallDetail(null);
+    setCalls([]);
     onClose();
   };
 
@@ -169,17 +205,17 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-chat-bg" data-testid="search-overlay">
-      {/* 顶部搜索栏：返回 + 输入框 + 搜索 */}
-      <div className="flex shrink-0 items-center gap-2 bg-chat-bg px-3 py-2.5">
+      {/* 顶部搜索栏（设计稿：圆形返回 + 胶囊输入 + 右侧「取消」） */}
+      <div className="flex shrink-0 items-center gap-2.5 bg-chat-bg px-4 py-3">
         <button
           type="button"
           onClick={close}
           aria-label="返回"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg shadow-sm transition active:scale-95"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition active:scale-95"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[19px] bg-chat-pill px-3 shadow-sm">
+        <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-chat-pill px-3.5">
           <Search className="h-4 w-4 shrink-0 text-chat-meta" />
           <input
             autoFocus
@@ -187,8 +223,8 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void runSearch()}
-            placeholder="搜索"
-            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-chat-meta"
+            placeholder="搜索聊天记录"
+            className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
           />
           {q && (
             <button
@@ -201,27 +237,28 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             </button>
           )}
         </div>
+        {/* 原稿里右边是「取消」；结果已经随输入防抖实时刷新，不需要再点一次搜索 */}
         <button
           type="button"
-          onClick={() => void runSearch()}
-          className="shrink-0 px-2 text-sm font-medium text-chat-accent"
+          onClick={close}
+          className="shrink-0 text-[15px] text-chat-pill-fg/80"
         >
-          搜索
+          取消
         </button>
       </div>
 
-      {/* 筛选条件：日期（日历热力图）+ 图片 */}
-      <div className="flex shrink-0 flex-col gap-2 bg-chat-bg px-3 py-2">
+      {/* 筛选条件：日期（日历热力图）+ 图片；选中态是黑底白字（设计稿的「最近7天」） */}
+      <div className="flex shrink-0 flex-col gap-2 bg-chat-bg px-4 pb-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setCalendarOpen((v) => !v)}
             aria-label="按日期"
             className={cn(
-              'flex h-8 items-center gap-1.5 rounded-full px-3 text-sm transition',
+              'flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] transition active:scale-95',
               date || calendarOpen
-                ? 'bg-chat-accent/15 text-chat-accent'
-                : 'bg-chat-pill text-chat-pill-fg shadow-sm',
+                ? 'bg-chat-me font-medium text-chat-me-fg'
+                : 'bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
             )}
           >
             <CalendarDays className="h-4 w-4" />
@@ -242,8 +279,10 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
             onClick={() => setHasImage((v) => !v)}
             aria-label="仅看图片"
             className={cn(
-              'flex h-8 items-center gap-1.5 rounded-full px-3 text-sm transition',
-              hasImage ? 'bg-chat-accent/15 text-chat-accent' : 'bg-chat-pill text-chat-pill-fg shadow-sm',
+              'flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] transition active:scale-95',
+              hasImage
+                ? 'bg-chat-me font-medium text-chat-me-fg'
+                : 'bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
             )}
           >
             <ImageIcon className="h-4 w-4" />
@@ -263,7 +302,50 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
       {/* 内容区 */}
       {!hasFilter ? (
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          {recent.length === 0 ? (
+          {/* 通话记录：不用输条件就能点进去看（点条目 → 整页详情） */}
+          {calls.length > 0 && (
+            <div className="pb-1">
+              <div className="px-4 py-2 text-xs text-chat-meta">通话记录</div>
+              {calls.map((c) => {
+                const missed = c.state === 'missed';
+                const declined = c.state === 'declined';
+                const Icon = missed ? PhoneMissed : declined ? PhoneOutgoing : PhoneIncoming;
+                const answered = c.state === 'answered';
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCallDetail({ call: c, ts: c.startedAt ?? c.createdAt })}
+                    data-testid="search-call-item"
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-chat-pill/70"
+                  >
+                    <span
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill',
+                        missed || declined ? 'text-destructive' : 'text-chat-ai-fg',
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] text-foreground/90">
+                        {c.kind === 'video' ? '视频通话' : '语音通话'}
+                        {answered && c.seconds > 0 ? ` · ${fmtDuration(c.seconds)}` : ''}
+                      </span>
+                      <span className="block truncate text-[12px] text-chat-meta">
+                        {missed ? '未接来电' : declined ? '已拒接' : '已接通'}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[11px] tabular-nums text-chat-meta">
+                      {fmtTime(c.startedAt ?? c.createdAt)}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="mx-4 my-1 border-t border-chat-line/60" />
+            </div>
+          )}
+          {recent.length === 0 && calls.length === 0 ? (
             <div className="flex h-full items-center justify-center px-6 text-center text-sm text-chat-meta">
               输入关键词，或按日期 / 图片搜索聊天记录
             </div>
@@ -299,37 +381,52 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
       ) : searched && results.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-chat-meta">没有匹配的记录</div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          <div className="px-4 py-2 text-xs text-chat-meta">聊天记录 · 共 {results.length} 条</div>
-          {results.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => jump(r)}
-              className="flex w-full flex-col gap-1 border-b border-chat-line/60 px-4 py-3 text-left transition hover:bg-chat-pill/70"
-            >
-              <div className="flex items-center gap-2 text-xs text-chat-meta">
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[10px]',
-                    r.role === 'assistant'
-                      ? 'bg-chat-accent/15 text-chat-accent'
-                      : 'bg-chat-line text-chat-pill-fg',
-                  )}
-                >
-                  {r.role === 'assistant' ? '小蓝莓' : '我'}
-                </span>
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground/80">
-                  {r.conversationTitle}
-                </span>
-                <span className="shrink-0">{fmtTime(r.createdAt)}</span>
-              </div>
-              <div className="line-clamp-2 text-sm text-foreground/80">
-                <Snippet text={r.content} q={q} />
-              </div>
-            </button>
-          ))}
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 pb-6">
+          {/* 结果头：条数 + 排序说明（设计稿那行小字） */}
+          <div className="flex items-center justify-between py-2 text-[12px] text-chat-meta">
+            <span>
+              聊天记录 · 共 {results.length} 条
+            </span>
+            <span>按时间倒序</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {results.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => jump(r)}
+                className="flex w-full flex-col gap-1.5 rounded-2xl bg-chat-ai px-3.5 py-3 text-left shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)] transition active:scale-[0.995]"
+              >
+                <div className="flex items-center gap-2 text-[12px] text-chat-meta">
+                  <span className="font-medium text-chat-ai-fg">
+                    {r.role === 'assistant' ? '小蓝莓' : '我'}
+                  </span>
+                  <span className="shrink-0">·</span>
+                  <span className="shrink-0 tabular-nums">{fmtTime(r.createdAt)}</span>
+                  <span className="min-w-0 flex-1 truncate text-right opacity-70">{r.conversationTitle}</span>
+                </div>
+                <div className="line-clamp-2 pl-2 border-l-2 border-chat-me/70 text-[14px] leading-6 text-chat-ai-fg/90">
+                  <Snippet text={r.content} q={q} />
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
+      )}
+
+      {/* 通话详情：整页浮层，比搜索页（z-50）高，返回即回到搜索 */}
+      {callDetail && (
+        <CallDetailSheet
+          call={callDetail.call}
+          ts={callDetail.ts}
+          name={useChatStore.getState().conversation?.title || '对方'}
+          onClose={() => setCallDetail(null)}
+          onCallAgain={() => {
+            setCallDetail(null);
+            close();
+            onCallAgain?.();
+          }}
+        />
       )}
     </div>
   );

@@ -5,7 +5,6 @@ import { AnniversaryCard } from './AnniversaryCard';
 import { MoodCard } from './MoodCard';
 import { CalendarCard } from './CalendarCard';
 import { CourseCard } from './CourseCard';
-import { TodoCard } from './TodoCard';
 import { TokenCard } from './TokenCard';
 import { FeatureGrid } from './FeatureGrid';
 import { PeriodHint } from './PeriodHint';
@@ -91,16 +90,13 @@ export function HomePage() {
           {/* 置顶区域：有置顶纪念日才显示，否则留空 */}
           {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
 
-          {/* Daily：日历 + 待办并排（窄屏自动上下堆叠） */}
+          {/* Daily：单卡两栏 —— 左日历、右栏待办/日详情（真实滚动），中间竖线分隔 */}
           <section>
             <div className="mb-2 flex items-center gap-2">
               <h2 className="eyebrow shrink-0">Daily</h2>
               <span aria-hidden className="hairline flex-1" />
             </div>
-            <div className="grid gap-3 md:grid-cols-[1.15fr_0.85fr]">
-              <CalendarCard />
-              <TodoCard />
-            </div>
+            <CalendarCard />
           </section>
 
           {/* Token + 信封：两枚小卡并排 */}

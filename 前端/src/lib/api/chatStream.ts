@@ -17,6 +17,8 @@ export interface StreamChatOptions {
   web?: boolean;
   /** 对白风格：`fragmented` 微信碎片流 / `immersive` 沉浸纯对话流（按请求注入提示词） */
   chatStyle?: 'fragmented' | 'immersive';
+  /** 长短对话：`false` = 短对话（空心爱心）——不调工具、纯文本口语回复；默认长对话 */
+  longChat?: boolean;
   onDelta?: (text: string) => void;
   onReasoning?: (text: string) => void;
   onToolCall?: (name: string) => void;
@@ -32,7 +34,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat(
   messages: ChatPayloadMessage[],
-  { signal, conversationId, userMessageId, model, stationId, web, chatStyle, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
+  { signal, conversationId, userMessageId, model, stationId, web, chatStyle, longChat, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
 ): Promise<void> {
   let res: Response;
   try {
@@ -47,6 +49,7 @@ export async function streamChat(
         ...(stationId ? { stationId } : {}),
         ...(web ? { web: true } : {}),
         ...(chatStyle ? { chatStyle } : {}),
+        ...(longChat === false ? { longChat: false } : {}),
       }),
       signal,
     });

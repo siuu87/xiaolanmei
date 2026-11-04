@@ -24,6 +24,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -369,6 +370,15 @@ export function SettingsPage() {
               <ProfilesSection />
             </div>
           )}
+
+          <IOSSettingItem
+            icon={<User className="h-4 w-4" />}
+            iconBg="bg-sky-400"
+            title="个人主页"
+            subtitle="封面 · 头像 · 统计与我的设定"
+            showChevron
+            onClick={() => navigate('/me')}
+          />
 
           <IOSSettingItem
             icon={<Smile className="h-4 w-4" />}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STICKERS } from './stickers';
 import { useStickerStore } from '@/stores/stickerStore';
@@ -46,15 +46,15 @@ export function StickerPanel({ onPick }: { onPick: (key: string) => void }) {
 
   return (
     <div className="flex h-full flex-col" data-testid="sticker-panel">
-      {/* 顶栏：分类 + 管理入口 */}
+      {/* 顶栏：分类（纯文字，选中加粗）+ 右「＋ 导入」（设计稿样式） */}
       <div
-        className="flex h-11 shrink-0 items-center gap-1.5 border-b border-chat-line px-3"
+        className="flex h-[52px] shrink-0 items-center gap-1 px-4"
         data-testid="sticker-tabs"
       >
-        {/* 分类多了要能横滑，所以这层单独 overflow，齿轮留在外面不跟着滚 */}
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scrollbar-thin">
+        {/* 分类多了要能横滑，所以这层单独 overflow，导入入口留在外面不跟着滚 */}
+        <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto scrollbar-thin">
           <TabBtn active={tab === 'builtin'} onClick={() => setTab('builtin')}>
-            内置
+            全部
           </TabBtn>
           {categories.map((c) => (
             <TabBtn key={c.id} active={tab === c.id} onClick={() => setTab(c.id)}>
@@ -66,31 +66,31 @@ export function StickerPanel({ onPick }: { onPick: (key: string) => void }) {
         <button
           type="button"
           onClick={() => navigate('/settings?open=stickers')}
-          aria-label="管理表情包"
-          title="管理表情包"
+          aria-label="导入 / 管理表情包"
+          title="导入 / 管理表情包"
           data-testid="sticker-manage"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-chat-meta transition hover:bg-chat-line/60 hover:text-chat-pill-fg"
+          className="flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1 text-[13px] text-chat-meta transition hover:text-chat-pill-fg"
         >
-          <Settings2 className="h-[18px] w-[18px]" />
+          <Plus className="h-4 w-4" />
+          导入
         </button>
       </div>
 
-      {/* 内容区：7 列铺开（微信是 7 列），可滚 */}
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin p-2">
+      {/* 内容区：6 列 × 56px 大格子，可滚 */}
+      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 pb-4 pt-1">
         {list.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-chat-meta">
             <span>「{activeName ?? '我的'}」里还没有表情包</span>
             <button
               type="button"
               onClick={() => navigate('/settings?open=stickers')}
-              className="rounded-full bg-chat-pill px-3 py-1 text-chat-pill-fg shadow-sm"
+              className="rounded-full bg-chat-pill px-3 py-1 text-chat-pill-fg"
             >
               去设置里添加
             </button>
           </div>
         ) : (
-          /* 单元格固定 48px + `w-fit`：否则在桌面端 7 等分会把 emoji 撑到 140px 那么大的「巨型笑脸墙」 */
-          <div className="grid w-fit grid-cols-7 gap-1">
+          <div className="grid w-fit grid-cols-6 gap-1">
             {list.map((s) => (
               <button
                 key={s.key}
@@ -99,7 +99,7 @@ export function StickerPanel({ onPick }: { onPick: (key: string) => void }) {
                 aria-label={s.label}
                 title={s.label}
                 data-sticker-cell
-                className="flex h-12 w-12 items-center justify-center rounded-lg p-0.5 transition hover:bg-chat-line/60 active:scale-95"
+                className="flex h-14 w-14 items-center justify-center rounded-2xl p-1 transition hover:bg-chat-pill active:scale-95"
               >
                 <img src={s.img} alt={s.label} draggable={false} className="h-full w-full object-contain" />
               </button>
@@ -126,8 +126,8 @@ function TabBtn({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'shrink-0 rounded-full px-2.5 py-1 text-xs transition',
-        active ? 'bg-chat-pill font-medium text-chat-pill-fg shadow-sm' : 'text-chat-meta hover:bg-chat-line/50',
+        'shrink-0 whitespace-nowrap rounded-full py-1 text-[13px] transition',
+        active ? 'font-semibold text-foreground' : 'text-chat-meta hover:text-chat-pill-fg',
       )}
     >
       {children}
