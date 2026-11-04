@@ -23,6 +23,7 @@ import {
   Cake,
   GraduationCap,
   Puzzle,
+  Gift,
   Star,
   Lightbulb,
   Heart,
@@ -35,7 +36,7 @@ import { ProfileEditor, type ProfileTarget } from './ProfileEditor';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
-import { MoodCard } from '@/features/home/MoodCard';
+import { MoodArcRow } from '@/features/home/MoodCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
@@ -73,8 +74,8 @@ export function ProfileHeader() {
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-serif text-[8px] uppercase tracking-[0.2em] text-muted-foreground/60">
               TA
             </span>
-            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-surface-2 to-surface text-[22px] shadow-paper transition group-hover:border-primary/40">
-              <AvatarContent value={partnerAvatar} />
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white transition group-hover:border-primary/40">
+              <AvatarContent value={partnerAvatar} className="bg-white" />
             </span>
           </button>
 
@@ -93,8 +94,8 @@ export function ProfileHeader() {
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-serif text-[8px] uppercase tracking-[0.2em] text-muted-foreground/60">
               ME
             </span>
-            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-surface-2 to-surface text-[22px] shadow-paper transition group-hover:border-primary/40">
-              <AvatarContent value={avatar} />
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white transition group-hover:border-primary/40">
+              <AvatarContent value={avatar} className="bg-white" />
             </span>
           </button>
         </div>
@@ -134,17 +135,19 @@ export function DailyBoard() {
       <div className="space-y-3">
         {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
         <CalendarCard />
-        {/* 我的心情：首页唯一入口原本只在 /home 渲染，移动端抽屉没镜像 → 用户感知「心情界面消失」。
-            这里补上，让抽屉也能填当天心情。 */}
-        <MoodCard />
         <TodoCard />
-        {/* Token 与收信匣并排，一半一半 */}
+        {/* Token 与信封平分空间（与首页一致，2026-11-04 用户定）：右列 信件卡(compact) 上 +
+            心情弧 下（心情在信件下面） */}
         <div className="grid grid-cols-2 gap-3">
           <div data-testid="token-capsule">
             <TokenCard />
           </div>
-          {/* 深夜来信 · 收信匣：一封信 + 原地展开 + 左右换信 */}
-          <LetterInboxCard />
+          <div className="min-w-0">
+            <LetterInboxCard compact className="flex h-1/2 flex-col p-3" />
+            <div className="flex h-1/2 min-h-0 items-center justify-center">
+              <MoodArcRow />
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -201,6 +204,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { to: '/wishlist', label: '灵感待办池', hint: '灵感 · 待办，回车即记', icon: Lightbulb },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
+      { to: '/gifts', label: '礼物盒', hint: '他藏的小心意 · 拆开看', icon: Gift },
     ],
   },
 ];

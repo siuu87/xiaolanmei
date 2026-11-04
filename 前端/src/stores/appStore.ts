@@ -36,7 +36,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      theme: 'light',
+      theme: 'dark',
       numFont: 'sans',
       accent: 'blue',
       setTheme: (theme) => set({ theme }),
@@ -45,7 +45,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'blueberry.app',
-      version: 4,
+      version: 5,
       migrate: (persisted, from) => {
         // 清理旧版手动填的 tokenBudget / accountBalance（余额已改为后端自动查询，不再本地存）
         const s = (persisted ?? {}) as Record<string, unknown>;
@@ -64,6 +64,12 @@ export const useAppStore = create<AppState>()(
          * 所以迁移时改一次；之后用户在设置里手动选回衬线仍然有效。
          */
         if ((from ?? 0) < 4) next.numFont = 'sans';
+        /**
+         * v5：全局默认主题改回**深色**（2026-11-04 用户定：默认深色主题）。
+         * 老用户 localStorage 里存着 theme:'light' 会被持久化覆盖回去，迁移时显式翻一次；
+         * 之后用户在设置里手动切回浅色仍然会被尊重（不会再动）。
+         */
+        if ((from ?? 0) < 5) next.theme = 'dark';
         return next as unknown as AppState;
       },
     },

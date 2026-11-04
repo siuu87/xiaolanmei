@@ -37,7 +37,7 @@ export function MoodPopover({
   onClose: () => void;
   partnerName: string;
   partnerAvatar: string;
-  /** 底部那一行「查看角色 ›」：打开角色页（设计稿第 11 页） */
+  /** 底部那一行「查看角色 ›」：打开「他的资料」页（原角色页，2026-11-04 改口径） */
   onOpenCharacter?: () => void;
 }) {
   const [state, setState] = useState<XinchaoState | null>(null);

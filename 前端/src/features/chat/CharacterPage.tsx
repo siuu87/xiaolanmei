@@ -12,12 +12,13 @@ import { listNotes } from '@/lib/api/home';
 import { ProfileEditor } from '@/features/shell/ProfileEditor';
 
 /**
- * 角色页（对齐 2026-11-04 设计稿 97:4：封面 + 上叠白卡版式）。
+ * 他的资料页（对齐 2026-11-04 设计稿 97:4：封面 + 上叠白卡版式；
+ * 口径与「我的」个人主页 MePage 一致，2026-11-04 用户定：查看角色进来就是资料页）。
  *
- * 结构：顶栏（返回 / 角色 / 编辑，浮在封面上）→ 浅蓝小封面 + 白卡上叠
+ * 结构：顶栏（返回 / 他的资料 / 编辑，浮在封面上）→ 浅蓝小封面 + 白卡上叠
  * → 头像骑线 → 头部居中（备注大字 / 姓名 · 本名 / 在线小药丸）
  * → 4 格统计（消息 / 通话 / 记忆 / 信件，通话可点进通话记录列表）
- * → 「他是谁」（人设）→ 「最近印象」（最近记忆）→ 底部「编辑角色」。
+ * → 「他是谁 · 角色设定」（人设）→ 「最近印象」（最近记忆）→ 底部「编辑资料」。
  *
  * **只读 + 复用**：数据全部来自已有的 profileStore / chatStore / `/api/calls/stats` /
  * `/api/memories` / `/api/notes`（信件），不新增接口；「编辑」直接打开现成的
@@ -108,7 +109,7 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
       data-testid="character-page"
       className="fixed inset-0 z-[1300] flex flex-col bg-chat-bg text-foreground"
     >
-      {/* 顶栏：返回 / 角色 / 编辑（透明浮在封面蓝上） */}
+      {/* 顶栏：返回 / 他的资料 / 编辑（透明浮在封面蓝上） */}
       <header className="relative z-20 flex shrink-0 items-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <button
           type="button"
@@ -119,7 +120,7 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="min-w-0 flex-1 text-center text-[16px] font-semibold">角色</h1>
+        <h1 className="min-w-0 flex-1 text-center text-[16px] font-semibold">他的资料</h1>
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -165,14 +166,14 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
             />
           </div>
 
-          {/* 他是谁 */}
-          <SectionLabel left="他是谁" right="人设" />
+          {/* 他是谁 · 角色设定（与 MePage「我是谁 · 角色设定」同口径） */}
+          <SectionLabel left="他是谁" right="角色设定" />
           <div className="mx-4 rounded-2xl bg-chat-ai p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
             {persona.trim() ? (
               <p className="whitespace-pre-wrap text-[13px] leading-6 text-foreground">{persona}</p>
             ) : (
               <p className="text-[13px] leading-6 text-chat-meta">
-                还没写人设。点下面的「编辑角色」，告诉 ta 是谁。
+                还没写。点「编辑资料」，介绍一下 ta 是谁。
               </p>
             )}
           </div>
@@ -198,7 +199,7 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
             )}
           </div>
 
-          {/* 底部：编辑角色（白卡内随内容滚动） */}
+          {/* 底部：编辑资料（白卡内随内容滚动） */}
           <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
             <button
               type="button"
@@ -206,7 +207,7 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
               data-testid="character-edit"
               className="h-12 w-full rounded-full bg-chat-me text-[14px] font-medium text-chat-me-fg transition active:scale-[0.99]"
             >
-              编辑角色
+              编辑资料
             </button>
           </div>
         </ProfileCoverSheet>

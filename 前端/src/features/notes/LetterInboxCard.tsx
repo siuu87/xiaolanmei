@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShellStore } from '@/stores/shellStore';
 import { useNotesStore } from './notesStore';
@@ -124,102 +124,96 @@ export function LetterInboxCard({
         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"
       />
 
-      {/* 顶栏：左「红点 + 第 N 封」｜右「换信 + 全部来信」
-          换信控件固定挂在顶栏，正文再长再短都不会把它顶下去 */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span
-            aria-label={dotOn ? '今日来信已到' : '今日暂无新信'}
-            data-testid="mail-dot"
-            className={cn(
-              'block h-[7px] w-[7px] shrink-0 rounded-full transition-all duration-500',
-              dotOn
-                ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]'
-                : 'bg-border',
-            )}
-          />
-          <span
-            data-testid="mail-seq"
-            className="font-letter text-[12px] leading-none tracking-[0.08em] text-foreground"
-          >
-            第 {seq} 封
+      {/* 顶栏（仅完整版）：左「红点 + 第 N 封」｜右「全部来信」。
+          紧凑版是「一封信」样式：没有这一栏，邮票/邮戳替代红点与入口（见下方 compact 分支） */}
+      {!compact && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              aria-label={dotOn ? '今日来信已到' : '今日暂无新信'}
+              data-testid="mail-dot"
+              className={cn(
+                'block h-[7px] w-[7px] shrink-0 rounded-full transition-all duration-500',
+                dotOn
+                  ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]'
+                  : 'bg-border',
+              )}
+            />
+            <span
+              data-testid="mail-seq"
+              className="font-letter text-[12px] leading-none tracking-[0.08em] text-foreground"
+            >
+              第 {seq} 封
+            </span>
           </span>
-        </span>
 
-        <button
-          type="button"
-          data-testid="mail-all"
-          data-no-flip
-          onClick={goAll}
-          aria-label="查看全部来信"
-          title="全部来信"
-          className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
+          <button
+            type="button"
+            data-testid="mail-all"
+            data-no-flip
+            onClick={goAll}
+            aria-label="查看全部来信"
+            title="全部来信"
+            className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
+          >
+            <Mail className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* 日期（完整版；紧凑版有自己的日期行，避免渲染两遍） */}
+      {!compact && (
+        <p
+          data-testid="mail-date"
+          className="mt-2.5 text-[11px] font-light tabular-nums text-muted-foreground"
         >
-          <Mail className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* 日期 */}
-      <p
-        data-testid="mail-date"
-        className="mt-2.5 text-[11px] font-light tabular-nums text-muted-foreground"
-      >
-        {shortDate(stamp)}
-      </p>
+          {shortDate(stamp)}
+        </p>
+      )}
 
       {compact ? (
         <>
-          {/* 紧凑版：细线 + 首行主题截断（对齐设计稿信件卡，高度 = Token 卡的 1/2）。
-              根节点由外部给 h-1/2 + flex flex-col + p-3，这里内容按弹性分布。 */}
-          <p data-testid="mail-date" className="mt-1.5 text-[10px] font-light tabular-nums text-muted-foreground">
-            {shortDate(stamp)}
-          </p>
-          <span aria-hidden className="mt-1.5 block h-px w-full bg-border/70" />
-          <p
-            data-testid="mail-body"
-            className="mt-1.5 truncate text-[11px] font-light tracking-[0.01em] text-card-foreground"
+          {/* 一封信（2026-11-04 用户定：整卡就是信封，**上面什么都不写**）：
+              信封盖线从两上角折向中央铺满全卡，右上角邮票 = 全部来信入口；
+              有新信（今天的、还没看过）才盖旋转邮戳，看过 / 没信不盖。
+              翻信手势保留（左右滑换信），只是不再露出文字。 */}
+          <svg
+            aria-hidden
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 h-full w-full text-border/70"
           >
-            {/* 跳过信件开头单独成行的日期（YYYY.M.D / YYYY-MM-DD）与空行，取真正的首行做主题 */}
-            {note
-              ? (note.content
-                  .split('\n')
-                  .map((s) => s.trim())
-                  .find((s) => s && !/^\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}$/.test(s)) ??
-                note.content.split('\n')[0])
-              : '今天还没有信'}
-          </p>
-          {list.length > 1 && (
-            <div className="mt-auto flex items-center justify-between pt-1" data-no-flip>
-              <span
-                data-testid="mail-counter"
-                className="text-[9px] font-light tabular-nums tracking-wider text-muted-foreground"
-              >
-                {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
-              </span>
-              <span className="flex gap-0.5">
-                <button
-                  type="button"
-                  data-testid="mail-prev"
-                  aria-label="上一封"
-                  disabled={i === 0}
-                  onClick={() => setIndex(Math.max(0, i - 1))}
-                  className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <ChevronLeft className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  data-testid="mail-next"
-                  aria-label="下一封"
-                  disabled={i === list.length - 1}
-                  onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
-                  className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              </span>
-            </div>
-          )}
+            <path
+              d="M0 0 L50 52 L100 0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+
+          {/* 爱心按键（2026-11-04 用户定）：压在信封盖线 V 形交点上（火漆封印位）＝全部来信入口。
+              **有新信（今天的、还没看过）＝实心爱心；看过 / 没信＝空心爱心**。
+              翻信左右滑手势保留（不可见），点卡片仍 = 标记已读。 */}
+          <button
+            type="button"
+            data-testid="mail-all"
+            data-no-flip
+            onClick={goAll}
+            aria-label={dotOn ? '今日有新信，查看全部来信' : '查看全部来信'}
+            title="全部来信"
+            className={cn(
+              'absolute left-1/2 top-[52%] flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border shadow-[0_4px_12px_-6px_hsl(var(--shadow-color)/0.4)] transition-colors duration-300',
+              dotOn ? 'border-pink-400/70 bg-pink-400/15' : 'border-border bg-card',
+            )}
+          >
+            <Heart
+              className={cn(
+                'h-4 w-4 transition-colors duration-300',
+                dotOn ? 'fill-pink-400 text-pink-400' : 'text-pink-400/60',
+              )}
+            />
+          </button>
         </>
       ) : (
         <>

@@ -52,26 +52,15 @@ export function Drawer() {
             />
             {/* 面板 */}
             <motion.div
-              className="absolute inset-y-0 left-0 flex w-[88%] max-w-[360px] flex-col overflow-hidden rounded-r-[28px] border-r border-border bg-surface shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
+              className="absolute inset-y-0 left-0 flex w-[92%] max-w-[400px] flex-col overflow-hidden rounded-r-[28px] border-r border-border bg-surface shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.9 }}
             >
               <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-56" />
-              {/* 顶部小把手行 */}
-              <div className="relative flex shrink-0 items-center justify-between px-4 pb-2 pt-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="brand-seal h-9 w-9 text-[17px]" aria-hidden>
-                    🫐
-                  </span>
-                  <div>
-                    <p className="display text-[16px] font-semibold leading-tight text-foreground">
-                      小蓝莓
-                    </p>
-                    <p className="eyebrow mt-0.5 leading-none">My Journal</p>
-                  </div>
-                </div>
+              {/* 顶部把手行：只有关闭键（2026-11-04 用户定：去掉「小蓝莓」品牌块） */}
+              <div className="relative flex shrink-0 items-center justify-end px-4 pb-2 pt-4">
                 <button
                   type="button"
                   onClick={closeDrawer}

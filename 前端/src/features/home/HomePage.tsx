@@ -60,11 +60,11 @@ export function HomePage() {
               <div className="flex shrink-0 items-center -space-x-3">
                 <AvatarContent
                   value={avatar}
-                  className="h-12 w-12 border-2 border-page-bg bg-surface shadow-sm"
+                  className="h-14 w-14 border border-black/10 bg-white"
                 />
                 <AvatarContent
                   value={partnerAvatar}
-                  className="h-12 w-12 border-2 border-page-bg bg-surface shadow-sm"
+                  className="h-14 w-14 border border-black/10 bg-white"
                 />
               </div>
               <div className="min-w-0">
@@ -108,7 +108,8 @@ export function HomePage() {
           {/* 待办卡：独立一张卡（对齐设计稿 77:705，从日历右轨拆出） */}
           <TodoCard />
 
-          {/* Token 与信封：左 Token 卡（定行高），右 信件卡（精确占 Token 高度 1/2）+ 心情行（下半居中） */}
+          {/* Token 与信封：平分空间（2026-11-04 用户定：token 别太宽），右列 信件卡(compact) 上 +
+              心情弧 下，信件高度精确占 Token 卡 1/2 */}
           <div className="grid grid-cols-2 gap-3">
             <div data-testid="token-capsule">
               <TokenCard />

@@ -118,7 +118,7 @@ export function MoodArcRow() {
   return (
     <div
       data-testid="mood-arc-row"
-      className="flex items-center justify-around py-1"
+      className="flex items-center justify-center gap-6 py-1"
       role="radiogroup"
       aria-label="记录我今天的心情"
     >

@@ -2371,7 +2371,7 @@ export function ChatPage() {
         onCallAgain={() => startCall('voice')}
       />
 
-      {/* 角色页（设计稿 11 页）：从心情浮层底部的「查看角色」进入 */}
+      {/* 他的资料页：从心情浮层底部的「查看角色」进入（口径已改资料页） */}
       <CharacterPage open={charOpen} onClose={() => setCharOpen(false)} />
 
       {/* 通话记录详情（设计稿 9 页）：点聊天里那张通话卡打开 */}

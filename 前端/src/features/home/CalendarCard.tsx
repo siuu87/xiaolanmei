@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Check, Minus, Plus } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { periodSummary } from '@/lib/cycle';
 import { useLocalSwitch } from '@/lib/useLocalSwitch';
@@ -15,11 +15,9 @@ import { useMoodStore, moodColor, moodInfo, type MoodKey } from './moodStore';
 import {
   usePeriodStore,
   periodDayIndexOf,
-  recordFor,
   predictNextStart,
   isPredictedDay,
   careMessage,
-  CRAMP_LEVELS,
   todayISODate,
 } from './periodStore';
 import { useMemorialStore, memorialOnDate } from './memorialStore';
@@ -56,10 +54,10 @@ export function CalendarCard() {
   const entries = useDiaryStore((s) => s.entries);
   const records = usePeriodStore((s) => s.records);
   const settings = usePeriodStore((s) => s.settings);
-  const setSymptom = usePeriodStore((s) => s.setSymptom);
   const setSetting = usePeriodStore((s) => s.setSetting);
   const toggleDay = usePeriodStore((s) => s.toggleDay);
   const memorialDays = useMemorialStore((s) => s.days);
+  const loadMemorials = useMemorialStore((s) => s.load);
   const moodDays = useMoodStore((s) => s.days);
   const loadMood = useMoodStore((s) => s.load);
   // 睡前提醒开关（设置页「提醒与健康」）：开着才在详情面板显示提醒行
@@ -67,15 +65,21 @@ export function CalendarCard() {
 
   useEffect(() => {
     loadMood();
-  }, [loadMood]);
+    loadMemorials();
+  }, [loadMood, loadMemorials]);
 
   // 选中的日期（yyyy-mm-dd），null = 未选中
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  // 月历视图月（对齐设计稿 38:279 月历小组件；稿内无换月 UI，视图恒为当月）
-  const [view] = useState(() => {
+  // 月历视图月（对齐设计稿 38:279 月历小组件；2026-11-04 用户定：加 ‹ › 换月）
+  const [view, setView] = useState(() => {
     const t = new Date();
     return { y: t.getFullYear(), m: t.getMonth() + 1 };
   });
+  const shiftViewMonth = (delta: number) =>
+    setView((v) => {
+      const d = new Date(v.y, v.m - 1 + delta, 1);
+      return { y: d.getFullYear(), m: d.getMonth() + 1 };
+    });
   // 经期设置弹窗（点详情面板里的「设置」）
   const [periodModalOpen, setPeriodModalOpen] = useState(false);
   // 点农历那行 → 小米日历风格的黄历详情页
@@ -94,6 +98,9 @@ export function CalendarCard() {
   const showMood = selectedIsToday || !!selectedMeInfo || !!selectedAiInfo;
   // 选中日期的农历月日（拓展页那一行）
   const lunarText = selectedDate ? lunarTextOf(sy, sm, sd) : null;
+  // 选中日期的纪念日 / 特殊节日（拓展页里展示，2026-11-04 用户定）
+  const selectedMemorial = selectedDate ? memorialOnDate(memorialDays, sy, sm, sd) : null;
+  const selectedSpecial = selectedDate ? daySpecial(sy, sm, sd) : null;
   // 选中日期当天的日记（无则显示空态，行本身即记日记入口）
   const diaryOfDay = selectedKey
     ? (entries.find((d) => diaryDayKey(d) === selectedKey) ?? null)
@@ -101,8 +108,6 @@ export function CalendarCard() {
 
   // 经期：选中日是否经期日
   const selectedPeriodIdx = selectedISO ? periodDayIndexOf(selectedISO, records) : null;
-  const selectedRecord = selectedISO ? recordFor(selectedISO, records) : null;
-  const selectedSymptoms = selectedISO ? (selectedRecord?.symptoms[selectedISO] ?? null) : null;
 
   // 逐日调整经期：取消 / 延长 / 记入（由 store 按相邻关系决定）
   const toggleMark = () => {
@@ -168,23 +173,31 @@ export function CalendarCard() {
         </div>
       )}
 
-      {/* 卡片主体：左栏（默认=日期大字；选中=详情面板）｜右 月历小组件 */}
-      <div className="flex items-stretch gap-4 px-4 pb-4 pt-4">
+      {/* 卡片主体：左栏（默认=日期大字；选中=详情面板，超高自动滚动）｜右 月历小组件。
+          不再固定高度：卡片取默认态自然高度，点日期左栏内容多了就自己滚（2026-11-04 用户定），
+          内边距收紧（周围别太宽）。 */}
+      <div className="flex items-stretch gap-3.5 px-3.5 py-3">
         {selectedDate == null ? (
-          /* 左：日期信息 —— 浅灰月份 / 粗体星期 / 60px 大字日期（稿内无换月箭头）。
-              宽度与选中态详情面板一致（46%），点日期时左栏不跳宽。 */
-          <div className="flex w-[46%] shrink-0 flex-col">
-            <div className="text-[16px] leading-none text-muted-foreground">
-              {view.y}年{view.m}月
-            </div>
-            <div className="mt-4 text-[19px] font-bold leading-none text-foreground">{infoWeekLabel}</div>
-            <div className="mt-2 text-[60px] font-bold leading-none tracking-tight text-foreground">
-              {infoDate.d}
+          /* 左：日期信息 —— 紧凑对角构图（2026-11-04 用户定：左边占比 2/5，角标跟着数字走）：
+              星期在数字左上角 · 大字日期居中 · 年月在数字右下角，整簇收紧居中。 */
+          <div className="flex w-[40%] shrink-0 flex-col">
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <div className="flex flex-col">
+                <span className="text-[19px] font-bold leading-none text-foreground">{infoWeekLabel}</span>
+                <span className="mt-1.5 self-center text-[60px] font-bold leading-none tracking-tight text-foreground">
+                  {infoDate.d}
+                </span>
+                <span className="mt-1.5 self-end text-[12px] leading-none text-muted-foreground">
+                  {view.y}年{view.m}月
+                </span>
+              </div>
             </div>
           </div>
         ) : (
-          /* 左：日期详情面板（对齐设计稿选中态：心情/农历/日记/经期/提醒） */
-          <div className="flex w-[46%] min-w-0 shrink-0 flex-col overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          /* 左：日期详情面板（心情/农历/纪念日/节日/日记/经期/提醒）。
+              绝对定位覆盖层——不参与卡片高度计算，卡片高度恒等于月历自然高度，
+              面板内容超出就在内部滚动（2026-11-04 用户定：上下滑动，卡片别变大）。 */
+          <div className="absolute inset-y-0 left-0 flex w-[40%] min-w-0 flex-col overflow-y-auto overscroll-contain px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="divide-y divide-border/60">
               {/* 心情：只读展示两个人的心情弧 */}
               {showMood && (
@@ -208,6 +221,24 @@ export function CalendarCard() {
                   <span className={PANEL_TITLE}>农历</span>
                   <span className="text-[13px] font-medium text-foreground">{lunarText}</span>
                 </button>
+              )}
+
+              {/* 纪念日 / 特殊节日：选中日期当天命中的才显示（玫瑰/浅蓝同 PDF 小字语言） */}
+              {selectedMemorial && (
+                <div className="flex items-center justify-between py-2.5">
+                  <span className={PANEL_TITLE}>纪念日</span>
+                  <span className="truncate pl-3 text-[13px] font-medium text-rose-400">
+                    {selectedMemorial.title}
+                  </span>
+                </div>
+              )}
+              {selectedSpecial && (
+                <div className="flex items-center justify-between py-2.5">
+                  <span className={PANEL_TITLE}>节日</span>
+                  <span className="truncate pl-3 text-[13px] font-medium text-sky-400/90">
+                    {selectedSpecial.label}
+                  </span>
+                </div>
               )}
 
               {/* 日记：行本身即入口，无则空态，有则预览 */}
@@ -238,7 +269,7 @@ export function CalendarCard() {
                   <button
                     type="button"
                     onClick={() => setPeriodModalOpen(true)}
-                    className="text-[13px] font-medium text-rose-500 transition hover:opacity-80"
+                    className="text-[13px] font-medium text-pink-400 transition hover:opacity-80"
                   >
                     设置
                   </button>
@@ -246,14 +277,14 @@ export function CalendarCard() {
                 {periodSummaryText && (
                   <div className="mt-0.5 text-[11px] text-muted-foreground/80">{periodSummaryText}</div>
                 )}
-                <div className="mt-1 text-[13px] font-medium leading-5 text-rose-500">
+                <div className="mt-1 text-[13px] font-medium leading-5 text-pink-400">
                   {selectedISO ? careMessage({ records, settings }, selectedISO) : ''}
                 </div>
                 <button type="button" onClick={toggleMark} className="mt-2 flex items-center gap-2">
                   <span
                     className={cn(
                       'flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition',
-                      selectedPeriodIdx !== null ? 'border-rose-400 bg-rose-400' : 'border-rose-300 bg-transparent',
+                      selectedPeriodIdx !== null ? 'border-pink-400 bg-pink-400' : 'border-pink-300 bg-transparent',
                     )}
                   >
                     {selectedPeriodIdx !== null && <Check className="h-3 w-3 text-white" />}
@@ -262,38 +293,6 @@ export function CalendarCard() {
                     {selectedPeriodIdx !== null ? '已记入经期' : '记入经期'}
                   </span>
                 </button>
-
-                {/* 经期日：症状记录 */}
-                {selectedPeriodIdx !== null && (
-                  <div className="mt-2.5 space-y-2">
-                    <div>
-                      <div className="text-[11px] text-muted-foreground">痛经程度</div>
-                      <div className="mt-1 flex gap-1">
-                        {CRAMP_LEVELS.map((label, lv) => (
-                          <button
-                            key={label}
-                            type="button"
-                            onClick={() => selectedISO && setSymptom(selectedISO, { cramps: lv })}
-                            className={cn(
-                              'flex-1 rounded-lg py-1 text-[11px] transition',
-                              (selectedSymptoms?.cramps ?? 0) === lv
-                                ? 'bg-rose-400 text-primary-foreground'
-                                : 'bg-muted text-foreground/70 hover:bg-foreground/10',
-                            )}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <input
-                      value={selectedSymptoms?.discomfort ?? ''}
-                      onChange={(e) => selectedISO && setSymptom(selectedISO, { discomfort: e.target.value })}
-                      placeholder="其他不适，如腰酸、乏力…"
-                      className="h-8 w-full rounded-lg bg-muted px-2.5 text-[12px] text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-surface"
-                    />
-                  </div>
-                )}
               </div>
 
               {/* 提醒：读设置页「睡前提醒」开关（提醒由系统/AI 侧触发，不由这里手写） */}
@@ -307,21 +306,48 @@ export function CalendarCard() {
           </div>
         )}
 
-        {/* 右：月历小组件 —— S M T W T F S 表头（周末蓝）+ 38 高周行 + 选中蓝圆 + 节日标签 + 心情点；中央 ghost 月份水印 */}
+        {/* 选中态：详情面板已绝对定位浮在左栏，这里占住左栏宽度让月历保持在右侧 */}
+        {selectedDate != null && <div className="w-[40%] shrink-0" aria-hidden />}
+
+        {/* 右：月历小组件 —— 顶部月份切换器（‹ 11月 ›）+ S M T W T F S 表头（周末蓝）+
+            38 高周行 + 选中蓝圆 + 节日标签 + 心情点；中央 ghost 月份水印 */}
         <div className="relative min-w-0 flex-1">
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-[18%] flex select-none items-start justify-center text-[110px] font-bold leading-none text-foreground/[0.05]"
+            className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 select-none items-start justify-center text-[110px] font-bold leading-none text-foreground/[0.05]"
           >
             {String(view.m).padStart(2, '0')}
           </span>
-          <div className="relative grid grid-cols-7">
+          {/* 月份切换器：年份月份的切换入口（视图月，点左右箭头换月）。
+              下方留一大段空再接星期表头（2026-11-04 用户定：空隙再大一点） */}
+          <div className="relative mb-5 flex items-center justify-center gap-1">
+            <button
+              type="button"
+              onClick={() => shiftViewMonth(-1)}
+              aria-label="上个月"
+              className="icon-btn h-6 w-6"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="min-w-[44px] text-center text-[13px] font-medium leading-none text-foreground">
+              {view.y}年{view.m}月
+            </span>
+            <button
+              type="button"
+              onClick={() => shiftViewMonth(1)}
+              aria-label="下个月"
+              className="icon-btn h-6 w-6"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="relative grid grid-cols-7 border-b border-border/50">
             {WEEK_LETTERS.map((l, i) => (
               <span
                 key={i}
                 className={cn(
-                  'flex h-7 items-center justify-center text-[11px]',
-                  i === 0 || i === 6 ? 'text-primary' : 'text-muted-foreground',
+                  'flex h-6 items-center justify-center text-[10px] font-medium tracking-widest',
+                  i === 0 || i === 6 ? 'text-primary/60' : 'text-muted-foreground/60',
                 )}
               >
                 {l}
@@ -336,7 +362,7 @@ export function CalendarCard() {
                 const isSelected = selectedDate === iso;
                 const isToday = iso === todayISODate();
                 const deco = dayDecoration(iso);
-                const moodColors = (deco?.moodColors ?? []).slice(0, 2);
+                const periodMark = deco?.period; // 'solid' 实期 | 'predicted' 预测
                 const isWeekend = ci === 0 || ci === 6;
                 return (
                   <button
@@ -355,10 +381,21 @@ export function CalendarCard() {
                           isSelected
                             ? 'bg-primary font-medium text-primary-foreground'
                             : isToday
-                              ? cn('ring-1 ring-primary', isWeekend ? 'text-muted-foreground' : 'text-foreground')
-                              : isWeekend
-                                ? 'text-muted-foreground'
-                                : 'text-foreground',
+                              ? cn(
+                                  'ring-1 ring-primary',
+                                  periodMark === 'solid'
+                                    ? 'font-medium text-pink-400'
+                                    : isWeekend
+                                      ? 'text-muted-foreground'
+                                      : 'text-foreground',
+                                )
+                              : periodMark === 'solid'
+                                ? 'font-medium text-pink-400'
+                                : periodMark === 'predicted'
+                                  ? 'text-pink-300/70'
+                                  : isWeekend
+                                    ? 'text-muted-foreground'
+                                    : 'text-foreground',
                         )}
                       >
                         {d}
@@ -372,17 +409,10 @@ export function CalendarCard() {
                         )}
                       </span>
                     </span>
-                    {/* 节日标签 / 心情点：绝对定位在数字下方，不影响行高与数字位置 */}
+                    {/* 节日标签：绝对定位在数字下方，不影响行高；不截断，尽量写全（2026-11-04 用户定） */}
                     {deco?.label && (
-                      <span className="absolute inset-x-0 bottom-[1px] truncate px-0.5 text-center text-[8px] leading-[10px] text-sky-400/80">
+                      <span className="absolute inset-x-0 bottom-[1px] whitespace-nowrap px-0.5 text-center text-[8px] leading-[10px] text-sky-400/80">
                         {deco.label}
-                      </span>
-                    )}
-                    {moodColors.length > 0 && (
-                      <span className="absolute inset-x-0 bottom-[2px] flex justify-center gap-[3px]">
-                        {moodColors.map((c, i) => (
-                          <span key={i} className="h-1 w-1 rounded-full" style={{ backgroundColor: c }} />
-                        ))}
                       </span>
                     )}
                   </button>
@@ -432,7 +462,7 @@ function StepperRow({
           type="button"
           aria-label={`减少${label}`}
           onClick={() => onChange(Math.max(min, value - 1))}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-pink-300 transition hover:bg-pink-50"
         >
           <Minus className="h-4 w-4" />
         </button>
@@ -443,7 +473,7 @@ function StepperRow({
           type="button"
           aria-label={`增加${label}`}
           onClick={() => onChange(Math.min(max, value + 1))}
-          className="flex h-6 w-6 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-pink-300 transition hover:bg-pink-50"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -536,7 +566,7 @@ function PeriodSettingsModal({
         <button
           type="button"
           onClick={onClose}
-          className="mt-4 h-10 w-full rounded-[22px] bg-rose-400 text-sm font-medium text-white transition hover:opacity-90"
+          className="mt-4 h-10 w-full rounded-[22px] bg-pink-400 text-sm font-medium text-white transition hover:opacity-90"
         >
           保存
         </button>
