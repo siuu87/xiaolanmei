@@ -20,7 +20,6 @@ import {
   MessageSquare,
   MessagesSquare,
   Globe,
-  Gift,
   Phone,
   Plus,
   Image,
@@ -2319,8 +2318,8 @@ export function ChatPage() {
           <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
             {attachOpen ? (
               <div className="px-4 pb-3 pt-2">
-                {/* 5 列：前 5 个严格对齐设计稿（表情包 / 通话 / 图片 / 拍照 / 文件），
-                    礼物盒与对白风格排在第二行，功能不丢。 */}
+                {/* 5 列：严格对齐设计稿（表情包 / 通话 / 图片 / 拍照 / 文件）。
+                    礼物盒入口已删（2026-11-05：只留抽屉「生活小趣味」与 /gifts 路由）。 */}
                 <div className="mx-auto grid w-full max-w-[430px] grid-cols-5 gap-x-2 gap-y-3" data-testid="attach-panel">
                   <AttachButton
                     icon={<Smile className="h-6 w-6" />}
@@ -2346,15 +2345,6 @@ export function ChatPage() {
                     icon={<FileText className="h-6 w-6" />}
                     label="文件"
                     onClick={() => fileDocRef.current?.click()}
-                  />
-                  <AttachButton
-                    icon={<Gift className="h-6 w-6" />}
-                    label="礼物盒"
-                    testid="attach-gift"
-                    onClick={() => {
-                      setAttachOpen(false);
-                      navigate('/gifts');
-                    }}
                   />
                   {/* 对白风格入口在顶栏汉堡右边（chat-style-pill），这里不再重复 */}
                 </div>

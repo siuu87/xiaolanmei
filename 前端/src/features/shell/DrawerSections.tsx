@@ -201,10 +201,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
     icon: Utensils,
     entries: [
       { to: '/food', label: '今天吃什么', icon: Utensils },
-      { to: '/wishlist', label: '灵感待办池', hint: '灵感 · 待办，回车即记', icon: Lightbulb },
+      { to: '/wishlist', label: '灵感待办池', icon: Lightbulb },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
-      { to: '/gifts', label: '礼物盒', hint: '他藏的小心意 · 拆开看', icon: Gift },
+      { to: '/gifts', label: '礼物盒', icon: Gift },
     ],
   },
 ];
