@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AvatarContent } from '@/components/AvatarContent';
 import { useImmersiveStore } from '@/stores/immersiveStore';
 import { StarBackdrop } from '@/features/sky/StarBackdrop';
 import { PhoneApp } from './phone/PhoneApp';
@@ -206,8 +207,8 @@ function CharacterTab({
                 onClick={() => onChat(c)}
                 className="flex w-full flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left transition hover:border-border hover:bg-surface-2"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-2xl">
-                  {c.avatar || '🤖'}
+                <span className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-surface-2">
+                  <AvatarContent value={c.avatar ?? ''} />
                 </span>
                 <span className="w-full">
                   <span className="block text-sm font-medium text-foreground">{c.name}</span>
@@ -503,8 +504,8 @@ function PersonaTab({
             const active = p.id === activeId;
             return (
               <div key={p.id} className={cn('flex items-center gap-3 rounded-xl border p-3', active ? 'border-gold bg-gold-soft' : 'border-border bg-card')}>
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xl">
-                  {p.avatar || '🙂'}
+                <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-surface-2">
+                  <AvatarContent value={p.avatar ?? ''} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
@@ -657,8 +658,8 @@ function TavernChat({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-xl">
-            {character.avatar || '🤖'}
+          <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-2">
+            <AvatarContent value={character.avatar ?? ''} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">{character.name}</p>

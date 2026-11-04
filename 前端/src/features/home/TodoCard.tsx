@@ -100,10 +100,10 @@ export function TodoCard({ embedded = false }: { embedded?: boolean }) {
                     onClick={() => toggleTodo(t.id)}
                     aria-label={done ? '标记未完成' : '标记完成'}
                     className={cn(
-                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition',
+                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition',
                       done
                         ? 'border-primary bg-primary'
-                        : 'border-muted-foreground/40 hover:border-primary',
+                        : 'border-primary/70 hover:border-primary',
                     )}
                   >
                     {done && <Check className="h-3 w-3 text-primary-foreground" />}

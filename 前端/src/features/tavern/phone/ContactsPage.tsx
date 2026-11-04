@@ -68,7 +68,7 @@ export function ContactsPage({ onOpen }: { onOpen: (contactId: string) => void }
                 className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition active:bg-phone-grouped"
               >
                 <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#dcdce0] to-[#c9c9cf] text-xl">
-                  <AvatarContent value={c.avatar ?? ''} fallback="🙂" />
+                  <AvatarContent value={c.avatar ?? ''} />
                 </span>
                 <span
                   className={`flex min-w-0 flex-1 flex-col justify-center py-1.5 ${

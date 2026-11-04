@@ -115,7 +115,7 @@ export function MoodPopover({
         {/* 身份行：小头像 + 名字 + 情绪更新时间 */}
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-bar text-[10px] leading-none">
-            <AvatarContent value={partnerAvatar} fallback="🐰" />
+            <AvatarContent value={partnerAvatar} />
           </span>
           <span className="min-w-0 truncate text-xs font-medium text-foreground">{partnerName}</span>
           <span className="h-1 w-1 shrink-0 rounded-full bg-foreground/60" aria-hidden />

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Check, Pencil, ChevronRight } from 'lucide-react';
+import { Check, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { periodSummary } from '@/lib/cycle';
+import { useLocalSwitch } from '@/lib/useLocalSwitch';
 import { diaryDayKey, AUTHOR_LABEL } from '@/features/diary/diaryData';
 import { useDiaryStore } from '@/features/diary/diaryStore';
-import { CollapsibleCalendar, type CalendarDayDecoration } from '@/features/calendar/CollapsibleCalendar';
+import type { CalendarDayDecoration } from '@/features/calendar/CollapsibleCalendar';
 import { daySpecial, dayWorkFlag } from '@/features/calendar/chineseCalendar';
 import { lunarTextOf } from '@/features/calendar/almanac';
 import { AlmanacPage } from '@/features/calendar/AlmanacPage';
@@ -19,20 +21,35 @@ import {
   careMessage,
   CRAMP_LEVELS,
   todayISODate,
-  diffDays,
 } from './periodStore';
-import {
-  useMemorialStore,
-  memorialOnDate,
-  dayStatus,
-  statusLabel,
-  formatMemorialDate,
-  type MemorialDay,
-} from './memorialStore';
-import { TodoCard } from './TodoCard';
+import { useMemorialStore, memorialOnDate } from './memorialStore';
+
+const WEEK_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+/** 某月的周日历矩阵（周日开头，null = 空位），对齐设计稿月历小组件 */
+function monthMatrix(y: number, m: number): (number | null)[][] {
+  const lead = new Date(y, m - 1, 1).getDay(); // 0 = 周日
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array<null>(lead).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+  return rows;
+}
+
+/** 详情面板统一行标题样式（对齐设计稿：深色 medium 小字） */
+const PANEL_TITLE = 'text-[13px] font-medium text-foreground';
+
 /**
  * 心情在这里**只读**：选心情的入口已经统一收到首页日历上方的 MOOD 卡片。
  * 三种心情（高兴·黄 / 平静·绿 / 难过·蓝）与首页用的是同一份定义、同一份存储。
+ *
+ * 版式完全对齐设计稿（首页可编辑稿 PDF）：
+ * - 默认态 = 左「月份/星期/大字日期」+ 右月历小组件；
+ * - 选中态 = 左栏切换成**日期详情面板**（心情/农历/日记/经期/提醒），月历保持右侧。
  */
 export function CalendarCard() {
   const navigate = useNavigate();
@@ -45,14 +62,22 @@ export function CalendarCard() {
   const memorialDays = useMemorialStore((s) => s.days);
   const moodDays = useMoodStore((s) => s.days);
   const loadMood = useMoodStore((s) => s.load);
+  // 睡前提醒开关（设置页「提醒与健康」）：开着才在详情面板显示提醒行
+  const [bedReminderOn] = useLocalSwitch('blueberry.bedReminder', false);
 
   useEffect(() => {
     loadMood();
   }, [loadMood]);
 
-  // 折叠日历选中的日期（yyyy-mm-dd），null = 未选中
+  // 选中的日期（yyyy-mm-dd），null = 未选中
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [showPeriodSettings, setShowPeriodSettings] = useState(false);
+  // 月历视图月（对齐设计稿 38:279 月历小组件；稿内无换月 UI，视图恒为当月）
+  const [view] = useState(() => {
+    const t = new Date();
+    return { y: t.getFullYear(), m: t.getMonth() + 1 };
+  });
+  // 经期设置弹窗（点详情面板里的「设置」）
+  const [periodModalOpen, setPeriodModalOpen] = useState(false);
   // 点农历那行 → 小米日历风格的黄历详情页
   const [almanacOpen, setAlmanacOpen] = useState(false);
 
@@ -69,41 +94,11 @@ export function CalendarCard() {
   const showMood = selectedIsToday || !!selectedMeInfo || !!selectedAiInfo;
   // 选中日期的农历月日（拓展页那一行）
   const lunarText = selectedDate ? lunarTextOf(sy, sm, sd) : null;
-  // 选中日期当天的日记（无则 null → 仅今天显示「去记日记」）
+  // 选中日期当天的日记（无则显示空态，行本身即记日记入口）
   const diaryOfDay = selectedKey
     ? (entries.find((d) => diaryDayKey(d) === selectedKey) ?? null)
     : null;
 
-  // 选中日期的纪念日/节日/节气
-  const selectedSpecial: {
-    label: string;
-    kind: 'anniversary' | 'holiday' | 'festival';
-    memorial?: MemorialDay;
-  } | null =
-    selectedDate != null
-      ? (() => {
-          const memorial = memorialOnDate(memorialDays, sy, sm, sd);
-          if (memorial) return { label: memorial.title, kind: 'anniversary', memorial };
-          const sp = daySpecial(sy, sm, sd);
-          if (sp && sp.label) return { label: sp.label, kind: sp.off ? 'holiday' : 'festival' };
-          return null;
-        })()
-      : null;
-
-  // 选中日期距今多少天（正=未来，负=过去）
-  const selectedDiff = selectedDate != null ? diffDays(todayISODate(), selectedDate) : 0;
-  // 纪念日展示：倒数日（还有/已过/就是今天）+ 日期文案
-  const selectedMemorial = selectedSpecial?.memorial;
-  const selectedCount = selectedMemorial
-    ? statusLabel(dayStatus(selectedMemorial))
-    : selectedDiff === 0
-      ? '就是今天'
-      : selectedDiff > 0
-        ? `还有 ${selectedDiff} 天`
-        : `已过 ${-selectedDiff} 天`;
-  const selectedDateLabel = selectedMemorial
-    ? formatMemorialDate(selectedMemorial)
-    : `${sy} 年 ${sm} 月 ${sd} 日`;
   // 经期：选中日是否经期日
   const selectedPeriodIdx = selectedISO ? periodDayIndexOf(selectedISO, records) : null;
   const selectedRecord = selectedISO ? recordFor(selectedISO, records) : null;
@@ -119,7 +114,15 @@ export function CalendarCard() {
     setSelectedDate((prev) => (prev === date ? null : date));
   };
 
-  // 日历每天的标注：心情圆点 + 经期数字色 + 纪念日数字色 + 放假日角标 + 节日/节气名称
+  // 左栏日期信息（默认态）：今天
+  const infoDate = (() => {
+    if (selectedDate) return { y: sy, m: sm, d: sd };
+    const t = new Date();
+    return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() };
+  })();
+  const infoWeekLabel = `星期${'日一二三四五六'[new Date(infoDate.y, infoDate.m - 1, infoDate.d).getDay()]}`;
+
+  // 日历每天的标注：心情圆点 + 纪念日 + 放假日角标 + 节日/节气名称
   const next = predictNextStart(records, settings);
   const periodSummaryText = periodSummary(records, settings);
   const dayDecoration = (iso: string): CalendarDayDecoration | undefined => {
@@ -149,270 +152,397 @@ export function CalendarCard() {
     };
   };
 
+  // 最近一次经期的开始日（设置弹窗只读展示）
+  const lastRecord = records.length > 0 ? records[records.length - 1] : null;
+  const lastStart = lastRecord?.days[0] ?? null;
+  const lastStartLabel = lastStart
+    ? `${Number(lastStart.slice(5, 7))}月${Number(lastStart.slice(8, 10))}日`
+    : '暂无记录';
+
   return (
     <div className="paper-card overflow-hidden rounded-3xl relative">
-      {/* 黄历详情页浮层（点拓展页里的农历打开），覆盖整卡 */}
+      {/* 黄历详情页浮层（点农历行打开），覆盖整卡 */}
       {almanacOpen && selectedDate && (
         <div className="absolute inset-0 z-10">
           <AlmanacPage y={sy} m={sm} d={sd} onBack={() => setAlmanacOpen(false)} />
         </div>
       )}
 
-      {/* 左栏：折叠日历，占卡片 3/4 */}
-      <div className="relative w-3/4 shrink-0 border-r border-border/70">
-        <CollapsibleCalendar
-          value={selectedDate}
-          onChange={handleSelectDate}
-          dayDecoration={dayDecoration}
-          onCollapsedChange={() => setSelectedDate(null)} // 展开/收起日历 → 自动关闭日期详情
-        />
-      </div>
-
-      {/* 右栏：1/4 窄竖条 —— 默认待办，选中日期后切到日详情；显示滚动条（竖条），高度与左栏日历一致，内容超出即滚动 */}
-      <div className="absolute inset-y-0 right-0 left-[75%] overflow-y-auto overscroll-contain px-2 py-3">
+      {/* 卡片主体：左栏（默认=日期大字；选中=详情面板）｜右 月历小组件 */}
+      <div className="flex items-stretch gap-4 px-4 pb-4 pt-4">
         {selectedDate == null ? (
-          <TodoCard embedded />
-        ) : (
-          <>
-          {/* 记日记入口（原 X 收起按钮改）：进入当天日记，无则新建 */}
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedKey) navigate(`/diary?date=${selectedKey}${diaryOfDay ? '' : '&new=1'}`);
-              }}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-foreground/10"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              记日记
-            </button>
+          /* 左：日期信息 —— 浅灰月份 / 粗体星期 / 60px 大字日期（稿内无换月箭头）。
+              宽度与选中态详情面板一致（46%），点日期时左栏不跳宽。 */
+          <div className="flex w-[46%] shrink-0 flex-col">
+            <div className="text-[16px] leading-none text-muted-foreground">
+              {view.y}年{view.m}月
+            </div>
+            <div className="mt-4 text-[19px] font-bold leading-none text-foreground">{infoWeekLabel}</div>
+            <div className="mt-2 text-[60px] font-bold leading-none tracking-tight text-foreground">
+              {infoDate.d}
+            </div>
           </div>
-
-          {/* 心情：只读展示。「心情」二字与两个人的心情图标同一行，图案与首页 MOOD 一致 */}
-          {showMood && (
-            <div className="flex items-center gap-3">
-              <span className="font-serif text-xs text-muted-foreground">心情</span>
-              <div className="flex flex-1 items-center justify-end gap-4">
-                <MoodChip who="我" mood={selectedRec.me} />
-                <MoodChip who="AI" mood={selectedRec.ai} />
-              </div>
-            </div>
-          )}
-
-          {/* 农历：心情下方，点开是小米日历风格的黄历详情页 */}
-          {selectedDate && lunarText && (
-            <button
-              type="button"
-              onClick={() => setAlmanacOpen(true)}
-              aria-label={`查看${lunarText}黄历详情`}
-              className={cn(
-                'mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 transition',
-                'hover:bg-foreground/10',
-              )}
-            >
-              <span className="font-serif text-xs text-muted-foreground">农历</span>
-              <span className="flex items-center gap-1 text-[13px] text-foreground">
-                {lunarText}
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              </span>
-            </button>
-          )}
-
-          {/* 经期：关怀语 + 症状 / 记入 + 设置 */}
-          <div className={cn(showMood && 'mt-3 border-t border-border pt-3')}>
-            <div className="flex items-center justify-between">
-              <span className="font-serif text-xs text-muted-foreground">经期</span>
-              <button
-                type="button"
-                onClick={() => setShowPeriodSettings((v) => !v)}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-xs transition',
-                  showPeriodSettings
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-foreground/10',
-                )}
-              >
-                设置
-              </button>
-            </div>
-
-            {/* 上次经期 / 平均周期摘要 */}
-            {periodSummaryText && (
-              <div className="mt-0.5 text-xs text-muted-foreground/80">{periodSummaryText}</div>
-            )}
-
-            {/* 关怀语（按选中日计算） */}
-            <div className="mt-1 text-sm leading-6 text-foreground/90">
-              {selectedISO ? careMessage({ records, settings }, selectedISO) : ''}
-            </div>
-
-            {/* 记入经期：每天显示，点击打勾 / 再点取消 */}
-            <button
-              type="button"
-              onClick={toggleMark}
-              className="mt-2 flex w-full items-center gap-2.5 rounded-xl bg-muted px-3 py-2.5 text-sm transition hover:bg-foreground/10"
-            >
-              <span
-                className={cn(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition',
-                  selectedPeriodIdx !== null
-                    ? 'border-rose-400 bg-rose-400'
-                    : 'border-border bg-transparent',
-                )}
-              >
-                {selectedPeriodIdx !== null && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-              </span>
-              <span className={cn(selectedPeriodIdx !== null ? 'text-foreground' : 'text-foreground/80')}>
-                {selectedPeriodIdx !== null ? '已记入经期' : '将该日期记入经期'}
-              </span>
-            </button>
-
-            {/* 经期日：症状记录 */}
-            {selectedPeriodIdx !== null && (
-              <div className="mt-2 space-y-2.5">
-                <div>
-                  <div className="font-serif text-xs text-muted-foreground">痛经程度</div>
-                  <div className="mt-1.5 flex gap-1.5">
-                    {CRAMP_LEVELS.map((label, lv) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => selectedISO && setSymptom(selectedISO, { cramps: lv })}
-                        className={cn(
-                          'flex-1 rounded-lg py-1.5 text-xs transition',
-                          (selectedSymptoms?.cramps ?? 0) === lv
-                            ? 'bg-rose-400 text-primary-foreground'
-                            : 'bg-muted text-foreground/70 hover:bg-foreground/10',
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
+        ) : (
+          /* 左：日期详情面板（对齐设计稿选中态：心情/农历/日记/经期/提醒） */
+          <div className="flex w-[46%] min-w-0 shrink-0 flex-col overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="divide-y divide-border/60">
+              {/* 心情：只读展示两个人的心情弧 */}
+              {showMood && (
+                <div className="flex items-center justify-between py-2.5">
+                  <span className={PANEL_TITLE}>心情</span>
+                  <div className="flex items-center gap-3">
+                    <MoodChip who="我" mood={selectedRec.me} />
+                    <MoodChip who="AI" mood={selectedRec.ai} />
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <div className="font-serif text-xs text-muted-foreground">其他不适</div>
-                  <input
-                    value={selectedSymptoms?.discomfort ?? ''}
-                    onChange={(e) =>
-                      selectedISO && setSymptom(selectedISO, { discomfort: e.target.value })
-                    }
-                    placeholder="如腰酸、乏力…"
-                    className="mt-1.5 h-9 w-full rounded-xl bg-muted px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-surface"
-                  />
-                </div>
+              {/* 农历：点开是小米日历风格的黄历详情页 */}
+              {lunarText && (
+                <button
+                  type="button"
+                  onClick={() => setAlmanacOpen(true)}
+                  aria-label={`查看${lunarText}黄历详情`}
+                  className="flex w-full items-center justify-between py-2.5 text-left transition hover:opacity-80"
+                >
+                  <span className={PANEL_TITLE}>农历</span>
+                  <span className="text-[13px] font-medium text-foreground">{lunarText}</span>
+                </button>
+              )}
 
-              </div>
-            )}
+              {/* 日记：行本身即入口，无则空态，有则预览 */}
+              <button
+                type="button"
+                onClick={() => selectedKey && navigate(`/diary?date=${selectedKey}${diaryOfDay ? '' : '&new=1'}`)}
+                className="block w-full py-2.5 text-left transition hover:opacity-80"
+              >
+                <span className={PANEL_TITLE}>日记</span>
+                {diaryOfDay ? (
+                  <>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">
+                      {diaryOfDay.date} · {AUTHOR_LABEL[diaryOfDay.author]}
+                    </div>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-5 text-foreground/80">
+                      {diaryOfDay.content}
+                    </p>
+                  </>
+                ) : (
+                  <div className="mt-0.5 text-[12px] text-muted-foreground">今天还没有记日记</div>
+                )}
+              </button>
 
-            {showPeriodSettings && (
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-foreground/80">经期持续天数</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={14}
-                    value={settings.periodDays}
-                    onChange={(e) =>
-                      setSetting({ periodDays: Math.min(14, Math.max(1, Number(e.target.value) || 1)) })
-                    }
-                    className="h-8 w-20 rounded-lg bg-muted px-2 text-center text-sm text-foreground outline-none focus:bg-surface"
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-foreground/80">月经周期</span>
-                  <input
-                    type="number"
-                    min={15}
-                    max={60}
-                    value={settings.cycleDays}
-                    onChange={(e) =>
-                      setSetting({ cycleDays: Math.min(60, Math.max(15, Number(e.target.value) || 28)) })
-                    }
-                    className="h-8 w-20 rounded-lg bg-muted px-2 text-center text-sm text-foreground outline-none focus:bg-surface"
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-foreground/80">规律</span>
+              {/* 经期：关怀语玫瑰红 + 「设置」玫瑰字开弹窗 + 记入经期 */}
+              <div className="py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className={PANEL_TITLE}>经期</span>
                   <button
                     type="button"
-                    role="switch"
-                    aria-checked={settings.regular}
-                    onClick={() => setSetting({ regular: !settings.regular })}
-                    className={cn(
-                      'relative h-6 w-11 rounded-full transition',
-                      settings.regular ? 'bg-primary' : 'bg-muted-foreground/30',
-                    )}
+                    onClick={() => setPeriodModalOpen(true)}
+                    className="text-[13px] font-medium text-rose-500 transition hover:opacity-80"
                   >
-                    <span
-                      className={cn(
-                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all',
-                        settings.regular ? 'left-[22px]' : 'left-0.5',
-                      )}
-                    />
+                    设置
                   </button>
                 </div>
-                {!settings.regular && (
-                  <div className="mt-1 text-xs text-muted-foreground/70">
-                    不规律时按历史记录的平均周期预测
+                {periodSummaryText && (
+                  <div className="mt-0.5 text-[11px] text-muted-foreground/80">{periodSummaryText}</div>
+                )}
+                <div className="mt-1 text-[13px] font-medium leading-5 text-rose-500">
+                  {selectedISO ? careMessage({ records, settings }, selectedISO) : ''}
+                </div>
+                <button type="button" onClick={toggleMark} className="mt-2 flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition',
+                      selectedPeriodIdx !== null ? 'border-rose-400 bg-rose-400' : 'border-rose-300 bg-transparent',
+                    )}
+                  >
+                    {selectedPeriodIdx !== null && <Check className="h-3 w-3 text-white" />}
+                  </span>
+                  <span className="text-[12px] text-muted-foreground">
+                    {selectedPeriodIdx !== null ? '已记入经期' : '记入经期'}
+                  </span>
+                </button>
+
+                {/* 经期日：症状记录 */}
+                {selectedPeriodIdx !== null && (
+                  <div className="mt-2.5 space-y-2">
+                    <div>
+                      <div className="text-[11px] text-muted-foreground">痛经程度</div>
+                      <div className="mt-1 flex gap-1">
+                        {CRAMP_LEVELS.map((label, lv) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => selectedISO && setSymptom(selectedISO, { cramps: lv })}
+                            className={cn(
+                              'flex-1 rounded-lg py-1 text-[11px] transition',
+                              (selectedSymptoms?.cramps ?? 0) === lv
+                                ? 'bg-rose-400 text-primary-foreground'
+                                : 'bg-muted text-foreground/70 hover:bg-foreground/10',
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <input
+                      value={selectedSymptoms?.discomfort ?? ''}
+                      onChange={(e) => selectedISO && setSymptom(selectedISO, { discomfort: e.target.value })}
+                      placeholder="其他不适，如腰酸、乏力…"
+                      className="h-8 w-full rounded-lg bg-muted px-2.5 text-[12px] text-foreground outline-none placeholder:text-muted-foreground/60 focus:bg-surface"
+                    />
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* 节日信息 */}
-          {selectedSpecial && (
-            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-              <div>
-                <div className="text-sm font-medium text-foreground">{selectedSpecial.label}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">{selectedDateLabel}</div>
-              </div>
-              <div
-                className="font-serif text-sm font-medium"
-                style={{
-                  color:
-                    selectedSpecial.kind === 'anniversary'
-                      ? '#f59e0b'
-                      : selectedSpecial.kind === 'holiday'
-                        ? '#10b981'
-                        : '#38bdf8',
-                }}
-              >
-                {selectedCount}
-              </div>
-            </div>
-          )}
-
-          {/* 日记：当天有则展示（跳转到日记页对应位置），无则不提示（记日记入口在右上角） */}
-          {diaryOfDay && (
-            <div className="mt-3 border-t border-border pt-3">
-              <button
-                type="button"
-                onClick={() => selectedKey && navigate(`/diary?date=${selectedKey}`)}
-                className="block w-full text-left"
-              >
-                <div className="text-xs text-muted-foreground">{diaryOfDay.date}</div>
-                <div
-                  className={cn(
-                    'mt-1 text-sm font-medium',
-                    diaryOfDay.author === 'me' ? 'text-primary' : 'text-rose-400',
-                  )}
-                >
-                  {AUTHOR_LABEL[diaryOfDay.author]}
+              {/* 提醒：读设置页「睡前提醒」开关（提醒由系统/AI 侧触发，不由这里手写） */}
+              {bedReminderOn && (
+                <div className="flex items-center justify-between py-2.5">
+                  <span className={PANEL_TITLE}>提醒</span>
+                  <span className="text-[12px] text-muted-foreground">22:00 睡前提醒</span>
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-foreground/90">
-                  {diaryOfDay.content}
-                </p>
-              </button>
+              )}
             </div>
-          )}
-          </>)
-        }
+          </div>
+        )}
+
+        {/* 右：月历小组件 —— S M T W T F S 表头（周末蓝）+ 38 高周行 + 选中蓝圆 + 节日标签 + 心情点；中央 ghost 月份水印 */}
+        <div className="relative min-w-0 flex-1">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-[18%] flex select-none items-start justify-center text-[110px] font-bold leading-none text-foreground/[0.05]"
+          >
+            {String(view.m).padStart(2, '0')}
+          </span>
+          <div className="relative grid grid-cols-7">
+            {WEEK_LETTERS.map((l, i) => (
+              <span
+                key={i}
+                className={cn(
+                  'flex h-7 items-center justify-center text-[11px]',
+                  i === 0 || i === 6 ? 'text-primary' : 'text-muted-foreground',
+                )}
+              >
+                {l}
+              </span>
+            ))}
+          </div>
+          {monthMatrix(view.y, view.m).map((row, ri) => (
+            <div key={ri} className="relative grid grid-cols-7">
+              {row.map((d, ci) => {
+                if (d === null) return <span key={ci} className="h-[38px]" />;
+                const iso = `${view.y}-${String(view.m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isSelected = selectedDate === iso;
+                const isToday = iso === todayISODate();
+                const deco = dayDecoration(iso);
+                const moodColors = (deco?.moodColors ?? []).slice(0, 2);
+                const isWeekend = ci === 0 || ci === 6;
+                return (
+                  <button
+                    key={ci}
+                    type="button"
+                    onClick={() => handleSelectDate(iso)}
+                    aria-pressed={isSelected}
+                    aria-label={`${view.y}年${view.m}月${d}日`}
+                    className="relative h-[38px]"
+                  >
+                    {/* 数字槽：所有日期（含选中/今天/带圈）同一位置同一尺寸，圈只衬在数字后面 */}
+                    <span className="absolute inset-x-0 top-[5px] flex justify-center">
+                      <span
+                        className={cn(
+                          'relative flex h-6 w-6 items-center justify-center rounded-full text-[13px] leading-none transition',
+                          isSelected
+                            ? 'bg-primary font-medium text-primary-foreground'
+                            : isToday
+                              ? cn('ring-1 ring-primary', isWeekend ? 'text-muted-foreground' : 'text-foreground')
+                              : isWeekend
+                                ? 'text-muted-foreground'
+                                : 'text-foreground',
+                        )}
+                      >
+                        {d}
+                        {deco?.workFlag === '休' && !isSelected && (
+                          <span
+                            aria-label="休"
+                            className="absolute -right-1.5 -top-1 text-[9px] leading-none text-emerald-500"
+                          >
+                            ✳
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    {/* 节日标签 / 心情点：绝对定位在数字下方，不影响行高与数字位置 */}
+                    {deco?.label && (
+                      <span className="absolute inset-x-0 bottom-[1px] truncate px-0.5 text-center text-[8px] leading-[10px] text-sky-400/80">
+                        {deco.label}
+                      </span>
+                    )}
+                    {moodColors.length > 0 && (
+                      <span className="absolute inset-x-0 bottom-[2px] flex justify-center gap-[3px]">
+                        {moodColors.map((c, i) => (
+                          <span key={i} className="h-1 w-1 rounded-full" style={{ backgroundColor: c }} />
+                        ))}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 经期设置弹窗（对齐设计稿：遮罩 + 居中白卡 + 玫瑰步进器） */}
+      {periodModalOpen && (
+        <PeriodSettingsModal
+          settings={settings}
+          setSetting={setSetting}
+          lastStartLabel={lastStartLabel}
+          onClose={() => setPeriodModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------- 经期设置弹窗 ---------------------------- */
+
+/** 玫瑰步进行：－ 28天 ＋ */
+function StepperRow({
+  label,
+  value,
+  min,
+  max,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  unit: string;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-2.5">
+      <span className="text-[13px] text-foreground/80">{label}</span>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          aria-label={`减少${label}`}
+          onClick={() => onChange(Math.max(min, value - 1))}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <span className="w-12 text-center text-[14px] font-medium text-foreground">
+          {value} {unit}
+        </span>
+        <button
+          type="button"
+          aria-label={`增加${label}`}
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="flex h-6 w-6 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
       </div>
     </div>
+  );
+}
+
+function PeriodSettingsModal({
+  settings,
+  setSetting,
+  lastStartLabel,
+  onClose,
+}: {
+  settings: { periodDays: number; cycleDays: number; regular: boolean };
+  setSetting: (s: Partial<{ periodDays: number; cycleDays: number; regular: boolean }>) => void;
+  lastStartLabel: string;
+  onClose: () => void;
+}) {
+  // Esc 在 capture 阶段拦下：避免把底下的抽屉/浮层一起关掉
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[1500] flex items-center justify-center bg-scrim p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[320px] rounded-[20px] bg-surface p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="period-settings-modal"
+      >
+        <h3 className="text-[15px] font-semibold text-foreground">经期设置</h3>
+        <div className="mt-3 border-t border-border/70" />
+
+        <StepperRow
+          label="周期天数"
+          value={settings.cycleDays}
+          min={15}
+          max={60}
+          unit="天"
+          onChange={(v) => setSetting({ cycleDays: v })}
+        />
+        <StepperRow
+          label="经期天数"
+          value={settings.periodDays}
+          min={1}
+          max={14}
+          unit="天"
+          onChange={(v) => setSetting({ periodDays: v })}
+        />
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-[13px] text-foreground/80">上次经期</span>
+          <span className="text-[13px] text-muted-foreground">{lastStartLabel}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-[13px] text-foreground/80">是否规律</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings.regular}
+            onClick={() => setSetting({ regular: !settings.regular })}
+            className={cn(
+              'relative h-6 w-11 rounded-full transition',
+              settings.regular ? 'bg-emerald-400' : 'bg-muted-foreground/30',
+            )}
+          >
+            <span
+              className={cn(
+                'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all',
+                settings.regular ? 'left-[22px]' : 'left-0.5',
+              )}
+            />
+          </button>
+        </div>
+        {!settings.regular && (
+          <div className="mt-1 text-[11px] text-muted-foreground/70">
+            不规律时按历史记录的平均周期预测
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 h-10 w-full rounded-[22px] bg-rose-400 text-sm font-medium text-white transition hover:opacity-90"
+        >
+          保存
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -427,10 +557,10 @@ function MoodChip({ who, mood }: { who: string; mood?: MoodKey }) {
       {info ? (
         <svg
           viewBox="0 0 32 32"
-          className="h-6 w-6"
+          className="h-5 w-5"
           fill="none"
           stroke={info.color}
-          strokeWidth={2.4}
+          strokeWidth={2.6}
           strokeLinecap="round"
           role="img"
           aria-label={`${who}的心情：${info.label}`}
@@ -438,7 +568,7 @@ function MoodChip({ who, mood }: { who: string; mood?: MoodKey }) {
           <path d={info.path} />
         </svg>
       ) : (
-        <span className="h-6 w-6 rounded-full border border-dashed border-border" />
+        <span className="h-5 w-5 rounded-full border border-dashed border-border" />
       )}
       <span className="text-[10px] text-muted-foreground">{who}</span>
     </div>

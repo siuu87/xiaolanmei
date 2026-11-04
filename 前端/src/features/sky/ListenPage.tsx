@@ -8,6 +8,7 @@ import { LyricsPanel } from './listen/LyricsPanel';
 import { PlaylistSection } from './listen/PlaylistSection';
 import { useProfileStore } from '@/stores/profileStore';
 import { usePlayerStore } from '@/stores/playerStore';
+import { AvatarContent } from '@/components/AvatarContent';
 import { getLyrics, type LyricLine } from './listen/neteaseMcpConnector';
 
 /** 一起听声波：三根竖条随播放跳动，暂停时变短停止 */
@@ -26,11 +27,11 @@ function SoundWave({ playing }: { playing: boolean }) {
   );
 }
 
-/** 一起听单边耳机头像（白色耳机塞，戴在外侧）：left 戴左耳机塞，right 戴右耳机塞 */
-function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right' }) {
+/** 一起听单边耳机头像（白色耳机塞，戴在外侧）：left 戴左耳机塞，right 戴右耳机塞。头像只认图片，空则中性剪影 */
+function EarphoneAvatar({ value, side }: { value: string; side: 'left' | 'right' }) {
   return (
-    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-2xl ring-1 ring-border">
-      {emoji}
+    <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-surface-2 ring-1 ring-border">
+      <AvatarContent value={value} />
       <span
         className={cn(
           'absolute top-1/2 h-3.5 w-1.5 rounded-full bg-foreground shadow-sm',
@@ -48,8 +49,8 @@ function EarphoneAvatar({ emoji, side }: { emoji: string; side: 'left' | 'right'
  */
 export function ListenPage() {
   const navigate = useNavigate();
-  const myAvatar = useProfileStore((s) => s.avatar) || '🫐';
-  const taAvatar = useProfileStore((s) => s.partnerAvatar) || '🐰';
+  const myAvatar = useProfileStore((s) => s.avatar);
+  const taAvatar = useProfileStore((s) => s.partnerAvatar);
 
   const track = usePlayerStore((s) => s.track);
   const playing = usePlayerStore((s) => s.playing);
@@ -98,9 +99,9 @@ export function ListenPage() {
             {/* 头像层：左 AI 戴左耳机 · 中间声波 · 右我戴右耳机（连线起点） */}
             <div className="relative h-[110px]">
               <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-5">
-                <EarphoneAvatar emoji={taAvatar} side="left" />
+                <EarphoneAvatar value={taAvatar} side="left" />
                 <SoundWave playing={playing} />
-                <EarphoneAvatar emoji={myAvatar} side="right" />
+                <EarphoneAvatar value={myAvatar} side="right" />
               </div>
             </div>
 

@@ -96,7 +96,7 @@ export function Sidebar() {
         <div className="hairline mb-3" />
         <div className="flex items-center gap-2.5 px-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface text-[17px]">
-            <AvatarContent value={avatar} fallback="🫐" />
+            <AvatarContent value={avatar} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-medium text-foreground">{name || '我'}</p>

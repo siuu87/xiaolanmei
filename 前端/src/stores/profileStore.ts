@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 /**
- * 头像字段的取值约定：**emoji 或图片 URL 二选一**。
+ * 头像字段约定：**只存图片 URL**（2026-11-04 起，全站去掉 emoji 头像）。
  * 以 `/` 或 `http` 开头的当图片渲染（上传头像返回 `/api/files/xxx`），
- * 其余当 emoji 文本渲染。判断统一走 `components/Avatar.tsx`，别在各处自己写。
+ * 空串或其它值一律渲染中性剪影。判断统一走 `components/AvatarContent.tsx`。
  */
 interface ProfileState {
   /* ---- 我 ---- */
@@ -45,13 +45,13 @@ export const useProfileStore = create<ProfileState>()(
   persist(
     (set) => ({
       name: '',
-      avatar: '🫐',
+      avatar: '',
       description: '',
       signature: '',
 
       partnerName: '',
       partnerRemark: '',
-      partnerAvatar: '🐰',
+      partnerAvatar: '',
       persona: '',
       voiceId: '',
       voiceSpeed: 1,

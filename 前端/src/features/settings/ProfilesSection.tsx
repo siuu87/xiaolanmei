@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { MemoAvatar } from '@/components/MemoAvatar';
 import { listProfiles, patchProfile, type ProfileDTO } from '@/lib/api/profiles';
 
-const EMOJIS = ['🙂', '😽', '🐱', '🐶', '🫐', '🐺', '🐻', '🐰', '🦊', '🍓', '⭐', '💗'];
 const COLORS = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6', '#f97316'];
 
 const inputCls =
@@ -78,7 +77,6 @@ export function ProfilesSection() {
               <div className="flex items-center gap-3">
                 <MemoAvatar
                   seed={p.avatarSeed}
-                  emoji={f.emoji || p.emoji}
                   nickname={f.nickname || p.nickname}
                   color={f.avatarColor}
                   size={44}
@@ -103,32 +101,6 @@ export function ProfilesSection() {
                     placeholder="昵称"
                     className={inputCls}
                   />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">头像 emoji</label>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {EMOJIS.map((em) => (
-                      <button
-                        key={em}
-                        type="button"
-                        onClick={() => set(p.id, 'emoji', em)}
-                        aria-label={`头像 ${em}`}
-                        className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-lg text-lg transition',
-                          f.emoji === em ? 'bg-primary/15 ring-2 ring-primary' : 'bg-surface-2 hover:bg-surface-3',
-                        )}
-                      >
-                        {em}
-                      </button>
-                    ))}
-                    <input
-                      value={f.emoji}
-                      onChange={(e) => set(p.id, 'emoji', e.target.value)}
-                      maxLength={4}
-                      aria-label="自定义 emoji"
-                      className="h-8 w-14 rounded-lg border border-border bg-surface-2 text-center text-lg text-foreground outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">徽章颜色</label>

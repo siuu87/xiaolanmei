@@ -106,13 +106,13 @@ export function MemoCard({ memo, onEdit, onDelete, onTogglePin, onToggleNotify, 
             <>
               <span className="font-medium text-foreground/80">{memo.fromWho}</span>
               <span>为</span>
-              <MemoAvatar seed={memo.avatarSeed} emoji={memo.emoji} nickname={memo.toWho} color={memo.avatarColor} size={20} />
+              <MemoAvatar seed={memo.avatarSeed} nickname={memo.toWho} color={memo.avatarColor} size={20} />
               <span className="font-medium text-foreground/80">{memo.toWho}</span>
               <span>记的</span>
             </>
           ) : (
             <>
-              <MemoAvatar seed={memo.avatarSeed} emoji={memo.emoji} nickname={memo.toWho} color={memo.avatarColor} size={20} />
+              <MemoAvatar seed={memo.avatarSeed} nickname={memo.toWho} color={memo.avatarColor} size={20} />
               <span className="font-medium text-foreground/80">{memo.toWho}</span>
               <span>记的</span>
             </>

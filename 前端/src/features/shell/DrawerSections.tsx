@@ -74,7 +74,7 @@ export function ProfileHeader() {
               TA
             </span>
             <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-surface-2 to-surface text-[22px] shadow-paper transition group-hover:border-primary/40">
-              <AvatarContent value={partnerAvatar} fallback="🐰" />
+              <AvatarContent value={partnerAvatar} />
             </span>
           </button>
 
@@ -94,7 +94,7 @@ export function ProfileHeader() {
               ME
             </span>
             <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-surface-2 to-surface text-[22px] shadow-paper transition group-hover:border-primary/40">
-              <AvatarContent value={avatar} fallback="🫐" />
+              <AvatarContent value={avatar} />
             </span>
           </button>
         </div>

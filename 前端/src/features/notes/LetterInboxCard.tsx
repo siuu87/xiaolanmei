@@ -31,9 +31,12 @@ function shortDate(ts: number): string {
  */
 export function LetterInboxCard({
   maxLetters = 30,
+  compact = false,
   className,
 }: {
   maxLetters?: number;
+  /** 紧凑版（首页右列）：无 84px 正文区，只显示首行主题，高度约为 Token 卡一半 */
+  compact?: boolean;
   className?: string;
 }) {
   const navigate = useNavigate();
@@ -164,65 +167,123 @@ export function LetterInboxCard({
         {shortDate(stamp)}
       </p>
 
-      {/* 正文：**固定高度**（4 行）。
-          卡片不再随来信字数伸缩 —— 换信时上方那排切换键就不会上下跳。
-          正文依旧默认全展开（没有点击展开、没有 line-clamp、没有渐隐），
-          超出 4 行的长信在块内滚动，内容不丢；没有信时这里放居中的放大信封。 */}
-      <div className="mt-1.5 h-[84px]" data-testid="mail-body-box">
-        {note ? (
+      {compact ? (
+        <>
+          {/* 紧凑版：细线 + 首行主题截断（对齐设计稿信件卡，高度 = Token 卡的 1/2）。
+              根节点由外部给 h-1/2 + flex flex-col + p-3，这里内容按弹性分布。 */}
+          <p data-testid="mail-date" className="mt-1.5 text-[10px] font-light tabular-nums text-muted-foreground">
+            {shortDate(stamp)}
+          </p>
+          <span aria-hidden className="mt-1.5 block h-px w-full bg-border/70" />
           <p
             data-testid="mail-body"
-            className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 text-[13px] leading-[21px] tracking-[0.01em] text-card-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="mt-1.5 truncate text-[11px] font-light tracking-[0.01em] text-card-foreground"
           >
-            {note.content}
+            {/* 跳过信件开头单独成行的日期（YYYY.M.D / YYYY-MM-DD）与空行，取真正的首行做主题 */}
+            {note
+              ? (note.content
+                  .split('\n')
+                  .map((s) => s.trim())
+                  .find((s) => s && !/^\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}$/.test(s)) ??
+                note.content.split('\n')[0])
+              : '今天还没有信'}
           </p>
-        ) : (
-          <button
-            type="button"
-            data-testid="mail-empty-envelope"
-            onClick={goAll}
-            aria-label="还没有来信，去全部来信看看"
-            className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5"
-          >
-            <Mail className="h-9 w-9 text-muted-foreground/50 transition-colors duration-300 hover:text-muted-foreground" />
-            <span className="text-[10px] font-light tracking-wide text-muted-foreground">
-              今天还没有信
-            </span>
-          </button>
-        )}
-      </div>
+          {list.length > 1 && (
+            <div className="mt-auto flex items-center justify-between pt-1" data-no-flip>
+              <span
+                data-testid="mail-counter"
+                className="text-[9px] font-light tabular-nums tracking-wider text-muted-foreground"
+              >
+                {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
+              </span>
+              <span className="flex gap-0.5">
+                <button
+                  type="button"
+                  data-testid="mail-prev"
+                  aria-label="上一封"
+                  disabled={i === 0}
+                  onClick={() => setIndex(Math.max(0, i - 1))}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  data-testid="mail-next"
+                  aria-label="下一封"
+                  disabled={i === list.length - 1}
+                  onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </span>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* 正文：**固定高度**（4 行）。
+              卡片不再随来信字数伸缩 —— 换信时上方那排切换键就不会上下跳。
+              正文依旧默认全展开（没有点击展开、没有 line-clamp、没有渐隐），
+              超出 4 行的长信在块内滚动，内容不丢；没有信时这里放居中的放大信封。 */}
+          <div className="mt-1.5 h-[84px]" data-testid="mail-body-box">
+            {note ? (
+              <p
+                data-testid="mail-body"
+                className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 text-[13px] leading-[21px] tracking-[0.01em] text-card-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {note.content}
+              </p>
+            ) : (
+              <button
+                type="button"
+                data-testid="mail-empty-envelope"
+                onClick={goAll}
+                aria-label="还没有来信，去全部来信看看"
+                className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5"
+              >
+                <Mail className="h-9 w-9 text-muted-foreground/50 transition-colors duration-300 hover:text-muted-foreground" />
+                <span className="text-[10px] font-light tracking-wide text-muted-foreground">
+                  今天还没有信
+                </span>
+              </button>
+            )}
+          </div>
 
-      {/* 换信：固定在**右下角**（计数 + ‹ ›，多于一封才出现）。
-          正文区是固定高度，所以这一条不会随来信长短上下跳。 */}
-      {list.length > 1 && (
-        <div className="mt-2 flex items-center justify-end gap-1" data-no-flip>
-          <span
-            data-testid="mail-counter"
-            className="mr-0.5 text-[9px] font-light tabular-nums tracking-wider text-muted-foreground"
-          >
-            {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
-          </span>
-          <button
-            type="button"
-            data-testid="mail-prev"
-            aria-label="上一封"
-            disabled={i === 0}
-            onClick={() => setIndex(Math.max(0, i - 1))}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            data-testid="mail-next"
-            aria-label="下一封"
-            disabled={i === list.length - 1}
-            onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
+          {/* 换信：固定在**右下角**（计数 + ‹ ›，多于一封才出现）。
+              正文区是固定高度，所以这一条不会随来信长短上下跳。 */}
+          {list.length > 1 && (
+            <div className="mt-2 flex items-center justify-end gap-1" data-no-flip>
+              <span
+                data-testid="mail-counter"
+                className="mr-0.5 text-[9px] font-light tabular-nums tracking-wider text-muted-foreground"
+              >
+                {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
+              </span>
+              <button
+                type="button"
+                data-testid="mail-prev"
+                aria-label="上一封"
+                disabled={i === 0}
+                onClick={() => setIndex(Math.max(0, i - 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                data-testid="mail-next"
+                aria-label="下一封"
+                disabled={i === list.length - 1}
+                onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </motion.div>
   );

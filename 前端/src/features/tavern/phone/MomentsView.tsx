@@ -361,7 +361,7 @@ export function DiscoverPage({ onPublish }: { onPublish: () => void }) {
           sorted.map((m) => (
             <div key={m.id} className="group flex gap-2.5 border-b border-phone-sep px-3 py-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-phone-grouped text-xl">
-                <AvatarContent value={m.authorAvatar ?? ''} fallback="🙂" className="rounded-md" />
+                <AvatarContent value={m.authorAvatar ?? ''} className="rounded-md" />
               </span>
 
               <div className="min-w-0 flex-1">

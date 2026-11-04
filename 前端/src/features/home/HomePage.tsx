@@ -1,42 +1,51 @@
 import { Link } from 'react-router-dom';
 import { Settings2 } from 'lucide-react';
 import { AvatarContent } from '@/components/AvatarContent';
-import { AnniversaryCard } from './AnniversaryCard';
-import { MoodCard } from './MoodCard';
+import { MoodArcRow } from './MoodCard';
 import { CalendarCard } from './CalendarCard';
+import { TodoCard } from './TodoCard';
 import { CourseCard } from './CourseCard';
 import { TokenCard } from './TokenCard';
-import { FeatureGrid } from './FeatureGrid';
-import { PeriodHint } from './PeriodHint';
-import { useMemorialStore } from './memorialStore';
 import { useProfileStore } from '@/stores/profileStore';
 import { ModuleCards } from '@/features/shell/DrawerSections';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
+import { useNotesStore } from '@/features/notes/notesStore';
 import { loveDays, LOVE_START } from '@/features/shell/loveDays';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
+/** 取信件正文首行：跳过开头单独成行的日期（YYYY.M.D）与空行，作为「他写的话」 */
+function firstLetterLine(content: string): string | null {
+  const line = content
+    .split('\n')
+    .map((s) => s.trim())
+    .find((s) => s && !/^\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}$/.test(s));
+  return line ?? null;
+}
+
 /** 与 package.json 对齐；仅用于页脚展示 */
 const APP_VERSION = '0.1.0';
 
-function greeting(hour: number) {
-  if (hour < 5) return '夜深了';
-  if (hour < 11) return '早上好';
-  if (hour < 14) return '中午好';
-  if (hour < 18) return '下午好';
-  return '晚上好';
-}
-
+/**
+ * 首页 · 完全对齐设计稿（首页稿 2:1 连续长页）：
+ * 刊头 2:2 → DAILY 2:35 → 日历卡 2:38 → 待办卡 77:705 →
+ * Token与信封 2:115（左 Token 卡 2:116｜右 信件卡 2:134 + 心情行 2:144 三弧38px）→
+ * 课程卡 2:155 → 模块分隔 5:8 + 模块卡 → 页脚 2:183。
+ *
+ * 置顶纪念日不再展示（2026-11-04 用户定）；刊头下的一句话 = 他写的最新一封信念首行，
+ * 没有信就不显示，不再放本地拼的问候语。
+ */
 export function HomePage() {
-  const memorialDays = useMemorialStore((s) => s.days);
-  const pinnedDay = memorialDays.find((d) => d.pinned);
-  const name = useProfileStore((s) => s.name);
   const avatar = useProfileStore((s) => s.avatar);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
-  const partnerName = useProfileStore((s) => s.partnerRemark || s.partnerName);
+  const notes = useNotesStore((s) => s.notes);
   const now = new Date();
   const days = loveDays(now);
   const startDate = `${LOVE_START.y}.${LOVE_START.m}.${LOVE_START.d}`;
+
+  // 他写的话：最新一封信念的首行（跳过开头单独成行的日期与空行）；没有就不展示
+  const latestNote = notes[0] ?? null;
+  const aiLine = latestNote ? firstLetterLine(latestNote.content) : null;
 
   return (
     <div className="relative min-h-full bg-page-bg text-foreground">
@@ -51,12 +60,10 @@ export function HomePage() {
               <div className="flex shrink-0 items-center -space-x-3">
                 <AvatarContent
                   value={avatar}
-                  fallback="🫐"
                   className="h-12 w-12 border-2 border-page-bg bg-surface shadow-sm"
                 />
                 <AvatarContent
                   value={partnerAvatar}
-                  fallback="🐰"
                   className="h-12 w-12 border-2 border-page-bg bg-surface shadow-sm"
                 />
               </div>
@@ -80,17 +87,16 @@ export function HomePage() {
               <Settings2 className="h-4 w-4" />
             </Link>
           </div>
-          <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">
-            {greeting(now.getHours())}，{name || '你'}
-            {partnerName ? `。今天也和 ${partnerName} 一起，记一笔吧。` : '。今天也留一点时间给自己。'}
-          </p>
+          {/* 他写的话：最新一封信念的首行（实际导入 AI 后由他写）；没有信就不显示 */}
+          {aiLine && (
+            <p className="mt-2.5 line-clamp-1 text-[12px] leading-relaxed text-muted-foreground">
+              {aiLine}
+            </p>
+          )}
         </header>
 
         <div className="relative space-y-4">
-          {/* 置顶区域：有置顶纪念日才显示，否则留空 */}
-          {pinnedDay && <AnniversaryCard memorial={pinnedDay} />}
-
-          {/* Daily：单卡两栏 —— 左日历、右栏待办/日详情（真实滚动），中间竖线分隔 */}
+          {/* DAILY：日历卡（全宽，选中日详情在左栏切换） */}
           <section>
             <div className="mb-2 flex items-center gap-2">
               <h2 className="eyebrow shrink-0">Daily</h2>
@@ -99,24 +105,26 @@ export function HomePage() {
             <CalendarCard />
           </section>
 
-          {/* Token + 信封：两枚小卡并排 */}
-          <div className="grid grid-cols-2 items-start gap-3">
+          {/* 待办卡：独立一张卡（对齐设计稿 77:705，从日历右轨拆出） */}
+          <TodoCard />
+
+          {/* Token 与信封：左 Token 卡（定行高），右 信件卡（精确占 Token 高度 1/2）+ 心情行（下半居中） */}
+          <div className="grid grid-cols-2 gap-3">
             <div data-testid="token-capsule">
               <TokenCard />
             </div>
-            <LetterInboxCard />
+            <div className="min-w-0">
+              <LetterInboxCard compact className="flex h-1/2 flex-col p-3" />
+              <div className="flex h-1/2 min-h-0 items-center justify-center">
+                <MoodArcRow />
+              </div>
+            </div>
           </div>
 
-          <MoodCard />
-          <PeriodHint />
           <CourseCard />
-          <FeatureGrid />
 
-          {/* 桌面端抽屉是 md:hidden，生活趣味 / 小酒馆 / 工具箱只收在抽屉里，
-              宽屏上点不到。这里补一份模块入口给桌面用户（移动端抽屉已有，故 md:block 避免重复）。 */}
-          <div className="hidden md:block">
-            <ModuleCards />
-          </div>
+          {/* 模块区：together / 酒馆 / 生活小趣味，移动端与桌面端同一份入口 */}
+          <ModuleCards />
 
           <footer className="flex items-center justify-between border-t border-border/70 pt-4 text-[11px] text-muted-foreground">
             <span className="tracking-wide">小蓝莓 · v{APP_VERSION}</span>

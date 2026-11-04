@@ -15,6 +15,7 @@ import { StarBackdrop } from './StarBackdrop';
 import { useBookStore } from './bookStore';
 import { AnnotationCenter } from './AnnotationCenter';
 import { useProfileStore } from '@/stores/profileStore';
+import { AvatarContent } from '@/components/AvatarContent';
 import {
   getProgress,
   getAnnotations,
@@ -94,9 +95,9 @@ export function BookReaderPage() {
   const books = useBookStore((s) => s.books);
   const load = useBookStore((s) => s.load);
 
-  const myAvatar = useProfileStore((s) => s.avatar) || '🫐';
+  const myAvatar = useProfileStore((s) => s.avatar);
   const myName = useProfileStore((s) => s.name) || '我';
-  const taAvatar = useProfileStore((s) => s.partnerAvatar) || '🐰';
+  const taAvatar = useProfileStore((s) => s.partnerAvatar);
 
   const book = books.find((b) => b.id === id);
 
@@ -363,10 +364,16 @@ export function BookReaderPage() {
             <div className="truncate text-sm font-semibold">{book.title}</div>
             <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
               <span className="inline-flex items-center gap-1">
-                <span>{myAvatar}</span> 我 <b className="text-sky-500">{progress.me}%</b>
+                <span className="h-4 w-4 overflow-hidden rounded-full bg-surface-3">
+                  <AvatarContent value={myAvatar} />
+                </span>
+                我 <b className="text-sky-500">{progress.me}%</b>
               </span>
               <span className="inline-flex items-center gap-1">
-                <span>{taAvatar}</span> TA <b className="text-pink-500">{progress.ta}%</b>
+                <span className="h-4 w-4 overflow-hidden rounded-full bg-surface-3">
+                  <AvatarContent value={taAvatar} />
+                </span>
+                TA <b className="text-pink-500">{progress.ta}%</b>
               </span>
             </div>
             <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3">
@@ -515,7 +522,7 @@ export function BookReaderPage() {
 
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs text-muted-foreground">署名</span>
-              {([['me', `${myAvatar} ${myName}`], ['partner', `${taAvatar} TA`]] as [Reader, string][]).map(([v, label]) => (
+              {([['me', `${myName}`], ['partner', 'TA']] as [Reader, string][]).map(([v, label]) => (
                 <button
                   key={v}
                   type="button"
@@ -572,7 +579,7 @@ export function BookReaderPage() {
                       n.author === 'me' ? 'rounded-tl-sm bg-surface-2' : 'rounded-tr-sm bg-primary text-primary-foreground',
                     )}
                   >
-                    <div className="mb-0.5 text-[10px] opacity-70">{n.author === 'me' ? `${myAvatar} ${myName}` : `${taAvatar} TA`}</div>
+                    <div className="mb-0.5 text-[10px] opacity-70">{n.author === 'me' ? myName : 'TA'}</div>
                     {n.content}
                     <div className="mt-1 text-right text-[9px] opacity-50">{formatTime(n.createdAt)}</div>
                   </div>
@@ -588,9 +595,9 @@ export function BookReaderPage() {
                     type="button"
                     onClick={() => setQuickAuthor(v)}
                     aria-label={v}
-                    className={cn('flex h-7 w-7 items-center justify-center rounded-full text-sm transition', quickAuthor === v ? 'bg-primary/20 ring-1 ring-primary' : 'bg-surface-2 hover:bg-surface-3')}
+                    className={cn('flex h-7 w-7 items-center justify-center overflow-hidden rounded-full transition', quickAuthor === v ? 'bg-primary/20 ring-1 ring-primary' : 'bg-surface-2 hover:bg-surface-3')}
                   >
-                    {avatar}
+                    <AvatarContent value={avatar} />
                   </button>
                 ))}
               </div>

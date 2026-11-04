@@ -172,7 +172,7 @@ export function SessionsPage({ onOpen, onCompose }: { onOpen: (id: string) => vo
                   {s.kind === 'group' && !s.avatar ? (
                     <GroupAvatar session={s} />
                   ) : (
-                    <AvatarContent value={s.avatar ?? ''} fallback="💬" />
+                    <AvatarContent value={s.avatar ?? ''} />
                   )}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col justify-center border-b border-phone-sep py-3">
@@ -259,7 +259,7 @@ function GroupAvatar({ session }: { session: Session }) {
             members.length === 2 && i === 0 && 'row-span-2',
           )}
         >
-          <AvatarContent value={m.avatar ?? ''} fallback="🙂" />
+          <AvatarContent value={m.avatar ?? ''} />
         </span>
       ))}
     </span>
@@ -514,7 +514,7 @@ export function GroupSetupPage({
             {members.map((m) => (
               <div key={m.id} className="relative flex flex-col items-center gap-1">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-phone-grouped text-2xl">
-                  <AvatarContent value={m.avatar ?? ''} fallback="🙂" />
+                  <AvatarContent value={m.avatar ?? ''} />
                 </span>
                 <span className="w-full truncate text-center text-[10px] text-phone-muted">{m.name}</span>
                 <button
@@ -578,7 +578,7 @@ export function GroupSetupPage({
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-phone-grouped text-2xl">
-                    <AvatarContent value={c.avatar ?? ''} fallback="🙂" />
+                    <AvatarContent value={c.avatar ?? ''} />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[15px] text-phone-ink">{c.name}</span>
                 </button>
@@ -619,7 +619,7 @@ export function GroupInfoPage({ sessionId, onBack, onEdit }: { sessionId: string
           {members.map((m) => (
             <div key={m.id} className="flex flex-col items-center gap-1">
               <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-phone-grouped text-2xl">
-                <AvatarContent value={m.avatar ?? ''} fallback="🙂" />
+                <AvatarContent value={m.avatar ?? ''} />
               </span>
               <span className="w-full truncate text-center text-[10px] text-phone-muted">{m.name}</span>
             </div>

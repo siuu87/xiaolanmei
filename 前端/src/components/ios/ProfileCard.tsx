@@ -39,7 +39,7 @@ export function IOSProfileCard({ avatar, avatarColor, name, status, onClick, exp
           avatarColor ?? 'from-pink-400 to-purple-500',
         )}
       >
-        <AvatarContent value={avatar ?? ''} fallback="🫐" className="text-3xl" />
+        <AvatarContent value={avatar ?? ''} className="text-3xl" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[22px] font-bold leading-tight text-foreground">

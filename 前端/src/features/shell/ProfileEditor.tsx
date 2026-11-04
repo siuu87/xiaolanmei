@@ -39,16 +39,8 @@ const MODULES_PROFILE = ['模块一', '模块三', '模块五'];
 const MODULES_STYLE = ['模块二'];
 const MODULES_MEMO = ['模块四'];
 
-/** emoji 快选：收在「或挑一个 emoji」后面，默认不展开，免得抢了参考图的主视觉 */
-const EMOJI_OPTIONS: string[] = [
-  '🫐', '🐰', '🐻', '🐱', '🐶', '🦊', '🐺', '🐼',
-  '🐨', '🐯', '🦁', '🐹', '🍓', '🍑', '🌸', '🌙',
-  '⭐', '☀️', '🍀', '🎧', '📖', '☕', '🎂', '💌',
-];
-
-const DEFAULT_AVATAR: Record<ProfileTarget, string> = { me: '🫐', partner: '🐰' };
-/** 没传头像时圆形里显示的占位字 */
-const PLACEHOLDER_CHAR: Record<ProfileTarget, string> = { me: '我', partner: '他' };
+/** 头像只认图片 URL（2026-11-04 起全站去 emoji 头像），空值显示中性剪影 */
+const DEFAULT_AVATAR: Record<ProfileTarget, string> = { me: '', partner: '' };
 
 /** MiniMax 支持的语言（'' = 不设置，走默认中文普通话） */
 const LANGUAGES: { value: string; label: string }[] = [
@@ -399,7 +391,6 @@ function FoldSection({
 /* ---------------------------- 头像区块（两套内容共用） ---------------------------- */
 
 function AvatarBlock({
-  target,
   value,
   onChange,
 }: {
@@ -410,7 +401,6 @@ function AvatarBlock({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -428,8 +418,6 @@ function AvatarBlock({
     }
   };
 
-  const hasImage = /^(\/|https?:)/.test(value.trim());
-
   return (
     <div className="paper-card px-4 py-4">
       <p className="text-center text-[13px] font-medium text-foreground">头像</p>
@@ -439,13 +427,7 @@ function AvatarBlock({
           data-testid="profile-editor-preview"
           className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand/25 to-gold/25 text-[34px] text-foreground"
         >
-          {hasImage ? (
-            <AvatarContent value={value} fallback={DEFAULT_AVATAR[target]} />
-          ) : (
-            <span className="leading-none text-foreground">
-              {(value || '').trim() || PLACEHOLDER_CHAR[target]}
-            </span>
-          )}
+          <AvatarContent value={value} />
         </span>
       </div>
 
@@ -475,50 +457,6 @@ function AvatarBlock({
         <p data-testid="profile-editor-upload-error" className="mt-2 text-center text-[11px] text-destructive">
           {err}
         </p>
-      )}
-
-      {/* emoji 快选：参考图里没有，但默认头像本来就是 emoji，全去掉就没法改了 */}
-      <div className="mt-2.5 text-center">
-        <button
-          type="button"
-          onClick={() => setEmojiOpen((v) => !v)}
-          aria-expanded={emojiOpen}
-          data-testid="profile-editor-emoji-toggle"
-          className="text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2 transition hover:text-foreground"
-        >
-          或挑一个 emoji
-        </button>
-      </div>
-
-      {emojiOpen && (
-        <div className="mt-2.5 flex flex-wrap justify-center gap-1.5" data-testid="profile-editor-emoji-grid">
-          {EMOJI_OPTIONS.map((e) => (
-            <button
-              key={e}
-              type="button"
-              data-testid={`avatar-option-${e}`}
-              aria-label={`头像 ${e}`}
-              aria-pressed={value === e}
-              onClick={() => onChange(e)}
-              className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-full text-[18px] transition',
-                value === e ? 'bg-primary/15 ring-2 ring-primary' : 'bg-surface-2 hover:bg-surface-3',
-              )}
-            >
-              {e}
-            </button>
-          ))}
-          {value && !EMOJI_OPTIONS.includes(value) && (
-            <button
-              type="button"
-              onClick={() => onChange('')}
-              data-testid="profile-editor-clear"
-              className="flex h-9 items-center rounded-full bg-surface-2 px-3 text-[11px] text-muted-foreground transition hover:bg-surface-3"
-            >
-              清除
-            </button>
-          )}
-        </div>
       )}
     </div>
   );

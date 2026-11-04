@@ -98,4 +98,62 @@ export function MoodCard() {
   );
 }
 
+/**
+ * 心情行 · 紧凑版（对齐设计稿 2:144）：38px 弧线按钮、无边框无背卡，
+ * 铺满所在列宽。语义与 MoodCard 完全一致——只填我自己，再点一次取消。
+ * 放在信件卡下方（Token与信封那一排的右列）。
+ */
+export function MoodArcRow() {
+  const days = useMoodStore((s) => s.days);
+  const load = useMoodStore((s) => s.load);
+  const setMood = useMoodStore((s) => s.setMood);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const key = todayKey();
+  const mine = (days[key] ?? {}).me;
+
+  return (
+    <div
+      data-testid="mood-arc-row"
+      className="flex items-center justify-around py-1"
+      role="radiogroup"
+      aria-label="记录我今天的心情"
+    >
+      {MOODS.map((m) => {
+        const on = mine === m.key;
+        return (
+          <motion.button
+            key={m.key}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => setMood(key, 'me', on ? null : m.key)}
+            aria-label={`我的心情：${m.label}`}
+            title={m.label}
+            whileTap={{ scale: 0.9 }}
+            animate={{ scale: on ? 1.12 : 1 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 20, mass: 0.6 }}
+            className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-foreground/[0.045]"
+          >
+            <svg
+              viewBox="0 0 32 32"
+              className={cn('h-5 w-5 transition-colors duration-300')}
+              fill="none"
+              stroke={on ? m.color : '#9aa8c0'}
+              strokeWidth={2.6}
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d={m.path} />
+            </svg>
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default MoodCard;

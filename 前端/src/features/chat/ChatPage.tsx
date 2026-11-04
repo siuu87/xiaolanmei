@@ -1540,7 +1540,7 @@ export function ChatPage() {
                 尺寸/圆角/裁切必须由这里给，否则 emoji 会变成一个方方块。 */}
             <span className="relative inline-flex">
               <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-sm">
-                <AvatarContent value={partnerAvatar} fallback="🐰" className="text-[30px]" />
+                <AvatarContent value={partnerAvatar} className="text-[30px]" />
               </span>
               <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar">
                 <ConnDot />

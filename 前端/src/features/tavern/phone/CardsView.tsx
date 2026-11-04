@@ -134,7 +134,7 @@ function CardTile({
                 card.kind === 'character' ? 'bg-[#eef2ff]' : 'bg-[#fff4e8]',
               )}
             >
-              <AvatarContent value={card.avatar ?? ''} fallback={card.kind === 'character' ? '🤖' : '🙂'} />
+              <AvatarContent value={card.avatar ?? ''} />
             </span>
             {active && (
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-phone-blue ring-2 ring-phone-surface">
@@ -233,7 +233,7 @@ function CardPreview({
           )}
         >
           <span className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-phone-surface text-5xl shadow-sm">
-            <AvatarContent value={card.avatar ?? ''} fallback={card.kind === 'character' ? '🤖' : '🙂'} />
+            <AvatarContent value={card.avatar ?? ''} />
           </span>
           <p className="text-[17px] font-semibold text-phone-ink">{card.name}</p>
           <span
@@ -463,7 +463,7 @@ function CardEditor({ initial, onClose }: { initial: PhoneCard | null; onClose: 
               className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-phone-grouped text-[26px] font-medium text-phone-muted"
             >
               {hasImageAvatar ? (
-                <AvatarContent value={form.avatar} fallback={isChar ? '🤖' : '🙂'} />
+                <AvatarContent value={form.avatar} />
               ) : (
                 form.avatar || (form.name.trim() ? form.name.trim().slice(0, 1) : isChar ? 'A' : '我')
               )}

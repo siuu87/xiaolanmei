@@ -213,7 +213,7 @@ export function CallOverlay({
                     </p>
                   </div>
                   <span className="flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
-                    <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[40px]" />
+                    <AvatarContent value={avatar ?? ''} className="text-[40px]" />
                   </span>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export function CallOverlay({
             /* 呼出中：深色底上仍然是「大头像 + 名字 + 两颗圆钮」 */
             <div className="flex flex-1 flex-col items-center justify-center px-8">
               <span className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full bg-call-surface">
-                <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[60px]" />
+                <AvatarContent value={avatar ?? ''} className="text-[60px]" />
               </span>
               <h2
                 data-testid="call-name"

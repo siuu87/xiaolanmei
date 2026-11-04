@@ -3,6 +3,7 @@ import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { usePlayerStore } from '@/stores/playerStore';
+import { AvatarContent } from '@/components/AvatarContent';
 
 const NOTES = [
   { left: '6%', top: '18%', ch: '♪', delay: 0, dur: 6 },
@@ -25,8 +26,8 @@ const SPARKLES = [
  * 播放/切歌状态来自全局 playerStore，与 LISTEN 播放页联动。
  */
 export function VinylPlayer() {
-  const meAvatar = useProfileStore((s) => s.avatar) || '🫐';
-  const taAvatar = useProfileStore((s) => s.partnerAvatar) || '🐰';
+  const meAvatar = useProfileStore((s) => s.avatar);
+  const taAvatar = useProfileStore((s) => s.partnerAvatar);
   const meName = useProfileStore((s) => s.name) || '我';
 
   const playing = usePlayerStore((s) => s.playing);
@@ -95,8 +96,8 @@ export function VinylPlayer() {
               bumping && 'animate-[bump-left_0.5s_ease]',
             )}
           >
-            <div className="flex h-16 w-16 rotate-6 items-center justify-center rounded-full bg-surface-2 text-3xl ring-1 ring-border">
-              <span className="drop-shadow-sm">{taAvatar}</span>
+            <div className="h-16 w-16 rotate-6 overflow-hidden rounded-full bg-surface-2 ring-1 ring-border">
+              <AvatarContent value={taAvatar} />
             </div>
             <span className="text-[10px] text-muted-foreground">TA</span>
           </div>
@@ -109,8 +110,8 @@ export function VinylPlayer() {
               bumping && 'animate-[bump-right_0.5s_ease]',
             )}
           >
-            <div className="flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-surface-2 text-3xl ring-1 ring-border">
-              <span className="drop-shadow-sm">{meAvatar}</span>
+            <div className="h-16 w-16 -rotate-6 overflow-hidden rounded-full bg-surface-2 ring-1 ring-border">
+              <AvatarContent value={meAvatar} />
             </div>
             <span className="text-[10px] text-muted-foreground">{meName}</span>
           </div>

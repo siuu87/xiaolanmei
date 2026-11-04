@@ -1,10 +1,8 @@
-import { useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { House } from 'lucide-react';
 import { useTimetableStore, coursesForDayWeek, isMorningCourse, todayDay, type Course } from '@/features/schedule/timetableStore';
 
 /** 首页课程小卡片：今天上午（12 点前）的课；连堂课只算一门，卡片固定只占「半天」 */
 export function CourseCard() {
-  const navigate = useNavigate();
   const courses = useTimetableStore((s) => s.courses);
   const periodTimes = useTimetableStore((s) => s.periodTimes);
   const week = useTimetableStore((s) => s.currentWeek);
@@ -24,16 +22,8 @@ export function CourseCard() {
   return (
     <div className="glass p-4">
       <div className="flex items-center gap-2">
-        <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
+        <House className="h-3.5 w-3.5 text-muted-foreground" />
         <h2 className="font-serif text-xs text-muted-foreground">今日课程</h2>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => navigate('/schedule')}
-          className="text-xs text-primary transition hover:underline"
-        >
-          课程表
-        </button>
       </div>
 
       {items.length === 0 ? (

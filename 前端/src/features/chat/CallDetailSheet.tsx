@@ -68,7 +68,7 @@ export function CallDetailSheet({
         {/* 头像 + 名字 + 时刻/时长 + 状态 */}
         <div className="flex flex-col items-center px-4 pt-5">
           <span className="flex h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-full bg-chat-pill">
-            <AvatarContent value={avatar ?? ''} fallback="🐰" className="text-[38px]" />
+            <AvatarContent value={avatar ?? ''} className="text-[38px]" />
           </span>
           <h2 data-testid="call-detail-name" className="mt-3 max-w-[80%] truncate text-[22px] font-semibold leading-tight">
             {name}
