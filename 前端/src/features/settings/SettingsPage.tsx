@@ -374,7 +374,7 @@ export function SettingsPage() {
           <IOSSettingItem
             icon={<User className="h-4 w-4" />}
             iconBg="bg-sky-400"
-            title="个人主页"
+            title="我的资料"
             subtitle="封面 · 头像 · 统计与我的设定"
             showChevron
             onClick={() => navigate('/me')}

@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
       { path: 'schedule', element: <SchedulePage /> },
       { path: 'memo', element: <MemoHomePage /> },
       { path: 'gifts', element: <GiftBoxPage /> },
-      // 我的 · 个人主页（设计稿 130:62 版式；入口在设置页「个人」分区）
+      // 我的资料页（设计稿 130:62 版式；入口在设置页「个人」分区，2026-11-04 由「个人主页」更名）
       { path: 'me', element: <MePage /> },
       // 通话记录两级页（设计稿 130:4 / 126:58；入口在角色页 / 我的页统计卡「通话」）
       { path: 'calls', element: <CallsPage /> },

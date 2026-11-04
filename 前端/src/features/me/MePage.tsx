@@ -11,14 +11,14 @@ import { listNotes } from '@/lib/api/home';
 import { ProfileEditor } from '@/features/shell/ProfileEditor';
 
 /**
- * 我的 · 个人主页（/me，对齐 2026-11-04 设计稿 130:62）。
+ * 我的资料页（/me，对齐 2026-11-04 设计稿 130:62；口径对齐「他的资料」，2026-11-04 晚用户定）。
  *
- * 与角色页同一套「封面 + 上叠白卡」版式（ProfileCoverSheet）：
+ * 与「他的资料」同一套「封面 + 上叠白卡」版式（ProfileCoverSheet）：
  * 头像骑线 → 头部居中（名字 / 在线药丸 / 个性签名）
  * → 4 格统计（消息 / 通话 / 记忆 / 信件，通话 → 通话记录列表）
  * → 「我是谁 · 角色设定」（我的介绍）→ 底部「编辑资料」。
  *
- * 入口：设置页「个人」分区的「个人主页」；返回键回设置页。
+ * 入口：设置页「个人」分区的「我的资料」；返回键回设置页。
  * 数据全部来自现有 store / 接口，不新增后端。
  */
 export function MePage() {
@@ -66,7 +66,7 @@ export function MePage() {
 
   return (
     <PageShell
-      title="我的"
+      title="我的资料"
       eyebrow="ME"
       testId="me-page"
       backTo="/settings"

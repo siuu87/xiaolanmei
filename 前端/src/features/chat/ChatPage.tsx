@@ -17,7 +17,8 @@ import {
   X,
   Copy,
   Menu,
-  Heart,
+  MessageSquare,
+  MessagesSquare,
   Globe,
   Gift,
   Phone,
@@ -794,7 +795,7 @@ export function ChatPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileDocRef = useRef<HTMLInputElement>(null);
   const pressTimerRef = useRef<number | null>(null);
-  /** 爱心键长按 = 切对白风格（对白键已并入爱心，2026-10-29） */
+  /** 气泡键长按 = 切对白风格（对白键已并入此键，2026-10-29；图标由爱心改气泡 2026-11-04） */
   const stylePressRef = useRef<number | null>(null);
   const styleLongFiredRef = useRef(false);
   const cancelStylePress = () => {
@@ -1474,8 +1475,9 @@ export function ChatPage() {
         >
           <Menu className="h-[18px] w-[18px]" />
         </button>
-        {/* 汉堡旁：爱心键（二合一，2026-10-29）
-            点击 = 长短对话切换（实心 = 长对话：工具 + Markdown；空心 = 短对话，像发消息一样）
+        {/* 汉堡旁：气泡键（二合一，2026-10-29 并入；2026-11-04 晚 爱心改气泡图标）
+            点击 = 长短对话切换：**单气泡 = 长对话**（工具 + Markdown）、
+            **双气泡 = 短对话**（像发消息一样）
             长按 500ms = 切对白风格（💕 碎片流 / 🩷 沉浸流）——原对白键的功能并到这里 */}
         <button
           type="button"
@@ -1503,8 +1505,8 @@ export function ChatPage() {
           onPointerLeave={cancelStylePress}
           onPointerCancel={cancelStylePress}
           aria-pressed={longChat}
-          aria-label={`爱心：点击切长短对话（当前${longChat ? '长' : '短'}），长按切对白风格（当前${CHAT_STYLE_META[chatStyleMode].title}）`}
-          title={`点击：长短对话（当前${longChat ? '长对话' : '短对话'}）\n长按：切对白风格（当前${CHAT_STYLE_META[chatStyleMode].title}）`}
+          aria-label={`气泡：点击切长短对话（当前${longChat ? '单气泡·长对话' : '双气泡·短对话'}），长按切对白风格（当前${CHAT_STYLE_META[chatStyleMode].title}）`}
+          title={`点击：长短对话（当前${longChat ? '单气泡 = 长对话' : '双气泡 = 短对话'}）\n长按：切对白风格（当前${CHAT_STYLE_META[chatStyleMode].title}）`}
           data-testid="chat-mode-toggle"
           data-mode={longChat ? 'long' : 'short'}
           data-style={chatStyleMode}
@@ -1513,7 +1515,12 @@ export function ChatPage() {
             longChat ? 'text-chat-pill-fg' : 'text-chat-meta',
           )}
         >
-          <Heart className={cn('h-[18px] w-[18px]', longChat && 'fill-current')} />
+          {/* 单气泡 = 长对话（实心）；双气泡 = 短对话（发消息的格式） */}
+          {longChat ? (
+            <MessageSquare className="h-[18px] w-[18px] fill-current" />
+          ) : (
+            <MessagesSquare className="h-[18px] w-[18px]" />
+          )}
         </button>
         {/* 会话名字：**绝对定位到顶栏正中**（无论左右按钮增减，名字始终真正居中）。 */}
         <div
@@ -1601,10 +1608,6 @@ export function ChatPage() {
         onClose={() => setMoodOpen(false)}
         partnerName={displayName || conversation?.title || '小蓝莓'}
         partnerAvatar={partnerAvatar}
-        onOpenCharacter={() => {
-          setMoodOpen(false);
-          setCharOpen(true);
-        }}
       />
 
       {/* 消息列表 + 右下角「回到底部」圆钮 */}
@@ -2371,7 +2374,8 @@ export function ChatPage() {
         onCallAgain={() => startCall('voice')}
       />
 
-      {/* 他的资料页：从心情浮层底部的「查看角色」进入（口径已改资料页） */}
+      {/* 他的资料页：组件与状态保留，入口已按需求移除（原心情浮层「查看角色」，2026-11-04 晚），
+          之后要接回来只需再把某个入口的回调里 setCharOpen(true) */}
       <CharacterPage open={charOpen} onClose={() => setCharOpen(false)} />
 
       {/* 通话记录详情（设计稿 9 页）：点聊天里那张通话卡打开 */}

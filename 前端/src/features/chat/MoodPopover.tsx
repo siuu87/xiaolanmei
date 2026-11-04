@@ -31,14 +31,11 @@ export function MoodPopover({
   onClose,
   partnerName,
   partnerAvatar,
-  onOpenCharacter,
 }: {
   open: boolean;
   onClose: () => void;
   partnerName: string;
   partnerAvatar: string;
-  /** 底部那一行「查看角色 ›」：打开「他的资料」页（原角色页，2026-11-04 改口径） */
-  onOpenCharacter?: () => void;
 }) {
   const [state, setState] = useState<XinchaoState | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -133,19 +130,6 @@ export function MoodPopover({
         <div className="mt-1 text-[11px] leading-relaxed text-chat-meta">
           {loaded ? innerVoice || '这一刻没有留下心声。' : '正在看 ta 心里…'}
         </div>
-
-        {/* 角色页入口（设计稿 11 页）：这一行是唯一的动作，别再加别的 */}
-        {onOpenCharacter && (
-          <button
-            type="button"
-            data-mood-popover-keep
-            onClick={onOpenCharacter}
-            className="mt-2.5 flex w-full items-center justify-between rounded-xl bg-chat-line/30 px-2.5 py-2 text-[11px] text-chat-meta transition hover:text-foreground active:scale-[0.99]"
-          >
-            <span>查看角色</span>
-            <span aria-hidden>›</span>
-          </button>
-        )}
       </div>
     </div>
   );
