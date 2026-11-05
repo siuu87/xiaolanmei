@@ -11,6 +11,18 @@
 - **抽屉「生活小趣味」卡片统一尺寸**：礼物盒、灵感待办池等条目统一去掉副标题 hint，
   五张卡完全等大（51px 高），不再一行高一行矮。
 
+### 模块调整（晚些轮次汇总）
+
+- **移除「一起听」模块**：删除 `VinylPlayer`、`neteaseMcpConnector`、`ListenPage`、`StarrySkyPage`
+  及 listen 孤儿 UI（LyricsPanel / PlayerCard / PlaylistSection / ScanLoginModal / UserAuthWidget）；
+  相关入口（`router` / `DrawerSections` / `TogetherPage` / `StarrySkyPage`）改指 `/together` 枢纽页。
+  保留 `/watch`（一起看）等其余模块不受影响。
+- **Chat 顶栏头像「耳机头像框」**：头戴式大耳机装饰框在头像外圈（耳罩在左右外缘、头梁在头顶上方成环），
+  仅当播放态 `playing` 为真时出现，默认不显示；无呼吸微动；`pointer-events-none` 不挡点击。
+  后续由「内置 AI + 网易云 MCP」回传的播放态驱动 `playerStore.playing`。
+- **集成 ai-call-screen-share 子模块**：以 git submodule 引入（上游无 LICENSE，仅作设计参考），
+  通话页星空 Canvas 背景已移植进 `前端/public/paivoice/index.html`。
+
 ## 2026-11-04
 
 ### 晚间迭代（抽屉 / 日历 / 主题 / 信件 / 资料页）

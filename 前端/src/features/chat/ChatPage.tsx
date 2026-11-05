@@ -82,6 +82,7 @@ import { useChatStyle, CHAT_STYLE_META, CHAT_STYLE_STORAGE_KEY } from '@/stores/
 import { useDietStore } from '@/features/diet/dietStore';
 import { matchDietHits } from '@/features/diet/dietHits';
 import { DietHitBar } from '@/features/diet/DietBadge';
+import { usePlayerStore } from '@/stores/playerStore';
 
 /**
  * 顶栏右侧连接指示器：只给一个 6px 小灯，不占宽度。
@@ -714,6 +715,8 @@ export function ChatPage() {
   const displayName = partnerRemark || partnerName;
   /** 「小心思 / 在想…」里的人称：跟聊天名字走；预设称呼已清空（2026-10-29），没设就中性叫「对方」 */
   const ownerName = displayName || '对方';
+  // 耳机头像框：仅在「正在播放」时出现（播放态当前由 playerStore 驱动，后续接网易云 MCP 覆盖）
+  const playing = usePlayerStore((s) => s.playing);
   /** 说话风格（💕 碎片流 / 🩷 沉浸流），存 localStorage，刷新保持 */
   const chatStyleMode = useChatStyle((s) => s.mode);
   const toggleChatStyle = useChatStyle((s) => s.toggle);
@@ -1532,7 +1535,7 @@ export function ChatPage() {
             onClick={() => setMoodOpen((v) => !v)}
             data-testid="mood-popover-trigger"
             data-mood-popover-keep
-            aria-label="看看 ta 现在的心情"
+            aria-label={`看看${ownerName}现在的心情`}
             title={`看看${ownerName}现在的心情`}
             className={cn(
               'pointer-events-auto relative mt-1 inline-flex rounded-full transition',
@@ -1545,12 +1548,31 @@ export function ChatPage() {
                 圆形框套在**外层 span**：AvatarContent 的 emoji 分支只负责内容，
                 尺寸/圆角/裁切必须由这里给，否则 emoji 会变成一个方方块。 */}
             <span className="relative inline-flex">
-              <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-sm">
+              <span
+                className={cn(
+                  'flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-sm',
+                )}
+              >
                 <AvatarContent value={partnerAvatar} className="text-[30px]" />
               </span>
               <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar">
                 <ConnDot />
               </span>
+              {/* 头像框：头戴式大耳机装饰——仅在播放时出现（playing 为假则不渲染）。
+                  外框放大到 84px（-inset-4），耳机落在头像外圈：耳罩在左右外缘、头梁在头顶上方成环，不压头像内容。 */}
+              {playing && (
+                <svg
+                  data-testid="headphone-overlay"
+                  viewBox="0 0 84 84"
+                  fill="none"
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-4 h-[calc(100%+32px)] w-[calc(100%+32px)] text-chat-accent"
+                >
+                  <path d="M13 30 a29 29 0 0 1 58 0" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+                  <rect x="6" y="28" width="14" height="32" rx="8" fill="currentColor" />
+                  <rect x="64" y="28" width="14" height="32" rx="8" fill="currentColor" />
+                </svg>
+              )}
             </span>
           </button>
           {/* 名字 + ▾：仍是心潮入口（chat-title-btn 回归锚点保持不动） */}
@@ -1608,6 +1630,7 @@ export function ChatPage() {
         partnerName={displayName || conversation?.title || '小蓝莓'}
         partnerAvatar={partnerAvatar}
       />
+
 
       {/* 消息列表 + 右下角「回到底部」圆钮 */}
       <div className="relative min-h-0 flex-1">

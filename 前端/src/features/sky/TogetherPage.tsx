@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Tv,
-  Headphones,
   BookOpen,
   Images,
   NotebookPen,
@@ -32,7 +31,6 @@ interface TogetherBlock {
  */
 const BLOCKS: TogetherBlock[] = [
   { key: 'watch', label: 'watch', hint: '电视 · 片单', to: '/watch', icon: Tv },
-  { key: 'listen', label: 'listen', hint: '进入一起听', to: '/listen', icon: Headphones },
   { key: 'read', label: 'read', hint: '书架 · 管理', to: '/library', icon: BookOpen },
   { key: 'gallery', label: 'gallery', hint: '相册 · 图像记忆', to: '/gallery', icon: Images },
   { key: 'diary', label: 'diary', hint: '日记本 · 随手写', to: '/diary', icon: NotebookPen },

@@ -7,7 +7,6 @@ import { GoodnightPage } from '@/features/sky/GoodnightPage';
 import { FoodPage } from '@/features/sky/FoodPage';
 import { FoodDetailPage } from '@/features/sky/FoodDetailPage';
 import { ReadPage } from '@/features/sky/ReadPage';
-import { ListenPage } from '@/features/sky/ListenPage';
 import { LibraryPage } from '@/features/sky/LibraryPage';
 import { XinchaoPage } from '@/features/xinchao/XinchaoPage';
 import { TavernPage } from '@/features/tavern/TavernPage';
@@ -51,7 +50,6 @@ export const router = createBrowserRouter([
       { path: 'food', element: <FoodPage /> },
       { path: 'food/:id', element: <FoodDetailPage /> },
       { path: 'read', element: <ReadPage /> },
-      { path: 'listen', element: <ListenPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'xinchao', element: <XinchaoPage /> },
       { path: 'tavern', element: <TavernPage /> },

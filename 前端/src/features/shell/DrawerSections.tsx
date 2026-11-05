@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Tv,
   BookOpen,
-  Headphones,
   Images,
   Phone,
   Utensils,
@@ -173,11 +172,10 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     title: 'together',
     icon: Star,
-    // 与 TogetherPage 的分块保持一致（watch/listen/read/gallery/diary/goodnight）——
+    // 与 TogetherPage 的分块保持一致（watch/read/gallery/diary/goodnight）——
     // 抽屉是镜像入口，那边加一块这边也要加，否则「收拢」就只收了一半。
     entries: [
       { to: '/watch', label: 'watch', hint: '电视 · 片单', icon: Tv },
-      { to: '/listen', label: 'listen', hint: '进入一起听', icon: Headphones },
       { to: '/library', label: 'read', hint: '书架 · 管理', icon: BookOpen },
       { to: '/gallery', label: 'gallery', hint: '相册 · 图像记忆', icon: Images },
       { to: '/diary', label: 'diary', hint: '日记本 · 随手写', icon: NotebookPen },
