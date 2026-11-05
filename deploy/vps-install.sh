@@ -23,15 +23,22 @@ say "3/8 pm2"
 command -v pm2 >/dev/null || npm i -g pm2 --silent
 echo "pm2=$(pm2 -v)"
 
-say "4/8 拉代码（/opt/xiaolanmei）"
+say "4/8 获取代码（/opt/xiaolanmei）"
+# 优先级：已有 git 仓库则 pull > 本地上传包 /root/xiaolanmei-deploy.tar.gz > GitHub 直连 clone
 if [ -d /opt/xiaolanmei/.git ]; then
-  cd /opt/xiaolanmei && git pull --ff-only
+  cd /opt/xiaolanmei && git pull --ff-only || true
+elif [ -f /root/xiaolanmei-deploy.tar.gz ]; then
+  echo "检测到上传包 /root/xiaolanmei-deploy.tar.gz，解压使用（不走 GitHub）"
+  rm -rf /opt/xiaolanmei && mkdir -p /opt/xiaolanmei
+  tar xzf /root/xiaolanmei-deploy.tar.gz -C /opt/xiaolanmei
 else
   rm -rf /opt/xiaolanmei
   git clone --depth 1 https://github.com/siuu87/xiaolanmei.git /opt/xiaolanmei
   cd /opt/xiaolanmei
 fi
-git log --oneline -1
+ls /opt/xiaolanmei/前端/package.json || { echo "CODE_MISSING：既没有 git 仓库也没有上传包"; exit 1; }
+cd /opt/xiaolanmei
+grep -c "" 后端/.env 2>/dev/null && echo ".env 密钥文件在" || echo "警告：没有 后端/.env，AI 回复功能将不可用"
 
 say "5/8 后端依赖（better-sqlite3 若无预编译会用本地编译，稍慢）"
 cd /opt/xiaolanmei/后端 && npm install --no-audit --no-fund 2>&1 | tail -2
