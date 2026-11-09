@@ -54,7 +54,7 @@ export class VoiceCall {
     this.on = on;
     this.vad = Object.assign({
       startHold: 3,        // 连续几块（~20ms/块）超阈值算开口
-      endSilenceMs: 650,   // 静音多久算说完
+      endSilenceMs: 800,   // 静音多久算说完（Earshot「听着呢」：停 0.8s 才算把话交出去）
       bargeInMs: 820,      // 正在播放正式回复时，持续开口多久才打断（防回声/误触；呼吸是短促的，真说话能撑过 0.8s）
       floor: 0.006,        // 最低噪声底
       gain: 3.2,           // 进入阈值 = max(floor, 噪声底 * gain)
@@ -499,6 +499,20 @@ export class VoiceCall {
     this._sources = []; this._queue = []; this._pending.clear();
     this._playhead = 0;
     if (this.playing) { this.playing = false; this.emit('playing', false); }
+  }
+
+  /**
+   * 手动打断（2026-11-09 按 Earshot「听着呢」教程）：它说话时点一下光线就打断。
+   * 与 VAD 的 barge 不同：不依赖麦克风检测到开口，点一下立即停播并通知核心。
+   * 返回是否真的打断了（没在说话时返回 false，页面据此决定要不要给提示）。
+   */
+  barge() {
+    const active = this.playing || this.mode === 'speaking';
+    if (!active) return false;   // 它没在说，就别往核心发多余的 interrupt
+    this._stopPlayback();
+    this._send({ type: 'interrupt', turn_id: 'new' });
+    this._setMode('listening');
+    return true;
   }
 
   // ------------------------------------------------------------ 看（Phase 2）

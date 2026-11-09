@@ -28,6 +28,8 @@ import { fmtDuration, type CallKind } from '@/lib/api/calls';
  * **能力边界（重要，别当成已实现的实时通话）**：
  * - 没有 WebRTC，也没接模型音频 —— 「接通」是本地状态机：呼出后自动接通、本地计时，
  *   **双方没有真实音频通路**。所以「静音 / 免提 / 屏幕」只是 UI 状态，不采集也不外放。
+ *   2026-11-09 起「等对方接 / 对方可以不接 / 来电弹窗」由 `CallRingingLayer` + `callSession` 接管，
+ *   传 `startConnected` 进来时直接是通话中，不再重复一次呼出等待。
  * - **摄像头是真的**：`getUserMedia({video:true, audio:false})`，开了会弹系统权限，
  *   本地画面以画中画回显；关掉/卸载一律停轨。
  * - 挂断把时长交回 `onEnd`，由 ChatPage 落库 + 往聊天流推一张内联卡片。
@@ -47,6 +49,7 @@ export function CallOverlay({
   avatar,
   kind = 'voice',
   subtitle,
+  startConnected = false,
   onEnd,
 }: {
   name: string;
@@ -55,9 +58,11 @@ export function CallOverlay({
   kind?: CallKind;
   /** 对方最后一句话：语音态中间那颗引用气泡（没有就不渲染） */
   subtitle?: string;
+  /** 外层呼叫弹窗已经「接听」过了：进来直接是通话中，不再重复一次呼出等待 */
+  startConnected?: boolean;
   onEnd: (result: CallResult) => void;
 }) {
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(startConnected);
   const [seconds, setSeconds] = useState(0);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
@@ -122,11 +127,12 @@ export function CallOverlay({
     if (videoRef.current && stream) videoRef.current.srcObject = stream;
   }, [stream]);
 
-  // 占位：模拟呼出后自动接通
+  // 占位：模拟呼出后自动接通（外层呼叫弹窗已接管「等对方接」时跳过，避免重复响两次）
   useEffect(() => {
+    if (startConnected) return;
     const t = window.setTimeout(() => setConnected(true), 2000);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [startConnected]);
 
   useEffect(() => {
     if (!connected) return;

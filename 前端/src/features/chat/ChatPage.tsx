@@ -72,7 +72,8 @@ import { CallOverlay, type CallResult } from './CallOverlay';
 import { CallDetailSheet } from './CallDetailSheet';
 import { CharacterPage } from './CharacterPage';
 import { PaiVoiceOverlay } from './PaiVoiceOverlay';
-import { createCall, fmtDuration, type CallKind } from '@/lib/api/calls';
+import { useCallSession, triggerIncomingCall } from './callSession';
+import type { CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
 import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
@@ -761,8 +762,9 @@ export function ChatPage() {
       window.setTimeout(() => setToolStatus(null), 2600);
     },
   });
-  /** 正在进行的通话类型（null = 没在通话）。语音/视频共用这一个浮层。 */
-  const [callKind, setCallKind] = useState<CallKind | null>(null);
+  /** 通话会话：只有「已接通」才渲染整屏浮层；呼叫中 / 来电由 AppLayout 的弹窗接管 */
+  const callPhase = useCallSession((s) => s.phase);
+  const sessionKind = useCallSession((s) => s.kind);
   /** 通话记录详情（设计稿 9 页）：点聊天里那张通话卡打开 */
   const [callDetail, setCallDetail] = useState<{
     call: NonNullable<ChatMessage['call']>;
@@ -770,8 +772,7 @@ export function ChatPage() {
   } | null>(null);
   /** PaiVoice 实时语音层状态：起来了就让语音通话走它，否则回退旧通话浮层 */
   const [paiVoice, setPaiVoice] = useState<{ up: boolean; wsUrl: string } | null>(null);
-  /** 呼出时刻，挂断时作为 startedAt 落库 */
-  const callStartedRef = useRef(0);
+  /** 呼出时刻、方向与结算统一由 callSession 管，这里不再另存一份 */
   /** 应用内浏览器要打开的地址（null = 关闭） */
   const [browserUrl, setBrowserUrl] = useState<string | null>(null);
   /** 「新消息形态」预览开关：**只在本组件内存里**，不写库、不进模型上下文 */
@@ -1096,6 +1097,10 @@ export function ChatPage() {
           [assistantId]: [...(prev[assistantId] ?? []), { id, title, fromWho, toWho }],
         }));
       },
+      onIncomingCall: () => {
+        // 只有模型自己决定要打才走到这里；begin() 自带「已在响铃/通话就不重复」的幂等
+        triggerIncomingCall();
+      },
       onNeedsConfirm: (confirmId, toolName, summary) => {
         setToolStatus(null);
         setConfirming({ confirmId, toolName, summary });
@@ -1180,56 +1185,23 @@ export function ChatPage() {
     return { text: valid.length ? `\n\n[图片内容]：${valid.join('；')}` : '', direct: false };
   };
 
-  /** 发起通话：记下时刻（结算时用来算 startedAt）。统一从「通话」进入，进去后可点摄像头升级视频 */
+  /** 发起通话：先进「呼叫中」等他接，他也可能不方便不接。
+   *  ?call=answered / ?call=missed 可强制本次结果，方便验收两种分支。 */
   const startCall = (kind: CallKind) => {
-    callStartedRef.current = Date.now();
-    setCallKind(kind);
     // 通话浮层是整屏的，把「+」/表情面板收掉，挂断后回到干净的聊天页
     setAttachOpen(false);
     setStickerOpen(false);
+    const forced = new URLSearchParams(window.location.search).get('call');
+    useCallSession.getState().begin({
+      direction: 'outgoing',
+      kind,
+      forcedOutcome: forced === 'missed' ? 'missed' : forced === 'answered' ? 'answered' : null,
+    });
   };
 
-  /**
-   * 挂断结算。两件事，都有意保留：
-   *   1. 写 `calls` 表 —— 时长的**唯一事实来源**，用于统计（这条路上不依赖消息）；
-   *   2. 往聊天流推一张内联卡片 —— 让「我们通过话」留在对话里、跟着分支走。
-   * 卡片上的 seconds 直接用本次结果，不回头查库，省一次往返。
-   * 落库失败也不该吞掉卡片：先记 console，卡片照发（消息本身有自己的持久化）。
-   */
-  const endCall = async (result: CallResult) => {
-    const kind = callKind ?? 'voice';
-    const startedAt = callStartedRef.current || Date.now();
-    setCallKind(null);
-
-    try {
-      await createCall({
-        kind,
-        state: result.state,
-        seconds: result.seconds,
-        conversationId: conversation?.id ?? null,
-        startedAt,
-        endedAt: Date.now(),
-      });
-    } catch (e) {
-      console.error('通话记录落库失败', e);
-    }
-
-    const conv = useChatStore.getState().conversation;
-    if (!conv) return;
-    const label = '通话';
-    await appendMessage({
-      id: uid(),
-      role: 'assistant',
-      // content 是给模型看的上下文（跟卡片上显示的不是一回事），别删
-      content:
-        result.state === 'answered'
-          ? `（${label} ${fmtDuration(result.seconds)}）`
-          : `（${label}未接通）`,
-      parentId: conv.activeMessageId,
-      status: 'done',
-      call: { kind, state: result.state, seconds: result.seconds },
-      createdAt: Date.now(),
-    });
+  /** 挂断 / 拒接 / 未接统一交给 callSession：落库 + 推通话卡片 + 没接成时让他追问一句 */
+  const endCall = (result: CallResult) => {
+    useCallSession.getState().finish(result.state, result.seconds);
   };
 
   const send = async (overrideText?: string) => {
@@ -1460,11 +1432,14 @@ export function ChatPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-chat-bg text-foreground">
-      {/* 顶栏：设计稿布局——左「菜单 + 爱心」、正中「大头像 + 名字 + ▾」、右「通话 + 搜索」。
-          容器透明（不再自带底色），头像/名字仍是「心潮」入口。 */}
+      {/* 顶栏（2026-11-09）：**悬浮置顶在聊天消息之上**，自身不带任何底色 / 遮罩，
+          消息滚动时会从按钮与头像后面透出来。用 absolute 脱离文档流，消息区靠等高 pt 让开首屏。
+          pointer-events-none + 各按钮 pointer-events-auto：空白处的点击照样能落到底下的气泡上。
+          2026-11-10：控件统一 `border-chat-line + shadow-md`（对齐「回到底部」圆钮），
+          靠描边和投影跟平的消息气泡拉开层次，而不是给整条导航栏铺底色。 */}
       <div
         data-testid="chat-topbar"
-        className="relative flex min-h-[104px] shrink-0 items-center gap-2.5 bg-transparent px-4"
+        className="pointer-events-none absolute inset-x-0 top-0 z-30 flex min-h-[104px] items-center gap-2.5 bg-transparent px-4"
       >
         {/* 移动端：汉堡 → 主抽屉（桌面有左侧常驻栏，不给重复入口） */}
         <button
@@ -1473,7 +1448,7 @@ export function ChatPage() {
           aria-label="打开菜单"
           title="菜单"
           data-testid="chat-hamburger"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95 md:hidden"
+          className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg shadow-md transition hover:bg-chat-line active:scale-95 md:hidden"
         >
           <Menu className="h-[18px] w-[18px]" />
         </button>
@@ -1512,10 +1487,10 @@ export function ChatPage() {
           data-testid="chat-mode-toggle"
           data-mode={longChat ? 'long' : 'short'}
           data-style={chatStyleMode}
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill transition hover:bg-chat-line active:scale-95',
-            longChat ? 'text-chat-pill-fg' : 'text-chat-meta',
-          )}
+            className={cn(
+              'pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill shadow-md transition hover:bg-chat-line active:scale-95',
+              longChat ? 'text-chat-pill-fg' : 'text-chat-meta',
+            )}
         >
           {/* 单气泡 = 长对话（实心）；双气泡 = 短对话（发消息的格式） */}
           {longChat ? (
@@ -1550,7 +1525,7 @@ export function ChatPage() {
             <span className="relative inline-flex">
               <span
                 className={cn(
-                  'flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-sm',
+                  'flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-md',
                 )}
               >
                 <AvatarContent value={partnerAvatar} className="text-[30px]" />
@@ -1583,8 +1558,8 @@ export function ChatPage() {
             aria-label="打开内心与记忆"
             title={`点开看${ownerName}此刻在想什么`}
             className={cn(
-              'pointer-events-auto mt-1 flex items-center gap-1 rounded-2xl px-2.5 py-1 transition',
-              'hover:bg-chat-line/40 active:scale-[0.98]',
+              'pointer-events-auto mt-1 flex items-center gap-1 rounded-full border border-chat-line bg-chat-pill px-3 py-1 shadow-md transition',
+              'hover:bg-chat-line active:scale-[0.98]',
               // 点完不要留一圈浏览器默认黑描边；键盘 Tab 过来才给一圈浅色 focus ring
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
             )}
@@ -1607,7 +1582,7 @@ export function ChatPage() {
             aria-label="语音通话"
             title="语音通话"
             data-testid="chat-call"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
+            className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg shadow-md transition hover:bg-chat-line active:scale-95"
           >
             <Phone className="h-[18px] w-[18px]" />
           </button>
@@ -1616,7 +1591,7 @@ export function ChatPage() {
             onClick={() => setSearchOpen(true)}
             aria-label="搜索记录"
             title="搜索记录"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-pill text-chat-pill-fg transition hover:bg-chat-line active:scale-95"
+            className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-pill text-chat-pill-fg shadow-md transition hover:bg-chat-line active:scale-95"
           >
             <Search className="h-[18px] w-[18px]" />
           </button>
@@ -1632,14 +1607,16 @@ export function ChatPage() {
       />
 
 
-      {/* 消息列表 + 右下角「回到底部」圆钮 */}
+      {/* 消息列表 + 右下角「回到底部」圆钮。
+          pt 必须等于上面 topbar 的 min-h（104px）：首屏内容不被压住，
+          往上滚时消息又能穿过透明的顶栏、从按钮后面透出来 */}
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollRef}
           data-testid="chat-scroller"
           onScroll={onListScroll}
           onClick={onListClick}
-          className="scrollbar-thin h-full overflow-y-auto overscroll-contain bg-chat-bg px-4 py-4"
+          className="scrollbar-thin h-full overflow-y-auto overscroll-contain bg-chat-bg px-4 pb-[96px] pt-[104px]"
         >
           <div className="mx-auto w-full max-w-3xl">
         {!loaded ? (
@@ -2061,11 +2038,12 @@ export function ChatPage() {
         )}
       </div>
 
-      {/* 输入区：与画布同底的 #F4F4F4 一条（+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 发送圆钮） */}
-      <div
-        data-testid="chat-input-bar"
-        className="shrink-0 bg-chat-bg px-4 pb-4 pt-3"
-      >
+      {/* 输入区：与画布同底、不加分隔线 / 底色块；控件靠 border-chat-line + shadow 与气泡区分
+          （+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 发送圆钮） */}
+        <div
+          data-testid="chat-input-bar"
+          className="absolute inset-x-0 bottom-0 z-30 bg-transparent px-4 pb-4 pt-3"
+        >
         {activeSkills.length > 0 && (
           <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
             {activeSkills.map((s) => (
@@ -2161,7 +2139,7 @@ export function ChatPage() {
           {/* 设计稿：一整条胶囊输入（左「模型 ▾」+ 中间输入 + 右「表情 / 语音」），
               右侧再单拎一颗圆形「+」。对白风格入口搬进 + 面板，输入条不再挂药丸。 */}
           <div className="flex items-center gap-2.5">
-            <div className="flex min-h-[52px] min-w-0 flex-1 items-center gap-1 rounded-full bg-chat-pill pl-3.5 pr-1.5 transition focus-within:ring-1 focus-within:ring-chat-line">
+            <div className="flex min-h-[52px] min-w-0 flex-1 items-center gap-1 rounded-full border border-chat-line bg-chat-pill pl-3.5 pr-1.5 shadow-sm transition focus-within:ring-1 focus-within:ring-chat-line">
               {/* 模型选择跟着参考图搬进输入条，顶栏就不挤了 */}
               <ModelPicker
                 stationId={stationId}
@@ -2230,51 +2208,7 @@ export function ChatPage() {
                 placeholder={replyToId ? '回复这条消息…' : '说点什么…'}
                 className="h-9 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-chat-meta"
               />
-              {/* 右·表情 😊（点了面板向下展开）—— 设计稿里在胶囊内部、语音左边 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setStickerOpen((v) => !v);
-                  setAttachOpen(false);
-                }}
-                aria-label="表情"
-                aria-expanded={stickerOpen}
-                title="表情"
-                data-testid="chat-emoji"
-                className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
-                  stickerOpen ? 'text-chat-pill-fg' : 'text-chat-meta hover:text-chat-pill-fg',
-                )}
-              >
-                <Smile className="h-[19px] w-[19px]" />
-              </button>
 
-              {/* 右·语音 → 语音识别（STT），定稿直接发出去 */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (stt.listening) {
-                    stt.stop();
-                    return;
-                  }
-                  setAttachOpen(false);
-                  setStickerOpen(false);
-                  stt.start();
-                }}
-                aria-label={stt.listening ? '停止语音输入' : '语音输入'}
-                aria-pressed={stt.listening}
-                title={stt.listening ? '正在听，点一下停止' : '语音输入'}
-                data-testid="chat-mic"
-                data-listening={stt.listening ? 'true' : 'false'}
-                className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95',
-                  stt.listening
-                    ? 'animate-pulse bg-red-500 text-white shadow-sm'
-                    : 'text-chat-meta hover:text-chat-pill-fg',
-                )}
-              >
-                <Mic className="h-[19px] w-[19px]" />
-              </button>
             </div>
 
             {/* 最右·独立圆钮：空=「+」开面板 / 有字=「↑」发送 / 生成中=「■」停止。
@@ -2285,7 +2219,7 @@ export function ChatPage() {
                 onClick={stop}
                 aria-label="停止"
                 data-testid="chat-stop"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-me text-chat-me-fg transition active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-me text-chat-me-fg shadow-md transition active:scale-95"
               >
                 <span className="block h-[11px] w-[11px] rounded-[2px] bg-current" />
               </button>
@@ -2295,7 +2229,7 @@ export function ChatPage() {
                 onClick={() => void send()}
                 aria-label="发送"
                 data-testid="chat-send"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-me text-chat-me-fg transition active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-chat-line bg-chat-me text-chat-me-fg shadow-md transition active:scale-95"
               >
                 <ArrowUp className="h-5 w-5" />
               </button>
@@ -2311,7 +2245,7 @@ export function ChatPage() {
                 title="更多功能"
                 data-testid="chat-attach"
                 className={cn(
-                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-chat-line shadow-md transition active:scale-95',
                   attachOpen ? 'bg-chat-me text-chat-me-fg' : 'bg-chat-pill text-chat-pill-fg hover:bg-chat-line',
                 )}
               >
@@ -2330,7 +2264,7 @@ export function ChatPage() {
           data-testid="chat-bottom-panel"
           data-panel={attachOpen ? 'attach' : 'sticker'}
           className={cn(
-            'flex shrink-0 flex-col rounded-t-[26px] bg-chat-sheet pb-[env(safe-area-inset-bottom)]',
+            'flex absolute inset-x-0 bottom-[80px] z-[31] flex-col rounded-t-[26px] bg-chat-sheet pb-[env(safe-area-inset-bottom)]',
             // 表情包要给格子留出高度；「+」面板按内容自适应（设计稿本来就矮一截）
             stickerOpen && 'h-[19rem]',
           )}
@@ -2369,6 +2303,15 @@ export function ChatPage() {
                     label="文件"
                     onClick={() => fileDocRef.current?.click()}
                   />
+                  <AttachButton
+                    icon={<Mic className="h-6 w-6" />}
+                    label="语音"
+                    onClick={() => {
+                      setAttachOpen(false);
+                      if (stt.listening) stt.stop();
+                      else stt.start();
+                    }}
+                  />
                   {/* 对白风格入口在顶栏汉堡右边（chat-style-pill），这里不再重复 */}
                 </div>
                 <p className="mt-3 text-center text-[11px] text-chat-meta">表情包可继续导入 · 长按可管理</p>
@@ -2406,22 +2349,22 @@ export function ChatPage() {
         />
       )}
 
-      {/* 通话浮层（语音 / 视频共用）。挂断 → endCall 落库 + 往聊天流推卡片 */}
-      {/* 通话：语音优先走 PaiVoice 实时语音层；没起 / 视频通话回退旧浮层 */}
-      {callKind &&
-        (paiVoice?.up && callKind === 'voice' ? (
+      {/* 通话浮层：只有「接通」后才挂出来。语音优先走 PaiVoice 实时语音层；没起 / 视频回退旧浮层 */}
+      {callPhase === 'connected' &&
+        (paiVoice?.up && sessionKind === 'voice' ? (
           <PaiVoiceOverlay
             wsUrl={paiVoice.wsUrl}
             name={displayName || '小蓝莓'}
-            onEnd={(seconds) => void endCall({ state: 'answered', seconds })}
+            onEnd={(seconds) => endCall({ state: 'answered', seconds })}
           />
         ) : (
           <CallOverlay
-            kind={callKind}
+            kind={sessionKind}
             name={displayName || '小蓝莓'}
             avatar={partnerAvatar}
             subtitle={lastAssistantLine}
-            onEnd={(r) => void endCall(r)}
+            startConnected
+            onEnd={(r) => endCall(r)}
           />
         ))}
 

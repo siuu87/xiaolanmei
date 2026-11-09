@@ -3,7 +3,6 @@ import {
   Tv,
   BookOpen,
   Images,
-  NotebookPen,
   Moon,
   ChevronRight,
   ArrowLeft,
@@ -28,17 +27,18 @@ interface TogetherBlock {
  * （`/gallery` `/diary`），所以旧链接照样能用。
  * 标签沿用现有的小写英文风格（watch / listen / read），中文说明放 hint。
  * 2026-10-18：新增 `goodnight`（晚安 · 哄睡陪睡），路由 `/goodnight`。
+ * 2026-11-09：`diary`（日记本）改归抽屉「生活小趣味」组，从本页移除，避免入口重复；
+ * 路由 `/diary` 不变，日历卡 / 旧链接照样能进。
  */
 const BLOCKS: TogetherBlock[] = [
   { key: 'watch', label: 'watch', hint: '电视 · 片单', to: '/watch', icon: Tv },
   { key: 'read', label: 'read', hint: '书架 · 管理', to: '/library', icon: BookOpen },
   { key: 'gallery', label: 'gallery', hint: '相册 · 图像记忆', to: '/gallery', icon: Images },
-  { key: 'diary', label: 'diary', hint: '日记本 · 随手写', to: '/diary', icon: NotebookPen },
   { key: 'goodnight', label: 'goodnight', hint: '哄睡 · 陪睡', to: '/goodnight', icon: Moon },
 ];
 
 /**
- * together：原「星空与共度」的新主页，五个分块，
+ * together：原「星空与共度」的新主页，四个分块，
  * 每个分块点进去都是一个独立的新页面。
  */
 export function TogetherPage() {

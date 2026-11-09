@@ -672,6 +672,31 @@ const openSourceRefresh: BuiltinTool = {  name: 'open_source_refresh',
   },
 };
 
+/**
+ * 主动来电（2026-11-10）：由模型在对话里自己决定要不要打，前端不再挂定时器公式化触发。
+ * 工具本身不落库、不发请求，只把「想打」这个意图经 chat/stream 的 `incoming_call` 事件送回前端，
+ * 由前端弹来电卡片（接听 / 拒接 / 没接后追问都走 callSession）。
+ * 没接模型时这颗工具自然不会被调用，也就不会凭空冒出电话。
+ */
+const incomingCall: BuiltinTool = {
+  name: 'incoming_call',
+  description:
+    '当你想主动给 TA 打一通语音电话时调用：聊到想念、想听声音、想安慰对方，或你就是突然想打。' +
+    '调用后 TA 那头会收到一通来电，可以接也可以不接。' +
+    '**一轮对话最多一次，不要每轮都打，也不要没事就打**；只有真的想打时才用，普通回复不要调这个工具。',
+  parameters: {
+    type: 'object',
+    properties: {
+      reason: { type: 'string', description: '想打这通电话的缘由，一句话；只作记录，不展示给 TA' },
+    },
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const reason = String(args.reason ?? '').trim().slice(0, 80);
+    return reason ? `已发起一通来电（${reason}）。等 TA 接。` : '已发起一通来电。等 TA 接。';
+  },
+};
+
 const BUILTIN_TOOLS: BuiltinTool[] = [
   webFetch,
   webSearch,
@@ -684,6 +709,7 @@ const BUILTIN_TOOLS: BuiltinTool[] = [
   openSourceAdd,
   openSourceRefresh,
   setPartnerRemark,
+  incomingCall,
   ...PHONE_TOOLS,
 ];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));

@@ -55,7 +55,7 @@ export const router = createBrowserRouter([
       { path: 'tavern', element: <TavernPage /> },
       { path: 'read/:id', element: <BookReaderPage /> },
       { path: 'settings', element: <SettingsPage /> },
-      // 详情子页（非 Tab）。diary / gallery 的入口已收进 together，路由本身不变。
+      // 详情子页（非 Tab）。gallery 入口在 together；diary 归抽屉「生活小趣味」，路由本身不变。
       { path: 'diary', element: <DiaryPage /> },
       { path: 'gallery', element: <GalleryPage /> },
       { path: 'memorial', element: <MemorialPage /> },

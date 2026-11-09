@@ -11,6 +11,8 @@ import { Drawer } from '@/features/shell/Drawer';
 import { LetterReaderLayer } from '@/features/notes/LetterReaderLayer';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
 import { BedtimeNudge } from '@/features/shell/BedtimeNudge';
+import { CallRingingLayer } from '@/features/chat/CallRingingLayer';
+import { triggerIncomingCall } from '@/features/chat/callSession';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
 import { useAppHeight } from '@/lib/useAppHeight';
 import { useProfileStore } from '@/stores/profileStore';
@@ -56,6 +58,19 @@ export function AppLayout() {
 
   // 软键盘弹起时把根容器压到「可见视口」高度，否则输入框会被顶到键盘底下
   useAppHeight();
+
+  // ?incoming=1：立刻弹一通来电（预览 / 验收用）。用完把参数抹掉，刷新不会重复弹。
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (q.get('incoming') !== '1') return;
+    q.delete('incoming');
+    const search = q.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
+    const t = window.setTimeout(() => triggerIncomingCall(), 500);
+    return () => window.clearTimeout(t);
+    // 只在进 App 时检查一次，后续路由变化不再触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -138,6 +153,9 @@ export function AppLayout() {
 
       {/* 睡前提醒（设置页「提醒与健康」里开启；22:00–02:59 每天最多一次） */}
       <BedtimeNudge />
+
+      {/* 呼叫中 / 来电弹窗：他会主动打过来，所以挂在布局层，任何页面都能弹 */}
+      <CallRingingLayer />
 
       {/* 一封来信的阅读页：叠在抽屉之上，点空白收起。
           挂在这里而不是 Outlet，是为了让 AnimatePresence 有机会播收起动画。 */}

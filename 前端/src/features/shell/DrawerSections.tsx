@@ -172,13 +172,13 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     title: 'together',
     icon: Star,
-    // 与 TogetherPage 的分块保持一致（watch/read/gallery/diary/goodnight）——
+    // 与 TogetherPage 的分块保持一致（watch/read/gallery/goodnight）——
     // 抽屉是镜像入口，那边加一块这边也要加，否则「收拢」就只收了一半。
+    // 2026-11-09：diary（日记本）按需求移到「生活小趣味」组，不再挂在 together。
     entries: [
       { to: '/watch', label: 'watch', hint: '电视 · 片单', icon: Tv },
       { to: '/library', label: 'read', hint: '书架 · 管理', icon: BookOpen },
       { to: '/gallery', label: 'gallery', hint: '相册 · 图像记忆', icon: Images },
-      { to: '/diary', label: 'diary', hint: '日记本 · 随手写', icon: NotebookPen },
       { to: '/goodnight', label: 'goodnight', hint: '哄睡 · 陪睡', icon: Moon },
     ],
   },
@@ -203,6 +203,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
       { to: '/gifts', label: '礼物盒', icon: Gift },
+      { to: '/diary', label: '日记本', icon: NotebookPen },
     ],
   },
 ];

@@ -23,6 +23,11 @@ export default function App() {
   useEffect(() => startAiMoodScheduler(), []);
   // 深夜来信：信由后端不定时抓取，前端定时把新到的取回来（与当前在哪个页面无关）
   useEffect(() => startMailRefresh(), []);
+  // 主动来电改由模型在对话里自己决定（chat/stream 的 incoming_call 事件 → 前端弹窗），
+  // 不再挂前端定时器，刷新页面也不会「按公式」打一通。顺手清掉旧版排程 key。
+  useEffect(() => {
+    try { localStorage.removeItem('blueberry.incoming-call.v1'); } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     void useDiaryStore.getState().load();

@@ -146,7 +146,8 @@ export function PaiVoiceOverlay({
     dragRef.current = null;
   };
 
-  const src = `/paivoice/index.html?ws=${encodeURIComponent(wsUrl)}&name=${encodeURIComponent(name)}&compact=1`;
+  // auto=1：外层呼叫弹窗已经「接听」过了，进页面自动开始实时语音，不再让用户点第二遍「接通」
+  const src = `/paivoice/index.html?ws=${encodeURIComponent(wsUrl)}&name=${encodeURIComponent(name)}&compact=1&auto=1`;
 
   const collapsedHint = callState === 'closed' ? '已结束' : '通话中';
 

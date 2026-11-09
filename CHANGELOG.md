@@ -2,6 +2,108 @@
 
 本文件记录每次推送到远端的可见变更。**约定：每次上传前先更新本文件与 `README.md` 的功能总览，再推送。**
 
+## 2026-11-10
+
+### 来电改由模型自发决定 + 顶栏/输入栏控件与信息分层
+
+用户原话：「不要每次点进来刷新页面就公式化打电话，我要是接入模型之后的自发行为，然后上面导航栏还有输入栏的东西和信息要做出区分」。
+
+- **撤掉前端公式化来电**：删除 `features/chat/incomingCallScheduler.ts`；`App.tsx` 不再挂定时器，
+  顺手清掉旧 `localStorage` 排程 key `blueberry.incoming-call.v1`；`AppLayout.tsx` 的
+  `triggerIncomingCall` 改从 `callSession.ts` 引入。`?incoming=1` 手动验收入口保留。
+- **来电唯一入口收敛到模型**：`callSession.ts` 新增 `triggerIncomingCall()`；后端
+  `tools/registry.ts` 注册 `incoming_call` BuiltinTool（描述里明确「一轮最多一次、不要每轮都打」），
+  `routes/chat.ts` 的 builtin filter 显式放行该工具、`write()` 联合类型加 `incoming_call` 事件，
+  工具成功后推 `{ type:'incoming_call', reason }`；前端 `lib/api/chatStream.ts` 新增 `onIncomingCall`
+  并解析该事件，`ChatPage` 的 `streamChat` 接到就调 `triggerIncomingCall()`。
+  **边界**：这是「模型在用户发起的一轮对话里自主决定是否打」，还没有无人输入时的后台调度器 /
+  outbox / 常驻 SSE 总线；要做「没人说话也会主动打」需另起方案。
+- **控件与信息拉开层次，但不铺底色块**：延续 11-09 的透明悬浮顶栏
+  （`absolute` + `bg-transparent` + `pt-[104px]`），只给控件自身加 `border border-chat-line` +
+  `shadow-md / shadow-sm`：顶栏 4 个侧按钮、气泡模式按钮、名字按钮、头像、输入胶囊、
+  发送 / 停止 /「＋」按钮。消息气泡与两个容器底色不变，`data-testid` / 点击行为 / 状态逻辑零改动。
+- 验收：前后端 `tsc --noEmit` 0 错、`vite build` 成功；重启后端后 `/api/health` 200；
+  模拟 SSE 脚本 `TOOL_REGISTERED true` / `TOOL_EXEC 已发起一通来电（想听你声音）。等 TA 接。` /
+  `SSE_RESULT {"called":1,"reason":"想听你声音","deltas":"嗯"}`；浏览器 4/4
+  （刷新不自动来电 + 旧排程 key 已清 / 控件有描边投影 / 容器无底色块 / `?incoming=1` 仍弹）；
+  顶栏冒烟 6/6、输入栏回归 4/4。**本轮验收未往真实库写数据**（只读核查：最近 20 分钟
+  `calls` / `messages` 均无新增）。真实模型接入后仍需做一次端到端「模型真调工具 → 弹窗」验证。
+
+### 深色模式按设计规范重做（参考小红书「深色模式不是反色」）
+
+- 依据规范四条：底色不用纯黑、用主色相极深版本；层级靠明度（页面→卡片→弹层越上越亮）；品牌色降饱和提亮；正文不纯白。
+- 背景压到极深蓝灰：`--chat-bg`/`--page-bg` 10%→8%（≈#0E1116 风格，非纯黑）。
+- 修正层级（原弹层比卡片暗）：`--chat-sheet 13%→19%`、`--paper 14%→19%`、`--chat-bar 12%→14%`、`--surface 13.5%→15%`；
+  现顺序 背景(8%) < 表面(15%) < 卡片/输入框(17%) < 弹层/纸面(19%)，越上越亮。
+- 正文降白避免刺眼：`--chat-ai-fg 88%→85%`、`--ink`/`--ink-night 87/88%→84/85%`（≈#E6E6E6）；自己消息气泡保留纯白 `chat-me-fg`（深底高对比）。
+- 品牌/强调降饱和提亮：`--brand 66%→70%`、`--chat-accent 64%→68%`、`--glow 52%→56%`。
+- 图片压暗（规范第5条）经用户确认不做，避免压暗头像/表情/贴纸。
+
+## 2026-11-09
+
+### 调整
+
+- **日记本改归「生活」**：`diary` 从抽屉/首页模块区的 `together` 分组移到「生活小趣味」分组
+  （label 用中文「日记本」、无 hint，与组内其余卡片等大）；同时从 `/together` 页移除 diary 分块，
+  避免同一入口在两处重复。路由 `/diary` 不变，日历卡选中日「日记」行的 `?date=` 深链照常可用。
+- 顺带清理文档：README 删除已下线的 `listen`（一起听）残留描述，同步模块卡数量与日记本入口说明。
+
+### 语音电话按 Earshot「听着呢」教程改造（前端 UI + 交互）
+
+- 改造范围经用户确认只做**前端 UI + 交互**：轻声回应 / 逐句朗读 / 认真告别才挂等**内容生成策略属于外部
+  `8780` PaiVoice 核心**，本仓库不实现（也不改模型 / ASR / TTS）。
+- `前端/public/paivoice/index.html`：球面 `orb` → **两条光线**（珊瑚＝你、白＝它，各 28 根错相竖条）；
+  绿色「接通」按钮；左静音 / 右红色挂断不变；底部新增**本轮延迟小字**；状态文案改口语化。
+  `beams` 支持 click / Enter / Space **点光线打断**，没在说话时给一句「嗯，我听着呢」而不发多余 interrupt。
+- 回调接线：`speech` 驱动珊瑚光线 + 通话星空聚形，`playing` 驱动白光线与可打断区域，
+  `latency` 显示「这一轮 X.Xs 接上」，`interrupted` 清光束；`setMode` 以 `call.playing` 兜底，
+  服务端中途给 `thinking` 时不会把仍在响的白光线掐灭。
+- `前端/public/paivoice/voice-call.js`：新增公开 `barge()`（立即停播 + 发 `interrupt` + 回 listening，
+  未播放时返回 false 且不发消息）；VAD `endSilenceMs` 650 → **800**（对齐教程「停 0.8s 交话」）。
+- 本地 `前端/dist/paivoice/{index.html,voice-call.js}` 也同步了一份（`dist` 在 `.gitignore` 里不入库，
+  VPS 部署脚本会 `npm run build` 由 `public/` 自动重建，不必手动拷贝）；`node --check` 双文件通过、
+  `tsc --noEmit` 0 错、dev server `/paivoice/index.html` 返回 200 且包含新版标记。
+
+### 通话补上「等对方接 / 他也会主动打来 / 没接会追问」
+
+- 之前点通话按钮是直接挂出整屏浮层，等于默认双方都接了。现在补了电话的前半段：
+  `idle → ringing → connected → idle`，方向分「我打过去 / 他打过来」，结果分接通 / 拒接 / 未接。
+- 新增 `features/chat/callSession.ts`（Zustand 状态机 + 统一结算）：结算写 `calls` 表、
+  推聊天流通话卡片，**没接成时延迟 1.6–3s 写一条 AI 追问文本**（来电没接 / 呼出他没接口吻不同；
+  我自己取消拨号不追问）。放 store 是因为来电弹窗在布局层、接通后的浮层在聊天页，两边要共用状态。
+- 新增 `features/chat/CallRingingLayer.tsx`：`createPortal` 到 body、`z-[1500]`、
+  **纯色不透明背板**（刻意不加 fade-in，避免动画期出现半透明遮罩）、Esc 在 capture 阶段拒接 / 取消。
+  呼出随机 72% 接通（1.8–4.4s）/ 28% 不接（6.5–9s），来电响 26 秒无人接判未接。
+- 当时曾新增 `features/chat/incomingCallScheduler.ts` 做随机时刻来电（首通 45–90s，之后 18–40min）；
+  **同日已按用户要求整体撤销**（见下方 2026-11-10 段），只保留 `?incoming=1` 深链用于验收。
+- `ChatPage` 的所有拨号入口（顶栏电话 / 「+」通话 / 搜索页再打一通 / 通话详情再打一通）统一走
+  `callSession.begin`，只有 `phase === 'connected'` 才渲染 `PaiVoiceOverlay` / `CallOverlay`；
+  `CallOverlay` 新增 `startConnected`，不再重复一次「呼出 2 秒自动接通」；原 `endCall` 的落库与卡片逻辑
+  收敛进 `settleCall`。`?call=answered` / `?call=missed` 可强制呼出结果。
+- `PaiVoiceOverlay` 的 iframe 加 `auto=1`：接听后自动开始实时语音，不再让用户点第二次「接通」；
+  连不上核心时按钮会自动放回来供手动重试。
+- 验收：`tsc --noEmit` 0 错、`vite build` 成功、puppeteer-core 实跑 7 项全通过
+  （来电弹窗 / 拒接后追问 / 接听进通话 / 挂断回收 / 呼出呼叫中 / 对方接听 / 对方不接追问）。
+  **验收往真实库写了 8 条通话 + 12 条消息，已按纪律 `VACUUM INTO` 备份后精确删除，
+  并把 `conversations.active_message_id` 回退到验收前的叶子**；备份在
+  `后端/data/blueberry.before-call-test-20261109.db`（`*.db` 已被 gitignore）。
+
+### Chat 顶栏：悬浮置顶 + 无底色（同日早些时候的换皮已全部撤销）
+
+- 用户澄清要的是「按键都置顶在聊天信息上面、底下不要带颜色的导航栏底」，不是换配色。
+  **同日那次 iMessage 换皮（白圆按钮 / 蓝灰渐变头像 / 浅蓝名字药丸 / 60px 头像）已逐项回滚**，
+  按钮、头像、名字的外形与配色恢复到原本的 `chat-*` token 版本。
+- 顶栏由 `relative` 占位块改为 `pointer-events-none absolute inset-x-0 top-0 z-30`，
+  `bg-transparent` 不带任何底色 / 遮罩 / backdrop-blur；消息滚动区改用等高的 `pt-[104px]`：
+  首屏内容不被压住，往上滚时消息就从按钮与头像后面透出来。
+  6 个按钮各自 `pointer-events-auto`，空白处点击仍能落到底下的气泡上。
+- **功能零改动**：`chat-hamburger` / `chat-mode-toggle` / `mood-popover-trigger` /
+  `chat-title-btn` / `chat-call` / 搜索按钮的 `data-testid`、点击行为与状态逻辑全部原样。
+- 验收：`tsc --noEmit` 0 错、puppeteer 冒烟 6/6（锚点齐全 / 气泡模式切换 / 通话进呼叫中 /
+  搜索层 / 心情浮层 / 名字跳心潮）；computed style 核对（topbar=absolute/z-30/透明/104px，
+  scroller `paddingTop=104px`，按钮底色恢复 `rgb(41,43,46)`，头像恢复 52px 无渐变，名字恢复 16px）；
+  首屏与滚动后两张截图确认「无底色 + 消息从按钮后面透出」。本轮冒烟没有往真实库写任何数据。
+
 ## 2026-11-05
 
 ### 调整

@@ -162,32 +162,32 @@
     --bubble-ai: 210 6% 19%;
     --bubble-me: 210 8% 27%;
 
-    --brand: 209 11% 66%;
+    --brand: 209 10% 70%;
     --brand-soft: 210 9% 20%;
     --brand-ink: 210 18% 80%;
     --gold: 210 8% 60%;
     --gold-soft: 210 8% 19%;
     --on-gold: 210 8% 12%;
-    --glow: 210 26% 52%;
+    --glow: 210 24% 56%;
     --shadow-color: 0 0% 0%;
 
-    --chat-bg: 210 7% 10%;
-    --chat-bar: 210 7% 12%;
+    --chat-bg: 210 8% 8%;
+    --chat-bar: 210 7% 14%;
     --chat-pill: 210 6% 17%;
     --chat-pill-fg: 210 8% 84%;
     --chat-line: 210 6% 23%;
     --chat-me: 210 9% 28%;
     --chat-me-fg: 0 0% 100%;
     --chat-ai: 210 6% 18%;
-    --chat-ai-fg: 210 8% 88%;
+    --chat-ai-fg: 210 8% 85%;
     --chat-meta: 213 5% 58%;
     --chat-quote: 210 6% 17.5%;
     --chat-quote-line: 210 6% 27%;
-    --chat-accent: 209 11% 64%;
+    --chat-accent: 209 10% 68%;
     --chat-accent-fg: 210 8% 12%;
     --chat-call-in: 148 28% 37%;
     --chat-call-out: 0 48% 49%;
-    --chat-sheet: 210 7% 13%;
+    --chat-sheet: 210 7% 19%;
 
     /* 通话整屏：深色主题下与浅色主题保持一致（设计稿就是固定深色） */
     --call-bg: 0 0% 5%;
@@ -197,18 +197,18 @@
     --call-bubble: 0 0% 17%;
     --call-hang: 0 70% 56%;
 
-    --page-bg: 210 7% 10%;
+    --page-bg: 210 8% 8%;
     --page-line: 210 6% 22%;
-    --surface: 210 6% 13.5%;
+    --surface: 210 6% 15%;
     --surface-2: 210 6% 17%;
     --surface-3: 210 6% 21%;
     --surface-sunken: 210 7% 11%;
     --scrim: 210 7% 11.5%;
 
-    --paper: 210 6% 14%;
-    --ink: 210 7% 87%;
+    --paper: 210 6% 19%;
+    --ink: 210 7% 84%;
     --night: 210 8% 9%;
-    --ink-night: 210 7% 88%;
+    --ink-night: 210 7% 85%;
   }
 }
 

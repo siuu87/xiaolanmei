@@ -24,6 +24,8 @@ export interface StreamChatOptions {
   onToolCall?: (name: string) => void;
   onNeedsConfirm?: (confirmId: string, toolName: string, summary: string) => void;
   onMemoAdded?: (id: string | undefined, title: string, fromWho?: string, toWho?: string) => void;
+  /** 模型自己决定「想打个电话」：后端工具 incoming_call 成功后推来的意图 */
+  onIncomingCall?: (reason?: string) => void;
   onDone?: () => void;
   onError?: (message: string) => void;
 }
@@ -34,7 +36,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat(
   messages: ChatPayloadMessage[],
-  { signal, conversationId, userMessageId, model, stationId, web, chatStyle, longChat, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onDone, onError }: StreamChatOptions = {},
+  { signal, conversationId, userMessageId, model, stationId, web, chatStyle, longChat, onDelta, onReasoning, onToolCall, onNeedsConfirm, onMemoAdded, onIncomingCall, onDone, onError }: StreamChatOptions = {},
 ): Promise<void> {
   let res: Response;
   try {
@@ -107,6 +109,7 @@ export async function streamChat(
           title?: string;
           fromWho?: string;
           toWho?: string;
+          reason?: string;
         };
         try {
           ev = JSON.parse(payload);
@@ -124,6 +127,8 @@ export async function streamChat(
           onNeedsConfirm?.(ev.confirmId, ev.toolName ?? '', ev.summary ?? '');
         } else if (ev.type === 'memo_added') {
           onMemoAdded?.(ev.id, ev.title ?? '', ev.fromWho, ev.toWho);
+        } else if (ev.type === 'incoming_call') {
+          onIncomingCall?.(ev.reason);
         } else if (ev.type === 'done') {
           done = true;
           onDone?.();

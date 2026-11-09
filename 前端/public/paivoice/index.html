@@ -39,23 +39,29 @@
       header .name { font-size: 13px; margin-left: auto; color: var(--ink); }
       main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
-      .orb {
-        position: relative; width: 132px; height: 132px; border-radius: 50%;
-        background: radial-gradient(circle at 40% 35%, #f3d2a8 0%, #c78f58 38%, #6b4527 70%, #2a1a10 100%);
-        box-shadow: 0 0 50px rgba(226, 181, 127, 0.18), inset 0 0 30px rgba(0, 0, 0, 0.35);
-        transition: transform 0.25s ease;
+      /* 两条光线（Earshot「听着呢」）：珊瑚色=你，白色=它。
+         谁在说话谁的光束起伏；它说话时点一下光束就是打断。 */
+      .beams {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 12px; width: 100%; max-width: 300px; height: 132px;
+        border-radius: 18px; transition: background .2s ease;
       }
-      .orb::before, .orb::after {
-        content: ''; position: absolute; inset: -12px; border-radius: 50%;
-        border: 1px solid rgba(226, 181, 127, 0.22);
-        animation: ring 2.8s ease-out infinite;
+      .beam {
+        display: flex; align-items: center; justify-content: center; gap: 3px;
+        width: 100%; height: 36px; padding: 0 10px; border-radius: 999px;
+        opacity: .28; transition: opacity .25s ease, background .2s ease;
       }
-      .orb::after { animation-delay: 1.4s; }
-      .orb.listening { transform: scale(1.03); }
-      .orb.speaking { transform: scale(1.06); box-shadow: 0 0 70px rgba(226, 181, 127, 0.35); }
-      .orb.thinking { animation: breathe 1.6s ease-in-out infinite; }
-      @keyframes ring { 0% { transform: scale(0.92); opacity: 0.55; } 100% { transform: scale(1.35); opacity: 0; } }
-      @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      .beam.active { opacity: 1; }
+      .beam span {
+        display: block; width: 3px; height: 12%; min-height: 2px; border-radius: 999px;
+        background: currentColor; animation: wave 1s ease-in-out infinite alternate;
+        animation-play-state: paused;
+      }
+      .beam.active span { animation-play-state: running; }
+      .beam.me { color: #e88a70; }
+      .beam.ai { color: #f5ece2; }
+      .beams.interruptible { cursor: pointer; background: rgba(255, 255, 255, 0.04); }
+      @keyframes wave { from { height: 12%; } to { height: 100%; } }
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
       .state { font-size: 13px; color: var(--muted); min-height: 20px; letter-spacing: 0.06em; }
       .transcript {
@@ -82,22 +88,26 @@
       .round:active { transform: scale(0.94); }
       .round.on { background: var(--accent-soft); border-color: rgba(226, 181, 127, 0.4); color: var(--accent); }
       .round.hangup { background: rgba(224, 123, 123, 0.16); border-color: rgba(224, 123, 123, 0.35); color: var(--danger); }
+      /* 接通＝绿色按钮（Earshot「听着呢」：打开网页，点绿色按钮，像打电话一样说话） */
       .primary {
         width: 100%; padding: 14px 18px; border-radius: 999px; font-size: 15px; font-weight: 600;
-        color: #1a120b; background: linear-gradient(180deg, #f0c894, #d9a56b);
-        box-shadow: 0 12px 30px rgba(226, 181, 127, 0.18);
+        color: #0d2117; background: linear-gradient(180deg, #9ad9ac, #5cb884);
+        box-shadow: 0 12px 30px rgba(92, 184, 132, 0.2);
       }
       .primary:active { transform: scale(0.99); }
       .hint { font-size: 11px; line-height: 1.6; color: var(--muted); text-align: center; }
       .error { font-size: 11px; color: var(--danger); text-align: center; min-height: 16px; }
+      /* 最下面的小字：这一轮从你说完到它出声用了几秒 */
+      .latency { min-height: 15px; padding-top: 8px; font-size: 10px; color: var(--muted); text-align: center; letter-spacing: .03em; }
       .hidden { display: none !important; }
       .footer { display: flex; gap: 8px; align-items: center; justify-content: center; }
       .svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-      /* 悬浮窗里只有 ~390px 高：把球和字幕收紧，保证控件都露出来 */
+      /* 悬浮窗里只有 ~390px 高：把光束和字幕收紧，保证控件都露出来 */
       @media (max-height: 520px) {
         #app { padding: 8px 12px 12px; }
-        .orb { width: 78px; height: 78px; }
+        .beams { height: 78px; gap: 6px; }
+        .beam { height: 26px; }
         .transcript { max-height: 30vh; }
         .state { font-size: 11px; }
         .hint { display: none; }
@@ -124,8 +134,12 @@
 
       <main>
         <div class="stage">
-          <div class="orb" id="orb"></div>
-          <div class="state" id="state">准备接通</div>
+          <!-- 两条光线：珊瑚色是你，白色是它。它说话时点一下光束就打断 -->
+          <div class="beams" id="beams" role="button" tabindex="0" aria-label="它说话时点一下光束打断">
+            <div class="beam me" id="beam-me"></div>
+            <div class="beam ai" id="beam-ai"></div>
+          </div>
+          <div class="state" id="state">准备好了，点绿色按钮打给我</div>
           <div class="transcript" id="transcript"></div>
         </div>
 
@@ -133,7 +147,7 @@
 
         <div id="start-wrap">
           <button class="primary" id="start">接通</button>
-          <p class="hint" id="start-hint">麦克风只在通话期间开启，音频不落盘</p>
+          <p class="hint" id="start-hint">像打电话一样说话就行，停一下它就接话 · 麦克风只在通话期间开启</p>
         </div>
 
         <div class="controls hidden" id="controls">
@@ -144,6 +158,8 @@
             <svg class="svg" viewBox="0 0 24 24"><path d="M3 10c5-4 13-4 18 0v3a2 2 0 0 1-2 2h-3l-1-3c-2-.5-4-.5-6 0l-1 3H5a2 2 0 0 1-2-2z"/></svg>
           </button>
         </div>
+
+        <div class="latency" id="latency"></div>
       </main>
     </div>
 
@@ -346,30 +362,58 @@
       const $ = (id) => document.getElementById(id);
       $('name').textContent = name;
 
-      const orb = $('orb');
+      const beams = $('beams');
+      const beamMe = $('beam-me');
+      const beamAi = $('beam-ai');
       const dot = $('dot');
       const stateEl = $('state');
       const transcript = $('transcript');
       const errorEl = $('error');
+      const latencyEl = $('latency');
       const startWrap = $('start-wrap');
       const controls = $('controls');
       let call = null;
       let muted = false;
 
+      // 两条光线：每根竖条错开相位，说话时才起伏
+      function makeBeam(el, n) {
+        for (let i = 0; i < n; i++) {
+          const bar = document.createElement('span');
+          const k = Math.sin((i / (n - 1)) * Math.PI);   // 中间高、两端低，像一束光
+          bar.style.animationDelay = `${(i % 7) * -0.13}s`;
+          bar.style.animationDuration = `${0.7 + (i % 4) * 0.16}s`;
+          bar.style.maxHeight = `${28 + k * 72}%`;
+          el.appendChild(bar);
+        }
+      }
+      makeBeam(beamMe, 28);
+      makeBeam(beamAi, 28);
+
+      // 口语化状态：像电话那头有个人在（Earshot「听着呢」）
       const LABEL = {
-        idle: '待接通',
-        listening: '在听你说',
-        thinking: '在想…',
-        speaking: '正在说',
-        reconnecting: '断线重连中…',
-        closed: '已挂断',
+        idle: '准备好了，点绿色按钮打给我',
+        listening: '嗯，我在听',
+        thinking: '等等，让我想想…',
+        speaking: '我在说',
+        reconnecting: '信号有点远，我等你一下…',
+        closed: '这通先挂啦',
       };
 
       let prevMode = '';
+      function setMeSpeaking(on) {
+        beamMe.classList.toggle('active', !!on);
+      }
+      function setAiSpeaking(on) {
+        beamAi.classList.toggle('active', !!on);
+        // 它在说话时，点光束就是打断
+        beams.classList.toggle('interruptible', !!on);
+      }
       function setMode(mode) {
         stateEl.textContent = LABEL[mode] || mode || '';
-        orb.className = `orb ${mode || ''}`;
         dot.className = `dot ${mode === 'idle' || mode === 'closed' ? '' : 'on'}`;
+        // 服务端状态中途给 thinking 时，只要扬声器还在响就别把白光线掐灭
+        setAiSpeaking(mode === 'speaking' || !!call?.playing);
+        if (mode === 'listening' || mode === 'idle' || mode === 'closed') setMeSpeaking(false);
         // 通话星空：AI 开口聚形、收声散开
         if (window.sky) {
           if (mode === 'speaking') window.sky.voice('him', true);
@@ -379,6 +423,7 @@
         if (mode === 'closed') {
           startWrap.classList.remove('hidden');
           controls.classList.add('hidden');
+          latencyEl.textContent = '';
         }
         window.parent?.postMessage({ type: 'paivoice:state', mode }, '*');
       }
@@ -397,6 +442,23 @@
         errorEl.textContent = String(msg || '');
       }
 
+      // 它说话时点一下光线＝打断（Earshot「听着呢」）；没在说话时给一句轻声回应
+      let hintTimer = 0;
+      function flashState(text) {
+        clearTimeout(hintTimer);
+        stateEl.textContent = text;
+        hintTimer = setTimeout(() => { stateEl.textContent = LABEL[call?.mode] || ''; }, 1200);
+      }
+      function bargeByTap() {
+        if (!call) return;
+        const did = call.barge();
+        flashState(did ? '嗯，你说' : '嗯，我听着呢');
+      }
+      beams.addEventListener('click', bargeByTap);
+      beams.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bargeByTap(); }
+      });
+
       $('start').addEventListener('click', async () => {
         fail('');
         errorEl.textContent = '';
@@ -407,7 +469,21 @@
           video,
           on: {
             state: (m) => setMode(m),
-            speech: (v) => { if (window.sky) window.sky.voice('me', !!v); },
+            // 你开口 → 珊瑚色光线起伏，同时让通话星空轻轻聚形
+            speech: (v) => {
+              setMeSpeaking(v);
+              if (v) latencyEl.textContent = '';
+              if (window.sky) window.sky.voice('me', !!v);
+            },
+            // 它真正出声 / 收声 → 白色光线，并同步「点光束打断」的可点区域
+            playing: (v) => setAiSpeaking(!!v),
+            // 底部小字：这一轮从你说完到它出声用了多久
+            latency: (ms) => { latencyEl.textContent = `这一轮 ${(ms / 1000).toFixed(1)}s 接上`; },
+            interrupted: () => {
+              setAiSpeaking(false);
+              setMeSpeaking(false);
+              latencyEl.textContent = '';
+            },
             transcript: (msg) => addBubble('me', msg?.text),
             reply: (msg) => addBubble('ai', msg?.text),
             error: (e) => fail(e),
@@ -454,6 +530,12 @@
         setMode('closed');
         window.parent?.postMessage({ type: 'paivoice:end' }, '*');
       });
+
+      // 外层呼叫弹窗已经「接听」过了：自动开始，不必再点一次绿色按钮。
+      // 连不上核心时 start() 的 catch 会把「接通」按钮放回来，仍可手动重试。
+      if (q.get('auto') === '1') {
+        window.setTimeout(() => $('start').click(), 150);
+      }
     </script>
   </body>
 </html>

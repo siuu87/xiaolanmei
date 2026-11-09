@@ -462,7 +462,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         | { type: 'reasoning'; content: string }
         | { type: 'tool_call'; name: string; args?: Record<string, unknown> }
         | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
-        | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string },
+        | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string }
+        | { type: 'incoming_call'; reason?: string },
     ) => {
       const chunk = `data: ${JSON.stringify(ev)}\n\n`;
       writeChain = writeChain.then(async () => {
@@ -494,6 +495,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       // 短对话（longChat=false）：一颗工具都不挂，纯聊天。
       const builtin = longChat
         ? listBuiltinTools().filter((t) => {
+            // 模型主动来电不依赖「联网 / RAG / 带图」这些开关，长对话里始终可自主决定
+            if (t.name === 'incoming_call') return true;
             if (t.name === 'save_courses') return hasImage;
             if (t.name.startsWith('memo_')) return ragOn;
             return web;
@@ -541,6 +544,10 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         if (!hit) return `未知工具：${name}`;
         const r = await runTool({ kind: 'builtin', name, arguments: args, conversationId: convId });
         if (r.status === 'ok') {
+          if (name === 'incoming_call') {
+            // 模型自己决定要打：把意图推给前端弹来电卡片，不做任何定时 / 重试
+            write({ type: 'incoming_call', reason: String(args.reason ?? '').trim().slice(0, 80) || undefined });
+          }
           if (name === 'memo_add') {
             // 通知前端「已记入备忘录」，带最新 agent 备忘录 id 供跳转高亮
             const title = String(args.title ?? '').trim();
