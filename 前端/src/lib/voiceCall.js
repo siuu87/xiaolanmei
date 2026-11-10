@@ -1,4 +1,8 @@
+// @ts-nocheck
 /* 实时语音/视频通话 · 浏览器端（无依赖 ES module）
+ *
+ * 移植自 tianyupaipai-cmd/pai-voice（AGPL-3.0，原文件 public/paivoice/voice-call.js）。
+ * 2026-11-10 并入 App：从独立页面移入 src，作为 React 通话浮层的原生一部分。
  *
  * 一条媒体流三种用途：分析流（VAD）、识别流（推给后端转写）、——原声不归档（隐私：音频不落盘）。
  * 即使机在说话，麦克风也继续听：用户一开口就 interrupt，机立刻停。

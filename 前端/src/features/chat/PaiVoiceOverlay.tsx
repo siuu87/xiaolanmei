@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, Maximize2, Minimize2, PhoneOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PaiVoiceStage, type PaiVoiceStageHandle } from './PaiVoiceStage';
 
 const WIN_W = 340;
 const HEAD_H = 52;
@@ -59,6 +60,7 @@ export function PaiVoiceOverlay({
     };
   });
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const stageRef = useRef<PaiVoiceStageHandle>(null);
 
   const winW = Math.min(WIN_W, Math.max(260, viewport.w - 24));
   const winH = Math.min(
@@ -79,19 +81,6 @@ export function PaiVoiceOverlay({
     const t = window.setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => window.clearInterval(t);
   }, []);
-
-  // iframe 里报「已挂断」时收尾（挂断按钮在子页面也有，两边都要能结束）
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      const data = e.data as { type?: string; mode?: string } | null;
-      if (data?.type === 'paivoice:end') finish();
-      if (data?.type === 'paivoice:state' && typeof data.mode === 'string') {
-        setCallState(data.mode === 'closed' ? 'closed' : data.mode === 'idle' ? 'idle' : 'live');
-      }
-    };
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, [finish]);
 
   // 视口变化：重算尺寸 + 把窗口夹回可视范围
   useEffect(() => {
@@ -118,7 +107,7 @@ export function PaiVoiceOverlay({
       if (e.key !== 'Escape') return;
       if (mode === 'full') {
         e.stopPropagation();
-        finish(seconds);
+        stageRef.current?.hangup();
       } else {
         setCollapsed(true);
       }
@@ -146,8 +135,7 @@ export function PaiVoiceOverlay({
     dragRef.current = null;
   };
 
-  // auto=1：外层呼叫弹窗已经「接听」过了，进页面自动开始实时语音，不再让用户点第二遍「接通」
-  const src = `/paivoice/index.html?ws=${encodeURIComponent(wsUrl)}&name=${encodeURIComponent(name)}&compact=1&auto=1`;
+  // src 不再需要：语音页已并入 React（PaiVoiceStage），没有独立 HTML / iframe。
 
   const collapsedHint = callState === 'closed' ? '已结束' : '通话中';
 
@@ -239,10 +227,10 @@ export function PaiVoiceOverlay({
         {/* 退出：带文字的粉红键，永远在最右，不被别的图标淹没 */}
         <button
           type="button"
-          onClick={() => finish(seconds)}
           aria-label="退出通话"
           title="退出通话"
           data-testid="paivoice-end"
+          onClick={() => stageRef.current?.hangup()}
           className="ml-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2.5 text-[11px] font-medium text-destructive transition hover:bg-destructive/20 active:scale-95"
         >
           <PhoneOff size={12} />
@@ -254,12 +242,12 @@ export function PaiVoiceOverlay({
         className={floating && collapsed ? 'hidden' : 'block'}
         style={{ height: `calc(100% - ${HEAD_H}px)` }}
       >
-        <iframe
-          title="PaiVoice"
-          src={src}
-          data-testid="paivoice-iframe"
-          allow="microphone; camera; autoplay"
-          className="h-full w-full border-0"
+        <PaiVoiceStage
+          ref={stageRef}
+          wsUrl={wsUrl}
+          name={name}
+          onEnd={finish}
+          onStateChange={setCallState}
         />
       </div>
     </div>

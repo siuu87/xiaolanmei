@@ -35,6 +35,8 @@ export function AppLayout() {
   const numFont = useAppStore((s) => s.numFont);
   const accent = useAppStore((s) => s.accent);
   const openDrawer = useShellStore((s) => s.openDrawer);
+  const closeDrawer = useShellStore((s) => s.closeDrawer);
+  const closeAppearance = useShellStore((s) => s.closeAppearance);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -94,6 +96,16 @@ export function AppLayout() {
   useEffect(() => {
     void loadOpenSource();
   }, [loadOpenSource]);
+
+  // 进入任何覆盖层路由（非 /chat）时收起抽屉与外观浮层，让覆盖层浮在抽屉之上。
+  // 否则从抽屉里点头像进资料页时，抽屉（z-1200）会盖住页面，得先手动关抽屉才看得到；
+  // 退出覆盖层（回到 /chat）后抽屉维持关闭，符合「退出直接回聊天底座」。
+  useEffect(() => {
+    if (location.pathname !== '/chat') {
+      closeDrawer();
+      closeAppearance();
+    }
+  }, [location.pathname, closeDrawer, closeAppearance]);
 
   /**
    * 伴侣备注（就是聊天顶栏显示的名字）以**后端**为准：

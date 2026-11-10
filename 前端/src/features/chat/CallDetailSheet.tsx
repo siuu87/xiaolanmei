@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { AvatarContent } from '@/components/AvatarContent';
+import { callStatusWord, type CallState, type CallDirection } from '@/lib/api/calls';
 
 /** H:MM */
 function fmtTime(ts?: number): string {
@@ -25,7 +26,7 @@ export function CallDetailSheet({
   onClose,
   onCallAgain,
 }: {
-  call: { kind: 'voice' | 'video'; state: 'answered' | 'declined' | 'missed'; seconds?: number };
+  call: { kind: 'voice' | 'video'; state: CallState; seconds?: number; direction?: CallDirection | null };
   ts?: number;
   name: string;
   avatar?: string;
@@ -40,8 +41,7 @@ export function CallDetailSheet({
     call.state === 'answered'
       ? `${whenText}${whenText ? ' · ' : ''}通话 ${durText}`
       : whenText;
-  const pillText =
-    call.state === 'answered' ? '已接通' : call.state === 'declined' ? '你拒接了' : '未接来电';
+  const pillText = callStatusWord(call);
 
   return (
     <div

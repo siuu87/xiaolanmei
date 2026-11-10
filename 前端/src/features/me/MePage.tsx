@@ -8,17 +8,19 @@ import { useChatStore } from '@/features/chat/chatStore';
 import { callStats } from '@/lib/api/calls';
 import { listMemories, type MemoryDTO } from '@/lib/api/memories';
 import { listNotes } from '@/lib/api/home';
-import { ProfileEditor } from '@/features/shell/ProfileEditor';
+import {
+  EditableCard,
+  useAvatarUploader,
+} from '@/features/shell/ProfileInlineEdit';
 
 /**
- * 我的资料页（/me，对齐 2026-11-04 设计稿 130:62；口径对齐「他的资料」，2026-11-04 晚用户定）。
+ * 我的资料页（/me，对齐 2026-11-04 设计稿 130:62）。
  *
- * 与「他的资料」同一套「封面 + 上叠白卡」版式（ProfileCoverSheet）：
- * 头像骑线 → 头部居中（名字 / 在线药丸 / 个性签名）
- * → 4 格统计（消息 / 通话 / 记忆 / 信件，通话 → 通话记录列表）
- * → 「我是谁 · 角色设定」（我的介绍）→ 底部「编辑资料」。
+ * 与「他的资料」同一套「封面 + 上叠白卡」版式（ProfileCoverSheet）。
+ * 编辑改成**区块就地编辑**：每个区块右上角一支小笔，点一下就在框里改，
+ * 不再弹一个整页大编辑浮层（2026-11-10 用户定）。
  *
- * 入口：设置页「个人」分区的「我的资料」；返回键回设置页。
+ * 入口：首页刊头点头像。返回回首页。
  * 数据全部来自现有 store / 接口，不新增后端。
  */
 export function MePage() {
@@ -27,10 +29,13 @@ export function MePage() {
   const avatar = useProfileStore((s) => s.avatar);
   const description = useProfileStore((s) => s.description);
   const signature = useProfileStore((s) => s.signature);
+  const setName = useProfileStore((s) => s.setName);
+  const setDescription = useProfileStore((s) => s.setDescription);
+  const setSignature = useProfileStore((s) => s.setSignature);
 
   const conversation = useChatStore((s) => s.conversation);
 
-  const [editing, setEditing] = useState(false);
+  const uploader = useAvatarUploader('me');
   const [calls, setCalls] = useState<number | null>(null);
   const [memories, setMemories] = useState<MemoryDTO[] | null>(null);
   const [letters, setLetters] = useState<number | null>(null);
@@ -69,16 +74,16 @@ export function MePage() {
       title="我的资料"
       eyebrow="ME"
       testId="me-page"
-      backTo="/settings"
+      backTo="/chat"
       bodyClassName="px-0 pb-6 pt-0"
     >
       <ProfileCoverSheet
         avatar={<AvatarContent value={avatar} className="h-full w-full text-[44px]" />}
-        onAvatarClick={() => setEditing(true)}
+        onAvatarClick={uploader.trigger}
         avatarLabel="换头像"
-        onCoverPillClick={() => setEditing(true)}
+        coverPill=""
       >
-        {/* 头部居中：名字 / 在线药丸 / 个性签名 */}
+        {/* 头部居中：名字 / 在线药丸 */}
         <div className="flex flex-col items-center px-4">
           <h2
             data-testid="me-name"
@@ -90,14 +95,6 @@ export function MePage() {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
             {statusText}
           </span>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            data-testid="me-signature"
-            className="mt-2 text-[11px] text-chat-meta transition hover:text-foreground"
-          >
-            {signature.trim() || '点击输入个性签名...'}
-          </button>
         </div>
 
         {/* 4 格统计（通话 → 通话记录列表） */}
@@ -111,41 +108,32 @@ export function MePage() {
           />
         </div>
 
-        {/* 我是谁 · 角色设定 */}
-        <div className="mb-2 mt-5 flex items-baseline justify-between px-5">
-          <span className="text-[12px] text-chat-meta">我是谁</span>
-          <span className="text-[11px] text-chat-meta/80">角色设定</span>
-        </div>
-        <div className="mx-4 rounded-2xl bg-chat-ai p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
-          {description.trim() ? (
-            <p className="whitespace-pre-wrap text-[13px] leading-6 text-foreground">
-              {description}
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="text-left text-[13px] leading-6 text-chat-meta transition hover:text-foreground"
-            >
-              还没写。点「编辑资料」，介绍一下你是谁。
-            </button>
-          )}
-        </div>
-
-        {/* 底部：编辑资料 */}
-        <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            data-testid="me-edit"
-            className="h-12 w-full rounded-full bg-chat-me text-[14px] font-medium text-chat-me-fg transition active:scale-[0.99]"
-          >
-            编辑资料
-          </button>
+        {/* 区块就地编辑：每个卡片右上角小笔，点一下在框里改 */}
+        <div className="mt-5 space-y-3">
+          <EditableCard
+            title="名字"
+            value={name}
+            placeholder="例如：小明、学生、工作者"
+            maxLength={24}
+            onSave={(v) => setName(v)}
+          />
+          <EditableCard
+            title="个性签名"
+            value={signature}
+            placeholder="一句话介绍此刻的自己…"
+            maxLength={60}
+            onSave={(v) => setSignature(v)}
+          />
+          <EditableCard
+            title="我是谁"
+            value={description}
+            placeholder="介绍一下你是谁、喜欢什么、最近在忙什么…"
+            onSave={(v) => setDescription(v)}
+          />
         </div>
       </ProfileCoverSheet>
 
-      <ProfileEditor target={editing ? 'me' : null} onClose={() => setEditing(false)} />
+      {uploader.input}
     </PageShell>
   );
 }

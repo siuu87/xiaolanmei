@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { searchMessages, type SearchResultDTO } from '@/lib/api/conversations';
-import { listCalls, fmtDuration, type CallDTO } from '@/lib/api/calls';
+import { listCalls, fmtDuration, callStatusWord, type CallDTO } from '@/lib/api/calls';
 import { useChatStore } from './chatStore';
 import { ChatCalendar } from './ChatCalendar';
 import { CallDetailSheet } from './CallDetailSheet';
@@ -333,7 +333,7 @@ export function SearchOverlay({
                         {answered && c.seconds > 0 ? ` · ${fmtDuration(c.seconds)}` : ''}
                       </span>
                       <span className="block truncate text-[12px] text-chat-meta">
-                        {missed ? '未接来电' : declined ? '已拒接' : '已接通'}
+                        {callStatusWord(c)}
                       </span>
                     </span>
                     <span className="shrink-0 text-[11px] tabular-nums text-chat-meta">

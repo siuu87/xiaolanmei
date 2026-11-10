@@ -21,6 +21,7 @@ import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { MemoHomePage } from '@/features/memo/MemoHomePage';
 import { GiftBoxPage } from '@/features/gifts/GiftBoxPage';
 import { MePage } from '@/features/me/MePage';
+import { CharacterPage } from '@/features/chat/CharacterPage';
 import { CallsPage, CallDetailPage } from '@/features/chat/CallsPage';
 
 /** 聊天是底座常驻层（AppLayout 里直接挂），路由上留个空位只为给个 URL */
@@ -66,8 +67,10 @@ export const router = createBrowserRouter([
       { path: 'schedule', element: <SchedulePage /> },
       { path: 'memo', element: <MemoHomePage /> },
       { path: 'gifts', element: <GiftBoxPage /> },
-      // 我的资料页（设计稿 130:62 版式；入口在设置页「个人」分区，2026-11-04 由「个人主页」更名）
+      // 我的资料页（设计稿 130:62 版式；入口在首页刊头点头像）
       { path: 'me', element: <MePage /> },
+      // 他的资料页（设计稿 97:4 版式；入口在首页 / 抽屉点 TA 头像；2026-11-10 改为就地编辑）
+      { path: 'partner', element: <CharacterPage /> },
       // 通话记录两级页（设计稿 130:4 / 126:58；入口在角色页 / 我的页统计卡「通话」）
       { path: 'calls', element: <CallsPage /> },
       { path: 'calls/:id', element: <CallDetailPage /> },

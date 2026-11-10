@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createCall, fmtDuration, type CallKind, type CallState } from '@/lib/api/calls';
+import { createCall, fmtDuration, type CallDirection, type CallKind, type CallState } from '@/lib/api/calls';
 import { useChatStore, uid } from './chatStore';
 
 /**
@@ -13,7 +13,6 @@ import { useChatStore, uid } from './chatStore';
  * 接听后又要回到 ChatPage 渲染通话浮层，两边得看同一份状态。
  */
 
-export type CallDirection = 'outgoing' | 'incoming';
 export type CallPhase = 'idle' | 'ringing' | 'connected';
 /** 预览 / 验收用：强制本次呼出的结果，null = 随机 */
 export type ForcedOutcome = 'answered' | 'missed' | null;
@@ -135,6 +134,7 @@ async function settleCall(o: {
       kind: o.kind,
       state: o.state,
       seconds: o.seconds,
+      direction: o.direction,
       conversationId,
       startedAt: o.startedAt,
       endedAt: Date.now(),
@@ -153,7 +153,7 @@ async function settleCall(o: {
     content: o.state === 'answered' ? `（通话 ${fmtDuration(o.seconds)}）` : '（通话未接通）',
     parentId: conv.activeMessageId,
     status: 'done',
-    call: { kind: o.kind, state: o.state, seconds: o.state === 'answered' ? o.seconds : 0 },
+    call: { kind: o.kind, state: o.state, seconds: o.state === 'answered' ? o.seconds : 0, direction: o.direction },
     createdAt: Date.now(),
   });
 

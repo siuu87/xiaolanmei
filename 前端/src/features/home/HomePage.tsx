@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Settings2 } from 'lucide-react';
 import { AvatarContent } from '@/components/AvatarContent';
 import { MoodArcRow } from './MoodCard';
@@ -8,6 +8,7 @@ import { CourseCard } from './CourseCard';
 import { TokenCard } from './TokenCard';
 import { useProfileStore } from '@/stores/profileStore';
 import { ModuleCards } from '@/features/shell/DrawerSections';
+import { LifeCard } from './LifeCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { useNotesStore } from '@/features/notes/notesStore';
 import { loveDays, LOVE_START } from '@/features/shell/loveDays';
@@ -38,6 +39,7 @@ const APP_VERSION = '0.1.0';
 export function HomePage() {
   const avatar = useProfileStore((s) => s.avatar);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
+  const navigate = useNavigate();
   const notes = useNotesStore((s) => s.notes);
   const now = new Date();
   const days = loveDays(now);
@@ -53,30 +55,47 @@ export function HomePage() {
         {/* 顶部环境光，营造呼吸感 */}
         <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-52" />
 
-        {/* 刊头：双头像 + 起点日期 + 记忆天数（对齐手绘图） */}
+        {/* 刊头：封面 + 骑线双头像（与资料页 ProfileCoverSheet 同款视觉语言）。
+            左=他的资料 / 右=我的资料（2026-11-04：左他右我），头像骑在封面下沿、居中对称。 */}
         <header className="rise-in relative mb-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex shrink-0 items-center -space-x-3">
-                <AvatarContent
-                  value={avatar}
-                  className="h-14 w-14 border border-black/10 bg-white"
-                />
-                <AvatarContent
-                  value={partnerAvatar}
-                  className="h-14 w-14 border border-black/10 bg-white"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="eyebrow mb-1">
-                  {startDate} · 周{WEEK[now.getDay()]}
-                </p>
-                <p className="display flex items-baseline gap-1.5 leading-none">
-                  <span className="text-[13px] font-normal text-muted-foreground">已经在一起</span>
-                  <span className="text-[34px] font-semibold tracking-tight text-foreground">{days}</span>
-                  <span className="text-[13px] font-normal text-muted-foreground">天</span>
-                </p>
-              </div>
+          {/* 封面小条：浅蓝 + 装饰圈，沿用资料页封面 */}
+          <div className="relative h-20 overflow-hidden rounded-t-[20px] bg-[#dce9f6] dark:bg-[#1e2c3d]">
+            <span className="absolute left-6 top-3 h-10 w-10 rounded-full bg-white/45 dark:bg-white/10" />
+            <span className="absolute right-12 top-4 h-7 w-7 rounded-full bg-white/40 dark:bg-white/10" />
+            <span className="absolute right-5 top-9 h-4 w-4 rounded-full bg-white/50 dark:bg-white/10" />
+          </div>
+          {/* 双头像骑线：左=他的 / 右=我的 */}
+          <div className="relative -mt-10 flex justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate('/partner')}
+              aria-label="他的资料"
+              title="他的资料"
+              className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-chat-pill shadow-sm ring-4 ring-white/70 transition active:scale-95 dark:ring-white/10"
+            >
+              <AvatarContent value={partnerAvatar} className="h-full w-full text-[36px]" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/me')}
+              aria-label="我的资料"
+              title="我的资料"
+              className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-full bg-chat-pill shadow-sm ring-4 ring-white/70 transition active:scale-95 dark:ring-white/10"
+            >
+              <AvatarContent value={avatar} className="h-full w-full text-[36px]" />
+            </button>
+          </div>
+          {/* 信息行：在一起 N 天 + 设置 */}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="eyebrow mb-1">
+                {startDate} · 周{WEEK[now.getDay()]}
+              </p>
+              <p className="display flex items-baseline gap-1.5 leading-none">
+                <span className="text-[13px] font-normal text-muted-foreground">已经在一起</span>
+                <span className="text-[34px] font-semibold tracking-tight text-foreground">{days}</span>
+                <span className="text-[13px] font-normal text-muted-foreground">天</span>
+              </p>
             </div>
             <Link
               to="/settings"
@@ -126,6 +145,9 @@ export function HomePage() {
 
           {/* 模块区：together / 酒馆 / 生活小趣味，移动端与桌面端同一份入口 */}
           <ModuleCards />
+
+          {/* 生活：从设置页移出的经期预测 + 睡前提醒（2026-11-10） */}
+          <LifeCard />
 
           <footer className="flex items-center justify-between border-t border-border/70 pt-4 text-[11px] text-muted-foreground">
             <span className="tracking-wide">小蓝莓 · v{APP_VERSION}</span>

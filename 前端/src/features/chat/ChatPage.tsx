@@ -35,7 +35,7 @@ import {
   PhoneMissed,
   PhoneOutgoing,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { matchLocalIntent } from './assistant';
 import { PhotoStack } from '@/components/PhotoStack';
@@ -70,10 +70,9 @@ import { MoodPopover } from './MoodPopover';
 import { ChatSheet } from './ChatSheet';
 import { CallOverlay, type CallResult } from './CallOverlay';
 import { CallDetailSheet } from './CallDetailSheet';
-import { CharacterPage } from './CharacterPage';
 import { PaiVoiceOverlay } from './PaiVoiceOverlay';
 import { useCallSession, triggerIncomingCall } from './callSession';
-import type { CallKind } from '@/lib/api/calls';
+import { callStatusWord, type CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
 import { resolveSticker } from './stickers';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
@@ -509,16 +508,14 @@ function CallRecordCard({
   ts?: number;
   onClick?: () => void;
 }) {
-  const missed = call.state === 'missed';
-  const declined = call.state === 'declined';
   const secs = call.seconds ?? 0;
+  const missed = call.state === 'missed';
+  const dir = call.direction ?? 'incoming';
   const dur = secs > 0 ? (secs >= 60 ? `${Math.floor(secs / 60)} 分 ${String(secs % 60).padStart(2, '0')} 秒` : `${secs} 秒`) : '';
-  const title =
-    call.state === 'answered' ? (dur ? `通话 · ${dur}` : '通话') : missed ? '未接来电' : '已拒接';
-  const sub = `${call.state === 'answered' ? '已接通' : missed ? '未接来电' : '已拒接'}${
-    ts ? ` · ${fmtTime(ts)}` : ''
-  }`;
-  const Icon = missed ? PhoneMissed : declined ? PhoneOutgoing : PhoneIncoming;
+  const title = call.state === 'answered' ? (dur ? `通话 · ${dur}` : '通话') : callStatusWord(call);
+  const sub = `${callStatusWord(call)}${ts ? ` · ${fmtTime(ts)}` : ''}`;
+  const Icon =
+    call.state === 'answered' ? PhoneIncoming : dir === 'outgoing' ? PhoneOutgoing : PhoneMissed;
 
   return (
     <button
@@ -679,7 +676,11 @@ function AttachButton({
 }
 
 export function ChatPage() {
+  const location = useLocation();
   const navigate = useNavigate();
+  // 顶栏 / 输入栏 / 回到底部等悬浮元素只在聊天主视图（/chat）置顶显示；
+  // 打开 together / 首页等整页覆盖层路由时自动隐藏，避免这些「置顶按钮」浮到其他页面上。
+  const isChatView = location.pathname === '/chat' || location.pathname.startsWith('/chat/');
   const conversation = useChatStore((s) => s.conversation);
   const loaded = useChatStore((s) => s.loaded);
   const load = useChatStore((s) => s.load);
@@ -700,8 +701,6 @@ export function ChatPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   /** 心情浮层：点顶栏头像蹦出「ta 的心情/状态」（数据用心潮，见 MoodPopover） */
   const [moodOpen, setMoodOpen] = useState(false);
-  /** 角色页（设计稿 11 页）：从心情浮层底部进去，只读 + 复用编辑浮层 */
-  const [charOpen, setCharOpen] = useState(false);
   // 点名字直接进「心潮念」完整页（2026-10-20 起不再开旧的内心中枢抽屉）
   /** 多图堆叠卡片点开的大图查看器（整页、纯色不透明，遵守「点开=新页面」） */
   const [photoView, setPhotoView] = useState<{ urls: string[]; index: number } | null>(null);
@@ -1437,6 +1436,7 @@ export function ChatPage() {
           pointer-events-none + 各按钮 pointer-events-auto：空白处的点击照样能落到底下的气泡上。
           2026-11-10：控件统一 `border-chat-line + shadow-md`（对齐「回到底部」圆钮），
           靠描边和投影跟平的消息气泡拉开层次，而不是给整条导航栏铺底色。 */}
+      {isChatView && (
       <div
         data-testid="chat-topbar"
         className="pointer-events-none absolute inset-x-0 top-0 z-30 flex min-h-[104px] items-center gap-2.5 bg-transparent px-4"
@@ -1504,35 +1504,39 @@ export function ChatPage() {
           data-testid="chat-title-slot"
           className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
         >
-          {/* 头像：点头像 = 蹦出「ta 的心情/状态」浮层（名字仍进心潮，见下） */}
-          <button
-            type="button"
-            onClick={() => setMoodOpen((v) => !v)}
-            data-testid="mood-popover-trigger"
-            data-mood-popover-keep
-            aria-label={`看看${ownerName}现在的心情`}
-            title={`看看${ownerName}现在的心情`}
-            className={cn(
-              'pointer-events-auto relative mt-1 inline-flex rounded-full transition',
-              'hover:opacity-90 active:scale-[0.97]',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
-              moodOpen && 'ring-2 ring-chat-accent/60',
-            )}
-          >
+          {/* 头像：点头像 = 进 TA 资料页（与首页/抽屉一致）；点角落状态点 = 心情浮层 */}
+          <span className="pointer-events-auto relative mt-1 inline-flex rounded-full">
             {/* 大头像 + 角落状态灯（绿 / 黄 / 红 = 通道状态）。
                 圆形框套在**外层 span**：AvatarContent 的 emoji 分支只负责内容，
                 尺寸/圆角/裁切必须由这里给，否则 emoji 会变成一个方方块。 */}
             <span className="relative inline-flex">
-              <span
+              <button
+                type="button"
+                onClick={() => navigate('/partner')}
+                data-testid="chat-partner-avatar"
+                aria-label={`查看${ownerName}的资料`}
+                title={`查看${ownerName}的资料`}
                 className={cn(
-                  'flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-md',
+                  'flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-chat-line bg-chat-pill shadow-md transition',
+                  'hover:opacity-90 active:scale-[0.97]',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-chat-accent/60',
                 )}
               >
                 <AvatarContent value={partnerAvatar} className="text-[30px]" />
-              </span>
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar">
+              </button>
+              <button
+                type="button"
+                onClick={() => setMoodOpen((v) => !v)}
+                data-mood-popover-keep
+                aria-label={`看看${ownerName}现在的心情`}
+                title={`看看${ownerName}现在的心情`}
+                className={cn(
+                  'absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border-2 border-chat-bar bg-chat-bar transition',
+                  moodOpen && 'ring-2 ring-chat-accent/60',
+                )}
+              >
                 <ConnDot />
-              </span>
+              </button>
               {/* 头像框：头戴式大耳机装饰——仅在播放时出现（playing 为假则不渲染）。
                   外框放大到 84px（-inset-4），耳机落在头像外圈：耳罩在左右外缘、头梁在头顶上方成环，不压头像内容。 */}
               {playing && (
@@ -1549,7 +1553,7 @@ export function ChatPage() {
                 </svg>
               )}
             </span>
-          </button>
+          </span>
           {/* 名字 + ▾：仍是心潮入口（chat-title-btn 回归锚点保持不动） */}
           <button
             type="button"
@@ -1597,6 +1601,7 @@ export function ChatPage() {
           </button>
         </div>
       </div>
+      )}
 
       {/* 心情浮层：点头像蹦出，点空白 / Esc / 再点头像关闭（数据用心潮，无遮罩不挡聊天） */}
       <MoodPopover
@@ -2024,7 +2029,7 @@ export function ChatPage() {
         </div>
 
         {/* 右下角：回到最新（已经贴底时自动隐藏） */}
-        {!atBottom && (
+        {isChatView && !atBottom && (
           <button
             type="button"
             onClick={scrollToBottom}
@@ -2040,10 +2045,11 @@ export function ChatPage() {
 
       {/* 输入区：与画布同底、不加分隔线 / 底色块；控件靠 border-chat-line + shadow 与气泡区分
           （+ 圆钮 / 模型药丸 + 输入 + 表情麦克风 / 发送圆钮） */}
-        <div
-          data-testid="chat-input-bar"
-          className="absolute inset-x-0 bottom-0 z-30 bg-transparent px-4 pb-4 pt-3"
-        >
+      {isChatView && (
+      <div
+        data-testid="chat-input-bar"
+        className="absolute inset-x-0 bottom-0 z-30 bg-transparent px-4 pb-4 pt-3"
+      >
         {activeSkills.length > 0 && (
           <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
             {activeSkills.map((s) => (
@@ -2255,6 +2261,7 @@ export function ChatPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ===== 底部面板（设计稿：白色纸面上滑，顶部一撮抓手） =====
           两个面板共用同一块白纸底，来回切不会把消息区顶得一跳一跳。
@@ -2329,10 +2336,6 @@ export function ChatPage() {
         onClose={() => setSearchOpen(false)}
         onCallAgain={() => startCall('voice')}
       />
-
-      {/* 他的资料页：组件与状态保留，入口已按需求移除（原心情浮层「查看角色」，2026-11-04 晚），
-          之后要接回来只需再把某个入口的回调里 setCharOpen(true) */}
-      <CharacterPage open={charOpen} onClose={() => setCharOpen(false)} />
 
       {/* 通话记录详情（设计稿 9 页）：点聊天里那张通话卡打开 */}
       {callDetail && (

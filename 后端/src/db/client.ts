@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS calls (
   conversation_id TEXT,
   kind TEXT NOT NULL DEFAULT 'voice',
   state TEXT NOT NULL DEFAULT 'answered',
+  direction TEXT,
   seconds INTEGER NOT NULL DEFAULT 0,
   started_at INTEGER,
   ended_at INTEGER,
@@ -903,6 +904,11 @@ export function initDatabase(): void {
   }
   if (!progCols.some((c) => c.name === 'last_synced_at')) {
     sqlite.exec(`ALTER TABLE reading_progress ADD COLUMN last_synced_at INTEGER`);
+  }
+
+  const callCols = sqlite.prepare(`PRAGMA table_info(calls)`).all() as { name: string }[];
+  if (!callCols.some((c) => c.name === 'direction')) {
+    sqlite.exec(`ALTER TABLE calls ADD COLUMN direction TEXT`);
   }
 
   migrateDietPersonaVars(sqlite);

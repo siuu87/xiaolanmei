@@ -1,35 +1,26 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
-  Bell,
-  Brain,
-  Calendar,
   Check,
   Database,
-  FileText,
   Globe,
   HardDrive,
-  Heart,
   KeyRound,
   Loader2,
-  MessageCircle,
-  Moon,
   Pencil,
   Plus,
   RefreshCw,
   SlidersHorizontal,
   Smile,
-  Sparkles,
   Star,
   Trash2,
-  User,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { useProfileStore } from '@/stores/profileStore';
 import { useAppStore } from '@/stores/appStore';
 import { getSettings, updateSettings } from '@/lib/api/settings';
 import { useStationStore } from '@/stores/stationStore';
@@ -40,31 +31,10 @@ import { SyncPanel } from '@/features/sync/SyncPage';
 import { DataCorePage } from '@/features/tavern/phone/datacore/DataCorePage';
 import { AppearanceSection } from './AppearanceSection';
 import { SkillsPanel } from '@/features/skills/SkillsPanel';
-import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StickerSettings } from './StickerSettings';
-import { ProfilesSection } from './ProfilesSection';
-import { listMemos, type MemoDTO } from '@/lib/api/memo';
-import { CATEGORY_META } from '@/features/memo/MemoCard';
-import {
-  usePeriodStore,
-  diffDays,
-  todayISODate,
-  predictNextStart,
-  careMessage,
-} from '@/features/home/periodStore';
 import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
-import { IOSSwitch } from '@/components/ios/IOSSwitch';
-import { IOSProfileCard } from '@/components/ios/ProfileCard';
-import { useLocalSwitch } from '@/lib/useLocalSwitch';
 
-const inputCls =
-  'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
-
-/**
- * 分组卡的磨砂玻璃底由 IOSSettingGroup 组件自身统一处理（.glass），
- * 这里不再需要调用处的子选择器覆盖。
- */
 interface ModelFormState {
   temperature: string;
   visionStationId: string;
@@ -105,9 +75,9 @@ const BB_DARK = {
   '--bb-bar': '#1B1E25',
   '--bb-bubble-in': '#2C303A',
 } as CSSProperties;
-function fmtTime(ts: number): string {
-  return new Date(ts).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-}
+
+const inputCls =
+  'w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary';
 
 /** 行内错误提示：保存失败时必须在界面上说一句，不能只写 console */
 function InlineError({ text }: { text: string | null }) {
@@ -123,16 +93,15 @@ function InlineError({ text }: { text: string | null }) {
 /**
  * 设置页（iOS 风格）：把原设置页的各区块收进 iOS 分组，点击条目内联展开，业务逻辑不变。
  *
- * 分区顺序（2026-10-18 按“个人 → AI → 外观 → 提醒与健康 → 数据与同步”重排）：
- * 最常用的资料/AI 配置在前，外观居中，提醒与数据在最后 —— 之前 API 站点被埋在
- * 「通用」最底下，找起来要先滚过整个页面。
+ * 2026-11-10 大改（按用户选择）：
+ * - 个人：只留「表情包」；档案/备忘录/待提醒移出设置（档案在「我的页/角色页」改，备忘录与待提醒进角色页）。
+ * - AI 伴侣：去掉「对话风格」（进角色页）；「长期记忆」+「技能管理」合并为「记忆与技能」。
+ * - 外观：合并为 深色模式 / 强调色 / 字体 / 高级外观 四项（AppearanceSection 内处理）。
+ * - 提醒与健康：整段移除，经期/睡前归到首页「生活」。
+ * - 数据与同步：保留 数据中枢 / 云同步。
  */
 export function SettingsPage() {
   const navigate = useNavigate();
-
-  const name = useProfileStore((s) => s.name);
-  const avatar = useProfileStore((s) => s.avatar);
-  const signature = useProfileStore((s) => s.signature);
   const theme = useAppStore((s) => s.theme);
 
   const stations = useStationStore((s) => s.stations);
@@ -140,9 +109,6 @@ export function SettingsPage() {
   const addStation = useStationStore((s) => s.addStation);
   const updateStation = useStationStore((s) => s.updateStation);
   const removeStation = useStationStore((s) => s.removeStation);
-
-  const periodRecords = usePeriodStore((s) => s.records);
-  const periodSettings = usePeriodStore((s) => s.settings);
 
   /**
    * 展开的分区。初值读 `?open=<key>`：聊天页表情包面板的齿轮跳过来会带上
@@ -152,13 +118,6 @@ export function SettingsPage() {
     () => new URLSearchParams(window.location.search).get('open'),
   );
   const toggle = (key: string) => setExpanded((e) => (e === key ? null : key));
-
-  /** 资料卡点一下要滚到「我们的档案」——不然展开了也看不见 */
-  const profilesAnchorRef = useRef<HTMLDivElement | null>(null);
-
-  const [memos, setMemos] = useState<MemoDTO[]>([]);
-  const [memoNotify, setMemoNotify] = useLocalSwitch('blueberry.memoNotify', false);
-  const [bedReminder, setBedReminder] = useLocalSwitch('blueberry.bedReminder', false);
 
   const [form, setForm] = useState<ModelFormState>({ temperature: '0.7', visionStationId: '', visionModel: '' });
   const [busy, setBusy] = useState(false);
@@ -188,12 +147,6 @@ export function SettingsPage() {
       });
     void stationLoad();
   }, [stationLoad]);
-
-  useEffect(() => {
-    listMemos()
-      .then((m) => setMemos(m))
-      .catch(() => {});
-  }, []);
 
   const set = <K extends keyof ModelFormState>(key: K, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -308,15 +261,6 @@ export function SettingsPage() {
     await runStationAction(() => removeStation(s.id), `删除「${s.name}」失败，请重试`);
   };
 
-  // ---- 经期派生 ----
-  const lastStart = periodRecords.length ? periodRecords[periodRecords.length - 1].days[0] : null;
-  const daysAgo = lastStart ? diffDays(lastStart, todayISODate()) : null;
-  const next = predictNextStart(periodRecords, periodSettings);
-  const periodCare = careMessage({ records: periodRecords, settings: periodSettings });
-
-  const recent = memos.slice(0, 3);
-  const notifyCount = memos.filter((m) => m.needNotify).length;
-
   return (
     <div className="relative min-h-full bg-page-bg pb-12">
       <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-52" />
@@ -340,145 +284,29 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* 个人资料：点整张卡 = 展开「我们的档案」并滚过去 */}
-      <IOSProfileCard
-        avatar={avatar}
-        name={name}
-        status={signature || '在线 · 刚刚活跃'}
-        expanded={expanded === 'profiles'}
-        onClick={() => {
-          setExpanded('profiles');
-          profilesAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }}
-      />
-
       <div className="h-5" />
 
       {/* ============ 1. 个人 ============ */}
-      <div ref={profilesAnchorRef}>
-        <IOSSettingGroup title="个人">
-          <IOSSettingItem
-            icon={<Heart className="h-4 w-4" />}
-            iconBg="bg-pink-400"
-            title="我们的档案"
-            subtitle="两个人的昵称与头像，备忘录归属徽章会用它们"
-            showChevron
-            onClick={() => toggle('profiles')}
-          />
-          {expanded === 'profiles' && (
-            <div className="bg-muted/60 px-3 py-3">
-              <ProfilesSection />
-            </div>
-          )}
-
-          <IOSSettingItem
-            icon={<User className="h-4 w-4" />}
-            iconBg="bg-sky-400"
-            title="我的资料"
-            subtitle="封面 · 头像 · 统计与我的设定"
-            showChevron
-            onClick={() => navigate('/me')}
-          />
-
-          <IOSSettingItem
-            icon={<Smile className="h-4 w-4" />}
-            iconBg="bg-yellow-400"
-            title="表情包"
-            subtitle="聊天里常用的表情"
-            showChevron
-            onClick={() => toggle('stickers')}
-          />
-          {expanded === 'stickers' && (
-            <div className="bg-muted/60 px-3 py-3">
-              <StickerSettings />
-            </div>
-          )}
-
-          <IOSSettingItem
-            icon={<FileText className="h-4 w-4" />}
-            iconBg="bg-orange-400"
-            title="我的备忘录"
-            subtitle="你和 AI 一起记录的一切"
-            value={memos.length ? String(memos.length) : undefined}
-            showChevron
-            onClick={() => toggle('memo')}
-          />
-          {expanded === 'memo' && (
-            <div className="bg-muted/60 px-4 py-3">
-              {recent.length ? (
-                <div className="space-y-2">
-                  {recent.map((m) => {
-                    const meta = CATEGORY_META[m.category] ?? CATEGORY_META.general;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => navigate('/memo')}
-                        className="flex w-full items-center gap-2 text-left"
-                      >
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: meta.dot }} />
-                        <span className="min-w-0 flex-1 truncate text-[14px] text-foreground">
-                          {m.title}
-                        </span>
-                        <span className="shrink-0 text-[12px] text-muted-foreground">
-                          {fmtTime(m.updatedAt)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/memo')}
-                    className="w-full pt-1 text-left text-[14px] font-medium text-primary"
-                  >
-                    查看全部 →
-                  </button>
-                </div>
-              ) : (
-                <p className="text-[13px] text-muted-foreground">还没有备忘录，聊天时会自动帮你记。</p>
-              )}
-            </div>
-          )}
-
-          {/*
-            待提醒：2026-10-18 之前只写 localStorage、全项目没人读（摆设开关）。
-            现在真的接上了 —— 开着时备忘录首页顶部会出现「待提醒 N」，点开就是这些条目；
-            关掉那条就不再出现。
-          */}
-          <IOSSettingItem
-            icon={<Bell className="h-4 w-4" />}
-            iconBg="bg-rose-400"
-            title="待提醒"
-            subtitle={
-              memoNotify
-                ? notifyCount
-                  ? `备忘录里有 ${notifyCount} 条标了提醒，会在备忘录首页顶部汇总`
-                  : '已开启：标了提醒的备忘录会在首页顶部汇总'
-                : '关闭时不显示提醒汇总'
-            }
-            trailing={<IOSSwitch checked={memoNotify} onCheckedChange={setMemoNotify} />}
-          />
-        </IOSSettingGroup>
-      </div>
+      <IOSSettingGroup title="个人">
+        <IOSSettingItem
+          icon={<Smile className="h-4 w-4" />}
+          iconBg="bg-yellow-400"
+          title="表情包"
+          subtitle="聊天里常用的表情"
+          showChevron
+          onClick={() => toggle('stickers')}
+        />
+        {expanded === 'stickers' && (
+          <div className="bg-muted/60 px-3 py-3">
+            <StickerSettings />
+          </div>
+        )}
+      </IOSSettingGroup>
 
       <div className="h-5" />
 
       {/* ============ 2. AI 伴侣 ============ */}
       <IOSSettingGroup title="AI 伴侣">
-        <IOSSettingItem
-          icon={<MessageCircle className="h-4 w-4" />}
-          iconBg="bg-blue-400"
-          title="对话风格"
-          subtitle="设定小蓝莓的人设、性格与说话风格"
-          showChevron
-          onClick={() => toggle('prompts')}
-        />
-        {expanded === 'prompts' && (
-          <div className="bg-muted/60 px-3 py-3">
-            <PromptsPanel />
-          </div>
-        )}
-
         <IOSSettingItem
           icon={<SlidersHorizontal className="h-4 w-4" />}
           iconBg="bg-gray-400"
@@ -711,85 +539,31 @@ export function SettingsPage() {
         )}
 
         <IOSSettingItem
-          icon={<Sparkles className="h-4 w-4" />}
-          iconBg="bg-violet-400"
-          title="技能管理"
-          subtitle="内置技能 + 你新增的技能，聊天时按条件触发"
-          showChevron
-          onClick={() => toggle('skills')}
-        />
-        {expanded === 'skills' && (
-          <div className="bg-muted/60 px-3 py-3">
-            <SkillsPanel />
-          </div>
-        )}
-
-        <IOSSettingItem
           icon={<Brain className="h-4 w-4" />}
           iconBg="bg-teal-400"
-          title="长期记忆"
-          subtitle="小蓝莓记下的关于你们的事"
+          title="记忆与技能"
+          subtitle="小蓝莓的长期记忆 + 聊天时可触发的技能"
           showChevron
-          onClick={() => toggle('memory')}
+          onClick={() => toggle('memory-skills')}
         />
-        {expanded === 'memory' && (
-          <div className="bg-muted/60 px-3 py-3">
+        {expanded === 'memory-skills' && (
+          <div className="space-y-4 bg-muted/60 px-3 py-3">
             <MemoryPanel />
+            <div className="border-t border-border pt-3">
+              <SkillsPanel />
+            </div>
           </div>
         )}
       </IOSSettingGroup>
 
       <div className="h-5" />
 
-      {/*
-        3. 外观：从中枢里搬出来独立成组。
-        去掉了壁纸、作用域这些只有小手机才用得到的项，剩下的每项点开都是弹窗或展开。
-      */}
+      {/* ============ 3. 外观 ============ */}
       <AppearanceSection />
 
       <div className="h-5" />
 
-      {/* ============ 4. 提醒与健康 ============ */}
-      <IOSSettingGroup title="提醒与健康">
-        <IOSSettingItem
-          icon={<Calendar className="h-4 w-4" />}
-          iconBg="bg-rose-400"
-          title="经期记录"
-          subtitle={periodCare}
-          value={daysAgo !== null ? `上次 ${daysAgo} 天前` : undefined}
-          showChevron
-          onClick={() => toggle('period')}
-        />
-        {expanded === 'period' && (
-          <div className="bg-muted/60 px-4 py-3">
-            {next && (
-              <p className="text-[13px] text-muted-foreground">
-                预测下次经期：{next}
-              </p>
-            )}
-            <p className="mt-2 text-[12px] text-muted-foreground">
-              在「首页 → 日历」里点选日期即可标记经期。
-            </p>
-          </div>
-        )}
-
-        {/*
-          睡前提醒：2026-10-18 之前同样是摆设（只写 localStorage）。
-          现在由 `BedtimeNudge` 读取：22:00–02:59 之间在应用里弹一次夜间提醒，
-          点「去晚安页」直接跳 /goodnight，关掉当天不再出现。
-        */}
-        <IOSSettingItem
-          icon={<Moon className="h-4 w-4" />}
-          iconBg="bg-indigo-400"
-          title="睡前提醒"
-          subtitle={bedReminder ? '22:00 后会在应用里提醒你一次，可直达晚安页' : '关闭中'}
-          trailing={<IOSSwitch checked={bedReminder} onCheckedChange={setBedReminder} />}
-        />
-      </IOSSettingGroup>
-
-      <div className="h-5" />
-
-      {/* ============ 5. 数据与同步 ============ */}
+      {/* ============ 4. 数据与同步 ============ */}
       <IOSSettingGroup title="数据与同步">
         {/*
           数据中枢：以前是常驻的 600px 内嵌滚动框（手机整页下滑时手指会被它吃掉）。

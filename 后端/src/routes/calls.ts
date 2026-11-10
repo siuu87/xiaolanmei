@@ -23,6 +23,9 @@ export type CallState = (typeof CALL_STATES)[number];
 export const CALL_KINDS = ['voice', 'video'] as const;
 export type CallKind = (typeof CALL_KINDS)[number];
 
+export const CALL_DIRECTIONS = ['outgoing', 'incoming'] as const;
+export type CallDirection = (typeof CALL_DIRECTIONS)[number];
+
 function normState(v: unknown): CallState {
   return typeof v === 'string' && (CALL_STATES as readonly string[]).includes(v)
     ? (v as CallState)
@@ -33,11 +36,18 @@ function normKind(v: unknown): CallKind {
   return typeof v === 'string' && (CALL_KINDS as readonly string[]).includes(v) ? (v as CallKind) : 'voice';
 }
 
+function normDirection(v: unknown): CallDirection {
+  return typeof v === 'string' && (CALL_DIRECTIONS as readonly string[]).includes(v)
+    ? (v as CallDirection)
+    : 'outgoing';
+}
+
 interface CallBody {
   id?: string;
   conversationId?: string | null;
   kind?: string;
   state?: string;
+  direction?: string;
   seconds?: number;
   startedAt?: number;
   endedAt?: number;
@@ -58,6 +68,7 @@ function toDTO(c: ReturnType<typeof liveRows>[number]) {
     conversationId: c.conversationId,
     kind: c.kind,
     state: c.state,
+    direction: c.direction,
     seconds: c.seconds,
     startedAt: c.startedAt,
     endedAt: c.endedAt,
@@ -108,6 +119,7 @@ export async function callRoutes(app: FastifyInstance): Promise<void> {
         conversationId: body.conversationId ?? null,
         kind: normKind(body.kind),
         state,
+        direction: normDirection(body.direction),
         seconds: safeSeconds,
         startedAt: body.startedAt ?? null,
         endedAt: body.endedAt ?? ts,
@@ -125,6 +137,7 @@ export async function callRoutes(app: FastifyInstance): Promise<void> {
     const set: Record<string, unknown> = { updatedAt: now() };
     if (body.state !== undefined) set.state = normState(body.state);
     if (body.kind !== undefined) set.kind = normKind(body.kind);
+    if (body.direction !== undefined) set.direction = normDirection(body.direction);
     if (body.seconds !== undefined) set.seconds = Math.max(0, Math.floor(Number(body.seconds) || 0));
     if (body.startedAt !== undefined) set.startedAt = body.startedAt;
     if (body.endedAt !== undefined) set.endedAt = body.endedAt;

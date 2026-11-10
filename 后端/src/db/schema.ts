@@ -781,6 +781,7 @@ export const calls = sqliteTable('calls', {
   conversationId: text('conversation_id'), // 归属会话（单会话模型下可空）
   kind: text('kind').notNull().default('voice'), // voice | video
   state: text('state').notNull().default('answered'), // answered | declined | missed
+  direction: text('direction'), // outgoing 我打过去 | incoming 他打过来；老数据可能为空（按 incoming 显示）
   seconds: integer('seconds').notNull().default(0), // 接通时长（秒）
   startedAt: integer('started_at'), // 呼出时刻
   endedAt: integer('ended_at'), // 挂断时刻

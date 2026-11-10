@@ -1,11 +1,11 @@
 /**
- * 「我」页 · 外观
+ * 「我」页 · 外观（2026-11-10 合并版）
  *
- * 从中枢里搬出来的那一块，做了两件适配：
- * 1. **去掉 App 用不到的项**——壁纸（只有小手机聊天背景用）、作用域（默认就是全站）、
- *    数字字体这类只影响手机的开关都清掉了，剩下的每一项在 App 里都能立刻看到效果。
- * 2. **每一项都能点开**——深浅模式内联展开，强调色 / 配色 / 字体 / CSS 各自弹窗，
- *    自定义字体给整页，符合「点开之后是新页或弹窗或拓展」。
+ * 从中枢里搬出来后，本轮按用户选择把原来 7 项合并成 4 项：
+ * - 深色模式（内联展开）
+ * - 强调色
+ * - 字体：合并「数字字体」+「自定义字体」为一档
+ * - 高级外观：合并「配色方案（小手机）」+「自定义 CSS」+「启用自定义外观」为一档
  *
  * 数据仍然走 themeCore 的同一份 localStorage，所以这里改完，小手机里的配色同步变化。
  */
@@ -13,12 +13,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Braces,
-  Brush,
-  CaseSensitive,
   Check,
   Moon,
   Palette,
-  RotateCcw,
   Trash2,
   Type,
   X,
@@ -41,7 +38,7 @@ import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
 import { IOSSwitch } from '@/components/ios/IOSSwitch';
 
-type SheetKey = 'accent' | 'preset' | 'numfont' | 'font' | 'css';
+type SheetKey = 'accent' | 'font' | 'advance';
 
 /* 分组卡磨砂底由 IOSSettingGroup 组件自身处理（.glass + 16px 圆角） */
 
@@ -153,6 +150,11 @@ function OptionRow({
   );
 }
 
+/** 弹层里的分区小标题 */
+function SheetHeading({ children }: { children: React.ReactNode }) {
+  return <p className="mb-1 mt-3 px-1 text-[12px] font-medium uppercase tracking-wide text-muted-foreground/80 first:mt-0">{children}</p>;
+}
+
 /* ------------------------------ 外观分区 ------------------------------ */
 
 export function AppearanceSection() {
@@ -238,31 +240,11 @@ export function AppearanceSection() {
         />
 
         <IOSSettingItem
-          icon={<Brush className="h-4 w-4" />}
-          iconBg="bg-violet-500"
-          title="配色方案"
-          subtitle="小手机内部的配色，不影响全站"
-          value={curPreset?.name}
-          showChevron
-          onClick={() => setSheet('preset')}
-        />
-
-        <IOSSettingItem
           icon={<Type className="h-4 w-4" />}
           iconBg="bg-sky-500"
-          title="数字字体"
-          subtitle="日期与数字的字形"
-          value={curNumFont?.name}
-          showChevron
-          onClick={() => setSheet('numfont')}
-        />
-
-        <IOSSettingItem
-          icon={<CaseSensitive className="h-4 w-4" />}
-          iconBg="bg-teal-500"
-          title="自定义字体"
-          subtitle="加载本地或网络字体"
-          value={cfg.fonts.length ? `${cfg.fonts.length} 个` : undefined}
+          title="字体"
+          subtitle="数字字形 + 自定义字体"
+          value={curNumFont?.name ?? (cfg.fonts.length ? `${cfg.fonts.length} 个自定义` : undefined)}
           showChevron
           onClick={() => setSheet('font')}
         />
@@ -270,25 +252,11 @@ export function AppearanceSection() {
         <IOSSettingItem
           icon={<Braces className="h-4 w-4" />}
           iconBg="bg-slate-500"
-          title="自定义 CSS"
-          subtitle="高级：手写样式覆盖"
-          value={cfg.customCss.trim() ? '已设置' : undefined}
+          title="高级外观"
+          subtitle="小手机配色方案 + 自定义 CSS"
+          value={cfg.enabled ? (cfg.customCss.trim() ? '已自定义' : curPreset?.name) : '已关闭'}
           showChevron
-          onClick={() => setSheet('css')}
-        />
-
-        <IOSSettingItem
-          icon={<RotateCcw className="h-4 w-4" />}
-          iconBg="bg-gray-400"
-          title="启用自定义外观"
-          subtitle="关掉则回到原生配色"
-          trailing={
-            <IOSSwitch
-              checked={cfg.enabled}
-              onCheckedChange={(v) => patch({ enabled: v })}
-              aria-label="启用自定义外观"
-            />
-          }
+          onClick={() => setSheet('advance')}
         />
       </IOSSettingGroup>
 
@@ -318,56 +286,15 @@ export function AppearanceSection() {
         </div>
       </Sheet>
 
-      {/* 配色方案 */}
+      {/* 字体：数字字体 + 自定义字体 合并 */}
       <Sheet
-        open={sheet === 'preset'}
-        title="配色方案"
-        subtitle="仅作用于小手机，与全站主题互不影响"
+        open={sheet === 'font'}
+        title="字体"
+        subtitle="数字字形与自定义字体，缺失会自动回落系统字体"
+        full
         onClose={() => setSheet(null)}
       >
-        <div className="space-y-1">
-          {presets.map((p) => (
-            <OptionRow
-              key={p.id}
-              label={p.name}
-              sub={p.desc}
-              on={cfg.presetId === p.id}
-              onClick={() => patch({ presetId: p.id })}
-              leading={
-                <span className="flex shrink-0 overflow-hidden rounded-md ring-1 ring-black/10">
-                  <span className="h-6 w-3" style={{ background: p.vars['--bb-bg'] }} />
-                  <span className="h-6 w-3" style={{ background: p.vars['--bb-card'] }} />
-                  <span className="h-6 w-3" style={{ background: p.vars['--bb-accent'] }} />
-                </span>
-              }
-            />
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            patch({
-              presetId: 'midnight',
-              customCss: '',
-              fonts: [],
-              activeFontId: null,
-              enabled: true,
-            })
-          }
-          aria-label="恢复默认外观"
-          className="mt-4 w-full rounded-xl bg-surface-2 py-2 text-[13px] text-foreground active:opacity-70"
-        >
-          恢复默认（午夜深蓝）
-        </button>
-      </Sheet>
-
-      {/* 数字字体 */}
-      <Sheet
-        open={sheet === 'numfont'}
-        title="数字字体"
-        subtitle="日期、计数等数字的字形"
-        onClose={() => setSheet(null)}
-      >
+        <SheetHeading>数字字体</SheetHeading>
         <div className="grid grid-cols-2 gap-2">
           {NUM_FONT_PRESETS.map((p) => (
             <button
@@ -387,18 +314,10 @@ export function AppearanceSection() {
             </button>
           ))}
         </div>
-      </Sheet>
 
-      {/* 自定义字体（整页） */}
-      <Sheet
-        open={sheet === 'font'}
-        full
-        title="自定义字体"
-        subtitle="缺失会自动回落系统字体，不会导致文字消失"
-        onClose={() => setSheet(null)}
-      >
+        <SheetHeading>自定义字体</SheetHeading>
         {cfg.fonts.length > 0 && (
-          <div className="mb-4 space-y-1 rounded-xl bg-surface-2 p-1">
+          <div className="mb-2 space-y-1 rounded-xl bg-surface-2 p-1">
             {cfg.fonts.map((f) => (
               <OptionRow
                 key={f.id}
@@ -417,7 +336,6 @@ export function AppearanceSection() {
           </div>
         )}
 
-        <p className="mb-2 text-[13px] font-medium text-foreground">用链接添加</p>
         <input
           value={fontDraft.family}
           onChange={(e) => setFontDraft((s) => ({ ...s, family: e.target.value }))}
@@ -474,22 +392,43 @@ export function AppearanceSection() {
         />
       </Sheet>
 
-      {/* 自定义 CSS */}
+      {/* 高级外观：小手机配色方案 + 自定义 CSS + 启用开关 合并 */}
       <Sheet
-        open={sheet === 'css'}
-        title="自定义 CSS"
-        subtitle="留空则不注入；写得再野也可以随时关掉总开关"
+        open={sheet === 'advance'}
+        title="高级外观"
+        subtitle="仅作用于小手机，与全站主题互不影响"
         onClose={() => setSheet(null)}
       >
+        <SheetHeading>小手机配色方案</SheetHeading>
+        <div className="space-y-1">
+          {presets.map((p) => (
+            <OptionRow
+              key={p.id}
+              label={p.name}
+              sub={p.desc}
+              on={cfg.presetId === p.id}
+              onClick={() => patch({ presetId: p.id })}
+              leading={
+                <span className="flex shrink-0 overflow-hidden rounded-md ring-1 ring-black/10">
+                  <span className="h-6 w-3" style={{ background: p.vars['--bb-bg'] }} />
+                  <span className="h-6 w-3" style={{ background: p.vars['--bb-card'] }} />
+                  <span className="h-6 w-3" style={{ background: p.vars['--bb-accent'] }} />
+                </span>
+              }
+            />
+          ))}
+        </div>
+
+        <SheetHeading>自定义 CSS</SheetHeading>
         <textarea
           value={cssDraft}
           onChange={(e) => setCssDraft(e.target.value)}
-          rows={10}
+          rows={8}
           placeholder={'例：\n.bg-white{ box-shadow: 0 1px 6px rgba(0,0,0,.08); }'}
           aria-label="自定义 CSS"
           className="w-full resize-y rounded-lg border border-border bg-surface-2 p-3 font-mono text-[11px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
         />
-        <div className="mt-3 flex gap-2">
+        <div className="mt-2 flex gap-2">
           <button
             type="button"
             aria-label="应用 CSS"
@@ -510,6 +449,32 @@ export function AppearanceSection() {
             清空
           </button>
         </div>
+
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
+          <span className="text-[14px] text-foreground">启用自定义外观</span>
+          <IOSSwitch
+            checked={cfg.enabled}
+            onCheckedChange={(v) => patch({ enabled: v })}
+            aria-label="启用自定义外观"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            patch({
+              presetId: 'midnight',
+              customCss: '',
+              fonts: [],
+              activeFontId: null,
+              enabled: true,
+            })
+          }
+          aria-label="恢复默认外观"
+          className="mt-4 w-full rounded-xl bg-surface-2 py-2 text-[13px] text-foreground active:opacity-70"
+        >
+          恢复默认（午夜深蓝）
+        </button>
       </Sheet>
     </>
   );

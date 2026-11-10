@@ -31,7 +31,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { useShellStore } from '@/stores/shellStore';
-import { ProfileEditor, type ProfileTarget } from './ProfileEditor';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
@@ -54,7 +53,7 @@ import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
  */
 export function ProfileHeader() {
   const { avatar, partnerAvatar } = useProfileStore();
-  const [editing, setEditing] = useState<ProfileTarget | null>(null);
+  const navigate = useNavigate();
   const days = useMemo(() => loveDays(), []);
 
   return (
@@ -64,9 +63,9 @@ export function ProfileHeader() {
         <div className="relative flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setEditing('partner')}
-            aria-label="调整他的资料"
-            title="调整他的资料"
+            onClick={() => navigate('/partner')}
+            aria-label="他的资料"
+            title="他的资料"
             data-testid="avatar-partner"
             className="group relative rounded-full transition focus-visible:outline-none"
           >
@@ -84,9 +83,9 @@ export function ProfileHeader() {
 
           <button
             type="button"
-            onClick={() => setEditing('me')}
-            aria-label="调整我的资料"
-            title="调整我的资料"
+            onClick={() => navigate('/me')}
+            aria-label="我的资料"
+            title="我的资料"
             data-testid="avatar-me"
             className="group relative rounded-full transition focus-visible:outline-none"
           >
@@ -115,9 +114,6 @@ export function ProfileHeader() {
           {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
         </span>
       </div>
-
-      {/* 点头像弹出来的角色调整浮层（portal 到 body，压过抽屉） */}
-      <ProfileEditor target={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

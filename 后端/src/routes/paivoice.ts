@@ -3,10 +3,10 @@ import net from 'node:net';
 import { env } from '../config/env.js';
 
 /**
- * PaiVoice 实时语音层状态（2026-10-20）。
+ * PaiVoice 实时语音层状态（2026-10-20，2026-11-10 改为 React 原生通话界面）。
  *
  * PaiVoice 核心只开 WebSocket，没有 HTTP 健康端点，所以这里用 TCP 探活：
- * 连得上 8780 就认为「可接通」，前端据此把通话切到 `/paivoice/` 独立页。
+ * 连得上 8780 就认为「可接通」，前端据此走 PaiVoice 实时语音界面（已并入通话浮层，不再是独立页）。
  * 探不通也不影响原来的通话浮层（回退）。
  */
 
@@ -48,7 +48,6 @@ export async function paivoiceRoutes(app: FastifyInstance): Promise<void> {
       wsUrl: env.paivoiceWsUrl,
       host,
       port,
-      page: '/paivoice/index.html',
     };
   });
 }

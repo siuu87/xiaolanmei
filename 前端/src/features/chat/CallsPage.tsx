@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { AvatarContent } from '@/components/AvatarContent';
 import { useProfileStore } from '@/stores/profileStore';
-import { listCalls, type CallDTO } from '@/lib/api/calls';
+import { listCalls, callStatusWord, type CallDTO } from '@/lib/api/calls';
 
 /**
  * 通话记录 · 列表页 + 详情页（/calls、/calls/:id，对齐 2026-11-04 设计稿 130:4 / 126:58）。
@@ -71,7 +71,7 @@ export function CallsPage() {
         {(calls ?? []).map((c) => {
           const missed = c.state !== 'answered';
           const sub = missed
-            ? `${fmtWhen(c.startedAt ?? c.createdAt)} · ${c.state === 'declined' ? '已拒接' : '未接听'}`
+            ? `${fmtWhen(c.startedAt ?? c.createdAt)} · ${callStatusWord(c)}`
             : `${fmtWhen(c.startedAt ?? c.createdAt)} · 通话 ${fmtSecs(c.seconds)}`;
           return (
             <button
@@ -120,12 +120,11 @@ export function CallDetailPage() {
   const name = (partnerRemark || partnerName || '小蓝莓').trim();
 
   const secs = call?.seconds ?? 0;
-  const metaLine =
-    call?.state === 'answered'
+  const metaLine = call
+    ? call.state === 'answered'
       ? `${fmtWhen(call.startedAt ?? call.createdAt)} · 通话 ${fmtSecs(secs)}`
-      : `${fmtWhen(call?.startedAt ?? call?.createdAt ?? Date.now())} · ${
-          call?.state === 'declined' ? '已拒接' : '未接听'
-        }`;
+      : `${fmtWhen(call.startedAt ?? call.createdAt)} · ${callStatusWord(call)}`
+    : '';
 
   return (
     <PageShell title="通话记录" eyebrow="CALLS" testId="call-detail-page" backTo="/calls">

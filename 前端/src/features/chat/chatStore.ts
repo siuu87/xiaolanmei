@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as api from '@/lib/api/conversations';
+import type { CallDirection } from '@/lib/api/calls';
 
 export type MessageStatus = 'streaming' | 'done' | 'error';
 
@@ -28,6 +29,8 @@ export interface ChatCall {
   state: CallRecordState;
   /** 已接通时的通话时长（秒） */
   seconds?: number;
+  /** outgoing 我打过去 / incoming 他打过来；老数据可能缺失 */
+  direction?: CallDirection;
 }
 
 export interface ChatMessage {

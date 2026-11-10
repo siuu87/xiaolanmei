@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/PageShell';
 import { AvatarContent } from '@/components/AvatarContent';
 import { ProfileCoverSheet, ProfileStats } from '@/components/ProfileCoverSheet';
 import { useProfileStore } from '@/stores/profileStore';
@@ -9,37 +9,45 @@ import { useChatStore } from '@/features/chat/chatStore';
 import { callStats } from '@/lib/api/calls';
 import { listMemories, type MemoryDTO } from '@/lib/api/memories';
 import { listNotes } from '@/lib/api/home';
-import { ProfileEditor } from '@/features/shell/ProfileEditor';
+import {
+  EditableCard,
+  ExpandCard,
+  useAvatarUploader,
+  savePartnerRemark,
+} from '@/features/shell/ProfileInlineEdit';
+import { PromptsPanel } from '@/features/prompts/PromptsPanel';
+import { StyleRulesPanel } from '@/features/prompts/StyleRulesPanel';
+import { MemoSection } from '@/features/memo/MemoSection';
 
 /**
- * 他的资料页（对齐 2026-11-04 设计稿 97:4：封面 + 上叠白卡版式；
- * 口径与「我的资料」页 MePage 一致，2026-11-04 用户定：查看角色进来就是资料页）。
+ * 他的资料页（/partner，对齐 2026-11-04 设计稿 97:4：封面 + 上叠白卡版式；
+ * 口径与「我的资料」页 MePage 完全一致 —— 同样套 PageShell，2026-11-10 用户定）。
  *
- * 结构：顶栏（返回 / 他的资料 / 编辑，浮在封面上）→ 浅蓝小封面 + 白卡上叠
- * → 头像骑线 → 头部居中（备注大字 / 姓名 · 本名 / 在线小药丸）
- * → 4 格统计（消息 / 通话 / 记忆 / 信件，通话可点进通话记录列表）
- * → 「他是谁 · 角色设定」（人设）→ 「最近印象」（最近记忆）→ 底部「编辑资料」。
+ * **2026-11-10 改造**：编辑从「整页大编辑浮层」改成**区块就地编辑**——
+ * 每个区块右上角一支小笔，点一下就在框里改；语音 / 语言风格 / 模块 / 备忘录
+ * 等复杂设置收进可展开的卡片，点 ▾ 才展开。旧「点头像进 ProfileEditor」的
+ * 编辑页被这套取代（入口统一改到首页 / 抽屉点头像）。
  *
- * **只读 + 复用**：数据全部来自已有的 profileStore / chatStore / `/api/calls/stats` /
- * `/api/memories` / `/api/notes`（信件），不新增接口；「编辑」直接打开现成的
- * `ProfileEditor`（partner 那一档），不改路由与后端。整页不透明，盖在聊天底座之上。
+ * 结构：顶栏（返回 / 他的资料）→ 浅蓝小封面 + 白卡上叠
+ * → 头像骑线 → 头部居中（备注大字 / 姓名·本名 / 在线小药丸）
+ * → 4 格统计（消息 / 通话 / 记忆 / 信件）→ 各就地编辑区块 → 最近印象。
  */
-export function CharacterPage({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CharacterPage() {
   const navigate = useNavigate();
   const partnerName = useProfileStore((s) => s.partnerName);
   const partnerRemark = useProfileStore((s) => s.partnerRemark);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const persona = useProfileStore((s) => s.persona);
+  const setPartnerName = useProfileStore((s) => s.setPartnerName);
+  const setPersona = useProfileStore((s) => s.setPersona);
   const conversation = useChatStore((s) => s.conversation);
 
-  const [editing, setEditing] = useState(false);
+  const uploader = useAvatarUploader('partner');
   const [calls, setCalls] = useState<number | null>(null);
   const [memories, setMemories] = useState<MemoryDTO[] | null>(null);
   const [letters, setLetters] = useState<number | null>(null);
 
-  // 打开时拉一次统计与最近记忆；关掉再开会重新取（不缓存）
   useEffect(() => {
-    if (!open) return;
     let alive = true;
     void Promise.all([
       callStats().catch(() => null),
@@ -54,22 +62,7 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
     return () => {
       alive = false;
     };
-  }, [open]);
-
-  // Esc 关闭（capture 阶段拦下，别连带下面的抽屉 / 弹层）
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      if (editing) return; // 编辑浮层自己处理 Esc
-      onClose();
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [open, editing, onClose]);
-
-  if (!open) return null;
+  }, []);
 
   const messages = conversation?.messages ?? [];
   const remark = partnerRemark.trim();
@@ -98,126 +91,185 @@ export function CharacterPage({ open, onClose }: { open: boolean; onClose: () =>
       ? `姓名 · ${partnerName.trim()}`
       : null;
 
-  // 通话格 → 通话记录列表（先收掉这层覆盖层再跳，避免盖在新页面上）
-  const goCalls = () => {
-    onClose();
-    navigate('/calls');
-  };
+  const goCalls = () => navigate('/calls');
 
   return (
-    <div
-      data-testid="character-page"
-      className="fixed inset-0 z-[1300] flex flex-col bg-chat-bg text-foreground"
+    <PageShell
+      title="他的资料"
+      eyebrow="PARTNER"
+      testId="character-page"
+      backTo="/chat"
+      bodyClassName="px-0 pb-6 pt-0"
     >
-      {/* 顶栏：返回 / 他的资料 / 编辑（透明浮在封面蓝上） */}
-      <header className="relative z-20 flex shrink-0 items-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="返回聊天"
-          data-testid="character-back"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/60 text-foreground transition hover:bg-white/80 active:scale-95 dark:bg-white/10 dark:hover:bg-white/20"
+      <ProfileCoverSheet
+        avatar={<AvatarContent value={partnerAvatar} className="h-full w-full text-[44px]" />}
+        onAvatarClick={uploader.trigger}
+        avatarLabel="换头像"
+        coverPill=""
+      >
+        {/* 头部居中：备注大字 / 姓名 · 本名（或认识天数）/ 在线药丸 */}
+        <div className="flex flex-col items-center px-4">
+          <h2
+            data-testid="character-name"
+            className="max-w-[80%] truncate text-[24px] font-semibold leading-tight"
+          >
+            {name}
+          </h2>
+          <p className="mt-1.5 text-[12px] text-chat-meta">
+            {subName ?? (knownDays ? `认识 ${knownDays} 天` : '刚认识')}
+          </p>
+          <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-chat-pill px-3 py-1.5 text-[11px] text-chat-pill-fg">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+            {statusText}
+          </span>
+        </div>
+
+        {/* 4 格统计：消息 / 通话 / 记忆 / 信件（通话 → 通话记录列表） */}
+        <div className="mt-5">
+          <ProfileStats
+            msg={msgCount}
+            calls={calls ?? 0}
+            memories={memCount}
+            letters={letters ?? 0}
+            onCalls={goCalls}
+          />
+        </div>
+
+        {/* 区块就地编辑：每个卡片右上角小笔，点一下在框里改 */}
+        <div className="mt-5 space-y-3">
+          <EditableCard
+            title="备注 · 叫什么"
+            value={partnerRemark}
+            placeholder="聊天里显示的名字，比如「哥哥」（最多 12 字）"
+            maxLength={12}
+            multiline={false}
+            onSave={(v) => savePartnerRemark(v)}
+          />
+          <EditableCard
+            title="姓名 · 本名"
+            value={partnerName}
+            placeholder="输入姓名，比如「陈默」"
+            maxLength={24}
+            multiline={false}
+            onSave={(v) => setPartnerName(v)}
+          />
+          <EditableCard
+            title="他是谁 · 角色背景资料"
+            value={persona}
+            placeholder="写一下 ta 是谁、性格、背景故事…"
+            onSave={(v) => setPersona(v)}
+          />
+          <ExpandCard title="语言风格" defaultOpen>
+            <StyleRulesPanel />
+            <div className="mt-3">
+              <PromptsPanel namePrefixes={['模块二']} heading="内置人设模块" showPreview={false} />
+            </div>
+          </ExpandCard>
+          <ExpandCard title="语音与语言">
+            <VoiceCard />
+          </ExpandCard>
+          <ExpandCard title="内置人设模块">
+            <PromptsPanel namePrefixes={['模块一', '模块三', '模块五']} heading="内置人设模块" showPreview />
+          </ExpandCard>
+          <ExpandCard title="备忘录">
+            <MemoSection />
+          </ExpandCard>
+        </div>
+
+        {/* 最近印象（只读） */}
+        <SectionLabel left="最近印象" right={`全部 ${memCount} 条`} />
+        <div className="mx-4 rounded-2xl bg-chat-ai px-4 py-1 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
+          {recent.length === 0 ? (
+            <p className="py-4 text-[12px] leading-5 text-chat-meta">还没有留下印象。</p>
+          ) : (
+            recent.map((m, i) => (
+              <div
+                key={m.id}
+                data-testid="character-recent"
+                className={cn('flex gap-3 py-3', i > 0 && 'border-t border-chat-line')}
+              >
+                <span className="w-9 shrink-0 text-[11px] tabular-nums text-chat-meta">
+                  {md(m.createdAt || m.updatedAt)}
+                </span>
+                <p className="min-w-0 text-[12.5px] leading-5 text-foreground">{m.content}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </ProfileCoverSheet>
+
+      {uploader.input}
+    </PageShell>
+  );
+}
+
+/** 语音与语言：内嵌在展开卡片里，三个字段都在这里就地调 */
+function VoiceCard() {
+  const voiceId = useProfileStore((s) => s.voiceId);
+  const speed = useProfileStore((s) => s.voiceSpeed);
+  const lang = useProfileStore((s) => s.voiceLanguage);
+  const setVoiceId = useProfileStore((s) => s.setVoiceId);
+  const setVoiceSpeed = useProfileStore((s) => s.setVoiceSpeed);
+  const setVoiceLanguage = useProfileStore((s) => s.setVoiceLanguage);
+
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[12px] text-chat-meta">MiniMax 语音 ID（可选）</span>
+        <input
+          value={voiceId}
+          onChange={(e) => setVoiceId(e.target.value)}
+          placeholder="例如：male-qn-qingse"
+          className="mt-1 w-full rounded-xl border border-chat-line bg-page-bg px-3 py-2 text-[13px] text-foreground outline-none focus:border-chat-accent/60"
+        />
+      </label>
+      <label className="block">
+        <span className="text-[12px] text-chat-meta">语音语速</span>
+        <div className="mt-1 flex items-center gap-3">
+          <input
+            type="range"
+            min={0.5}
+            max={2}
+            step={0.1}
+            value={speed}
+            onChange={(e) => setVoiceSpeed(Number(e.target.value))}
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-surface-3 accent-primary"
+          />
+          <span className="w-11 shrink-0 text-right text-[12px] tabular-nums text-foreground">
+            {speed.toFixed(1)}x
+          </span>
+        </div>
+      </label>
+      <label className="block">
+        <span className="text-[12px] text-chat-meta">语言设置（可选）</span>
+        <select
+          value={lang}
+          onChange={(e) => setVoiceLanguage(e.target.value)}
+          className="mt-1 w-full appearance-none rounded-xl border border-chat-line bg-page-bg px-3 py-2 text-[13px] text-foreground outline-none focus:border-chat-accent/60"
         >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <h1 className="min-w-0 flex-1 text-center text-[16px] font-semibold">他的资料</h1>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          data-testid="character-edit-top"
-          className="shrink-0 px-2 text-[13px] text-foreground/70 transition hover:text-foreground"
-        >
-          编辑
-        </button>
-      </header>
-
-      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <ProfileCoverSheet
-          avatar={<AvatarContent value={partnerAvatar} className="h-full w-full text-[44px]" />}
-          onAvatarClick={() => setEditing(true)}
-          avatarLabel="换头像"
-          onCoverPillClick={() => setEditing(true)}
-        >
-          {/* 头部居中：备注大字 / 姓名 · 本名（或认识天数）/ 在线药丸 */}
-          <div className="flex flex-col items-center px-4">
-            <h2
-              data-testid="character-name"
-              className="max-w-[80%] truncate text-[24px] font-semibold leading-tight"
-            >
-              {name}
-            </h2>
-            <p className="mt-1.5 text-[12px] text-chat-meta">
-              {subName ?? (knownDays ? `认识 ${knownDays} 天` : '刚认识')}
-            </p>
-            <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-chat-pill px-3 py-1.5 text-[11px] text-chat-pill-fg">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-              {statusText}
-            </span>
-          </div>
-
-          {/* 4 格统计：消息 / 通话 / 记忆 / 信件（通话 → 通话记录列表） */}
-          <div className="mt-5">
-            <ProfileStats
-              msg={msgCount}
-              calls={calls ?? 0}
-              memories={memCount}
-              letters={letters ?? 0}
-              onCalls={goCalls}
-            />
-          </div>
-
-          {/* 他是谁 · 角色设定（与 MePage「我是谁 · 角色设定」同口径） */}
-          <SectionLabel left="他是谁" right="角色设定" />
-          <div className="mx-4 rounded-2xl bg-chat-ai p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
-            {persona.trim() ? (
-              <p className="whitespace-pre-wrap text-[13px] leading-6 text-foreground">{persona}</p>
-            ) : (
-              <p className="text-[13px] leading-6 text-chat-meta">
-                还没写。点「编辑资料」，介绍一下 ta 是谁。
-              </p>
-            )}
-          </div>
-
-          {/* 最近印象 */}
-          <SectionLabel left="最近印象" right={`全部 ${memCount} 条`} />
-          <div className="mx-4 rounded-2xl bg-chat-ai px-4 py-1 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
-            {recent.length === 0 ? (
-              <p className="py-4 text-[12px] leading-5 text-chat-meta">还没有留下印象。</p>
-            ) : (
-              recent.map((m, i) => (
-                <div
-                  key={m.id}
-                  data-testid="character-recent"
-                  className={cn('flex gap-3 py-3', i > 0 && 'border-t border-chat-line')}
-                >
-                  <span className="w-9 shrink-0 text-[11px] tabular-nums text-chat-meta">
-                    {md(m.createdAt || m.updatedAt)}
-                  </span>
-                  <p className="min-w-0 text-[12.5px] leading-5 text-foreground">{m.content}</p>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* 底部：编辑资料（白卡内随内容滚动） */}
-          <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              data-testid="character-edit"
-              className="h-12 w-full rounded-full bg-chat-me text-[14px] font-medium text-chat-me-fg transition active:scale-[0.99]"
-            >
-              编辑资料
-            </button>
-          </div>
-        </ProfileCoverSheet>
-      </div>
-
-      {/* 编辑：复用现存的「他的资料」浮层（头像 / 姓名 / 人设 / 语音 / 风格 / 备忘） */}
-      <ProfileEditor target={editing ? 'partner' : null} onClose={() => setEditing(false)} />
+          {LANGUAGES.map((l) => (
+            <option key={l.value} value={l.value} className="bg-surface text-foreground">
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
+
+const LANGUAGES: { value: string; label: string }[] = [
+  { value: '', label: '不设置（默认中文普通话）' },
+  { value: 'zh', label: '中文（普通话）' },
+  { value: 'yue', label: '中文（粤语）' },
+  { value: 'en', label: 'English 英语' },
+  { value: 'ja', label: '日本語 日语' },
+  { value: 'ko', label: '한국어 韩语' },
+  { value: 'es', label: 'Español 西班牙语' },
+  { value: 'fr', label: 'Français 法语' },
+  { value: 'de', label: 'Deutsch 德语' },
+  { value: 'ru', label: 'Русский 俄语' },
+];
 
 /** 小标题行：左边灰字，右边更淡的补充信息 */
 function SectionLabel({ left, right }: { left: string; right: string }) {
