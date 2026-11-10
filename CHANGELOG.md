@@ -39,6 +39,45 @@
 - 品牌/强调降饱和提亮：`--brand 66%→70%`、`--chat-accent 64%→68%`、`--glow 52%→56%`。
 - 图片压暗（规范第5条）经用户确认不做，避免压暗头像/表情/贴纸。
 
+### 语音页彻底并入 React 通话
+
+用户纠偏：「把语音那个 html 加进通话里」—— 要的是"把语音 html 融入通话"，不是"把通话加到语音页里"。最终选彻底并入 React（推荐）。
+
+- 新建 `features/chat/PaiVoiceStage.tsx`：`forwardRef` 组件，封装星空背景 `createStarfield` + 语音协议 `VoiceCall`；顶部 `<style>` 内联原 HTML 的 `:root` 深色配色；`useImperativeHandle` 暴露 `hangup`，`onEnd(seconds)` 回调给浮层结算。
+- 新建 `lib/voiceCall.js`（AGPL-3.0 上游 1:1 移植，`// @ts-nocheck`）+ `voiceCall.d.ts`（手写声明：`VoiceCall` 类 `start/hangup/setMuted/barge/sendText`、`playing/mode` 字段、handlers）。
+- 新建 `lib/voiceStarfield.ts`：原 `window.sky` IIFE 改成 `createStarfield(cv)` 工厂，返回 `{start,stop,voice,tap,form,rebuild}`。
+- 改 `PaiVoiceOverlay.tsx`：删 iframe 与 `postMessage` 监听，改挂 `<PaiVoiceStage ref={stageRef} ... />`，Esc / 退出键统一走 `stageRef.current?.hangup()`；删后端 `page` 依赖注释。
+- 改 `routes/paivoice.ts`：返回体删 `page: '/paivoice/index.html'`，现 `{configured,up,wsUrl,host,port}`（前端用 `paiVoice.up` 决定走 PaiVoice 还是旧 CallOverlay）。
+- 删 `前端/public/paivoice/index.html` 与 `voice-call.js`；**保留 `LICENSE`**（AGPL-3.0 归属不能删）。
+
+验收：`tsc --noEmit` 0 错、`vite build` 过、CDP 真机流程验证通过（overlay/canvas.pv-sky/.pv-beam×2/.pv-primary/paivoice-end 全挂载、点退出 overlay 干净消失）；沙箱内无真实 PaiVoice 核心，界面停在 idle「接通」按钮属预期。
+
+### 通话记录新增 direction 字段 + 清理测试记录
+
+用户原话「被挂的/我自己打的取消都是我这边的信息」+ 选择「两件事都做」：① 清理 CDP 验收遗留的测试通话；② 修正归属显示（呼出/来电）。
+
+- 后端 `db/schema.ts` calls 表 + `db/client.ts` `SCHEMA_SQL` + `initDatabase()` 幂等迁移新增 `direction TEXT`（可空）；
+- 后端 `routes/calls.ts`：`CallBody`/`toDTO`/`POST`/`PATCH` 透传 `direction`，`normDirection` 默认 outgoing；
+- 前端 `lib/api/calls.ts`：新增 `CallDirection='outgoing'|'incoming'`、`CallDTO`/`CallInput` 加 `direction`，新增共享 helper `callStatusWord({state,direction})` 统一归属文案（answered→已接通 / declined+outgoing→已取消 / declined+incoming→已拒接 / missed+outgoing→对方未接 / missed+incoming→未接来电；null 按 incoming）；
+- `chatStore.ts` `ChatCall.direction?`、`callSession.ts` `settleCall` 把 direction 同时写进 `createCall` 和聊天内联卡 `call` 对象；`CallDirection` 由 callSession 本地定义改为从 `lib/api/calls` 引入；
+- UI：`CallsPage` 列表+详情、`CallDetailSheet(pillText)`、`ChatPage` `CallRecordCard(title/sub/icon)`、`SearchOverlay` 统一改用 `callStatusWord`。
+- 数据清理：重启后端跑迁移；`data/blueberry.before-call-clean-20261110.db`（`VACUUM INTO` 备份）后软删今天（本地 2026-11-10）4 条测试记录，剩 19 条 live。
+
+### 设置页大改 + 首页生活卡 + 角色页/我的页重构
+
+用户原话：「把设置整体改一下大改，我想保留需要的然后其余的就删掉，把能合并的都合并」。
+
+- **设置页大改为 4 分区**（个人 / AI 伴侣 / 外观 / 数据与同步）：
+  - 个人：删档案 / 我的备忘录 / 待提醒，只留「表情包」（从聊天表情面板齿轮深链跳入）；
+  - AI 伴侣：删「对话风格」（进角色页），「长期记忆」+「技能管理」合并为「记忆与技能」；
+  - 外观：原 7 项合并为 4 项（深色模式 / 强调色 / 字体 / 高级外观，含小手机配色方案 presets + 自定义 CSS）；
+  - 提醒与健康：整段移除，经期预测 + 睡前提醒归到首页「生活」；
+  - 数据与同步：留数据中枢（inline 模式跟整页滚，按 App 主题钉 `--bb-*` 防深色孤岛）+ 云同步。
+- **首页新增「生活」卡**（新建 `features/home/LifeCard.tsx`）：经期读 `usePeriodStore` 预测下次日期，睡前提醒复用 `useLocalSwitch('blueberry.bedReminder')` 与 AppLayout 全局 `BedtimeNudge`（22:00–02:59 弹一次）联动；插在 `<ModuleCards />` 之后。
+- **角色页 / 我的页重构**：与「他的资料」同一套「封面 + 上叠白卡」版式（共享 `ProfileCoverSheet`）；删 `features/shell/ProfileEditor.tsx`，改用 `features/shell/ProfileInlineEdit.tsx` 内联编辑；「我是谁 · 角色设定」设定卡 + 编辑资料（骨架从角色页复制）。
+
+验收：前端 `tsc --noEmit` 0 错；dev server 5173/5174 均 200、标题「小蓝莓」，HMR 生效。
+
 ## 2026-11-09
 
 ### 调整
