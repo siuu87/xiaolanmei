@@ -22,6 +22,8 @@ import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { MemoHomePage } from '@/features/memo/MemoHomePage';
 import { GiftBoxPage } from '@/features/gifts/GiftBoxPage';
 import { MePage } from '@/features/me/MePage';
+import { GamesPage } from '@/features/games/GamesPage';
+import { GameEntry } from '@/features/games/GameEntry';
 import { CharacterPage } from '@/features/chat/CharacterPage';
 import { CallsPage, CallDetailPage } from '@/features/chat/CallsPage';
 
@@ -71,6 +73,9 @@ export const router = createBrowserRouter([
       { path: 'gifts', element: <GiftBoxPage /> },
       // 我的资料页（设计稿 130:62 版式；入口在首页刊头点头像）
       { path: 'me', element: <MePage /> },
+      // 游戏屋（2026-11-11）：卡片墙 + 对战页
+      { path: 'games', element: <GamesPage /> },
+      { path: 'games/:gameId', element: <GameEntry /> },
       // 他的资料页（设计稿 97:4 版式；入口在首页 / 抽屉点 TA 头像；2026-11-10 改为就地编辑）
       { path: 'partner', element: <CharacterPage /> },
       // 通话记录两级页（设计稿 130:4 / 126:58；入口在角色页 / 我的页统计卡「通话」）

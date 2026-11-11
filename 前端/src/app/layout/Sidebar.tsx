@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, MessageSquare, Sparkles, Settings, Moon, type LucideIcon } from 'lucide-react';
+import { Home, MessageSquare, Sparkles, Settings, Moon, Gamepad2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profileStore';
 import { AvatarContent } from '@/components/AvatarContent';
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/home', label: '首页', en: 'HOME', icon: Home },
   { to: '/together', label: 'together', en: 'TOGETHER', icon: Sparkles },
   { to: '/goodnight', label: '晚安', en: 'MIDNIGHT', icon: Moon },
+  { to: '/games', label: '游戏', en: 'GAMES', icon: Gamepad2 },
   { to: '/settings', label: '我', en: 'PROFILE', icon: Settings },
 ];
 

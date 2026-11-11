@@ -26,6 +26,7 @@ import {
   Star,
   Lightbulb,
   Heart,
+  Gamepad2,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -203,6 +204,14 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { to: '/schedule', label: '课程表', icon: GraduationCap },
       { to: '/gifts', label: '礼物盒', icon: Gift },
       { to: '/diary', label: '日记本', icon: NotebookPen },
+    ],
+  },
+  {
+    title: '游戏屋',
+    icon: Gamepad2,
+    // 与首页 GamesPage 卡片墙同款入口：直接进 /games 挑游戏
+    entries: [
+      { to: '/games', label: '游戏屋', hint: '和 AI 一起玩', icon: Gamepad2 },
     ],
   },
 ];
