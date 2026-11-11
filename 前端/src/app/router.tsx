@@ -81,8 +81,8 @@ export const router = createBrowserRouter([
       // 通话记录两级页（设计稿 130:4 / 126:58；入口在角色页 / 我的页统计卡「通话」）
       { path: 'calls', element: <CallsPage /> },
       { path: 'calls/:id', element: <CallDetailPage /> },
-      // 兜底：未知路径（含已移除的旧路由）回到首页，避免客户端 404
-      { path: '*', element: <Navigate to="/" replace /> },
+      // 兜底：未知路径（含已移除的旧路由）回聊天底座，避免客户端 404，也不把人扔回首页
+      { path: '*', element: <Navigate to="/chat" replace /> },
     ],
   },
 ]);

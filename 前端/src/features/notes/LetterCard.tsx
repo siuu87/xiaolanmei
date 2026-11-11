@@ -29,9 +29,19 @@ export function formatMailTime(ts: number): string {
   )}`;
 }
 
-/** 取首句当标题（遇到句号/问号/叹号/换行就断），太长就截断 */
+/**
+ * 取首句当标题（遇到句号/问号/叹号/换行就断），太长就截断。
+ * 2026-11-11 起长回信第一行是「亲爱的你：」、最后一行是「—— 小蓝莓」，
+ * 拿它们当标题等于没写，所以先把这两行摘掉再取正文首句；旧短信没这两行时行为不变。
+ */
 export function mailTitle(note: InspirationNote): string {
-  const first = note.content.split(/[。！？!?\n]/)[0].trim();
+  const lines = note.content.split('\n').map((l) => l.trim()).filter(Boolean);
+  const body = lines.filter((l, i) => {
+    if (i === 0 && /[:：]$/.test(l) && l.length <= 12) return false; // 称呼
+    if (i === lines.length - 1 && /^[—–－-]/.test(l) && l.length <= 14) return false; // 落款
+    return true;
+  });
+  const first = (body.join('\n') || note.content).split(/[。！？!?\n]/)[0].trim();
   if (!first) return '一封没写标题的信';
   return first.length > 18 ? `${first.slice(0, 17)}…` : first;
 }

@@ -61,6 +61,8 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
   const note = notes.find((n) => n.id === id) ?? null;
   const theme = normalizeLetterTheme(note?.letterTheme);
   const parts = letterParts(theme);
+  // 长回信正文自带「—— 小蓝莓」落款，右下角就别再印一次名字了，改成邮戳式的小标签
+  const hasSignature = /^\s*[—–－-]{1,2}\s*.{1,12}\s*$/m.test(note?.content ?? '');
 
   return createPortal(
     <div
@@ -136,12 +138,14 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
                 parts.ink,
               )}
             >
-              <p className="whitespace-pre-wrap text-[15px] leading-8">{note.content}</p>
+              <p className="whitespace-pre-wrap break-words text-[14px] leading-[26px]">{note.content}</p>
               <div className="mt-6 flex flex-col items-end gap-0.5">
                 <span className={cn('text-[11px]', parts.meta)}>
                   {formatNoteDate(note.createdAt)}
                 </span>
-                <span className={cn('text-[11px] opacity-80', parts.meta)}>{NOTE_AUTHOR}</span>
+                <span className={cn('text-[11px] opacity-80', parts.meta)}>
+                  {hasSignature ? '深夜来信' : NOTE_AUTHOR}
+                </span>
               </div>
             </motion.div>
           )}

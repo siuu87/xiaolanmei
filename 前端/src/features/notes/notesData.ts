@@ -25,8 +25,12 @@ export interface InspirationNote {
   letterTheme?: LetterTheme;
 }
 
-/** 署名：固定展示在便签右下角 */
-export const NOTE_AUTHOR = 'AI灵感撰写';
+/**
+ * 署名：信纸右下角的作者行。
+ * 2026-11-11 起信件改成「一封慢慢读懂你的回信」，正文自带落款，
+ * 这里不能再写「AI灵感撰写」——又出戏又和落款重复（见 LetterReaderLayer）。
+ */
+export const NOTE_AUTHOR = '小蓝莓';
 
 /**
  * 内置灵感文案库（兜底）：后端 AI 生成失败 / 未配置时，用这些本地文案顶上。

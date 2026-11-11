@@ -12,7 +12,7 @@ export function GamesPage() {
   const navigate = useNavigate();
 
   return (
-    <PageShell title="游戏屋" eyebrow="GAMES" backTo="/home">
+    <PageShell title="游戏屋" eyebrow="GAMES" backTo="/chat">
       {/* 引导语 */}
       <div className="mb-5 flex items-start gap-3 rounded-2xl bg-primary/8 px-4 py-3.5">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">

@@ -584,7 +584,7 @@ export function GoodnightPage() {
       {/* ── 顶栏 ── */}
       <div className="flex items-center justify-between px-5 pt-4">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/chat')}
           aria-label="返回"
           className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-black/[0.04] transition active:scale-95 dark:border-white/15 dark:bg-white/[0.06]"
         >
