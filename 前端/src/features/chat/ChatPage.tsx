@@ -31,12 +31,14 @@ import {
   Pause,
   Download,
   Quote,
+  Radio,
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useGoodnightStore } from '@/stores/goodnightStore';
 import { matchLocalIntent } from './assistant';
 import { PhotoStack } from '@/components/PhotoStack';
 import { streamChat, type ChatPayloadMessage } from '@/lib/api/chatStream';
@@ -1968,6 +1970,15 @@ export function ChatPage() {
                           onClick={() => {
                             closeMenu();
                             void rollback(m);
+                          }}
+                        />
+                        <MenuAction
+                          icon={<Radio className="h-3.5 w-3.5" />}
+                          label="设为今晚电台想听的"
+                          onClick={() => {
+                            closeMenu();
+                            useGoodnightStore.getState().setRequest(m.content);
+                            navigate('/goodnight');
                           }}
                         />
                       </>

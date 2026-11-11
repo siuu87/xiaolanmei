@@ -46,6 +46,8 @@ export const fetchRadioTurn = (body: {
   bookTitle?: string;
   chapterText?: string;
   mood?: string;
+  /** 用户「今天想听什么」的话题，随直播循环传入，后端可按此生成内容 */
+  topic?: string;
 }) =>
   request<RadioTurnResult>('/api/radio/turn', {
     method: 'POST',

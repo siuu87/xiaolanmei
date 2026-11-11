@@ -17,6 +17,7 @@ import { useWakeLock } from '@/lib/useWakeLock';
 import { cn } from '@/lib/utils';
 import { listSleepAudio, uploadSleepAudio, deleteSleepAudio, type SleepAudioDTO } from '@/lib/api/sleepAudio';
 import { fetchRadioTurn, type RadioChannel, type RadioSegment } from '@/lib/api/radio';
+import { useGoodnightStore } from '@/stores/goodnightStore';
 
 /**
  * goodnight · 电台改版 · Apple Music 现在播放式（2026-11-11）
@@ -27,6 +28,8 @@ import { fetchRadioTurn, type RadioChannel, type RadioSegment } from '@/lib/api/
  * 关键改动（对照旧 MIDNIGHT FM 收音机 UI）：
  *  - 封面不放图，是「他的话」——电台播他的声音，封面用一句他的话（默认「今晚也，慢慢睡吧」）
  *  - 台名在他播出时写好：用户先在输入框告诉「今天想听什么」，点播放(他开始播出)时台名自动定为该请求；不再有手动「AI 起名」
+ *  - 「今天想听什么」是共享状态(goodnightStore)：在 chat 长按自己的消息「设为今晚电台想听的」也会写入，点进 goodnight 即是其内容
+ *  - 直播期间改话题：循环每轮读最新 request，变了就清空历史、重设台名并重新调频（topic 透传后端，将来按话题生成）
  *  - 环境声·可叠加：雨 / 炉火 / 风 三条横推子，展开即纯净播放器
  *  - 回放可拖动·直播锁进度：往期录音是真实音频，进度可拖；直播(他的话)锁进度
  *  - 往期录音·可反复听：列出过往录制，点开即回放
@@ -124,9 +127,9 @@ export function GoodnightPage() {
   const [line, setLine] = useState('');
   const [status, setStatus] = useState('');
   const [showName, setShowName] = useState('深夜电台');
-  const [request, setRequest] = useState(
-    () => localStorage.getItem('blueberry.goodnight.request') ?? '',
-  );
+  /** 今晚想听什么：与 chat 共用同一份状态（goodnightStore），单一数据源 */
+  const request = useGoodnightStore((s) => s.request);
+  const setRequest = useGoodnightStore((s) => s.setRequest);
 
   /* ── 环境声 ─────────────────────────────────────────── */
   const [levels, setLevels] = useState<Record<LayerKind, number>>({ rain: 0, fire: 0, wind: 0 });
@@ -383,10 +386,19 @@ export function GoodnightPage() {
 
   async function runTalkLoop(token: number) {
     let history = '';
+    let activeTopic = useGoodnightStore.getState().request.trim();
     while (token === tokenRef.current && channelRef.current === 'talk' && playingRef.current && modeRef.current === 'live') {
       setStatus('正在写下一段…');
+      // 直播期间用户改了话题（在 goodnight 输入框或 chat 里改）→ 重新调频
+      const cur = useGoodnightStore.getState().request.trim();
+      if (cur !== activeTopic) {
+        activeTopic = cur;
+        history = '';
+        setShowName(cur ? (cur.length > 40 ? `${cur.slice(0, 40)}…` : cur) : '深夜电台');
+        setStatus('换了个话题，重新调频…');
+      }
       try {
-        const res = await fetchRadioTurn({ channel: 'talk', history });
+        const res = await fetchRadioTurn({ channel: 'talk', history, topic: activeTopic || undefined });
         setStatus(res.source === 'llm' ? '' : '模型不在，先念一段存稿');
         await speakSegments(res.segments, token);
         history = `${history}\n${res.script}`.slice(-1600);
@@ -619,14 +631,7 @@ export function GoodnightPage() {
         {/* ── 先告诉他今天想听什么 ── */}
         <input
           value={request}
-          onChange={(e) => {
-            setRequest(e.target.value);
-            try {
-              localStorage.setItem('blueberry.goodnight.request', e.target.value);
-            } catch {
-              /* 隐私模式忽略 */
-            }
-          }}
+          onChange={(e) => setRequest(e.target.value)}
           placeholder="今天想听点什么？告诉他就好"
           className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3 text-[14px] text-foreground outline-none transition placeholder:text-black/35 focus:border-black/20 dark:border-white/12 dark:bg-white/[0.05] dark:placeholder:text-white/35 dark:focus:border-white/25"
         />
