@@ -29,6 +29,11 @@
 - 验证：前后端 `tsc --noEmit` 0 错；后端重启后 `/api/health` 200、`/api/diary/books` 返回 3 本种子书、
   老日记数据完好；本子 CRUD + 日记写入接口冒烟全过；vite 5173 返回 200。
 
+### 抽屉补齐首页卡片（CourseCard + LifeCard）
+
+- 聊天抽屉 `DailyBoard` 与主抽屉在 Token/信件/心情行后补 `CourseCard`，模块区后补 `LifeCard`，
+  与首页模块顺序完全一致（日历 → 待办 → Token/信件/心情 → 课程 → together·酒馆·生活小趣味 → 生活小趣味卡）。
+
 ## 2026-11-10
 
 ### 来电改由模型自发决定 + 顶栏/输入栏控件与信息分层
