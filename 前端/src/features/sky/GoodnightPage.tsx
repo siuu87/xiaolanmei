@@ -4,71 +4,43 @@ import {
   ArrowLeft,
   Play,
   Pause,
-  Upload,
-  Trash2,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Shuffle,
   Volume2,
-  Volume1,
-  Wind,
-  Clock,
-  Music2,
+  Plus,
+  ChevronRight,
   Radio,
-  Lock,
-  Send,
-  Moon,
-  Loader2,
 } from 'lucide-react';
-import { StarBackdrop } from './StarBackdrop';
-import { AmbientMixer, type LayerId } from './AmbientMixer';
 import { useWakeLock } from '@/lib/useWakeLock';
 import { cn } from '@/lib/utils';
 import { listSleepAudio, uploadSleepAudio, deleteSleepAudio, type SleepAudioDTO } from '@/lib/api/sleepAudio';
-import { listReadingBooks, type ReadingBook } from '@/lib/api/reading';
-import {
-  fetchRadioTurn,
-  type RadioChannel,
-  type RadioChannelMeta,
-  type RadioSegment,
-} from '@/lib/api/radio';
+import { fetchRadioTurn, type RadioChannel, type RadioSegment } from '@/lib/api/radio';
 
 /**
- * MIDNIGHT FM · 深夜电台（2026-10-19，取代原「goodnight」页）。
+ * goodnight · 电台改版 · Apple Music 现在播放式（2026-11-11）
  *
- * 参考 chuochuochuo36-png/midnight-fm 的设计，四个台：
- *   FM 90.6 故事台 —— 直接读「一起读」书架里选中的小说正文（一字不改）
- *   FM 97.3 夜话台 —— 白起的第一人称晚安随笔；切过去整页关灯
- *   FM 104.1 音乐台 —— 雨 / 风 / 炉火 / 白粉棕噪音 + 自己导入的哄睡音频
- *   隐藏台（枕话）—— 音乐台再往右一格；心跳底噪 + 低声耳语
+ * 设计稿：goodnight `8:1`「电台改版设计」（截图核对：goodnight · 电台改版 · Apple Music 式）。
+ * 双主题：深色纯黑 #0E0F11 / 浅色纯白，颜色走主题 token 随 App 切换。
  *
- * 三条体验原则：
- * 1. **切台先出声**：程序化 BGM 立刻响，广播稿在后台生成，消除几十秒等待；
- * 2. **纯台词**：念出来的内容由后端 radio_parse 洗过，动作/括号旁白不会进 TTS；
- * 3. **纸条插话**：递进去的纸条进入下一轮广播上下文，白起在下一段自然回应。
+ * 关键改动（对照旧 MIDNIGHT FM 收音机 UI）：
+ *  - 封面不放图，是「他的话」——电台播他的声音，封面用一句他的话（默认「今晚也，慢慢睡吧」）
+ *  - 台名在他播出时写好：用户先在输入框告诉「今天想听什么」，点播放(他开始播出)时台名自动定为该请求；不再有手动「AI 起名」
+ *  - 环境声·可叠加：雨 / 炉火 / 风 三条横推子，展开即纯净播放器
+ *  - 回放可拖动·直播锁进度：往期录音是真实音频，进度可拖；直播(他的话)锁进度
+ *  - 往期录音·可反复听：列出过往录制，点开即回放
  *
- * TTS 用浏览器自带的 Web Speech（零依赖、不花钱）；没有可用语音时静默降级为文字。
+ * 音频引擎（环境声 Web Audio + Web Speech TTS）原样移植旧实现，功能不丢。
  */
 
-/**
- * 环境声＝三条**可叠加**的音轨（雨 / 壁炉 / 风），另有一条不参与混音的心跳底噪。
- *
- * 2026-10-21 按用户要求去掉了白 / 粉 / 棕噪音 —— 那三个是「频率颜色」的技术名词，
- * 听起来像参数而不是场景；现在只留能想象的画面，并且允许同时开几条。
- */
-type LayerKind = LayerId;
-/** 心跳只给枕话台垫底，不进混音台 */
+/* ── 环境声类型 ───────────────────────────────────────── */
+type LayerKind = 'rain' | 'fire' | 'wind';
+/** 心跳只给枕话台垫底，不进混音台（本期未启用，保留引擎兼容） */
 type BedKind = 'heart';
-/** 兼容旧调用点：雨/风/炉火走混音台，heart 走单条底噪 */
 type AmbientKind = LayerKind | BedKind;
 
-const CHANNELS: RadioChannelMeta[] = [
-  { id: 'story', freq: 'FM 90.6', name: '故事台', subtitle: '听一段故事', accent: '#e9b872' },
-  { id: 'talk', freq: 'FM 97.3', name: '夜话台', subtitle: '关灯以后', accent: '#cf8f63', lightsOff: true },
-  { id: 'music', freq: 'FM 104.1', name: '音乐台', subtitle: '雨、风与炉火', accent: '#8fb08a' },
-  { id: 'pillow', freq: 'FM —', name: '枕话', subtitle: '再往右一格', accent: '#b07f9e', hidden: true },
-];
-
-const TIMER_OPTIONS = [15, 30, 45, 60];
-
-const sleep = (ms: number) => new Promise<void>((r) => window.setTimeout(() => r(), ms));
+const GN_ACCENT = '#8b7cf6'; // 蓝紫强调色，深/浅主题共用
 
 function formatTime(sec: number | null): string {
   if (sec == null || !Number.isFinite(sec)) return '--:--';
@@ -85,23 +57,19 @@ function makeAmbientBuffer(ctx: AudioContext, kind: AmbientKind): AudioBuffer {
   const data = buffer.getChannelData(0);
 
   if (kind === 'rain' || kind === 'fire' || kind === 'wind') {
-    // 三条轨道共用一个「棕噪底」，再各自加特征层，保证低音区不刺耳
     let last = 0;
     for (let i = 0; i < len; i++) {
       const white = Math.random() * 2 - 1;
       last = (last + 0.02 * white) / 1.02;
       let v = last * 3.2;
       if (kind === 'rain') {
-        // 雨：厚底噪 + 细密高音（雨点打在窗上）+ 偶尔一颗大水珠
         v = v * 0.5 + white * 0.1;
         if (Math.random() < 0.0022) v += (Math.random() * 2 - 1) * 0.7;
       } else if (kind === 'fire') {
-        // 壁炉：很低的燃烧底 + 不规则爆裂（爆裂密度随时间抖一点，像火苗呼吸）
         v *= 0.42;
         const density = 0.0035 + 0.002 * Math.sin((i / len) * Math.PI * 2);
         if (Math.random() < density) v += (Math.random() * 2 - 1) * (0.55 + Math.random() * 0.5);
       } else {
-        // 风：两条不同周期的正弦做阵风，忽强忽弱
         const gust =
           0.34 + 0.2 * Math.sin((i / len) * Math.PI * 2) + 0.1 * Math.sin((i / len) * Math.PI * 6.5);
         v *= Math.max(0.12, gust);
@@ -111,8 +79,6 @@ function makeAmbientBuffer(ctx: AudioContext, kind: AmbientKind): AudioBuffer {
     return loopSmooth(buffer);
   }
 
-  // heart：每 1.1 秒两次低频搏动 + 一层很低的底噪
-  const beat = 1.1;
   let bed = 0;
   for (let i = 0; i < len; i++) {
     const white = Math.random() * 2 - 1;
@@ -127,17 +93,14 @@ function makeAmbientBuffer(ctx: AudioContext, kind: AmbientKind): AudioBuffer {
       data[s + i] += Math.sin(2 * Math.PI * 52 * t) * Math.exp(-t * 26) * gain;
     }
   };
-  for (let t = 0; t < seconds; t += beat) {
+  for (let t = 0; t < seconds; t += 1.1) {
     thump(t, 0.55);
     thump(t + 0.28, 0.35);
   }
   return buffer;
 }
 
-/**
- * 把缓冲的首尾做交叉淡化，循环接缝才不会「咔」一下。
- * 之前每条噪声都直接首尾相接，雨声里能听到规律的爆点。
- */
+/** 把缓冲首尾做交叉淡化，循环接缝不「咔」。 */
 function loopSmooth(buffer: AudioBuffer): AudioBuffer {
   const data = buffer.getChannelData(0);
   const n = data.length;
@@ -145,109 +108,74 @@ function loopSmooth(buffer: AudioBuffer): AudioBuffer {
   const tail = data.slice(n - fade);
   for (let i = 0; i < fade; i++) {
     const t = i / fade;
-    // 头部渐变到「尾部同位置」，接缝两侧数值连续
     data[i] = data[i] * t + tail[i] * (1 - t);
   }
   return buffer;
 }
 
-/** 喇叭/耳机的左右耳提示（仅 UI 文案；Web Speech 不支持声道，留给以后接 TTS） */
-function earLabel(ear?: 'left' | 'right'): string {
-  return ear === 'left' ? '左耳' : ear === 'right' ? '右耳' : '';
-}
-
 export function GoodnightPage() {
   const navigate = useNavigate();
 
-  /* ── 上传的哄睡音频（保留原功能） ───────────────────── */
-  const [items, setItems] = useState<SleepAudioDTO[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  /* ── 模式：直播(他的话) / 回放(往期录音) ──────────────── */
+  const [mode, setMode] = useState<'live' | 'replay'>('live');
 
-  /* ── 电台 ───────────────────────────────────────────── */
-  const [channel, setChannel] = useState<RadioChannel | null>(null);
+  /* ── 直播(他的话) ───────────────────────────────────── */
   const [playing, setPlaying] = useState(false);
   const [line, setLine] = useState('');
   const [status, setStatus] = useState('');
-  const [source, setSource] = useState<'llm' | 'local' | null>(null);
-  /** 心跳底噪（只给枕话台垫底，不进混音台） */
-  const [bed, setBed] = useState<BedKind | null>(null);
-  /** 三条音轨各自的推子位置；>0 就是在播，可以同时开 */
+  const [showName, setShowName] = useState('深夜电台');
+  const [request, setRequest] = useState(
+    () => localStorage.getItem('blueberry.goodnight.request') ?? '',
+  );
+
+  /* ── 环境声 ─────────────────────────────────────────── */
   const [levels, setLevels] = useState<Record<LayerKind, number>>({ rain: 0, fire: 0, wind: 0 });
-  /** 环境声总线（雨/风/炉火/心跳共用）与 AI 人声分开调；环境声默认压得很低 */
   const [ambientVolume, setAmbientVolume] = useState(0.18);
-  const [voiceVolume, setVoiceVolume] = useState(0.9);
-  const [pillowUnlocked, setPillowUnlocked] = useState(false);
+  const [voiceVolume] = useState(0.9);
 
-  /* ── 书架（故事台） ─────────────────────────────────── */
-  const [books, setBooks] = useState<ReadingBook[]>([]);
-  const [book, setBook] = useState<ReadingBook | null>(null);
-  const [chapterIdx, setChapterIdx] = useState(0);
+  /* ── 往期录音（保留原上传音频功能） ──────────────────── */
+  const [items, setItems] = useState<SleepAudioDTO[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [replayId, setReplayId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [repeat, setRepeat] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  /* ── 纸条 ───────────────────────────────────────────── */
-  const [note, setNote] = useState('');
-  const [pendingNotes, setPendingNotes] = useState<string[]>([]);
-  const [delivered, setDelivered] = useState<{ text: string; at: number }[]>([]);
-
-  /* ── 定时器 / 加载 ──────────────────────────────────── */
-  const [timerMin, setTimerMin] = useState<number | null>(null);
-  const [timerLeft, setTimerLeft] = useState(0);
+  /* ── 加载 ───────────────────────────────────────────── */
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /* ── 音频引擎 refs ──────────────────────────────────── */
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
-  /** 混音台：每条音轨一个常驻 source + 自己的 gain，推子只改 gain，不重启音源 */
-  const layersRef = useRef<Partial<Record<LayerKind, { src: AudioBufferSourceNode; gain: GainNode }>>>(
-    {},
-  );
-  /** 心跳底噪（单条，不参与混音） */
+  const layersRef = useRef<Partial<Record<LayerKind, { src: AudioBufferSourceNode; gain: GainNode }>>>({});
   const bedRef = useRef<{ src: AudioBufferSourceNode; gain: GainNode } | null>(null);
   const buffersRef = useRef<Partial<Record<AmbientKind, AudioBuffer>>>({});
   const levelsRef = useRef(levels);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  /** 语音代次：切台/暂停时 +1，旧的朗读循环看到代次变了就退出 */
   const tokenRef = useRef(0);
+  const lastLineRef = useRef('');
 
-  // 异步循环里读最新值用的 ref（闭包会拿到旧 state）
   const playingRef = useRef(false);
-  const channelRef = useRef<RadioChannel | null>(null);
-  const pendingNotesRef = useRef<string[]>([]);
+  const modeRef = useRef(mode);
   const ambientVolumeRef = useRef(ambientVolume);
   const voiceVolumeRef = useRef(voiceVolume);
-  const chapterRef = useRef(0);
-  const bookRef = useRef<ReadingBook | null>(null);
+  const channelRef = useRef<RadioChannel | null>(null);
   playingRef.current = playing;
-  channelRef.current = channel;
-  pendingNotesRef.current = pendingNotes;
+  modeRef.current = mode;
   ambientVolumeRef.current = ambientVolume;
   voiceVolumeRef.current = voiceVolume;
   levelsRef.current = levels;
-  chapterRef.current = chapterIdx;
-  bookRef.current = book;
 
-  const channelMeta = useMemo(() => CHANNELS.find((c) => c.id === channel) ?? null, [channel]);
-  const lightsOff = !!channelMeta?.lightsOff;
-
-  // 有任何一条轨在响就算「还在出声」，别让屏幕睡过去
-  const hasAmbient = !!bed || levels.rain > 0 || levels.fire > 0 || levels.wind > 0;
+  const hasAmbient = levels.rain > 0 || levels.fire > 0 || levels.wind > 0;
   useWakeLock(playing || hasAmbient);
 
-  /* ── 加载书架 + 已导入音频 ──────────────────────────── */
+  /* ── 加载往期录音 ───────────────────────────────────── */
   const load = useCallback(async () => {
     setLoading(true);
-    const [bookRes, audioRes] = await Promise.allSettled([listReadingBooks(), listSleepAudio()]);
-    if (bookRes.status === 'fulfilled') {
-      const withText = bookRes.value.filter((b) => (b.content ?? '').trim().length > 0);
-      setBooks(withText);
-      setBook((prev) => prev ?? withText[0] ?? null);
-    }
+    const [audioRes] = await Promise.allSettled([listSleepAudio()]);
     if (audioRes.status === 'fulfilled') setItems(audioRes.value);
-    if (bookRes.status === 'rejected' && audioRes.status === 'rejected') {
-      setError('书架与音频都没加载出来，稍后再试。');
-    }
     setLoading(false);
   }, []);
 
@@ -271,7 +199,6 @@ export function GoodnightPage() {
     return audioCtxRef.current;
   }
 
-  /** 取一条音轨的缓冲（按需生成并缓存） */
   const bufferFor = useCallback((ctx: AudioContext, kind: AmbientKind): AudioBuffer => {
     let buf = buffersRef.current[kind];
     if (!buf) {
@@ -281,66 +208,42 @@ export function GoodnightPage() {
     return buf;
   }, []);
 
-  const stopHeart = useCallback(() => {
-    const cur = bedRef.current;
-    if (!cur) return;
-    try {
-      cur.src.stop();
-    } catch {
-      /* already stopped */
-    }
-    cur.src.disconnect();
-    cur.gain.disconnect();
-    bedRef.current = null;
-    setBed(null);
-  }, []);
-
-  /**
-   * 设某条轨的音量。0 = 停掉这条轨（释放 bufferSource）；
-   * >0 而且还没起过 = 起一条常驻循环音源 —— 之后推子只改 gain，
-   * 所以来回推不会反复重启、也不会有断音。
-   */
-  const applyLevel = useCallback((kind: LayerKind, v: number) => {
-    const ctx = getCtx();
-    if (ctx.state === 'suspended') void ctx.resume();
-    const cur = layersRef.current[kind];
-    if (v <= 0.005) {
-      if (cur) {
-        try {
-          cur.src.stop();
-        } catch {
-          /* already stopped */
+  const applyLevel = useCallback(
+    (kind: LayerKind, v: number) => {
+      const ctx = getCtx();
+      if (ctx.state === 'suspended') void ctx.resume();
+      const cur = layersRef.current[kind];
+      if (v <= 0.005) {
+        if (cur) {
+          try {
+            cur.src.stop();
+          } catch {
+            /* already stopped */
+          }
+          cur.src.disconnect();
+          cur.gain.disconnect();
+          delete layersRef.current[kind];
         }
-        cur.src.disconnect();
-        cur.gain.disconnect();
-        delete layersRef.current[kind];
+        return;
       }
-      return;
-    }
-    if (!cur) {
-      const src = ctx.createBufferSource();
-      src.buffer = bufferFor(ctx, kind);
-      src.loop = true;
-      const g = ctx.createGain();
-      g.gain.value = 0;
-      src.connect(g);
-      g.connect(gainRef.current!);
-      src.start();
-      // 淡入，别「啪」地一下出现
-      g.gain.setTargetAtTime(v, ctx.currentTime, 0.12);
-      layersRef.current[kind] = { src, gain: g };
-    } else {
-      cur.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.06);
-    }
-  }, [bufferFor]);
+      if (!cur) {
+        const src = ctx.createBufferSource();
+        src.buffer = bufferFor(ctx, kind);
+        src.loop = true;
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        src.connect(g);
+        g.connect(gainRef.current!);
+        src.start();
+        g.gain.setTargetAtTime(v, ctx.currentTime, 0.12);
+        layersRef.current[kind] = { src, gain: g };
+      } else {
+        cur.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.06);
+      }
+    },
+    [bufferFor],
+  );
 
-  const stopAmbient = useCallback(() => {
-    (Object.keys(layersRef.current) as LayerKind[]).forEach((k) => applyLevel(k, 0));
-    stopHeart();
-    setLevels({ rain: 0, fire: 0, wind: 0 });
-  }, [applyLevel, stopHeart]);
-
-  /** 推子被拖：同时更新 UI 与实际音量 */
   const setLevel = useCallback(
     (kind: LayerKind, v: number) => {
       setLevels((prev) => (prev[kind] === v ? prev : { ...prev, [kind]: v }));
@@ -349,7 +252,7 @@ export function GoodnightPage() {
     [applyLevel],
   );
 
-  /** 只留一条轨（切台时的默认垫底）：其余推到 0 */
+  /** 只留一条轨（切台默认垫底）：其余推到 0 */
   const soloLayer = useCallback(
     (kind: LayerKind, v = 0.55) => {
       (['rain', 'fire', 'wind'] as LayerKind[]).forEach((k) => {
@@ -361,25 +264,7 @@ export function GoodnightPage() {
     [applyLevel],
   );
 
-  /** 心跳底噪（枕话台） */
-  const startHeart = useCallback(() => {
-    if (bedRef.current) return;
-    const ctx = getCtx();
-    if (ctx.state === 'suspended') void ctx.resume();
-    const src = ctx.createBufferSource();
-    src.buffer = bufferFor(ctx, 'heart');
-    src.loop = true;
-    const g = ctx.createGain();
-    g.gain.value = 0;
-    src.connect(g);
-    g.connect(gainRef.current!);
-    src.start();
-    g.gain.setTargetAtTime(1, ctx.currentTime, 0.2);
-    bedRef.current = { src, gain: g };
-    setBed('heart');
-  }, [bufferFor]);
-
-  // 音量实时调节：环境声走总线 gain（再乘 0.8 压低底噪），人声只影响 TTS
+  // 音量实时调节：环境声走总线 gain（再乘 0.8 压低底噪），回放音频跟随
   useEffect(() => {
     if (gainRef.current) gainRef.current.gain.value = ambientVolume * 0.8;
     if (audioRef.current) audioRef.current.volume = ambientVolume;
@@ -396,19 +281,15 @@ export function GoodnightPage() {
     );
   }
 
-  /**
-   * 念一句。返回的 Promise 一定 resolve —— 浏览器没语音、被切台打断、
-   * headless 不触发 onend，都靠兜底计时器收尾。
-   */
   function speakText(
     text: string,
     opts: { rate?: number; pitch?: number; volume?: number } = {},
   ): Promise<void> {
     const clean = text.trim();
     if (!clean) return Promise.resolve();
+    lastLineRef.current = clean;
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      // 没有 TTS：至少让文字在屏幕上走一遍，停留时长按字数估
-      return sleep(Math.min(6000, Math.max(1200, clean.length * 160)));
+      return new Promise<void>((r) => window.setTimeout(() => r(), Math.min(6000, Math.max(1200, clean.length * 160))));
     }
     return new Promise<void>((resolve) => {
       let settled = false;
@@ -424,7 +305,6 @@ export function GoodnightPage() {
       u.rate = opts.rate ?? 0.9;
       u.pitch = opts.pitch ?? 0.92;
       u.volume = Math.min(1, Math.max(0, opts.volume ?? voiceVolumeRef.current));
-      // 兜底：某些 WebView / headless 不会触发 onend
       const fallback = window.setTimeout(done, Math.min(20_000, Math.max(2500, clean.length * 230)));
       u.onend = () => {
         window.clearTimeout(fallback);
@@ -447,18 +327,9 @@ export function GoodnightPage() {
     }
     setLine('');
     setStatus('');
-    setSource(null);
   }, []);
 
-  const stopEverything = useCallback(() => {
-    stopVoice();
-    stopAmbient();
-    if (audioRef.current) audioRef.current.pause();
-    setPlaying(false);
-    setPlayingId(null);
-  }, [stopAmbient, stopVoice]);
-
-  // 卸载时停掉所有声音
+  // 卸载时清场
   useEffect(() => {
     return () => {
       tokenRef.current += 1;
@@ -467,7 +338,6 @@ export function GoodnightPage() {
       } catch {
         /* noop */
       }
-      // 卸载时把混音台和心跳底噪都停掉，否则切走得留一条音轨在响
       (Object.keys(layersRef.current) as LayerKind[]).forEach((k) => {
         const cur = layersRef.current[k];
         if (!cur) return;
@@ -487,80 +357,23 @@ export function GoodnightPage() {
         }
         bedRef.current = null;
       }
-      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  /* ── MediaSession ──────────────────────────────────── */
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || !channelMeta) return;
-    const ms = navigator.mediaSession;
-    ms.metadata = new MediaMetadata({
-      title: channelMeta.name,
-      artist: channelMeta.freq,
-      album: 'MIDNIGHT FM',
-    });
-    const play = () => {
-      if (channelRef.current) void startChannel(channelRef.current);
-    };
-    const pause = () => stopEverything();
-    try {
-      ms.setActionHandler('play', play);
-      ms.setActionHandler('pause', pause);
-    } catch {
-      /* 某些浏览器只支持部分 action */
-    }
-    return () => {
-      try {
-        ms.setActionHandler('play', null);
-        ms.setActionHandler('pause', null);
-      } catch {
-        /* noop */
-      }
-    };
-  }, [channelMeta]);
-
-  /* ── 纸条 ───────────────────────────────────────────── */
-  const takeNote = useCallback((): string | undefined => {
-    const q = pendingNotesRef.current;
-    if (!q.length) return undefined;
-    const [first, ...rest] = q;
-    pendingNotesRef.current = rest;
-    setPendingNotes(rest);
-    return first;
-  }, []);
-
-  const submitNote = () => {
-    const text = note.trim();
-    if (!text) return;
-    setPendingNotes((p) => [...p, text]);
-    setDelivered((d) => [...d.slice(-5), { text, at: Date.now() }]);
-    setNote('');
-    setStatus('纸条递进去了 · 下一段念给你听');
-  };
-
-  /* ── 四个台的运行循环 ──────────────────────────────── */
+  /* ── 直播循环（他的话） ─────────────────────────────── */
   async function speakSegments(segments: RadioSegment[], token: number): Promise<void> {
     for (const seg of segments) {
-      if (token !== tokenRef.current || !playingRef.current) return;
+      if (token !== tokenRef.current || !playingRef.current || modeRef.current !== 'live') return;
       if (seg.type === 'speak') {
-        setLine(`${earLabel(seg.ear)}${earLabel(seg.ear) ? ' · ' : ''}${seg.text}`);
+        setLine(seg.text);
         await speakText(seg.text, {
           rate: seg.tone === '耳语' ? 0.78 : seg.tone === '低声' ? 0.84 : 0.9,
           pitch: seg.tone === '耳语' ? 1.04 : 0.92,
           volume: seg.tone === '耳语' ? voiceVolumeRef.current * 0.75 : voiceVolumeRef.current,
         });
       } else if (seg.type === 'pause') {
-        await sleep(seg.ms);
-      } else if (seg.type === 'bgm') {
-        // 广播稿里说的天气 → 换一条主音轨（其余推子归零，保持「一段氛围」而不是越叠越厚）
-        const mood = seg.mood;
-        soloLayer(
-          mood.includes('雨') ? 'rain' : mood.includes('风') ? 'wind' : mood.includes('炉') ? 'fire' : 'rain',
-          0.5,
-        );
+        await new Promise<void>((r) => window.setTimeout(() => r(), seg.ms));
       } else if (seg.type === 'se') {
-        if (/心跳/.test(seg.name)) startHeart();
         setStatus(`音效 · ${seg.name}`);
       } else if (seg.type === 'song') {
         setStatus(`♪ ${seg.name}${seg.artist ? ` · ${seg.artist}` : ''}`);
@@ -570,147 +383,121 @@ export function GoodnightPage() {
 
   async function runTalkLoop(token: number) {
     let history = '';
-    while (token === tokenRef.current && channelRef.current === 'talk' && playingRef.current) {
-      const noteText = takeNote();
-      setStatus(noteText ? '正在接住那张纸条…' : '正在写下一段…');
+    while (token === tokenRef.current && channelRef.current === 'talk' && playingRef.current && modeRef.current === 'live') {
+      setStatus('正在写下一段…');
       try {
-        const res = await fetchRadioTurn({
-          channel: 'talk',
-          note: noteText,
-          history,
-          bookTitle: bookRef.current?.title,
-        });
-        setSource(res.source);
+        const res = await fetchRadioTurn({ channel: 'talk', history });
         setStatus(res.source === 'llm' ? '' : '模型不在，先念一段存稿');
         await speakSegments(res.segments, token);
         history = `${history}\n${res.script}`.slice(-1600);
-      } catch (err) {
+      } catch {
         setStatus('信号有点弱，再试一次…');
-        setError((err as Error).message);
       }
-      if (token !== tokenRef.current || !playingRef.current) return;
-      // 章节间隙：有纸条就先回应，再继续
-      await sleep(pendingNotesRef.current.length ? 200 : 2200);
+      if (token !== tokenRef.current || !playingRef.current || modeRef.current !== 'live') return;
+      await new Promise<void>((r) => window.setTimeout(() => r(), 2200));
     }
   }
 
-  async function runStoryLoop(token: number) {
-    let i = chapterRef.current;
-    while (token === tokenRef.current && channelRef.current === 'story' && playingRef.current) {
-      const b = bookRef.current;
-      if (!b) {
-        setStatus('书房里还没有能读的书');
-        return;
-      }
-      const paras = (b.content ?? '')
-        .split(/\n+/)
-        .map((p) => p.trim())
-        .filter(Boolean);
-      if (i >= paras.length) {
-        setStatus('这一本读完了 · 晚安');
-        setPlaying(false);
-        stopAmbient();
-        return;
-      }
-
-      // 纸条：在章节间隙用夜话台的口吻接一句，再继续读
-      const noteText = takeNote();
-      if (noteText) {
-        try {
-          const res = await fetchRadioTurn({ channel: 'talk', note: noteText, bookTitle: b.title });
-          await speakSegments(res.segments, token);
-        } catch {
-          /* 纸条没接住也不影响继续读 */
-        }
-      }
-
-      const slice = paras.slice(i, i + 4);
-      setStatus(`${b.title} · ${Math.floor(i / 4) + 1} / ${Math.ceil(paras.length / 4)} 段`);
-      for (const p of slice) {
-        if (token !== tokenRef.current || !playingRef.current) return;
-        setLine(p.length > 120 ? `${p.slice(0, 120)}…` : p);
-        await speakText(p, { rate: 0.88, pitch: 0.9 });
-      }
-      i += 4;
-      setChapterIdx(i);
-      chapterRef.current = i;
-      await sleep(1200);
-    }
-  }
-
-  async function runPillowLoop(token: number) {
-    const lines = [
-      '[低声] 过来一点。',
-      '[耳语] 别怕，我在。',
-      '[停顿]',
-      '[低声] 听我的心跳。',
-      '[耳语] 慢慢呼吸。',
-      '[停顿]',
-      '[低声] 今晚哪也不去。',
-    ];
-    while (token === tokenRef.current && channelRef.current === 'pillow' && playingRef.current) {
-      for (const raw of lines) {
-        if (token !== tokenRef.current || !playingRef.current) return;
-        const tone = raw.match(/^\[(低声|耳语|停顿)\]$/)?.[1];
-        const text = raw.replace(/^\[[^\]]+\]\s*/, '');
-        if (tone === '停顿') {
-          await sleep(1400);
-          continue;
-        }
-        if (!text) continue;
-        setLine(text);
-        await speakText(text, {
-          rate: tone === '耳语' ? 0.72 : 0.8,
-          pitch: tone === '耳语' ? 1.05 : 0.95,
-          volume: voiceVolumeRef.current * (tone === '耳语' ? 0.6 : 0.75),
-        });
-        await sleep(1600);
-      }
-      await sleep(4200);
-    }
-  }
-
-  const startChannel = async (id: RadioChannel) => {
-    if (channel === id && playing) {
-      stopEverything();
-      return;
-    }
+  const startLive = useCallback(() => {
     tokenRef.current += 1;
     try {
       window.speechSynthesis?.cancel();
     } catch {
       /* noop */
     }
-    setChannel(id);
-    channelRef.current = id;
+    if (modeRef.current !== 'live') setMode('live');
+    channelRef.current = 'talk';
     setPlaying(true);
     playingRef.current = true;
-    setError(null);
     setLine('');
     setStatus('正在调频…');
-
-    // 开场垫底：先出声，不等模型。
-    // 音乐台**尊重你现在的推子**——推过就不动你调好的混音；全在底部才默认给一点雨。
-    if (id === 'music') {
-      if (!hasAmbient) soloLayer('rain', 0.55);
-    } else if (id === 'talk') soloLayer('wind', 0.5);
-    else if (id === 'story') soloLayer('rain', 0.45);
-    else {
-      stopAmbient();
-      startHeart();
-    }
-
+    // 台名在他播出时写好：用你「今天想听什么」的请求作为台名
+    const want = request.trim();
+    setShowName(want ? (want.length > 40 ? `${want.slice(0, 40)}…` : want) : '深夜电台');
+    soloLayer('wind', 0.5);
     const token = tokenRef.current;
-    if (id === 'talk') void runTalkLoop(token);
-    else if (id === 'story') void runStoryLoop(token);
-    else if (id === 'pillow') void runPillowLoop(token);
-    else {
-      setStatus('♪ 雨声 · 炉火 · 风');
-      setLine('推子往上推一点，就有声音了。');
+    void runTalkLoop(token);
+  }, [soloLayer, request]);
+
+  const stopLive = useCallback(() => {
+    stopVoice();
+    setPlaying(false);
+    setStatus('');
+  }, [stopVoice]);
+
+  const toggleLive = useCallback(() => {
+    if (playing && mode === 'live') stopLive();
+    else startLive();
+  }, [playing, mode, startLive, stopLive]);
+
+  /* ── 往期录音 / 回放 ────────────────────────────────── */
+  const playingItem = useMemo(() => items.find((i) => i.id === replayId) ?? null, [items, replayId]);
+
+  const enterReplay = useCallback((item: SleepAudioDTO) => {
+    stopVoice();
+    setMode('replay');
+    modeRef.current = 'replay';
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.src = item.url;
+    audio.volume = ambientVolumeRef.current;
+    setReplayId(item.id);
+    setCurrentTime(0);
+    setDuration(item.duration ?? 0);
+    void audio.play().catch(() => setError('这个录音播放不了'));
+    setPlaying(true);
+    playingRef.current = true;
+  }, [stopVoice]);
+
+  const toggleReplay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !replayId) return;
+    if (playing && mode === 'replay') {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      if (mode !== 'replay') {
+        setMode('replay');
+        modeRef.current = 'replay';
+      }
+      void audio.play().catch(() => setError('这个录音播放不了'));
+      setPlaying(true);
+      playingRef.current = true;
     }
+  }, [playing, mode, replayId]);
+
+  /* ── 中央播放键：按当前模式分发 ─────────────────────── */
+  const onPlayToggle = useCallback(() => {
+    if (mode === 'live') toggleLive();
+    else toggleReplay();
+  }, [mode, toggleLive, toggleReplay]);
+
+  /* ── 进度条拖动（仅回放可拖） ───────────────────────── */
+  const onSeek = (v: number) => {
+    const audio = audioRef.current;
+    if (!audio || mode !== 'replay') return;
+    audio.currentTime = v;
+    setCurrentTime(v);
   };
 
-  /* ── 上传音频（保留原功能） ────────────────────────── */
+  /* ── 「回放」胶囊：直播↔回放 切换 ───────────────────── */
+  const onToggleReplayMode = useCallback(() => {
+    if (mode === 'replay') {
+      stopVoice();
+      setMode('live');
+      modeRef.current = 'live';
+    } else {
+      const first = items[0];
+      if (first) enterReplay(first);
+      else setStatus('还没有往期录音，先「+ 添加」一段');
+    }
+  }, [mode, items, enterReplay, stopVoice]);
+
+  /* ── 台名在播出时写好 ──
+     用户先在下方输入框告诉「今天想听什么」，点击播放(他开始播出)时，
+     startLive 会把台名定为该请求（见 startLive）。不再有手动「AI 起名」。 */
+
+  /* ── 上传录音（保留原功能） ─────────────────────────── */
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -727,458 +514,358 @@ export function GoodnightPage() {
     }
   };
 
-  const togglePlay = (item: SleepAudioDTO) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playingId === item.id) {
-      audio.pause();
-      setPlayingId(null);
-      return;
-    }
-    audio.src = item.url;
-    audio.volume = ambientVolume;
-    audio.play().then(
-      () => setPlayingId(item.id),
-      () => setError('播放失败，可能是格式不支持'),
-    );
-  };
-
   const onDelete = async (id: string) => {
-    if (!confirm('删除这段哄睡音频？')) return;
     try {
       await deleteSleepAudio(id);
-      if (playingId === id) {
-        audioRef.current?.pause();
-        setPlayingId(null);
-      }
       setItems((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      setError((err as Error).message);
+      if (replayId === id) {
+        audioRef.current?.pause();
+        setReplayId(null);
+        setPlaying(false);
+      }
+    } catch {
+      /* noop */
     }
   };
 
-  /* ── 睡眠定时器 ────────────────────────────────────── */
-  const startTimer = (min: number) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setTimerMin(min);
-    setTimerLeft(min * 60);
-    timerRef.current = setInterval(() => {
-      setTimerLeft((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          stopEverything();
-          setChannel(null);
-          setTimerMin(null);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+  /* ── 回放音频事件 ───────────────────────────────────── */
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onMeta = () => setDuration(audio.duration || 0);
+    const onEnd = () => {
+      if (repeat) {
+        audio.currentTime = 0;
+        void audio.play();
+      } else if (shuffle && items.length > 1) {
+        const others = items.filter((i) => i.id !== replayId);
+        const next = others[Math.floor(Math.random() * others.length)];
+        if (next) enterReplay(next);
+      } else {
+        setPlaying(false);
+      }
+    };
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('loadedmetadata', onMeta);
+    audio.addEventListener('ended', onEnd);
+    return () => {
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('loadedmetadata', onMeta);
+      audio.removeEventListener('ended', onEnd);
+    };
+  }, [repeat, shuffle, items, replayId, enterReplay]);
 
-  const cancelTimer = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setTimerMin(null);
-    setTimerLeft(0);
-  };
-
-  /* ── 渲染 ──────────────────────────────────────────── */
-  const visibleChannels = CHANNELS.filter((c) => !c.hidden || pillowUnlocked || channel === 'pillow');
-  const needleIdx = Math.max(0, visibleChannels.findIndex((c) => c.id === channel));
-  const needleLeft = visibleChannels.length > 1 ? 8 + (needleIdx / (visibleChannels.length - 1)) * 84 : 50;
+  /* ── 文案 ───────────────────────────────────────────── */
+  const coverText = mode === 'replay' ? playingItem?.title ?? '往期录音' : line || '今晚也，慢慢睡吧';
+  const remaining = mode === 'replay' && duration > 0 ? duration - currentTime : 0;
+  const ENV_LAYERS: { id: LayerKind; label: string }[] = [
+    { id: 'rain', label: '雨' },
+    { id: 'fire', label: '炉火' },
+    { id: 'wind', label: '风' },
+  ];
 
   return (
-    <div
-      data-testid="midnight-fm"
-      className={cn(
-        'relative min-h-full text-foreground transition-colors duration-700',
-        lightsOff ? 'bg-surface-sunken' : 'bg-page-bg',
-      )}
-    >
-      <StarBackdrop />
-      <audio
-        ref={audioRef}
-        preload="metadata"
-        playsInline
-        onTimeUpdate={() => {
-          const a = audioRef.current;
-          if (a && a.duration) setProgress(a.currentTime / a.duration);
-        }}
-        onEnded={() => {
-          setPlayingId(null);
-          setProgress(0);
-        }}
-        className="hidden"
-      />
+    <div className="relative min-h-full bg-white text-black/90 dark:bg-[#0E0F11] dark:text-white/90">
+      <audio ref={audioRef} preload="metadata" />
 
-      <div className="relative mx-auto w-full max-w-md px-4 pb-16 pt-6">
-        <header className="relative mb-6 text-center">
-          <button
-            type="button"
-            onClick={() => navigate('/chat')}
-            aria-label="返回"
-            className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
+      {/* ── 顶栏 ── */}
+      <div className="flex items-center justify-between px-5 pt-4">
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="返回"
+          className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-black/[0.04] transition active:scale-95 dark:border-white/15 dark:bg-white/[0.06]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-2 text-sm font-semibold tracking-wide">
+          <Radio className="h-4 w-4" style={{ color: GN_ACCENT }} />
+          MIDNIGHT FM
+        </div>
+        <button
+          onClick={onToggleReplayMode}
+          className={cn(
+            'rounded-full px-3 py-1.5 text-[12px] font-medium transition active:scale-95',
+            mode === 'replay'
+              ? 'text-white'
+              : 'border border-black/10 bg-black/[0.04] text-black/70 dark:border-white/15 dark:bg-white/[0.06] dark:text-white/70',
+          )}
+          style={mode === 'replay' ? { background: GN_ACCENT } : undefined}
+        >
+          回放
+        </button>
+      </div>
+
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-5 pb-10 pt-3">
+        {/* ── 封面：他的话 ── */}
+        <div className="relative">
+          <div
+            className="absolute inset-x-8 -top-4 bottom-8 -z-10 blur-3xl"
+            style={{ background: GN_ACCENT, opacity: 0.35 }}
+            aria-hidden
+          />
+          <div
+            className="relative grid aspect-square w-full place-items-center overflow-hidden rounded-[28px] bg-gradient-to-br from-[#cdc6f7] via-[#a994f2] to-[#7c5cff] p-7 text-center shadow-[0_24px_70px_-20px_rgba(124,92,255,0.55)] dark:from-[#241f47] dark:via-[#432f86] dark:to-[#6b4dff]"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <p className="text-[10px] tracking-[0.45em] text-gold">MIDNIGHT FM</p>
-          <h1 className="mt-2 font-serif text-2xl font-semibold tracking-wide text-foreground">
-            深夜电台
-          </h1>
-          <p className="mt-1 text-[11px] text-muted-foreground">只放给一个人听 · 你随时可以走</p>
-        </header>
-
-        {/* ── 收音机机身 ─────────────────────────────── */}
-        <section className="rounded-[30px] border border-amber-900/50 bg-gradient-to-b from-[#2b1d13] via-[#1b130d] to-[#100b08] p-4 shadow-[0_24px_70px_rgba(0,0,0,.65)]">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[9px] tracking-[0.35em] text-amber-200/40">MIDNIGHT FM</span>
-            <span className="flex items-center gap-1.5 text-[9px] text-amber-200/40">
-              <span
-                className={cn(
-                  'h-1.5 w-1.5 rounded-full',
-                  playing ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-amber-900',
-                )}
-              />
-              {playing ? 'ON AIR' : channel ? 'STANDBY' : 'OFF'}
+            <span className="absolute left-5 top-5 rounded-full bg-black/25 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur">
+              他的话
             </span>
-          </div>
-
-          {/* LCD */}
-          <div className="rounded-xl border border-emerald-900/70 bg-[#08130d] px-3 py-2.5 shadow-inner">
-            <div className="flex items-baseline justify-between font-mono">
-              <span className="text-[15px] tracking-[0.18em] text-emerald-300">
-                {channelMeta?.freq ?? '--.-'}
-              </span>
-              <span className="text-[10px] text-emerald-700">
-                {channelMeta?.name ?? '待机'}
-                {source ? (source === 'llm' ? ' · LIVE' : ' · TAPE') : ''}
-              </span>
-            </div>
-            <p className="mt-1 min-h-[3.2em] text-[12px] leading-[1.55] text-emerald-200/80">
-              {line || status || '把指针拨到一个台。'}
+            <p className="display px-4 text-2xl font-semibold leading-relaxed text-white drop-shadow-sm">
+              {coverText}
             </p>
           </div>
+        </div>
 
-          {/* 频率刻度 */}
-          <div className="relative mt-4 px-1">
-            <div className="flex items-end justify-between text-[9px] text-amber-200/45">
-              {visibleChannels.map((c) => (
-                <span key={c.id}>{c.freq.replace('FM ', '')}</span>
-              ))}
-            </div>
-            <div className="mt-1 h-1.5 rounded-full bg-black/60 ring-1 ring-amber-100/10">
-              <div className="h-full rounded-full bg-gradient-to-r from-amber-800/50 via-amber-500/30 to-amber-800/50" />
-            </div>
-            <div
-              className="absolute top-4 h-4 w-0.5 rounded bg-amber-300 shadow-[0_0_6px_#fbbf24] transition-all duration-500"
-              style={{ left: `${needleLeft}%` }}
-            />
-          </div>
+        {/* ── 先告诉他今天想听什么 ── */}
+        <input
+          value={request}
+          onChange={(e) => {
+            setRequest(e.target.value);
+            try {
+              localStorage.setItem('blueberry.goodnight.request', e.target.value);
+            } catch {
+              /* 隐私模式忽略 */
+            }
+          }}
+          placeholder="今天想听点什么？告诉他就好"
+          className="w-full rounded-2xl border border-black/10 bg-black/[0.03] px-4 py-3 text-[14px] text-foreground outline-none transition placeholder:text-black/35 focus:border-black/20 dark:border-white/12 dark:bg-white/[0.05] dark:placeholder:text-white/35 dark:focus:border-white/25"
+        />
 
-          {/* 四个台 */}
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            {visibleChannels.map((c) => {
-              const active = channel === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => void startChannel(c.id)}
-                  data-testid={`radio-station-${c.id}`}
-                  aria-pressed={active}
-                  className={cn(
-                    'rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.98]',
-                    active
-                      ? 'border-amber-300/50 bg-amber-300/10'
-                      : 'border-amber-100/10 bg-amber-100/[0.04] hover:bg-amber-100/[0.07]',
-                  )}
-                  style={active ? { borderColor: `${c.accent}88` } : undefined}
-                >
-                  <span className="block text-[10px] tabular-nums" style={{ color: c.accent }}>
-                    {c.freq}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] font-medium text-amber-50">{c.name}</span>
-                  <span className="mt-0.5 block text-[10px] text-amber-200/40">{c.subtitle}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {channel === 'music' && !pillowUnlocked && (
-            <button
-              type="button"
-              onClick={() => setPillowUnlocked(true)}
-              data-testid="radio-unlock-pillow"
-              className="mt-2 flex w-full items-center justify-center gap-1 rounded-full border border-dashed border-amber-700/40 py-1.5 text-[10px] text-amber-200/40 transition hover:text-amber-200/70"
-            >
-              继续向右拨一点 <Lock className="h-3 w-3" />
-            </button>
-          )}
-
-          {/* 大旋钮 + 音量 */}
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => (channel ? void startChannel(channel) : void startChannel('talk'))}
-              aria-label={playing ? '暂停电台' : '播放电台'}
-              data-testid="radio-play"
-              className={cn(
-                'flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition active:scale-95',
-                playing
-                  ? 'border-amber-300/60 bg-amber-300 text-[#1a120b]'
-                  : 'border-amber-700/50 bg-amber-900/30 text-amber-200',
-              )}
-            >
-              {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-            </button>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Volume2 className="h-3.5 w-3.5 shrink-0 text-amber-200/50" />
-                <span className="w-7 shrink-0 text-[10px] text-amber-200/40">环境</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={ambientVolume}
-                  onChange={(e) => setAmbientVolume(Number(e.target.value))}
-                  aria-label="环境音量"
-                  data-testid="radio-ambient-volume"
-                  className="w-full accent-amber-400"
-                />
-                <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-amber-200/40">
-                  {Math.round(ambientVolume * 100)}%
-                </span>
-              </div>
-              <div className="mt-1.5 flex items-center gap-2">
-                <Volume1 className="h-3.5 w-3.5 shrink-0 text-amber-200/50" />
-                <span className="w-7 shrink-0 text-[10px] text-amber-200/40">人声</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={voiceVolume}
-                  onChange={(e) => setVoiceVolume(Number(e.target.value))}
-                  aria-label="人声音量"
-                  data-testid="radio-voice-volume"
-                  className="w-full accent-amber-400"
-                />
-                <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-amber-200/40">
-                  {Math.round(voiceVolume * 100)}%
-                </span>
-              </div>
-              <p className="mt-1 truncate text-[10px] text-amber-200/35">
-                {hasAmbient ? '环境声 · 混音中' : channel ? '环境声已停' : '还没开台'}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── 纸条 ──────────────────────────────────── */}
-        <section className="paper-card mt-6 p-3">
-          <div className="mb-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <Send className="h-3.5 w-3.5" /> 递一张纸条
-            {pendingNotes.length > 0 && (
-              <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] text-gold">
-                待念 {pendingNotes.length}
-              </span>
+        {/* ── 标题区（台名在他播出时自动写好） ── */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <h1 className="display truncate text-[22px] font-bold tracking-tight">{showName}</h1>
+            {mode === 'replay' && (
+              <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" aria-label="回放中" />
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <p className="text-[13px] text-black/55 dark:text-white/55">只放给一个人听 · 晚安频道</p>
+        </div>
+
+        {/* ── 进度条 ── */}
+        {mode === 'replay' ? (
+          <div className="flex flex-col gap-1.5">
             <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitNote();
-              }}
-              placeholder="想对他说的话，下一段会念出来…"
-              data-testid="radio-note-input"
-              className="min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus:border-gold/50"
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => onSeek(parseFloat(e.target.value))}
+              className="h-1 w-full cursor-pointer appearance-none rounded-full"
+              style={{ accentColor: GN_ACCENT }}
+              aria-label="进度"
             />
-            <button
-              type="button"
-              onClick={submitNote}
-              disabled={!note.trim()}
-              data-testid="radio-note-send"
-              className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground transition active:scale-95 disabled:opacity-30"
-            >
-              递
-            </button>
+            <div className="flex justify-between text-[11px] tabular-nums text-black/50 dark:text-white/50">
+              <span>{formatTime(currentTime)}</span>
+              <span>-{formatTime(remaining)}</span>
+            </div>
           </div>
-          {delivered.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {delivered.slice(-3).map((d, i) => (
-                <li key={`${d.at}-${i}`} className="truncate text-[10px] text-muted-foreground">
-                  · {d.text}
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+              <div className="h-full w-1/3 animate-pulse rounded-full" style={{ background: GN_ACCENT }} />
+            </div>
+            <div className="flex justify-between text-[11px] tabular-nums text-black/50 dark:text-white/50">
+              <span className="font-semibold text-black/70 dark:text-white/70">直播中</span>
+              <span>{status || '他的声音，正在说'}</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── 播放控制行 ── */}
+        <div className="flex items-center justify-between px-2">
+          <button
+            onClick={() => setShuffle((s) => !s)}
+            aria-label="随机"
+            className={cn(
+              'grid h-10 w-10 place-items-center rounded-full transition active:scale-90',
+              shuffle ? 'text-white' : 'text-black/55 dark:text-white/55',
+            )}
+            style={shuffle ? { background: GN_ACCENT } : undefined}
+          >
+            <Shuffle className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => {
+              const a = audioRef.current;
+              if (mode === 'replay' && a) onSeek(Math.max(0, a.currentTime - 15));
+              else if (lastLineRef.current) void speakText(lastLineRef.current);
+            }}
+            aria-label="后退 15 秒"
+            className="grid h-11 w-11 place-items-center rounded-full text-black/70 transition active:scale-90 dark:text-white/70"
+          >
+            <SkipBack className="h-6 w-6" />
+          </button>
+          <button
+            onClick={onPlayToggle}
+            aria-label={playing ? '暂停' : '播放'}
+            className="grid h-16 w-16 place-items-center rounded-full text-white shadow-lg transition active:scale-95"
+            style={{ background: GN_ACCENT }}
+          >
+            {playing ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 translate-x-0.5" />}
+          </button>
+          <button
+            onClick={() => {
+              const a = audioRef.current;
+              if (mode === 'replay' && a) onSeek(Math.min(duration || 0, a.currentTime + 15));
+              else {
+                // 直播：跳过当前句，循环会自动取下一轮
+                try {
+                  window.speechSynthesis?.cancel();
+                } catch {
+                  /* noop */
+                }
+              }
+            }}
+            aria-label="前进 15 秒"
+            className="grid h-11 w-11 place-items-center rounded-full text-black/70 transition active:scale-90 dark:text-white/70"
+          >
+            <SkipForward className="h-6 w-6" />
+          </button>
+          <button
+            onClick={() => setRepeat((r) => !r)}
+            aria-label="循环"
+            className={cn(
+              'grid h-10 w-10 place-items-center rounded-full transition active:scale-90',
+              repeat ? 'text-white' : 'text-black/55 dark:text-white/55',
+            )}
+            style={repeat ? { background: GN_ACCENT } : undefined}
+          >
+            <Repeat className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* ── 音量 + 环境声·可叠加 ── */}
+        <div className="flex flex-col gap-4 rounded-3xl border border-black/10 bg-black/[0.03] p-5 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="flex items-center gap-3">
+            <Volume2 className="h-4 w-4 shrink-0 text-black/55 dark:text-white/55" />
+            <span className="w-10 text-[13px] text-black/70 dark:text-white/70">音量</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={ambientVolume}
+              onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer appearance-none rounded-full"
+              style={{ accentColor: GN_ACCENT }}
+              aria-label="音量"
+            />
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[13px] font-medium" style={{ color: GN_ACCENT }}>
+                环境音 · 可叠加
+              </span>
+              <span className="text-[11px] text-black/40 dark:text-white/40">
+                {hasAmbient ? '几条一起推会叠在一起' : '往上推就出声'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-3">
+              {ENV_LAYERS.map((l) => (
+                <div key={l.id} className="flex items-center gap-3">
+                  <span className="w-10 text-[13px] text-black/70 dark:text-white/70">{l.label}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={levels[l.id]}
+                    onChange={(e) => setLevel(l.id, parseFloat(e.target.value))}
+                    className="h-1 flex-1 cursor-pointer appearance-none rounded-full"
+                    style={{ accentColor: GN_ACCENT }}
+                    aria-label={`${l.label}音量`}
+                  />
+                  <span className="w-10 text-right text-[12px] tabular-nums text-black/50 dark:text-white/50">
+                    {Math.round(levels[l.id] * 100)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 往期录音 ── */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-semibold">往期录音</h2>
+            <div className="flex items-center gap-3">
+              <label className="flex cursor-pointer items-center gap-1 text-[12px] text-black/55 transition hover:text-black/80 dark:text-white/55 dark:hover:text-white/80">
+                <Plus className="h-3.5 w-3.5" />
+                {uploading ? '上传中' : '添加'}
+                <input type="file" accept="audio/*" hidden onChange={onPickFile} />
+              </label>
+              <button className="flex items-center gap-0.5 text-[12px] text-black/45 dark:text-white/45">
+                查看全部 <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <p className="py-6 text-center text-[13px] text-black/40 dark:text-white/40">加载中…</p>
+          ) : items.length === 0 ? (
+            <p className="py-6 text-center text-[13px] text-black/40 dark:text-white/40">
+              还没有往期录音，点「+ 添加」存一段哄睡音频
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {items.map((it) => (
+                <li key={it.id}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => enterReplay(it)}
+                    onKeyDown={(e) => e.key === 'Enter' && enterReplay(it)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-2xl border p-2.5 transition active:scale-[0.99]',
+                      replayId === it.id && playing
+                        ? 'border-transparent'
+                        : 'border-black/10 dark:border-white/10',
+                    )}
+                    style={
+                      replayId === it.id && playing
+                        ? { background: 'rgba(139,124,246,0.16)', borderColor: GN_ACCENT }
+                        : undefined
+                    }
+                  >
+                    <div
+                      className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-white shadow-inner"
+                      style={{ background: 'linear-gradient(135deg,#a994f2,#6b4dff)' }}
+                    >
+                      <Play className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-medium">{it.title}</p>
+                      <p className="truncate text-[12px] text-black/45 dark:text-white/45">
+                        {new Date(it.createdAt).toLocaleDateString('zh-CN', {
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                        {' · '}
+                        {it.duration ? `${Math.round(it.duration / 60)} 分钟` : '录音'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onDelete(it.id);
+                      }}
+                      className="shrink-0 rounded-full px-2 py-1 text-[11px] text-black/40 transition hover:text-red-500 dark:text-white/40"
+                    >
+                      删除
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </div>
 
-        {/* ── 故事台：选书 ─────────────────────────── */}
-        {channel === 'story' && (
-          <section className="mt-6" data-testid="radio-book-picker">
-            <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <Radio className="h-3.5 w-3.5" /> 从书房拿一本
-            </h2>
-            {loading ? (
-              <p className="text-[12px] text-muted-foreground">正在翻书架…</p>
-            ) : books.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">书房里还没有带正文的书，去「一起读」加一本吧。</p>
-            ) : (
-              <div className="scrollbar-thin flex gap-2 overflow-x-auto pb-1">
-                {books.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => {
-                      setBook(b);
-                      bookRef.current = b;
-                      setChapterIdx(0);
-                      chapterRef.current = 0;
-                      setStatus(`换到《${b.title}》`);
-                    }}
-                    data-testid={`radio-book-${b.id}`}
-                    className={cn(
-                      'shrink-0 rounded-xl border px-3 py-2 text-left text-[12px] transition',
-                      book?.id === b.id
-                        ? 'border-gold/50 bg-gold/10 text-foreground'
-                        : 'border-border bg-surface-2 text-muted-foreground hover:bg-surface-3',
-                    )}
-                  >
-                    <span className="block max-w-[9rem] truncate">{b.title}</span>
-                    <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                      {b.author || '佚名'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
+        {error && (
+          <p className="rounded-2xl bg-red-500/10 px-4 py-2 text-center text-[12px] text-red-500">{error}</p>
         )}
-
-        {/* ── 环境声混音台：雨 / 壁炉 / 风，推子往上就出声，几条可叠加 ── */}
-        <section className="mt-6">
-          <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <Wind className="h-3.5 w-3.5" /> 环境声
-          </h2>
-          <AmbientMixer levels={levels} onChange={setLevel} />
-        </section>
-
-        {/* ── 我的哄睡音频 ──────────────────────────── */}
-        <section className="mt-6">
-          <div className="mb-2 flex items-center gap-2">
-            <h2 className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <Music2 className="h-3.5 w-3.5" /> 我的哄睡音频
-            </h2>
-            <div className="flex-1" />
-            <label className="flex cursor-pointer items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] text-muted-foreground transition hover:bg-surface-2">
-              {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-              导入
-              <input type="file" accept="audio/*" className="hidden" onChange={onPickFile} />
-            </label>
-          </div>
-
-          {items.length === 0 ? (
-            <p className="px-1 text-[12px] text-muted-foreground">还没有导入音频。</p>
-          ) : (
-            <ul className="space-y-2">
-              {items.map((it) => {
-                const isPlaying = playingId === it.id;
-                return (
-                  <li
-                    key={it.id}
-                    data-testid="sleep-audio-item"
-                    className="rounded-2xl border border-border bg-card p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => togglePlay(it)}
-                        aria-label={isPlaying ? '暂停' : '播放'}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold transition hover:bg-gold/25"
-                      >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] text-foreground">{it.title}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatTime(it.duration)}
-                          {it.size ? ` · ${(it.size / 1024 / 1024).toFixed(1)} MB` : ''}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void onDelete(it.id)}
-                        aria-label="删除"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.001}
-                      value={isPlaying ? progress : 0}
-                      onChange={(e) => {
-                        const a = audioRef.current;
-                        if (!a || !a.duration) return;
-                        const v = Number(e.target.value);
-                        a.currentTime = v * a.duration;
-                        setProgress(v);
-                      }}
-                      disabled={!isPlaying}
-                      className="mt-2 w-full accent-gold disabled:opacity-30"
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        {/* ── 睡眠定时器 ────────────────────────────── */}
-        <section className="mt-6">
-          <h2 className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" /> 睡眠定时器
-          </h2>
-          {timerMin ? (
-            <div className="flex items-center justify-between rounded-2xl border border-gold/30 bg-gold/10 p-3">
-              <span className="text-[12px] text-foreground">
-                {timerMin} 分钟后停止 · 剩余 {formatTime(timerLeft)}
-              </span>
-              <button
-                type="button"
-                onClick={cancelTimer}
-                className="rounded-full px-3 py-1 text-[11px] text-muted-foreground transition hover:bg-surface-2"
-              >
-                取消
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {TIMER_OPTIONS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => startTimer(m)}
-                  className="rounded-full border border-border bg-surface-2 px-4 py-1.5 text-[12px] text-foreground transition hover:bg-surface-3"
-                >
-                  {m} 分钟
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="mt-2 flex items-center gap-1.5 text-[10px] leading-relaxed text-muted-foreground">
-            <Moon className="h-3 w-3" /> 到点会自动停掉电台与所有声音。
-          </p>
-        </section>
-
-        {error && <p className="mt-4 text-center text-[11px] text-destructive">{error}</p>}
       </div>
     </div>
   );
