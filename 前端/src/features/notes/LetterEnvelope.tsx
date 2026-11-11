@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
-import { letterParts, meeLetterParts, type LetterTheme } from './LetterArt';
-import { MeeWordmark, StarSprinkles } from './MeeSkin';
+import { letterParts, type LetterTheme } from './LetterArt';
 
 /**
  * 信封零件（2026-10-20 新增）
@@ -16,18 +15,13 @@ import { MeeWordmark, StarSprinkles } from './MeeSkin';
  * 拆封动作 = 封盖翻开 + 信纸升高，两件事一起做才像「拆信」；
  * 只做其中一个都会像「弹出一张图」。
  *
- * 配色沿用 `LetterArt.tsx` 的 `LETTER_THEME_PARTS`（default 奶油手帐 / memorial 玫瑰金 /
+ * 配色沿用 `LetterArt.tsx` 的 `LETTER_THEME_PARTS`（default 米白纸 / memorial 玫瑰金 /
  * night 深蓝星空），新增主题只改那张表。
- *
- * **2026-11-11 奶油手帐换皮**：`default` 主题下不再画火漆、丝带、金边，改成
- * 米白纸面上的空心蓝星星 + 信封正中一行蓝色手写英文（参考 Mee 冬日回信）。
- * 星星分两层铺：封盖一层、前面板一层，所以拆封时封盖那层会跟着翻走，
- * 下半截的星星留在信封上，跟真实拆信一致。纪念日和夜色两套主题保持原样。
  */
 
 /** 火漆印裂开时的柔光色（inline box-shadow 用，跟主题走） */
 const SEAL_GLOW: Record<LetterTheme, string> = {
-  default: 'rgba(91,141,222,0.7)',
+  default: 'rgba(180,85,76,0.85)',
   memorial: 'rgba(201,162,39,0.85)',
   night: 'rgba(127,155,209,0.85)',
 };
@@ -89,7 +83,7 @@ function backOf(theme: LetterTheme): string {
     case 'night':
       return 'bg-gradient-to-t from-[#161d31] to-[#202840]';
     default:
-      return 'bg-gradient-to-t from-[#E9E4D5] to-[#F5F1E6]';
+      return 'bg-gradient-to-t from-[#e8ddc9] to-[#f3ecdd]';
   }
 }
 
@@ -130,10 +124,7 @@ export function EnvelopeArt({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const p = meeLetterParts(theme);
-  /** 整本信统一走奶油手帐皮肤：旧信即使存着纪念日 / 夜色主题，也用同一张米白纸。
-      火漆、丝带两个开关留着，将来要做「经典皮」时不用重写结构。 */
-  const mee = true;
+  const p = letterParts(theme);
 
   return (
     <div
@@ -152,12 +143,9 @@ export function EnvelopeArt({
         data-testid="envelope-body"
         className={cn(
           'absolute inset-0 rounded-[3px] ring-1 ring-inset',
-          // 手帐皮统一米白细边，别让夜色主题的银蓝描边露出来
-          ringOf('default'),
+          ringOf(theme),
           p.envelope,
-          mee
-            ? 'shadow-[0_2px_10px_-8px_rgba(80,70,50,0.35)]'
-            : 'shadow-[0_6px_16px_-6px_rgba(0,0,0,0.55)]',
+          'shadow-[0_6px_16px_-6px_rgba(0,0,0,0.55)]',
         )}
       />
 
@@ -199,25 +187,8 @@ export function EnvelopeArt({
         />
       </svg>
 
-      {/* 奶油手帐：前面板下半截的蓝色手绘星星 + 封着时正中那行手写英文。
-          星星只铺 45% 以下，别盖住信封口露出来的信纸；翻开封盖时另一层会跟着翻走。 */}
-      {mee && (
-        <>
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 top-[45%]">
-            <StarSprinkles preset="envelope" sparse offset={0} />
-          </div>
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-[31%] z-10 flex justify-center transition-opacity duration-500"
-            style={{ opacity: opened ? 0 : 1 }}
-          >
-            <MeeWordmark className="text-[clamp(9px,2.4vw,15px)]" />
-          </div>
-        </>
-      )}
-
-      {/* 丝带：信封下半截那条细带（心动邀约的装饰带）。奶油手帐皮肤不要这条线 */}
-      {ribbon && !mee && (
+      {/* 丝带：信封下半截那条细带（心动邀约的装饰带） */}
+      {ribbon && (
         <span
           aria-hidden
           className={cn('pointer-events-none absolute inset-x-0 bottom-[26%] h-px', ribbonOf(theme))}
@@ -261,13 +232,7 @@ export function EnvelopeArt({
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
-            {/* 封盖上的另一半星星：跟着封盖一起翻，拆开后正面就干净了 */}
-            {mee && (
-              <span aria-hidden className="pointer-events-none absolute inset-0">
-                <StarSprinkles preset="envelope" sparse offset={1} />
-              </span>
-            )}
-            {seal && !mee && (
+            {seal && (
               <EnvelopeSeal
                 theme={theme}
                 cracking={opened}
@@ -282,7 +247,7 @@ export function EnvelopeArt({
           {/* 背面：翻上去之后看到的是纸的背面 */}
           <div
             aria-hidden
-            className={cn('absolute inset-0 [backface-visibility:hidden]', backOf('default'))}
+            className={cn('absolute inset-0 [backface-visibility:hidden]', backOf(theme))}
             style={{ transform: 'rotateX(180deg)' }}
           >
             <svg
@@ -313,7 +278,7 @@ function ringOf(theme: LetterTheme): string {
     case 'night':
       return 'ring-[#8fa6d8]/30';
     default:
-      return 'ring-[#DED8C7]/70';
+      return 'ring-[#c9a227]/30';
   }
 }
 
@@ -325,6 +290,6 @@ function ribbonOf(theme: LetterTheme): string {
     case 'night':
       return 'bg-[#8fa6d8]/25';
     default:
-      return 'bg-[#DED8C7]/60';
+      return 'bg-[#b99a4e]/30';
   }
 }

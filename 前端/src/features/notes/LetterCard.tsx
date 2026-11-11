@@ -2,9 +2,8 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { formatNoteDate, normalizeLetterTheme, type InspirationNote } from './notesData';
-import { meeLetterParts } from './LetterArt';
+import { letterParts } from './LetterArt';
 import { EnvelopeArt } from './LetterEnvelope';
-import { MEE, MeeGrain } from './MeeSkin';
 
 /**
  * 「深夜来信」信封卡（2026-10-20 重做）
@@ -76,7 +75,7 @@ export function DailyLetterCard({
   const mood = useMemo(() => mailMoodTag(note), [note]);
   const time = useMemo(() => formatMailTime(note.createdAt), [note]);
   const theme = normalizeLetterTheme(note.letterTheme);
-  const parts = meeLetterParts(theme);
+  const parts = letterParts(theme);
 
   return (
     <motion.button
@@ -100,25 +99,25 @@ export function DailyLetterCard({
       */}
       <div
         className={cn(
-          'relative overflow-hidden rounded-[18px] border border-[#EAE4D3]',
-          'shadow-[0_2px_12px_-10px_rgba(80,70,50,0.4)] transition-all duration-300',
-          'group-hover:-translate-y-[2px] group-hover:border-[#5B8DDE]/45',
+          'relative overflow-hidden rounded-[16px] border border-border',
+          'bg-card',
+          'shadow-[0_8px_22px_-18px_hsl(var(--shadow-color)/0.28)] transition-all duration-300',
+          'group-hover:-translate-y-[2px] group-hover:border-primary/30',
+          'group-hover:shadow-[0_12px_26px_-18px_hsl(var(--shadow-color)/0.34)]',
         )}
-        style={{ background: MEE.pageWarm }}
       >
-        {/* 纸张颗粒：奶油手帐不用高光线、不用玻璃质感，只留一层极淡的纸纹 */}
-        <MeeGrain />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"
+        />
 
         {/* 顶栏：深夜来信 · 第 N 封 ｜ 未读点 */}
-        <div className="relative z-10 flex items-center justify-between gap-1.5 px-2.5 pt-2.5">
+        <div className="flex items-center justify-between gap-1.5 px-2.5 pt-2.5">
           <span className="flex min-w-0 items-center gap-1">
-            <span className="shrink-0 text-[11px] leading-none" style={{ color: MEE.blue }}>
-              ✦
-            </span>
+            <span className="shrink-0 text-[10px] leading-none">💌</span>
             <span
               data-testid="mail-live-pill"
-              className="truncate font-hand text-[11px] leading-none tracking-[0.02em]"
-              style={{ color: MEE.inkSoft }}
+              className="truncate font-letter text-[10px] leading-none tracking-[0.06em] text-muted-foreground"
             >
               深夜来信{seq ? ` · 第 ${seq} 封` : ''}
             </span>
@@ -127,8 +126,7 @@ export function DailyLetterCard({
             <span
               aria-label="未读"
               data-testid="mail-unread-dot"
-              className="block h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ background: MEE.blue, boxShadow: `0 0 8px ${MEE.blue}` }}
+              className="block h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]"
             />
           )}
         </div>
@@ -136,22 +134,21 @@ export function DailyLetterCard({
         {/* 信封本体：**横版长方形**（5:3），撑满卡片宽度，已读的封盖半掀开
             （卡片里空间小，掀到底会被 overflow 裁掉，所以用 88°）。
             底边留出一点空间给压在上面的日期条。 */}
-        <div className="relative z-10 mt-2 pb-5">
+        <div className="mt-2 pb-5">
           <EnvelopeArt
             theme={theme}
             opened={!unread}
             flapAngle={88}
-            seal={false}
-            ribbon={false}
+            sealClass="h-5 w-5 text-[9px]"
             className="aspect-[5/3] w-full"
           >
-            {/* 信封口里露出的那一小截：首句（手写体，别再用衬线体） */}
+            {/* 信封口里露出的那一小截：首句 */}
             <p
               data-testid="mail-summary"
               className={cn(
-                'px-2 pt-2 font-hand text-[9px] leading-[14px] tracking-[0.02em]',
+                'px-2 pt-2 text-[8px] leading-[13px] tracking-[0.02em]',
                 parts.ink,
-                'opacity-80',
+                'opacity-75',
               )}
             >
               {title}
@@ -164,23 +161,16 @@ export function DailyLetterCard({
           以前放在信封下面，卡片被撑高、信封显得小，下面那条深色还空着像没渲染出来。
           现在浮在信封下沿，用与卡片同色的渐变托底，深浅主题下都读得清。
         */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-1.5 px-2.5 pb-1.5 pt-4"
-          style={{
-            background: `linear-gradient(to top, ${MEE.pageWarm} 0%, rgba(255,253,245,0.9) 55%, rgba(255,253,245,0) 100%)`,
-          }}
-        >
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-1.5 bg-gradient-to-t from-card via-card/85 to-transparent px-2.5 pb-1.5 pt-4">
           <span
             data-testid="mail-time"
-            className="truncate font-hand text-[9px] tabular-nums"
-            style={{ color: MEE.meta }}
+            className="truncate text-[9px] font-light tabular-nums text-muted-foreground"
           >
             {time}
           </span>
           <span
             data-testid="mail-mood"
-            className="shrink-0 truncate rounded-full px-1.5 py-[2px] font-hand text-[8px] tracking-wide"
-            style={{ background: MEE.yellow, color: MEE.ink }}
+            className="shrink-0 truncate rounded-full bg-surface-2 px-1.5 py-[2px] text-[8px] font-light tracking-wide text-muted-foreground"
           >
             {mood}
           </span>
@@ -218,16 +208,10 @@ export function LetterGrid({
     return (
       <div
         data-testid="mail-empty"
-        className="relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-dashed border-[#E4DECC] px-5 py-10 text-center"
-        style={{ background: MEE.pageWarm }}
+        className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-surface-2 px-5 py-10 text-center"
       >
-        <MeeGrain />
-        <span className="relative text-2xl" style={{ color: MEE.blueLight }}>
-          ✦
-        </span>
-        <span className="relative font-hand text-[13px]" style={{ color: MEE.inkSoft }}>
-          {emptyHint}
-        </span>
+        <span className="text-2xl opacity-40">💌</span>
+        <span className="text-[12px] text-muted-foreground">{emptyHint}</span>
       </div>
     );
   }

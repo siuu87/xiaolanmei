@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { useShellStore } from '@/stores/shellStore';
 import { useNotesStore } from './notesStore';
 import { dateKey } from './notesData';
-import { MEE, MeeGrain, MeeWordmark, StarSprinkles } from './MeeSkin';
 
 /** 短日期：2026.10.13 */
 function shortDate(ts: number): string {
@@ -114,35 +113,35 @@ export function LetterInboxCard({
       onPointerUp={onPointerUp}
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden rounded-[18px] border border-[#EAE4D3] p-3.5',
-        'shadow-[0_2px_12px_-10px_rgba(80,70,50,0.4)] transition-colors duration-300',
-        'hover:border-[#5B8DDE]/45',
+        'relative overflow-hidden rounded-[18px] border border-border bg-card p-3.5 text-card-foreground',
+        'shadow-[0_8px_24px_-18px_hsl(var(--shadow-color)/0.28)] transition-colors duration-300',
+        'hover:border-primary/30',
         className,
       )}
-      style={{ background: MEE.pageWarm, color: MEE.ink }}
     >
-      {/* 奶油纸纹 + 淡蓝小星星：收信匣也跟着信件一起换成手帐纸 */}
-      <MeeGrain />
-      <StarSprinkles preset="page" className="opacity-60" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"
+      />
 
       {/* 顶栏（仅完整版）：左「红点 + 第 N 封」｜右「全部来信」。
           紧凑版是「一封信」样式：没有这一栏，邮票/邮戳替代红点与入口（见下方 compact 分支） */}
       {!compact && (
-        <div className="relative z-10 flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <span
               aria-label={dotOn ? '今日来信已到' : '今日暂无新信'}
               data-testid="mail-dot"
-              className="block h-[7px] w-[7px] shrink-0 rounded-full transition-all duration-500"
-              style={{
-                background: dotOn ? MEE.blue : '#DED8C7',
-                boxShadow: dotOn ? `0 0 8px ${MEE.blue}` : 'none',
-              }}
+              className={cn(
+                'block h-[7px] w-[7px] shrink-0 rounded-full transition-all duration-500',
+                dotOn
+                  ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]'
+                  : 'bg-border',
+              )}
             />
             <span
               data-testid="mail-seq"
-              className="font-hand text-[13px] leading-none tracking-[0.02em]"
-              style={{ color: MEE.ink }}
+              className="font-letter text-[12px] leading-none tracking-[0.08em] text-foreground"
             >
               第 {seq} 封
             </span>
@@ -155,8 +154,7 @@ export function LetterInboxCard({
             onClick={goAll}
             aria-label="查看全部来信"
             title="全部来信"
-            className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition hover:bg-[#F4F0E2]"
-            style={{ color: MEE.blue }}
+            className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <Mail className="h-4 w-4" />
           </button>
@@ -167,8 +165,7 @@ export function LetterInboxCard({
       {!compact && (
         <p
           data-testid="mail-date"
-          className="relative z-10 mt-2.5 font-hand text-[11px] tabular-nums"
-          style={{ color: MEE.meta }}
+          className="mt-2.5 text-[11px] font-light tabular-nums text-muted-foreground"
         >
           {shortDate(stamp)}
         </p>
@@ -184,7 +181,7 @@ export function LetterInboxCard({
             aria-hidden
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
-            className="pointer-events-none absolute inset-0 h-full w-full text-[#D8D2C2]"
+            className="pointer-events-none absolute inset-0 h-full w-full text-border/70"
           >
             <path
               d="M0 0 L50 52 L100 0"
@@ -194,9 +191,6 @@ export function LetterInboxCard({
               vectorEffect="non-scaling-stroke"
             />
           </svg>
-
-          {/* 信封正中那行蓝色手写英文（Mee 同款），压在盖线上方、避开 V 尖的爱心按键 */}
-          <MeeWordmark className="absolute left-1/2 top-[16%] -translate-x-1/2 text-[12px] opacity-80" />
 
           {/* 爱心按键（2026-11-04 用户定）：压在信封盖线 V 形交点上（火漆封印位）＝全部来信入口。
               **有新信（今天的、还没看过）＝实心爱心；看过 / 没信＝空心爱心**。
@@ -209,14 +203,14 @@ export function LetterInboxCard({
             aria-label={dotOn ? '今日有新信，查看全部来信' : '查看全部来信'}
             title="全部来信"
             className={cn(
-              'absolute left-1/2 top-[52%] z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-[#FFFDF5] shadow-[0_2px_8px_-5px_rgba(80,70,50,0.45)] transition-colors duration-300',
-              dotOn ? 'border-[#5B8DDE]/70' : 'border-[#E4DECC]',
+              'absolute left-1/2 top-[52%] flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border shadow-[0_4px_12px_-6px_hsl(var(--shadow-color)/0.4)] transition-colors duration-300',
+              dotOn ? 'border-pink-400/70 bg-pink-400/15' : 'border-border bg-card',
             )}
           >
             <Heart
               className={cn(
                 'h-4 w-4 transition-colors duration-300',
-                dotOn ? 'fill-[#5B8DDE] text-[#5B8DDE]' : 'text-[#A9C6EE]',
+                dotOn ? 'fill-pink-400 text-pink-400' : 'text-pink-400/60',
               )}
             />
           </button>
@@ -227,12 +221,11 @@ export function LetterInboxCard({
               卡片不再随来信字数伸缩 —— 换信时上方那排切换键就不会上下跳。
               正文依旧默认全展开（没有点击展开、没有 line-clamp、没有渐隐），
               超出 4 行的长信在块内滚动，内容不丢；没有信时这里放居中的放大信封。 */}
-          <div className="relative z-10 mt-1.5 h-[84px]" data-testid="mail-body-box">
+          <div className="mt-1.5 h-[84px]" data-testid="mail-body-box">
             {note ? (
               <p
                 data-testid="mail-body"
-                className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 font-hand text-[13px] leading-[22px] tracking-[0.01em] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                style={{ color: MEE.ink }}
+                className="h-full overflow-y-auto overscroll-contain whitespace-pre-wrap pr-1 text-[13px] leading-[21px] tracking-[0.01em] text-card-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {note.content}
               </p>
@@ -244,11 +237,8 @@ export function LetterInboxCard({
                 aria-label="还没有来信，去全部来信看看"
                 className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5"
               >
-                <Mail
-                  className="h-9 w-9 transition-colors duration-300"
-                  style={{ color: MEE.blueLight }}
-                />
-                <span className="font-hand text-[11px] tracking-wide" style={{ color: MEE.meta }}>
+                <Mail className="h-9 w-9 text-muted-foreground/50 transition-colors duration-300 hover:text-muted-foreground" />
+                <span className="text-[10px] font-light tracking-wide text-muted-foreground">
                   今天还没有信
                 </span>
               </button>
@@ -258,11 +248,10 @@ export function LetterInboxCard({
           {/* 换信：固定在**右下角**（计数 + ‹ ›，多于一封才出现）。
               正文区是固定高度，所以这一条不会随来信长短上下跳。 */}
           {list.length > 1 && (
-            <div className="relative z-10 mt-2 flex items-center justify-end gap-1" data-no-flip>
+            <div className="mt-2 flex items-center justify-end gap-1" data-no-flip>
               <span
                 data-testid="mail-counter"
-                className="mr-0.5 font-hand text-[10px] tabular-nums tracking-wider"
-                style={{ color: MEE.meta }}
+                className="mr-0.5 text-[9px] font-light tabular-nums tracking-wider text-muted-foreground"
               >
                 {String(i + 1).padStart(2, '0')} / {String(list.length).padStart(2, '0')}
               </span>
@@ -272,8 +261,7 @@ export function LetterInboxCard({
                 aria-label="上一封"
                 disabled={i === 0}
                 onClick={() => setIndex(Math.max(0, i - 1))}
-                className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-[#F4F0E2] disabled:opacity-30 disabled:hover:bg-transparent"
-                style={{ color: MEE.blue }}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -283,8 +271,7 @@ export function LetterInboxCard({
                 aria-label="下一封"
                 disabled={i === list.length - 1}
                 onClick={() => setIndex(Math.min(list.length - 1, i + 1))}
-                className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-[#F4F0E2] disabled:opacity-30 disabled:hover:bg-transparent"
-                style={{ color: MEE.blue }}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

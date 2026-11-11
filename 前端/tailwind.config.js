@@ -128,12 +128,6 @@ export default {
         display: ['Inter', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
         // 信箱「深夜来信 Live」卡片专用：复古优雅的衬线体
         letter: ['"Averia Serif Libre"', '"Playfair Display"', 'Georgia', 'serif'],
-        // 奶油手帐皮肤（深夜来信）：手写正文。断网时退回系统楷体而不是无衬线
-        hand: ['"ZCOOL KuaiLe"', '"LXGW WenKai"', '"霞鹜文楷"', '"Kaiti SC"', 'STKaiti', 'KaiTi', 'cursive'],
-        // 手帐标题 / 落款：更细、更飘一点的行书
-        'hand-title': ['"Long Cang"', '"LXGW WenKai"', '"Kaiti SC"', 'STKaiti', 'cursive'],
-        // 英文手写花体（信封正中那行 Blueberry, Know you）
-        script: ['Caveat', '"Segoe Script"', '"Bradley Hand"', 'cursive'],
       },
       boxShadow: {
         paper: '0 1px 0 hsl(0 0% 100% / 0.7) inset, 0 8px 24px -20px hsl(var(--shadow-color) / 0.26)',
