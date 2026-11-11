@@ -28,7 +28,7 @@ export interface InspirationNote {
 /**
  * 署名：信纸右下角的作者行。
  * 2026-11-11 起信件改成「一封慢慢读懂你的回信」，正文自带落款，
- * 这里不能再写「AI灵感撰写」——又出戏又和落款重复（见 LetterReaderLayer）。
+ * 这里不能再写「AI灵感撰写」——又出戏又和落款重复（见 LetterSheetModal）。
  */
 export const NOTE_AUTHOR = '小蓝莓';
 

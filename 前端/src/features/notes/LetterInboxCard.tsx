@@ -21,7 +21,7 @@ function shortDate(ts: number): string {
  * - 左上角「红点 + 第 N 封」：红点 = **今日的信已经到了**，点卡片看过后熄灭
  *   （记在 localStorage 的 readIds 里，只跟这台设备有关）。
  * - 右上角信封 → 收录所有信件的页面（/notes）。
- * - **不再需要点开才看全文**：正文默认全展开。
+ * - **点卡片 = 弹出一封信**（固定尺寸信纸弹窗），正文默认也在卡片里全展开。
  * - 换信控件（计数 + ‹ ›）固定在卡片**右下角**，正文区高度写死，
  *   所以它不会随来信长短上下跳；卡片上左右滑也能换信。
  *
@@ -45,6 +45,7 @@ export function LetterInboxCard({
   const notes = useNotesStore((s) => s.notes);
   const readIds = useNotesStore((s) => s.readIds);
   const markRead = useNotesStore((s) => s.markRead);
+  const openLetter = useNotesStore((s) => s.openLetter);
 
   const [index, setIndex] = useState(0);
 
@@ -86,11 +87,15 @@ export function LetterInboxCard({
     }
   };
 
-  // 点卡片 = 看过这封信 → 红点熄灭
+  // 点卡片 = 弹出这封信（同时标已读 → 红点熄灭）。
+  // 左右滑换信 / 右上「全部来信」/ 右下翻页键都带 data-no-flip，不会误弹窗。
   const onClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-no-flip]')) return;
     if (Date.now() - lastSwipeAt.current < SWIPE_CLICK_GRACE_MS) return;
-    if (note) markRead(note.id);
+    if (note) {
+      markRead(note.id);
+      openLetter(note.id);
+    }
   };
 
   const goAll = () => {
@@ -194,7 +199,7 @@ export function LetterInboxCard({
 
           {/* 爱心按键（2026-11-04 用户定）：压在信封盖线 V 形交点上（火漆封印位）＝全部来信入口。
               **有新信（今天的、还没看过）＝实心爱心；看过 / 没信＝空心爱心**。
-              翻信左右滑手势保留（不可见），点卡片仍 = 标记已读。 */}
+              翻信左右滑手势保留（不可见），点卡片 = 弹出这封信。 */}
           <button
             type="button"
             data-testid="mail-all"

@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
 import { ChatPage } from '@/features/chat/ChatPage';
 import { Drawer } from '@/features/shell/Drawer';
-import { LetterReaderLayer } from '@/features/notes/LetterReaderLayer';
+import { LetterSheetModal } from '@/features/notes/LetterSheetModal';
+import { useNotesStore } from '@/features/notes/notesStore';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
 import { BedtimeNudge } from '@/features/shell/BedtimeNudge';
 import { CallRingingLayer } from '@/features/chat/CallRingingLayer';
@@ -45,16 +46,29 @@ export function AppLayout() {
   const onChat = location.pathname === '/chat';
   // 整页沉浸替换（不挂聊天底座）
   const fullReplace = location.pathname.startsWith('/tavern');
-  // 一封来信的阅读页：路由上渲染空，实际由下面这层叠在侧边栏之上
-  const letterId = location.pathname.startsWith('/letter/')
+  // 一封来信的阅读页：路由上渲染空，实际由下面这层叠在侧边栏之上。
+  // 两条来源：/letter/:id 直达链接，或点信封卡 / 首页收信匣（store 里记 id）。
+  const routeLetterId = location.pathname.startsWith('/letter/')
     ? decodeURIComponent(location.pathname.slice('/letter/'.length))
     : null;
+  const storeLetterId = useNotesStore((s) => s.openLetterId);
+  const dismissLetter = useNotesStore((s) => s.dismissLetter);
+  const letterId = routeLetterId ?? storeLetterId;
 
-  // 关信件页 = 原路返回；直达进来没有上一条历史，就退到信箱列表
+  // 关信件页 = 先清 store；若是路由直达，再原路返回（没上一条历史就退到信箱列表）
   const closeLetter = () => {
-    if (location.key && location.key !== 'default') navigate(-1);
-    else navigate('/notes');
+    dismissLetter();
+    if (routeLetterId) {
+      if (location.key && location.key !== 'default') navigate(-1);
+      else navigate('/notes');
+    }
   };
+
+  // 路由都换了就别把上一页点开的信继续挂着
+  useEffect(() => {
+    if (storeLetterId) dismissLetter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   useEdgeSwipe(openDrawer, !immersive && !fullReplace);
 
@@ -169,10 +183,10 @@ export function AppLayout() {
       {/* 呼叫中 / 来电弹窗：他会主动打过来，所以挂在布局层，任何页面都能弹 */}
       <CallRingingLayer />
 
-      {/* 一封来信的阅读页：叠在抽屉之上，点空白收起。
+      {/* 一封信的弹窗：整屏纯色不透明、固定尺寸信纸，叠在抽屉之上，点空白收起。
           挂在这里而不是 Outlet，是为了让 AnimatePresence 有机会播收起动画。 */}
       <AnimatePresence>
-        {letterId && <LetterReaderLayer key={letterId} id={letterId} onClose={closeLetter} />}
+        {letterId && <LetterSheetModal key={letterId} id={letterId} onClose={closeLetter} />}
       </AnimatePresence>
     </div>
   );

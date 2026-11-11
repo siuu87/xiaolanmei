@@ -7,11 +7,15 @@ interface NotesState {
   notes: InspirationNote[]; // 全部来信，新→旧
   loaded: boolean;
   readIds: string[]; // 已拆开读过的（全部页里显示成展开的信纸）
+  /** 当前弹出的信：点信封卡 / 点首页收信匣都置这里，由 AppLayout 统一挂弹窗 */
+  openLetterId: string | null;
   load: () => Promise<void>;
   /** 手动补一封（导入/兜底用）；`letterTheme` 不传即为 default */
   addNote: (content: string, letterTheme?: LetterTheme) => Promise<void>;
   removeNote: (id: string) => void;
   markRead: (id: string) => void;
+  openLetter: (id: string) => void;
+  dismissLetter: () => void;
 }
 
 /** 已读只跟这台设备有关，不值得上后端——localStorage 够了 */
@@ -46,6 +50,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   loaded: false,
   readIds: loadReadIds(),
+  openLetterId: null,
 
   load: async () => {
     try {
@@ -84,6 +89,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set({ readIds: next });
     saveReadIds(next);
   },
+
+  openLetter: (id) => set({ openLetterId: id }),
+  dismissLetter: () => set({ openLetterId: null }),
 }));
 
 /**

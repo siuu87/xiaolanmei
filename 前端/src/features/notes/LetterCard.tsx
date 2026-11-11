@@ -17,7 +17,7 @@ import { EnvelopeArt } from './LetterEnvelope';
  * - 信封上只留最少的字：顶部「深夜来信 · 第 N 封」，下面日期与心境标签；
  * - 火漆印跟着 `letter_theme` 换色（素雅暗红 / 纪念日金箔 / 夜色银蓝）。
  *
- * 点整张卡 → 弹窗（`LetterReaderLayer`），不再跳整页路由。
+ * 点整张卡 → 弹窗（`LetterSheetModal`，固定尺寸信纸），不再跳整页路由。
  */
 
 /** 收信时间：2026.10.13 01:20 */
