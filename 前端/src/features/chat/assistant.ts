@@ -146,7 +146,15 @@ export function matchLocalIntent(raw: string): string | null {
   if (diary) {
     const content = clean(diary[1]);
     if (content) {
-      useDiaryStore.getState().addEntry({ date: todayISODate(), author: 'partner', content });
+      // AI 代 TA 写 → 归入「TA 的日记」本
+      const { books } = useDiaryStore.getState();
+      const partnerBook = books.find((b) => b.kind === 'partner');
+      useDiaryStore.getState().addEntry({
+        date: todayISODate(),
+        author: 'partner',
+        content,
+        bookId: partnerBook?.id ?? 'book-partner',
+      });
       return '已记进今天的日记 📔';
     }
     return '想记什么呀？说「记日记：今天……」我就帮你写进去。';

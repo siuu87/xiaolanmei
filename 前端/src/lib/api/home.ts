@@ -2,7 +2,7 @@ import { request } from './conversations';
 import type { Todo } from '@/features/home/todoStore';
 import type { MemorialDay } from '@/features/home/memorialStore';
 import type { PeriodRecord, PeriodSettings } from '@/features/home/periodStore';
-import type { DiaryEntry } from '@/features/diary/diaryData';
+import type { DiaryEntry, DiaryBook } from '@/features/diary/diaryData';
 import type { InspirationNote } from '@/features/notes/notesData';
 import type { Course } from '@/features/schedule/timetableStore';
 
@@ -10,8 +10,19 @@ import type { Course } from '@/features/schedule/timetableStore';
 export const listDiaries = () => request<DiaryEntry[]>('/api/diaries');
 export const createDiary = (entry: DiaryEntry) =>
   request<{ id: string }>('/api/diaries', { method: 'POST', body: JSON.stringify(entry) });
+export const patchDiary = (id: string, patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId'>>) =>
+  request<{ ok: true }>(`/api/diaries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiary = (id: string) =>
   request<{ ok: true }>(`/api/diaries/${id}`, { method: 'DELETE' });
+
+// ---- 日记本（封面墙）----
+export const listDiaryBooks = () => request<DiaryBook[]>('/api/diary/books');
+export const createDiaryBook = (book: Omit<DiaryBook, 'id' | 'sortOrder'>) =>
+  request<{ id: string }>('/api/diary/books', { method: 'POST', body: JSON.stringify(book) });
+export const patchDiaryBook = (id: string, patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover'>>) =>
+  request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+export const deleteDiaryBook = (id: string) =>
+  request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'DELETE' });
 
 // ---- 待办 ----
 export const listTodos = () => request<Todo[]>('/api/todos');

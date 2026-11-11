@@ -13,6 +13,7 @@ import { ChevronLeft, X } from 'lucide-react';
 import { useShellStore } from '@/stores/shellStore';
 import { AppearanceSection } from '@/features/settings/AppearanceSection';
 import { ProfileHeader, DailyBoard, ModuleCards, StickyFooter } from './DrawerSections';
+import { LifeCard } from '@/features/home/LifeCard';
 import { useSwipeToClose } from './useEdgeSwipe';
 
 export function Drawer() {
@@ -79,6 +80,7 @@ export function Drawer() {
                 <ProfileHeader />
                 <DailyBoard />
                 <ModuleCards />
+                <LifeCard />
               </div>
 
               {/* 底部固定快捷栏 */}

@@ -37,6 +37,7 @@ import { TodoCard } from '@/features/home/TodoCard';
 import { MoodArcRow } from '@/features/home/MoodCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
+import { CourseCard } from '@/features/home/CourseCard';
 import { LOVE_START, loveDays } from './loveDays';
 import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
@@ -144,6 +145,8 @@ export function DailyBoard() {
             </div>
           </div>
         </div>
+        {/* 课程卡（2026-11-11 补齐：home 有、抽屉原先缺） */}
+        <CourseCard />
       </div>
     </section>
   );
