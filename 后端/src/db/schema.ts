@@ -209,12 +209,25 @@ export const agentTasks = sqliteTable('agent_tasks', {
   deletedAt: integer('deleted_at'),
 });
 
-/** 日记（阶段 7 收尾）：情侣双方各自的日记，date 为 YYYY-MM-DD */
+/** 日记本（2026-11-11 Paper 式改版）：一本 = 一个封面，可建多本。kind = me 我的日记 | partner TA的日记 | couple 情侣日记 */
+export const diaryBooks = sqliteTable('diary_books', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  kind: text('kind').notNull().default('me'), // me | partner | couple
+  cover: text('cover').notNull().default('#7c5cff'), // 封面主色
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/** 日记（阶段 7 收尾）：情侣双方各自的日记，date 为 YYYY-MM-DD；bookId 归属日记本（空则归「我的日记」） */
 export const diaries = sqliteTable('diaries', {
   id: text('id').primaryKey(),
   date: text('date').notNull(),
   author: text('author').notNull(), // me | partner
   content: text('content').notNull(),
+  bookId: text('book_id').notNull().default(''),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

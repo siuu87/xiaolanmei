@@ -34,6 +34,7 @@ pai-voice/.venv/
 # 过程产物：会话截图 / 预览拼图，只做本地自检，不入库
 /previews/
 /screenshots/
+/verify/
 
 # 部署凭据与产物（绝不入库，避免泄露私钥 / 仓库膨胀）
 .deploy_key*

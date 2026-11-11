@@ -251,11 +251,23 @@ CREATE TABLE IF NOT EXISTS diaries (
   date TEXT NOT NULL,
   author TEXT NOT NULL,
   content TEXT NOT NULL,
+  book_id TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_diaries_date ON diaries(date);
+
+CREATE TABLE IF NOT EXISTS diary_books (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'me',
+  cover TEXT NOT NULL DEFAULT '#7c5cff',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
 
 CREATE TABLE IF NOT EXISTS todos (
   id TEXT PRIMARY KEY,
@@ -832,6 +844,35 @@ export function initDatabase(): void {
   const noteCols = sqlite.prepare(`PRAGMA table_info(notes)`).all() as { name: string }[];
   if (!noteCols.some((c) => c.name === 'letter_theme')) {
     sqlite.exec(`ALTER TABLE notes ADD COLUMN letter_theme TEXT NOT NULL DEFAULT 'default'`);
+  }
+
+  /**
+   * 幂等迁移（2026-11-11 Paper 式日记本）：
+   * - diaries 补 `book_id`（老日记归「我的日记」）；
+   * - 种子三本默认本：我的日记 / TA 的日记 / 情侣日记（只在表为空时种）。
+   */
+  const diaryCols = sqlite.prepare(`PRAGMA table_info(diaries)`).all() as { name: string }[];
+  if (!diaryCols.some((c) => c.name === 'book_id')) {
+    sqlite.exec(`ALTER TABLE diaries ADD COLUMN book_id TEXT NOT NULL DEFAULT ''`);
+  }
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_diaries_book ON diaries(book_id)`);
+  const bookCount = sqlite.prepare(`SELECT COUNT(*) AS n FROM diary_books WHERE deleted_at IS NULL`).get() as { n: number };
+  if (bookCount.n === 0) {
+    const ts = Date.now();
+    const seeds: [string, string, string, string][] = [
+      ['book-me', '我的日记', 'me', '#7c5cff'],
+      ['book-partner', 'TA 的日记', 'partner', '#f472b6'],
+      ['book-couple', '情侣日记', 'couple', '#ffb347'],
+    ];
+    seeds.forEach(([id, name, kind, cover], i) => {
+      sqlite
+        .prepare(
+          `INSERT INTO diary_books (id, name, kind, cover, sort_order, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET deleted_at = NULL`,
+        )
+        .run(id, name, kind, cover, i, ts, ts);
+    });
   }
 
   /**
