@@ -4,7 +4,6 @@ import { AvatarContent } from '@/components/AvatarContent';
 import { MoodArcRow } from './MoodCard';
 import { CalendarCard } from './CalendarCard';
 import { TodoCard } from './TodoCard';
-import { CourseCard } from './CourseCard';
 import { TokenCard } from './TokenCard';
 import { useProfileStore } from '@/stores/profileStore';
 import { ModuleCards } from '@/features/shell/DrawerSections';
@@ -140,8 +139,6 @@ export function HomePage() {
               </div>
             </div>
           </div>
-
-          <CourseCard />
 
           {/* 模块区：together / 酒馆 / 生活小趣味，移动端与桌面端同一份入口 */}
           <ModuleCards />

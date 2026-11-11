@@ -17,6 +17,7 @@ import {
   Star,
   Trash2,
   Brain,
+  Bot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,6 +35,7 @@ import { SkillsPanel } from '@/features/skills/SkillsPanel';
 import { StickerSettings } from './StickerSettings';
 import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
+import { OpenClawSection } from './OpenClawSection';
 
 interface ModelFormState {
   temperature: string;
@@ -552,6 +554,20 @@ export function SettingsPage() {
             <div className="border-t border-border pt-3">
               <SkillsPanel />
             </div>
+          </div>
+        )}
+
+        <IOSSettingItem
+          icon={<Bot className="h-4 w-4" />}
+          iconBg="bg-teal-400"
+          title="OpenClaw 微信接入"
+          subtitle="把龙虾接进微信，在微信里跟 AI 智能体聊天"
+          showChevron
+          onClick={() => toggle('openclaw')}
+        />
+        {expanded === 'openclaw' && (
+          <div className="bg-muted/60 px-3 py-3">
+            <OpenClawSection />
           </div>
         )}
       </IOSSettingGroup>

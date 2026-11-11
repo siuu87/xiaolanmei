@@ -4,6 +4,24 @@
 
 ## 2026-11-11
 
+### OpenClaw 微信接入
+
+- 设置 → AI 伴侣 新增「OpenClaw 微信接入」入口（展开式面板）。
+  三步引导：① 微信里开启 ClawBot 插件（设置 → 插件）→ ② 终端跑
+  `npx -y @tencent-weixin/openclaw-weixin-cli@latest install`（面板内一键复制）→ ③ 扫码绑定。
+  底部附 Gateway 状态说明。图标用 Bot（lucide-react 没有 Lobster）。
+
+### 课程卡移出首页与抽屉（AI 仍知道课表）
+
+- 首页 `HomePage` 与抽屉 `DailyBoard` 的 `CourseCard` 移除，课表不再在侧面展示。
+  课程数据仍在后端 `courses` 表 + `/api/courses` + `/api/timetable/config`，
+  AI 通过 `save_courses` 工具（`tools/registry.ts`）感知用户要上什么课。
+
+### 游戏屋归入「生活小趣味」分组
+
+- 抽屉模块区「游戏屋」独立分组移除，游戏屋入口并入「生活小趣味」分组（日记本之后）。
+  首页模块卡同步（`ModuleCards` 共用同一 `MODULE_GROUPS`，一处改动两端生效）。
+
 ### 日记本改造：Paper 式翻页本（多本 + 封面墙 + 全屏阅读）
 
 用户原话：「你倒是给我一个产物啊……仿照 paper 去做那种翻页，翻开直接到一边进行记录，单点日记本也能进去，

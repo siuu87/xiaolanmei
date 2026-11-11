@@ -38,7 +38,6 @@ import { TodoCard } from '@/features/home/TodoCard';
 import { MoodArcRow } from '@/features/home/MoodCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
-import { CourseCard } from '@/features/home/CourseCard';
 import { LOVE_START, loveDays } from './loveDays';
 import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
@@ -146,8 +145,6 @@ export function DailyBoard() {
             </div>
           </div>
         </div>
-        {/* 课程卡（2026-11-11 补齐：home 有、抽屉原先缺） */}
-        <CourseCard />
       </div>
     </section>
   );
@@ -204,13 +201,6 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { to: '/schedule', label: '课程表', icon: GraduationCap },
       { to: '/gifts', label: '礼物盒', icon: Gift },
       { to: '/diary', label: '日记本', icon: NotebookPen },
-    ],
-  },
-  {
-    title: '游戏屋',
-    icon: Gamepad2,
-    // 与首页 GamesPage 卡片墙同款入口：直接进 /games 挑游戏
-    entries: [
       { to: '/games', label: '游戏屋', hint: '和 AI 一起玩', icon: Gamepad2 },
     ],
   },
