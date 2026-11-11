@@ -1,6 +1,26 @@
+/* 奶油手帐皮肤（深夜来信）：中文细手写 + 英文花体，全部 font-display:swap，
+   断网时自动退回系统楷体，不会白屏也不会阻塞渲染。@import 必须在 @tailwind 之前。 */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Long+Cang&family=ZCOOL+KuaiLe&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 纸张颗粒：极淡点阵，模拟米白纸的纤维。铺在纯色底上，不用图片、离线也有质感。 */
+.mee-grain {
+  background-image: radial-gradient(rgba(96, 86, 62, 0.07) 0.6px, transparent 0.6px);
+  background-size: 5px 5px;
+}
+
+/* 信箱整页：只在 /notes 这一页局部覆盖页面 token，PageShell 的根节点和吸顶 header
+   会一起变成奶油米白，不用改公共外壳、也不会影响别的二级页。 */
+.mee-mailbox {
+  --page-bg: 45 33% 96%;
+  --page-line: 43 24% 88%;
+}
+.mee-mailbox .page-wash {
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 247, 214, 0.5), transparent 70%);
+}
 
 /* 数字专用：所有 0-9 用飘逸的 Playfair Display 衬线数字（复用 Google 已加载的同一份字体文件） */
 @font-face {

@@ -5,8 +5,9 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotesStore } from './notesStore';
 import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme } from './notesData';
-import { letterParts } from './LetterArt';
+import { meeLetterParts } from './LetterArt';
 import { EnvelopeArt } from './LetterEnvelope';
+import { MEE, MeeGrain, MeeRibbon, StarSprinkles } from './MeeSkin';
 
 /**
  * 拆信弹窗（2026-10-20 重做）
@@ -60,7 +61,7 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
 
   const note = notes.find((n) => n.id === id) ?? null;
   const theme = normalizeLetterTheme(note?.letterTheme);
-  const parts = letterParts(theme);
+  const parts = meeLetterParts(theme);
   // 长回信正文自带「—— 小蓝莓」落款，右下角就别再印一次名字了，改成邮戳式的小标签
   const hasSignature = /^\s*[—–－-]{1,2}\s*.{1,12}\s*$/m.test(note?.content ?? '');
 
@@ -71,7 +72,8 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
       data-letter-theme={theme}
       data-opened={opened ? '1' : '0'}
     >
-      {/* 舞台：纯色不透明 token 底（不是为了透出后面，是为了让信封有对比） */}
+      {/* 舞台：一整张奶油米白纸（**纯色不透明**，项目硬规矩）。
+          纸纹和淡蓝手绘星星只是画在纸上的装饰，不是半透明遮罩，不会透出底下的聊天。 */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -79,16 +81,21 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
         transition={{ duration: 0.18 }}
         onClick={onClose}
         data-testid="letter-page-mask"
-        className="absolute inset-0 bg-page-bg"
-      />
+        className="absolute inset-0"
+        style={{ background: MEE.page }}
+      >
+        <MeeGrain />
+        <StarSprinkles preset="page" />
+      </motion.div>
 
-      {/* 右上角关闭 */}
+      {/* 右上角关闭：白色圆片 + 蓝字，像手帐上贴的一枚圆贴纸 */}
       <button
         type="button"
         onClick={onClose}
         aria-label="收起这封信"
         data-testid="letter-page-close"
-        className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground transition hover:bg-surface-2 hover:text-foreground active:scale-95"
+        className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-[0_2px_8px_-4px_rgba(80,70,50,0.45)] transition hover:bg-[#FFFDF5] active:scale-95"
+        style={{ color: MEE.blue }}
       >
         <X size={16} />
       </button>
@@ -111,7 +118,8 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
           <EnvelopeArt
             theme={theme}
             opened={opened}
-            sealClass="h-6 w-6 text-[11px]"
+            seal={false}
+            ribbon={false}
             className="aspect-[5/3] w-full"
           />
         </motion.div>
@@ -132,18 +140,36 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
               transition={{ type: 'spring', stiffness: 190, damping: 26, mass: 0.9, delay: 0.18 }}
               style={{ transformOrigin: 'bottom center' }}
               className={cn(
-                'relative z-10 mb-[72px] max-h-[82vh] overflow-y-auto rounded-[5px] px-7 py-9 ring-1 ring-black/5',
-                'shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
+                'relative z-10 mb-[72px] max-h-[82vh] overflow-y-auto rounded-[3px] border border-[#EDE7D7] px-7 py-8',
+                'shadow-[0_4px_18px_-14px_rgba(80,70,50,0.5)]',
+                'font-hand',
                 parts.paper,
                 parts.ink,
               )}
             >
-              <p className="whitespace-pre-wrap break-words text-[14px] leading-[26px]">{note.content}</p>
-              <div className="mt-6 flex flex-col items-end gap-0.5">
-                <span className={cn('text-[11px]', parts.meta)}>
+              {/* 淡蓝大引号：手帐信纸的起手式 */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-4 top-1 select-none text-[40px] leading-none"
+                style={{ color: MEE.blueLight }}
+              >
+                “
+              </span>
+
+              {/* 奶油黄抬头药丸，跟 Mee 那封「一封来自 Mee 的信」同一个位置 */}
+              <div className="relative mb-5 flex justify-end pt-3">
+                <MeeRibbon />
+              </div>
+
+              <p className="whitespace-pre-wrap break-words text-[15px] leading-[30px] tracking-[0.01em]">
+                {note.content}
+              </p>
+
+              <div className="mt-7 flex flex-col items-end gap-0.5">
+                <span className={cn('font-hand text-[11px]', parts.meta)}>
                   {formatNoteDate(note.createdAt)}
                 </span>
-                <span className={cn('text-[11px] opacity-80', parts.meta)}>
+                <span className={cn('font-hand-title text-[14px] opacity-80', parts.meta)}>
                   {hasSignature ? '深夜来信' : NOTE_AUTHOR}
                 </span>
               </div>
@@ -155,8 +181,8 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
           <div
             data-testid="letter-paper"
             className={cn(
-              'relative z-10 flex h-32 items-center justify-center rounded-[4px] px-5',
-              'text-[12px] shadow-[0_10px_30px_-20px_hsl(var(--shadow-color)/0.3)]',
+              'relative z-10 flex h-32 items-center justify-center rounded-[3px] border border-[#EDE7D7] px-5',
+              'font-hand text-[13px] shadow-[0_4px_18px_-14px_rgba(80,70,50,0.5)]',
               parts.paper,
               parts.meta,
             )}
@@ -166,8 +192,11 @@ export function LetterReaderLayer({ id, onClose }: { id: string; onClose: () => 
         )}
       </div>
 
-      <span className="pointer-events-none absolute bottom-6 left-0 right-0 text-center text-[10px] text-muted-foreground">
-        轻点空白处收起
+      <span
+        className="pointer-events-none absolute bottom-6 left-0 right-0 z-10 text-center font-hand text-[12px] tracking-wide"
+        style={{ color: MEE.blue }}
+      >
+        轻点空白处收起 →
       </span>
     </div>,
     document.body,

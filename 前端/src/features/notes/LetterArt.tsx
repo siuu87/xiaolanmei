@@ -6,7 +6,8 @@ import type { LetterTheme } from './notesData';
  *
  * 2026-10-18 新增**信封主题（letter_theme）**：同一套零件按主题换配色，
  * 前端信箱按 `note.letterTheme` 选一套渲染，视觉与数据解耦、新增主题只改这张表。
- * - `default`  极简素雅：米白纸 + 浅褐信封 + 暗红火漆
+ * - `default`  **奶油手帐（2026-11-11 换皮）**：奶油米白纸 + 灰米白信封 + 蓝色手绘星星。
+ *   参考 Mee 冬日回信，去掉了暗红火漆 / 金边 / 丝带，见 `MeeSkin.tsx`。
  * - `memorial` 纪念日：暖玫瑰金 + 金箔火漆
  * - `night`    深色磨砂星空：深蓝紫纸 + 银蓝火漆（注意墨色要反过来变浅）
  *
@@ -45,19 +46,20 @@ export interface LetterThemeParts {
 
 export const LETTER_THEME_PARTS: Record<LetterTheme, LetterThemeParts> = {
   default: {
-    paper: 'bg-gradient-to-b from-[#fbf7ef] to-[#f1e9d7]',
-    envelope: 'bg-gradient-to-b from-[#efe6d5] to-[#e0d5be]',
-    flapFill: '#dcd0b9',
-    flapStroke: '#c9bca2',
-    seal: 'bg-gradient-to-br from-[#b4554c] to-[#8d3b34] text-white/95',
-    sealGlow: 'shadow-[0_0_12px_-2px_rgba(180,85,76,0.7)]',
-    ink: 'text-[#4a4034]',
-    meta: 'text-[#8a7f6d]',
-    cover: 'bg-gradient-to-b from-[#efe7d8] via-[#e5dac6] to-[#d9cdb6]',
-    coverFade: 'bg-gradient-to-t from-[#d9cdb6] to-transparent',
-    moon: 'bg-gradient-to-br from-[#fffaf0] to-[#efe0c4] opacity-80',
-    moonGlow: 'shadow-[0_0_18px_4px_rgba(239,224,196,0.28)]',
-    star: 'bg-[#8a7f6d]/40',
+    paper: 'bg-gradient-to-b from-[#FCFAF3] to-[#F6F2E6]',
+    envelope: 'bg-gradient-to-b from-[#F1EEE3] to-[#E9E4D5]',
+    flapFill: '#EFEBDE',
+    flapStroke: '#DED8C7',
+    // 火漆在 Mee 皮肤下不显示（调用方传 seal={false}），这里留蓝色兜底，别再回到暗红
+    seal: 'bg-[#5B8DDE] text-white',
+    sealGlow: 'shadow-[0_0_12px_-2px_rgba(91,141,222,0.5)]',
+    ink: 'text-[#3E3D38]',
+    meta: 'text-[#9C988B]',
+    cover: 'bg-gradient-to-b from-[#FAF8F0] via-[#F6F2E6] to-[#EFEBDE]',
+    coverFade: 'bg-gradient-to-t from-[#EFEBDE] to-transparent',
+    moon: 'bg-gradient-to-br from-[#FFFDF5] to-[#FFE48C] opacity-75',
+    moonGlow: 'shadow-[0_0_18px_4px_rgba(255,228,140,0.22)]',
+    star: 'bg-[#5B8DDE]/35',
   },
   memorial: {
     paper: 'bg-gradient-to-b from-[#fff6f3] to-[#f8e4dd]',
@@ -94,6 +96,30 @@ export const LETTER_THEME_PARTS: Record<LetterTheme, LetterThemeParts> = {
 /** 取一套主题配色；传进来的值非法就退回 default */
 export function letterParts(theme: LetterTheme | undefined): LetterThemeParts {
   return LETTER_THEME_PARTS[theme ?? 'default'] ?? LETTER_THEME_PARTS.default;
+}
+
+/**
+ * **奶油手帐统一纸面（2026-11-11）**
+ *
+ * 库里的旧信带着 `memorial`（玫瑰金）/ `night`（深蓝星空）主题，换皮后会变成
+ * 粉的、深蓝的信封，一整本信看着像三套产品拼在一起。用户要的是「整本都是
+ * Mee 那种米白纸」，所以**渲染时**把纸 / 信封 / 封盖 / 墨色一律刷成 default 的奶油色。
+ *
+ * `letter_theme` 不清库、不改后端：它仍然是信件实体的有效字段，
+ * 火漆 / 月色 / 星点这些**点缀**还跟着主题走，将来想做「纪念日特别版星星」有得接。
+ */
+export function meeLetterParts(theme: LetterTheme | undefined): LetterThemeParts {
+  const base = letterParts(theme);
+  const cream = LETTER_THEME_PARTS.default;
+  return {
+    ...base,
+    paper: cream.paper,
+    envelope: cream.envelope,
+    flapFill: cream.flapFill,
+    flapStroke: cream.flapStroke,
+    ink: cream.ink,
+    meta: cream.meta,
+  };
 }
 
 /** 封盖三角 + 火漆印：铺满父容器，父容器需要 relative + overflow-hidden */
