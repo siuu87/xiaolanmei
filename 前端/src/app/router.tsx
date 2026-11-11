@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
 import { HomePage } from '@/features/home/HomePage';
+import { TokenPage } from '@/features/home/TokenPage';
 import { TogetherPage } from '@/features/sky/TogetherPage';
 import { WatchTogetherPage } from '@/features/sky/WatchTogetherPage';
 import { GoodnightPage } from '@/features/sky/GoodnightPage';
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/chat" replace /> },
       { path: 'chat', element: <Noop /> },
       { path: 'home', element: <HomePage /> },
+      { path: 'token', element: <TokenPage /> },
       { path: 'together', element: <TogetherPage /> },
       { path: 'watch', element: <WatchTogetherPage /> },
       { path: 'goodnight', element: <GoodnightPage /> },
