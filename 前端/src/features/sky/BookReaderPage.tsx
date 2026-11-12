@@ -55,6 +55,14 @@ function formatTime(ts: number): string {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${hh}:${mm}`;
 }
 
+/**
+ * 阅读器的返回目标 = READ 书架（`/library`），**不是**全站默认的一律回 /chat。
+ * 2026-11-12 用户定：从书里退出来要回到 read 界面。
+ * 所有进书入口（继续阅读 / 书架封面 / 在读列表 / 书详情弹窗）都在 /library，
+ * 所以这里固定回 READ 仪表盘，别再改回 /chat，也别用 navigate(-1)。
+ */
+const READ_HOME = '/library';
+
 /** 把某段正文按标画区间切片（非重叠，按最后一条标画取样式） */
 function segments(text: string, anns: ReadingAnnotation[]) {
   const pts = new Set<number>([0, text.length]);
@@ -239,7 +247,7 @@ export function BookReaderPage() {
       <div className="relative min-h-full bg-page-bg px-4 py-16 text-center text-muted-foreground">
         <StarBackdrop />
         加载中…
-        <button type="button" onClick={() => navigate('/chat')} className="mt-3 block text-primary hover:underline">返回对话</button>
+        <button type="button" onClick={() => navigate(READ_HOME)} className="mt-3 block text-primary hover:underline">回到 READ 书架</button>
       </div>
     );
   }
@@ -354,8 +362,9 @@ export function BookReaderPage() {
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/chat')}
-            aria-label="返回"
+            onClick={() => navigate(READ_HOME)}
+            aria-label="返回 READ 书架"
+            title="回到 READ 书架"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />

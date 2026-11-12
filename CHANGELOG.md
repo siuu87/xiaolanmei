@@ -2,6 +2,18 @@
 
 本文件记录每次推送到远端的可见变更。**约定：每次上传前先更新本文件与 `README.md` 的功能总览，再推送。**
 
+## 2026-11-12
+
+### 图书：从书里退出回到 READ 界面
+
+用户要求「图书那块可以从书退出来回到 read 的界面」。
+
+- `前端/src/features/sky/BookReaderPage.tsx`：新增常量 `READ_HOME = '/library'`；顶部返回箭头与「书籍加载失败」兜底页的返回按钮都由 `/chat` 改为 `/library`
+  （READ 书架仪表盘，也就是抽屉里 label 为 `read` 的那个入口）。`aria-label` / `title` 同步改成「返回 READ 书架」，兜底文案「返回对话」→「回到 READ 书架」。
+- 所有进书入口（继续阅读 / 书架封面 / 在读列表 / 书详情弹窗）本来都在 `/library`，所以固定回这一层，不用 `navigate(-1)`。
+- 这是硬规则「所有页面退出一律回 /chat」的**唯一例外**；其余页面（含 `/read` 朗读页、`/library` 自身的返回）保持不变。
+- 验证：`tsc --noEmit` 0 错；Vite 转译 200；真实浏览器实测 `/read/M7LZEamNxO3eDSCwJxbNP` 点返回 → `location.pathname=/library`、标题 `READ`、书架存在（PASS）。
+
 ## 2026-11-11
 
 ### 退回奶油手帐换皮 + 信件改成「固定尺寸信纸」新弹窗
