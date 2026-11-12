@@ -308,7 +308,10 @@ npm run dev
   - **井字棋**（`/games/tictactoe`）：minimax 搜索，困难不可战胜
   - **五子棋**（`/games/gomoku`）：15×15 启发式评估（活四/冲四/活三/活二），支持悔棋
   - **记忆翻牌**（`/games/memory`）：4×4 共 8 对，3D 翻牌动画，AI 有记忆（凡翻开过的牌都记住）
-- 比分（胜/负/平）按游戏 id 存 localStorage，可清零。
+- 比分（胜/负/平）按游戏 id 存 localStorage，可清零；`bump/reset` 广播事件同步外壳比分条，不用重进页面。
+- **对战页顶部有「他」**：头像框（`AvatarContent`，走 `partnerRemark > partnerName > 小蓝莓` 称呼）
+  + 会时不时冒出来的本地对白气泡（开局 / 每 9~16 秒闲聊 / 切难度 / 胜负四种时机，4.2 秒自动收起）。
+  纯本地文案，不调模型不花 token；三款游戏共用 `GameRoom` 这一层，一次覆盖。
 
 ### 酒馆小手机（tavern）
 - 角色卡 / 世界书 / 人设卡（SillyTavern 风格）
