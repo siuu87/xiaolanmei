@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X, Check, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check, RotateCcw, PenLine } from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from './diaryData';
 import { DiaryPageFace, PAPER_CLASS } from './DiaryPageFace';
 import { useDiaryStore } from './diaryStore';
@@ -10,6 +10,8 @@ interface Props {
   entries: DiaryEntry[];
   /** 日历深链：打开本子后定位到这一天 */
   focusDate?: string | null;
+  /** 一打开就进编写态（右上角「去记录」/ 日历「去记日记」深链），默认只翻开阅读 */
+  startEditing?: boolean;
   onClose: () => void;
   onOpenReader: (entry: DiaryEntry) => void;
 }
@@ -22,11 +24,11 @@ function todayISO(): string {
 
 /**
  * Paper 式翻页日记本：
- * - 打开本子 → 翻到最后一页（今天那页），直接进入编辑
- * - 左右拖拽 / 按钮翻页，3D rotateY 翻页动画
- * - 非编辑态点页 → 进入全屏阅读器（onOpenReader）
+ * - 打开本子 → 落在今天那页的「阅读态」，不自动进入编写
+ * - 左右拖拽 / 按钮翻页，3D rotateY 翻页动画；阅读态点页 → 全屏阅读器（onOpenReader）
+ * - 右上角「去记录」→ 翻到今天那页并进入编写态（startEditing=true 时一打开就编写）
  */
-export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Props) {
+export function BookDeck({ book, entries, focusDate, startEditing = false, onClose, onOpenReader }: Props) {
   const patchEntry = useDiaryStore((s) => s.patchEntry);
   const addEntry = useDiaryStore((s) => s.addEntry);
 
@@ -49,10 +51,10 @@ export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Pr
     return base;
   }, [pages, todayIsBlank, today, book.id]);
 
-  // 打开时落到最后一页（今天），直接编辑；有 focusDate 则定位那天（日历「查看日记」→ 阅读态）
+  // 打开时落到最后一页（今天）；有 focusDate 则定位那天。默认一律阅读态，只有显式「去记录」才编写
   const focusAt = focusDate ? stack.findIndex((p) => p.date === focusDate) : -1;
   const [index, setIndex] = useState(focusAt >= 0 ? focusAt : stack.length - 1);
-  const [editing, setEditing] = useState(focusAt < 0); // 翻开即记录；日历定位打开则先阅读
+  const [editing, setEditing] = useState(startEditing && focusAt < 0);
   const [draft, setDraft] = useState(stack[focusAt >= 0 ? focusAt : stack.length - 1]?.content ?? '');
 
   // 翻页动画
@@ -134,6 +136,13 @@ export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Pr
     else if (dx > w * 0.4 && canPrev) startFlip('prev');
   };
 
+  // 右上角「去记录」：直接翻到今天那页并进入编写态
+  const goWrite = () => {
+    if (flipping) return;
+    setIndex(stack.length - 1);
+    setEditing(true);
+  };
+
   // 保存今天这页
   const saveToday = () => {
     const text = draft.trim();
@@ -165,7 +174,7 @@ export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Pr
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1300] flex flex-col items-center justify-center bg-scrim/80 px-3"
+      className="fixed inset-0 z-[1300] flex flex-col items-center justify-center bg-page-bg px-3"
       onClick={onClose}
     >
       <div
@@ -186,16 +195,29 @@ export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Pr
           >
             <X className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <span className="font-serif text-sm font-medium text-foreground">{book.name}</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-serif text-sm font-medium text-foreground">{book.name}</span>
             <span
-              className="rounded-full px-2 py-0.5 text-[10px] text-white"
+              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] text-white"
               style={{ background: book.cover }}
             >
               {index + 1} / {stack.length}
             </span>
           </div>
-          <div className="w-9" />
+          {editing ? (
+            <div className="w-[76px] shrink-0" />
+          ) : (
+            <button
+              type="button"
+              onClick={goWrite}
+              aria-label="去记录"
+              data-testid="diary-deck-go-write"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              去记录
+            </button>
+          )}
         </div>
 
         {/* 翻页区（带开本动画） */}
@@ -287,27 +309,30 @@ export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Pr
             );
           })}
 
-          {/* 翻页按钮（移动端兜底） */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-4">
-            <button
-              type="button"
-              disabled={!canPrev}
-              onClick={() => startFlip('prev')}
-              aria-label="上一页"
-              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg/90 text-muted-foreground backdrop-blur transition enabled:hover:text-foreground disabled:opacity-30"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              disabled={!canNext}
-              onClick={() => startFlip('next')}
-              aria-label="下一页"
-              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg/90 text-muted-foreground backdrop-blur transition enabled:hover:text-foreground disabled:opacity-30"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
+          {/* 翻页按钮（移动端兜底）：z-20 压在纸页之上，否则被 z-10 的纸盖住看不见也点不到；
+              编辑态隐藏，免得盖住「记下今天」 */}
+          {!editing && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center gap-4">
+              <button
+                type="button"
+                disabled={!canPrev}
+                onClick={() => startFlip('prev')}
+                aria-label="上一页"
+                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg text-muted-foreground transition enabled:hover:text-foreground disabled:opacity-30"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                disabled={!canNext}
+                onClick={() => startFlip('next')}
+                aria-label="下一页"
+                className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg text-muted-foreground transition enabled:hover:text-foreground disabled:opacity-30"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 底部提示（开本动画期间隐藏） */}
@@ -316,7 +341,7 @@ export function BookDeck({ book, entries, focusDate, onClose, onOpenReader }: Pr
             opening === 'open' ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {editing ? '写下今天，然后翻回去看看从前' : '左右滑动翻页 · 点这一页进入阅读'}
+          {editing ? '写下今天，然后翻回去看看从前' : '左右滑动翻页 · 点这一页阅读 · 右上角「去记录」开写'}
         </div>
       </div>
     </div>,
