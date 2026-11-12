@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AvatarContent } from '@/components/AvatarContent';
 import { useProfileStore } from '@/stores/profileStore';
+import { gameLine, useGameVoice, type GameScene } from './gameVoice';
 import type { Difficulty } from './GameRoom';
 
 /**
@@ -10,8 +11,9 @@ import type { Difficulty } from './GameRoom';
  * 设计约束：
  * - 头像走全站唯一的 `AvatarContent`（只认图片，非图片=中性剪影），名字按顶栏规则
  *   `partnerRemark > partnerName > 小蓝莓`；
- * - 对话是**本地短句**，按开局 / 定时闲聊 / 切难度 / 胜负四种时机冒出来，
- *   不调模型、不花 token、不写库 —— 保持游戏屋「纯前端本地对战」的约定；
+ * - **语气跟人设一样**：文案由 `gameVoice.ts` 按聊天那套说话风格档位（💕/🩷）与
+ *   用户写的人设/语言风格文本现取，不再是与「他」无关的通用游戏 NPC 短句；
+ *   仍是纯本地：不调模型、不花 token、不写库、不编造记忆；
  * - 只用现有主题 token，不换配色、不引字体、不加半透明遮罩。
  *
  * 胜负时机由 `GameRoom` 通过 `result` prop 传入（那边监听比分事件），
@@ -29,42 +31,11 @@ interface Bubble {
   text: string;
 }
 
-/** 开局：按游戏挑一句，别三款游戏说同一句 */
-const OPENING: Record<string, string[]> = {
-  tictactoe: ['三连就赢，我可不会让着你。', '来一局？我陪你。'],
-  gomoku: ['五子连珠，我盯着呢。', '开盘啦，别急着落子。'],
-  memory: ['记牌我可不含糊。', '一起翻翻看，看谁记得牢。'],
-};
-
-/** 「时不时」冒出来的闲聊：顺序轮播，避免连着两句重复，也别太密 */
-const IDLE = [
-  '嗯…让我看看。',
-  '别急，慢慢想。',
-  '这步走得挺稳。',
-  '我记着呢。',
-  '有点意思。',
-  '轮到你啦。',
-  '刚那下差点被你看穿。',
-  '我在呢。',
-  '这局还长着呢。',
-  '我可没放水。',
-  '手别抖呀。',
-  '再来一局也没关系。',
-];
-
-const ON_WIN = ['这局算你赢啦。', '厉害，我认了。', '下回我可要认真了。'];
-const ON_LOSS = ['嘿嘿，这局我赢了。', '承让啦。', '别急，再来一局？'];
-const ON_DRAW = ['打平，谁也没输。', '这局算平手。', '再来一局分个高下？'];
-
 /** 气泡停留时长（毫秒） */
 const BUBBLE_MS = 4200;
 /** 闲聊间隔：9~16 秒随机，别吵也别让人忘了他在 */
 const IDLE_MIN_MS = 9000;
 const IDLE_MAX_MS = 16000;
-
-function pick(list: string[], seed: number): string {
-  return list[seed % list.length];
-}
 
 export function GameRival({
   gameId,
@@ -79,6 +50,7 @@ export function GameRival({
   const partnerRemark = useProfileStore((s) => s.partnerRemark);
   const partnerName = useProfileStore((s) => s.partnerName);
   const displayName = partnerRemark || partnerName || '小蓝莓';
+  const voice = useGameVoice();
 
   const [bubble, setBubble] = useState<Bubble | null>(null);
   const seqRef = useRef(0);
@@ -87,7 +59,18 @@ export function GameRival({
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firstDifficulty = useRef(true);
 
-  const say = useCallback((text: string) => {
+  /**
+   * 语气/游戏 id 放 ref：说话时现取最新值，但 `say` 本身依赖恒为空，
+   * 这样人设文本异步读完、或用户切了对白风格药丸，都不会重开定时器重复问候。
+   */
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
+  const gameIdRef = useRef(gameId);
+  gameIdRef.current = gameId;
+
+  const say = useCallback((scene: GameScene, seed = 0) => {
+    const text = gameLine(scene, voiceRef.current, gameIdRef.current, seed);
+    if (!text) return;
     seqRef.current += 1;
     setBubble({ id: seqRef.current, text });
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -97,16 +80,15 @@ export function GameRival({
   // 开局问候 + 「时不时」的闲聊循环（随机间隔，组件卸载时全部清掉）
   useEffect(() => {
     let alive = true;
-    const opening = OPENING[gameId] ?? IDLE.slice(0, 2);
     const startTimer = setTimeout(() => {
-      if (alive) say(pick(opening, 0));
+      if (alive) say('opening');
     }, 650);
 
     const scheduleIdle = () => {
       const gap = IDLE_MIN_MS + Math.random() * (IDLE_MAX_MS - IDLE_MIN_MS);
       idleTimer.current = setTimeout(() => {
         if (!alive) return;
-        say(pick(IDLE, idleCursor.current));
+        say('idle', idleCursor.current);
         idleCursor.current += 1;
         scheduleIdle();
       }, gap);
@@ -127,20 +109,13 @@ export function GameRival({
       firstDifficulty.current = false;
       return;
     }
-    say(
-      difficulty === 3
-        ? '换到困难了？那我也不客气啦。'
-        : difficulty === 1
-          ? '简单一点也好，慢慢来。'
-          : '好，普通难度，公平较量。',
-    );
+    say(difficulty === 3 ? 'hard' : difficulty === 1 ? 'easy' : 'normal');
   }, [difficulty, say]);
 
   // 比分变化时接一句胜负对白
   useEffect(() => {
     if (!result) return;
-    const list = result.kind === 'win' ? ON_WIN : result.kind === 'loss' ? ON_LOSS : ON_DRAW;
-    say(pick(list, result.seq - 1));
+    say(result.kind, result.seq - 1);
   }, [result, say]);
 
   return (
@@ -177,7 +152,7 @@ export function GameRival({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.98 }}
                 transition={{ duration: 0.22, ease: 'easeOut' }}
-                className="relative inline-block max-w-full rounded-2xl rounded-tl-sm border border-border bg-card px-3 py-1.5 text-[12px] leading-5 text-foreground shadow-sm"
+                className="relative inline-block max-w-full whitespace-pre-line rounded-2xl rounded-tl-sm border border-border bg-card px-3 py-1.5 text-[12px] leading-5 text-foreground shadow-sm"
               >
                 {/* 小尖角，指向头像 */}
                 <span

@@ -311,7 +311,11 @@ npm run dev
 - 比分（胜/负/平）按游戏 id 存 localStorage，可清零；`bump/reset` 广播事件同步外壳比分条，不用重进页面。
 - **对战页顶部有「他」**：头像框（`AvatarContent`，走 `partnerRemark > partnerName > 小蓝莓` 称呼）
   + 会时不时冒出来的本地对白气泡（开局 / 每 9~16 秒闲聊 / 切难度 / 胜负四种时机，4.2 秒自动收起）。
-  纯本地文案，不调模型不花 token；三款游戏共用 `GameRoom` 这一层，一次覆盖。
+  三款游戏共用 `GameRoom` 这一层，一次覆盖。
+- **对白语气跟人设一样**（`features/games/gameVoice.ts`，纯本地）：跟随聊天顶栏 💕/🩷 说话风格药丸
+  （`immersive` 沉稳温柔只写台词 / `fragmented` 一行一句口语碎片），并读用户写的人设与语言风格文本
+  （`profileStore.persona` + 启用的 `/api/prompts`、`/api/style-rules`）识别温柔 / 活泼 / 傲娇 / 寡言四档口吻；
+  `{name}` 替换成「我」的名字。陪伴调、不编造记忆、不调模型不花 token；后端读不到就退回本地文案，离线照玩。
 
 ### 酒馆小手机（tavern）
 - 角色卡 / 世界书 / 人设卡（SillyTavern 风格）
