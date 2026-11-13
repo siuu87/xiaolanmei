@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, BookText, User2, Users2 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
+import type { DeckPage, DiaryBook, DiarySlip } from './diaryData';
 import { BOOK_KIND_LABEL } from './diaryData';
 import { DiaryPageFace, PAPER_CLASS } from './DiaryPageFace';
+import { CouplePageFace } from './CouplePageFace';
 
 interface Props {
-  entry: DiaryEntry;
+  /** 翻页栈里的一页（情侣本 = 一天，上下两半） */
+  page: DeckPage;
   book: DiaryBook;
   /** 这一页上夹着的小纸条 */
   slips?: DiarySlip[];
@@ -18,8 +20,9 @@ const kindIcon = { me: BookText, partner: User2, couple: Users2 } as const;
 /**
  * 点某一页进入的全屏阅读器（2026-11-13 起只读）：
  * 整页手写纸面、上下滑动看长文。编写统一走本子右上角按钮，这里不再提供编辑/删除。
+ * 情侣本传进来的是「一天」，放大后照样上半他、下半我。
  */
-export function PageReader({ entry, book, slips = [], onClose }: Props) {
+export function PageReader({ page, book, slips = [], onClose }: Props) {
   const Icon = kindIcon[book.kind];
 
   // Esc 关闭（capture 阶段拦截，别让抽屉 Esc 抢）
@@ -48,7 +51,7 @@ export function PageReader({ entry, book, slips = [], onClose }: Props) {
               <span className="truncate font-serif text-sm font-medium text-foreground">{book.name}</span>
               <span className="shrink-0 text-[10px] text-muted-foreground">· {BOOK_KIND_LABEL[book.kind]}</span>
             </div>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{entry.date}</span>
+            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{page.date}</span>
           </div>
         </header>
 
@@ -56,7 +59,11 @@ export function PageReader({ entry, book, slips = [], onClose }: Props) {
         <div
           className={`mx-3 mb-3 flex-1 overflow-y-auto rounded-xl shadow-[0_18px_40px_-26px_rgba(0,0,0,0.45)] ${PAPER_CLASS}`}
         >
-          <DiaryPageFace entry={entry} slips={slips} />
+          {page.pair ? (
+            <CouplePageFace day={page.pair} />
+          ) : page.entry ? (
+            <DiaryPageFace entry={page.entry} slips={slips} />
+          ) : null}
         </div>
       </div>
     </div>,

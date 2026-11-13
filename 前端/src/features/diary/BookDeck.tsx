@@ -11,9 +11,10 @@ import {
   ImagePlus,
   Loader2,
 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
-import { HAND_FONT, canWriteDiary } from './diaryData';
+import type { CoupleDay, DeckPage, DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
+import { HAND_FONT, canWriteDiary, isCoupleBook } from './diaryData';
 import { DiaryPageFace, PAPER_CLASS } from './DiaryPageFace';
+import { CouplePageFace } from './CouplePageFace';
 import { BookCover } from './BookCover';
 import { SlipEditor } from './SlipEditor';
 import { useDiaryStore } from './diaryStore';
@@ -28,7 +29,7 @@ interface Props {
   /** 一打开就进编写页（右上角「去记录」/ 日历「去记日记」深链），默认翻页阅读 */
   startEditing?: boolean;
   onClose: () => void;
-  onOpenReader: (entry: DiaryEntry) => void;
+  onOpenReader: (page: DeckPage) => void;
 }
 
 /** 今天的 YYYY-MM-DD */
@@ -102,32 +103,51 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   }, [entries, book.id, canWrite, bookSlips]);
 
   const today = todayISO();
+  const couple = isCoupleBook(book);
   const lastPage = pages[pages.length - 1];
   const todayIsBlank = !lastPage || lastPage.date !== today;
 
-  // 页栈：真实日记页 + 末尾的「今天」页（空白则暂存）
-  const stack: DiaryEntry[] = useMemo(() => {
-    const base = pages;
+  // 页栈：情侣本「一天一页（他半 + 我半）」，其它本「一页一篇 + 末尾今天页」
+  const stack: DeckPage[] = useMemo(() => {
+    if (couple) {
+      const slots = new Map<string, CoupleDay>();
+      pages.forEach((e) => {
+        const cur = slots.get(e.date) ?? { date: e.date };
+        if (e.author === 'partner') cur.theirs = e;
+        else cur.mine = e;
+        slots.set(e.date, cur);
+      });
+      // 今天一定有一页，哪怕两个人都还没写
+      if (!slots.has(today)) slots.set(today, { date: today });
+      return [...slots.values()]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((d) => ({ key: `couple:${d.date}`, date: d.date, pair: d }));
+    }
+    const base: DeckPage[] = pages.map((p) => ({ key: p.id, date: p.date, entry: p }));
     if (todayIsBlank) {
-      return [
-        ...base,
-        {
+      base.push({
+        key: '__today__',
+        date: today,
+        entry: {
           id: '__today__',
           date: today,
           author: book.kind === 'partner' ? 'partner' : 'me',
           content: '',
           bookId: book.id,
         },
-      ];
+      });
     }
     return base;
-  }, [pages, todayIsBlank, today, book.id, book.kind]);
+  }, [pages, couple, today, todayIsBlank, book.id, book.kind]);
 
   const focusAt = focusDate ? stack.findIndex((p) => p.date === focusDate) : -1;
+  const firstPage = stack[focusAt >= 0 ? focusAt : stack.length - 1];
   const [index, setIndex] = useState(focusAt >= 0 ? focusAt : stack.length - 1);
-  const [draft, setDraft] = useState(stack[focusAt >= 0 ? focusAt : stack.length - 1]?.content ?? '');
+  const [draft, setDraft] = useState(
+    firstPage?.pair?.mine?.content ?? firstPage?.entry?.content ?? '',
+  );
   const [draftImages, setDraftImages] = useState<string[]>(
-    stack[focusAt >= 0 ? focusAt : stack.length - 1]?.images ?? [],
+    firstPage?.pair?.mine?.images ?? firstPage?.entry?.images ?? [],
   );
   const [syncedId, setSyncedId] = useState<string | undefined>(undefined);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -161,20 +181,30 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   }, [stack.length, index]);
 
   const page = stack[Math.min(index, Math.max(stack.length - 1, 0))];
-  const pageId = page?.id;
-  const pageContent = page?.content ?? '';
-  const pageImages = page?.images ?? [];
+  /** 这页里属于我的那半：情侣本是下半，其它本是整页 */
+  const myEntry = page?.pair ? page.pair.mine : page?.entry;
+  const pageContent = myEntry?.content ?? '';
+  const pageImages = myEntry?.images ?? [];
 
   // 翻到新页时把草稿同步成那页内容
-  if (syncedId !== pageId) {
-    setSyncedId(pageId);
+  if (syncedId !== page?.key) {
+    setSyncedId(page?.key);
     setDraft(pageContent);
     setDraftImages(pageImages);
   }
 
   const canNext = index < stack.length - 1;
   const canPrev = index > 0;
-  const isTodayPage = page?.id === '__today__' || page?.date === today;
+  const isTodayPage = page?.date === today;
+  /** 我的这半页已经有字 → 可以改 / 可以删 */
+  const canDeletePage = !!myEntry && myEntry.id !== '__today__';
+  const deckBtnLabel = couple
+    ? myEntry
+      ? '改这半页'
+      : '写我这半'
+    : isTodayPage
+      ? '写日记'
+      : '改这页';
 
   // 这本里的小纸条，按日期挂到页上
   const slipsOf = (date: string) => bookSlips.filter((s) => s.date === date);
@@ -224,8 +254,8 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   };
 
   const cancelWrite = () => {
-    setDraft(page?.content ?? '');
-    setDraftImages(page?.images ?? []);
+    setDraft(pageContent);
+    setDraftImages(pageImages);
     setConfirmDel(false);
     setUploadErr('');
     setView('read');
@@ -254,24 +284,28 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
     const images = draftImages;
     if (!page) return;
     if (!text && images.length === 0) return;
-    if (page.id === '__today__') {
+    if (page.pair) {
+      // 情侣本：只写「我这半」，他的那半不动
+      if (page.pair.mine) patchEntry(page.pair.mine.id, { content: text, images });
+      else addEntry({ date: page.date, author: 'me', content: text, images, bookId: book.id });
+    } else if (page.entry?.id === '__today__') {
       addEntry({ date: today, author: 'me', content: text, images, bookId: book.id });
       setIndex(stack.length - 1);
-    } else {
-      patchEntry(page.id, { content: text, images });
+    } else if (page.entry) {
+      patchEntry(page.entry.id, { content: text, images });
     }
     setView('read');
     setConfirmDel(false);
   };
 
   const delPage = () => {
-    if (!page || page.id === '__today__') return;
+    if (!canDeletePage || !myEntry) return;
     if (!confirmDel) {
       setConfirmDel(true);
       window.setTimeout(() => setConfirmDel(false), 3000);
       return;
     }
-    removeEntry(page.id);
+    removeEntry(myEntry.id);
     setConfirmDel(false);
     setView('read');
     setIndex((i) => Math.max(0, i - 1));
@@ -304,7 +338,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="eyebrow leading-none">{isTodayPage ? 'WRITE' : 'EDIT'}</div>
+            <div className="eyebrow leading-none">{canDeletePage ? 'EDIT' : 'WRITE'}</div>
             <div className="mt-0.5 truncate text-sm font-medium text-foreground">
               {book.name} · {md}
             </div>
@@ -394,7 +428,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
           </div>
         </div>
 
-        {!isTodayPage && (
+        {canDeletePage && (
           <footer className="flex items-center justify-center pb-4">
             <button
               type="button"
@@ -458,7 +492,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
               className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
             >
               <PenLine className="h-3.5 w-3.5" />
-              {isTodayPage ? '写日记' : '改这页'}
+              {deckBtnLabel}
             </button>
           ) : (
             <button
@@ -534,7 +568,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
               const clickable = isCurrent && opening === 'open' && !flipping;
               return (
                 <div
-                  key={`${p.id}-${i}`}
+                  key={`${p.key}-${i}`}
                   data-current={isCurrent ? '1' : '0'}
                   className={`absolute inset-0 transition-transform duration-[480ms] ease-[cubic-bezier(0.4,0.2,0.2,1)] ${
                     PAPER_CLASS
@@ -552,11 +586,15 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
                   }}
                   onClick={() => clickable && onOpenReader(p)}
                 >
-                  <DiaryPageFace
-                    entry={p}
-                    slips={slipsOf(p.date)}
-                    onSlipClick={(s) => setSlipEdit({ slip: s })}
-                  />
+                  {p.pair ? (
+                    <CouplePageFace day={p.pair} />
+                  ) : p.entry ? (
+                    <DiaryPageFace
+                      entry={p.entry}
+                      slips={slipsOf(p.date)}
+                      onSlipClick={(s) => setSlipEdit({ slip: s })}
+                    />
+                  ) : null}
                 </div>
               );
             })}
@@ -591,9 +629,11 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             opening === 'open' ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {canWrite
-            ? '左右滑动翻页 · 点这一页放大 · 右上角「写日记」'
-            : '左右滑动翻页 · 点纸条看全文 · 右上角「夹张小纸条」'}
+          {!canWrite
+            ? '左右滑动翻页 · 点纸条看全文 · 右上角「夹张小纸条」'
+            : couple
+              ? '左右滑动翻页 · 一天一页 · 点这一页放大'
+              : '左右滑动翻页 · 点这一页放大 · 右上角「写日记」'}
         </div>
 
         {/* 小纸条编辑器（TA 的日记专用；放在 stopPropagation 里面，点它不会把本子关掉） */}

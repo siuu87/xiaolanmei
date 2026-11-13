@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PenLine } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
-import type { DiaryBook, DiaryEntry } from './diaryData';
+import type { DeckPage, DiaryBook } from './diaryData';
 import { diaryDayKey, dayKeyToDate } from './diaryData';
 import { useDiaryStore } from './diaryStore';
 import { BookShelf } from './BookShelf';
@@ -29,7 +29,9 @@ export function DiaryPage() {
 
   // 存 id 而不是对象：本子上锁/改名后，从 books 里取最新的那一份
   const [openBookId, setOpenBookId] = useState<string | null>(null);
-  const [readerEntry, setReaderEntry] = useState<DiaryEntry | null>(null);
+  // 全屏放大看的那一页（情侣本是「一天」）+ 它属于哪本
+  const [readerPage, setReaderPage] = useState<DeckPage | null>(null);
+  const [readerBookId, setReaderBookId] = useState<string | null>(null);
   // 日历深链指定的日期页（打开本子后定位用）
   const [focusDate, setFocusDate] = useState<string | null>(null);
   // 打开本子时是否直接进编写页（右上角「去记录」/ 日历 &new=1）
@@ -38,16 +40,15 @@ export function DiaryPage() {
   const [wantWrite, setWantWrite] = useState(false);
 
   const openBook = openBookId ? books.find((b) => b.id === openBookId) ?? null : null;
-  const readerBook = readerEntry
-    ? books.find((b) => b.id === (readerEntry.bookId ?? 'book-me')) ?? books[0]
-    : null;
+  const readerBook = readerBookId ? books.find((b) => b.id === readerBookId) ?? null : null;
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const openBookById = (book: DiaryBook, write = false) => {
-    setReaderEntry(null);
+    setReaderPage(null);
+    setReaderBookId(null);
     setFocusDate(null);
     setStartEditing(write);
     setOpenBookId(book.id);
@@ -125,18 +126,24 @@ export function DiaryPage() {
             setFocusDate(null);
             setStartEditing(false);
           }}
-          onOpenReader={(e) => setReaderEntry(e)}
+          onOpenReader={(p) => {
+            setReaderPage(p);
+            setReaderBookId(openBook.id);
+          }}
         />
       )}
 
-      {readerEntry && readerBook && (
+      {readerPage && readerBook && (
         <PageReader
-          entry={readerEntry}
+          page={readerPage}
           book={readerBook}
           slips={slips.filter(
-            (s) => (s.bookId || 'book-me') === readerBook.id && s.date === readerEntry.date,
+            (s) => (s.bookId || 'book-me') === readerBook.id && s.date === readerPage.date,
           )}
-          onClose={() => setReaderEntry(null)}
+          onClose={() => {
+            setReaderPage(null);
+            setReaderBookId(null);
+          }}
         />
       )}
     </PageShell>

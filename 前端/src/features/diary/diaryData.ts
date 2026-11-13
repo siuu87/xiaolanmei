@@ -34,9 +34,36 @@ export interface DiarySlip {
   createdAt?: number;
 }
 
+/** 情侣日记的「一天」：同一天两个人的半页（上面是他、下面是我） */
+export interface CoupleDay {
+  date: string;
+  /** 我写的这半页 */
+  mine?: DiaryEntry;
+  /** 他写的这半页 */
+  theirs?: DiaryEntry;
+}
+
+/**
+ * 翻页栈里的一页：
+ * - 我的日记 / TA 的日记：一页 = 一篇日记（`entry`）
+ * - 情侣日记：一页 = 一天，上下两半（`pair`）
+ */
+export interface DeckPage {
+  /** React key + 草稿同步用的稳定标识 */
+  key: string;
+  date: string;
+  entry?: DiaryEntry;
+  pair?: CoupleDay;
+}
+
 /** 这个本子能不能写日记：TA 的日记只能加小纸条，不能代写 */
 export function canWriteDiary(book: Pick<DiaryBook, 'kind'>): boolean {
   return book.kind !== 'partner';
+}
+
+/** 是不是「一天一页、上下两半」的情侣本 */
+export function isCoupleBook(book: Pick<DiaryBook, 'kind'>): boolean {
+  return book.kind === 'couple';
 }
 
 /** 密码位数 */
