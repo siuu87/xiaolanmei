@@ -3,6 +3,7 @@ import { Plus, Settings2 } from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from './diaryData';
 import { BookSheet, type BookDraft } from './BookSheet';
 import { BookCover } from './BookCover';
+import { InkBorder } from './InkShapes';
 
 interface Props {
   books: DiaryBook[];
@@ -131,10 +132,20 @@ export function BookShelf({ books, entries, onOpen, onAdd, onPatch, onRemove }: 
             onClick={() => setEditing('new')}
             aria-label="新建日记本"
             data-testid="diary-shelf-new"
-            className="flex h-[330px] w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-page-line text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+            className="h-[330px] w-full"
           >
-            <Plus className="h-8 w-8" />
-            <span className="text-sm">新建一本</span>
+            <InkBorder
+              className="flex h-full w-full flex-col items-center justify-center gap-3 text-page-line transition-colors hover:text-primary/60"
+              r={9}
+              seed="new-book"
+              amp={1.8}
+              strokeWidth={1.4}
+              laps={1}
+              dash="9 8"
+            >
+              <Plus className="h-8 w-8 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">新建一本</span>
+            </InkBorder>
           </button>
         </div>
       </div>

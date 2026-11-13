@@ -20,6 +20,8 @@ import { SlipEditor } from './SlipEditor';
 import { useDiaryStore } from './diaryStore';
 import { BookLock } from './BookLock';
 import { BOOK_PAD, PAGE_EDGES, bookPageBox, useViewport } from './pageLayout';
+import { InkBorder, InkRect, InkRing, PaperTexture } from './InkShapes';
+import { inkLine } from './ink';
 import { uploadImage } from '@/lib/api/attachments';
 
 interface Props {
@@ -381,11 +383,22 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
         {/* 纸页大小固定，写多了在纸里往下滚，纸本身不会被撑长 */}
         <div className="flex min-h-0 flex-1 items-center justify-center px-3 py-2">
           <div
-            className={`flex flex-col overflow-hidden rounded-lg shadow-[0_18px_40px_-26px_rgba(0,0,0,0.45)] ${PAPER_CLASS}`}
+            className={`relative flex flex-col overflow-hidden rounded-lg shadow-[0_18px_40px_-26px_rgba(0,0,0,0.45)] ${PAPER_CLASS}`}
             style={{ width: readBox.current.w, height: readBox.current.h }}
             data-testid="diary-write-paper"
           >
-            <div className="flex shrink-0 items-baseline gap-2 px-5 pb-1 pt-4">
+            <PaperTexture
+              w={readBox.current.w}
+              h={readBox.current.h}
+              r={8}
+              seed="write-page"
+              rules
+              ruleTop={88}
+              ruleGap={31}
+              margin={15}
+            />
+            <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+              <div className="flex shrink-0 items-baseline gap-2 px-5 pb-1 pt-4">
               <span className="text-xl leading-none text-ink" style={{ fontFamily: HAND_FONT }}>
                 {md}
               </span>
@@ -455,6 +468,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
                 className="pointer-events-none absolute inset-x-5 bottom-4 h-8 bg-gradient-to-t from-[#fdfbf6] to-transparent dark:from-[#221f1c]"
               />
             </div>
+            </div>
           </div>
         </div>
 
@@ -515,38 +529,60 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             {book.name}
           </span>
           {canWrite ? (
-            <button
-              type="button"
-              onClick={startWrite}
-              data-testid="diary-deck-write"
-              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
-            >
-              <PenLine className="h-3.5 w-3.5" />
-              {deckBtnLabel}
+            <button type="button" onClick={startWrite} data-testid="diary-deck-write" className="shrink-0">
+              <InkBorder
+                className="text-ink/25 dark:text-ink/30"
+                seed="deck-write"
+                amp={1.1}
+                strokeWidth={1.2}
+              >
+                <span className="flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2">
+                  <PenLine className="h-3.5 w-3.5" />
+                  {deckBtnLabel}
+                </span>
+              </InkBorder>
             </button>
           ) : (
             <button
               type="button"
               onClick={() => setSlipEdit({})}
               data-testid="diary-deck-slip"
-              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
+              className="shrink-0"
             >
-              <StickyNote className="h-3.5 w-3.5" />
-              夹张小纸条
+              <InkBorder
+                className="text-ink/25 dark:text-ink/30"
+                seed="deck-slip"
+                amp={1.1}
+                strokeWidth={1.2}
+              >
+                <span className="flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2">
+                  <StickyNote className="h-3.5 w-3.5" />
+                  夹张小纸条
+                </span>
+              </InkBorder>
             </button>
           )}
         </div>
 
-        {/* 页码：像参考图那样浮在书页正上方居中 */}
+        {/* 页码：像参考图那样浮在书页正上方居中，外面套一圈手画的框 */}
         <div className="flex shrink-0 items-center justify-center pb-1">
-          <span
-            className={`text-[11px] tabular-nums tracking-[0.18em] text-muted-foreground transition-opacity duration-300 ${
+          <InkBorder
+            className={`text-ink/20 transition-opacity duration-300 dark:text-ink/25 ${
               opening === 'open' ? 'opacity-100' : 'opacity-0'
             }`}
-            data-testid="diary-deck-pager"
+            seed="pager"
+            amp={0.85}
+            strokeWidth={1.1}
+            laps={1}
+            r={14}
           >
-            {ci + 1} / {flat.length}
-          </span>
+            <span
+              className="block px-3 py-1 text-[11px] tabular-nums tracking-[0.18em] text-muted-foreground"
+              data-testid="diary-deck-pager"
+            >
+              {ci + 1} / {flat.length}
+            </span>
+          </InkBorder>
         </div>
 
         {/* 书区（带开本动画）：书壳 + 页块厚度 + 一页纸，翻页按钮贴在书下面 */}
@@ -598,20 +634,52 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
                     'linear-gradient(180deg, rgba(255,255,255,0.10), rgba(0,0,0,0.06) 62%, rgba(0,0,0,0.16))',
                 }}
               />
+              {/* 书脊压槽：手画的两道竖线，一眼看出是装订过的一本书 */}
+              <svg
+                className="absolute inset-0"
+                width={coverW}
+                height={coverH}
+                viewBox={`0 0 ${coverW} ${coverH}`}
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+              >
+                <path
+                  d={inkLine(19, 14, 19, coverH - 16, { seed: 'spine-a', amp: 1 })}
+                  stroke="rgba(0,0,0,0.38)"
+                  strokeWidth={1.3}
+                />
+                <path
+                  d={inkLine(22.5, 18, 22.5, coverH - 20, { seed: 'spine-b', amp: 0.9 })}
+                  stroke="rgba(255,255,255,0.32)"
+                  strokeWidth={0.9}
+                />
+              </svg>
+              {/* 封皮压边：手画的内框，像真的压过一道印 */}
+              <InkRect
+                w={coverW}
+                h={coverH}
+                r={16}
+                seed="cover-edge"
+                amp={1.3}
+                strokeWidth={1.4}
+                className="text-black/30"
+              />
             </div>
 
-            {/* 页块厚度：三层纸边露在纸页右侧、下方 */}
-            {PAGE_EDGES.map((off) => (
+            {/* 页块厚度：三层纸边露在纸页右侧、下方（每层歪一点点，像一沓没码齐的纸） */}
+            {PAGE_EDGES.map((off, i) => (
               <div
                 key={off}
                 aria-hidden
-                className="absolute rounded-[7px] bg-[#f2ebdd] dark:bg-[#332e28]"
+                className="absolute rounded-[7px] bg-[#f7f0e2] dark:bg-[#302b26]"
                 style={{
                   left: BOOK_PAD.left + off,
                   top: BOOK_PAD.top + off,
                   width: box.w,
                   height: box.h,
-                  boxShadow: 'inset -1px -1px 0 rgba(120,110,95,0.18)',
+                  boxShadow: 'inset -1px -1px 0 rgba(120,110,95,0.22)',
+                  transform: `rotate(${(i + 1) * 0.06}deg)`,
                 }}
               />
             ))}
@@ -673,25 +741,27 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             </div>
           </div>
 
-          {/* 翻页按钮：就在书下面，不压纸页 */}
+          {/* 翻页按钮：就在书下面，不压纸页；圈是手画的 */}
           <div className="flex shrink-0 items-center justify-center gap-6">
             <button
               type="button"
               disabled={!canPrev}
               onClick={() => startFlip('prev')}
               aria-label="上一页"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-page-line bg-page-bg/90 text-muted-foreground shadow-sm transition enabled:hover:text-foreground disabled:opacity-30"
+              className="relative flex h-9 w-9 items-center justify-center text-ink/30 transition enabled:hover:text-ink/60 disabled:opacity-25"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <InkRing size={36} seed="prev-btn" amp={1} strokeWidth={1.2} className="text-current" />
+              <ChevronLeft className="relative h-4 w-4 text-muted-foreground" />
             </button>
             <button
               type="button"
               disabled={!canNext}
               onClick={() => startFlip('next')}
               aria-label="下一页"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-page-line bg-page-bg/90 text-muted-foreground shadow-sm transition enabled:hover:text-foreground disabled:opacity-30"
+              className="relative flex h-9 w-9 items-center justify-center text-ink/30 transition enabled:hover:text-ink/60 disabled:opacity-25"
             >
-              <ChevronRight className="h-4 w-4" />
+              <InkRing size={36} seed="next-btn" amp={1} strokeWidth={1.2} className="text-current" />
+              <ChevronRight className="relative h-4 w-4 text-muted-foreground" />
             </button>
           </div>
         </div>

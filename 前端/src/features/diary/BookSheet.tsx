@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BookText, Users2, User2, Trash2, Lock, Unlock, ImagePlus, Loader2, X } from 'lucide-react';
 import type { DiaryBook } from './diaryData';
 import { BOOK_KIND_LABEL, KIND_DEFAULT_COVER, COVER_PALETTE, LOCK_CODE_LEN } from './diaryData';
 import { BookCover } from './BookCover';
+import { InkBorder } from './InkShapes';
 import { uploadImage } from '@/lib/api/attachments';
 
 /** kind → 图标（书架与设置弹层共用） */
@@ -117,14 +119,15 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
     }
   };
 
-  return (
+  // 必须挂到 body：页面容器带 transform，直接渲染的话 fixed 会被它困住，遮罩只盖半屏
+  return createPortal(
     <div
       className="fixed inset-0 z-[1300] flex items-center justify-center bg-page-bg p-3"
       onClick={onClose}
       data-testid="diary-book-sheet"
     >
       <div
-        className="flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-page-line bg-page-bg shadow-[0_24px_60px_-30px_rgba(0,0,0,0.5)]"
+        className="relative flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-page-bg shadow-[0_24px_60px_-30px_rgba(0,0,0,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 预览封面（与书架同一套 BookCover，所见即所得） */}
@@ -139,14 +142,23 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
           {/* 名字 */}
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">名字</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="给这本日记起个名字"
-              maxLength={20}
-              data-testid="diary-book-name"
-              className="h-10 w-full rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none focus:bg-muted/80"
-            />
+            <InkBorder
+              className="text-ink/20 dark:text-ink/25"
+              r={10}
+              seed="book-name-field"
+              amp={1.1}
+              strokeWidth={1.1}
+              laps={1}
+            >
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="给这本日记起个名字"
+                maxLength={20}
+                data-testid="diary-book-name"
+                className="h-10 w-full rounded-xl bg-muted/60 px-3 text-sm text-foreground outline-none focus:bg-muted/80"
+              />
+            </InkBorder>
           </div>
 
           {/* 类型 */}
@@ -361,7 +373,19 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
             保存
           </button>
         </div>
+
+        {/* 手画的弹层边 */}
+        <InkBorder
+          className="pointer-events-none text-ink/20 dark:text-ink/25"
+          style={{ position: 'absolute', inset: 0 }}
+          r={15}
+          seed="book-sheet"
+          amp={1.3}
+          strokeWidth={1.3}
+          laps={1}
+        />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

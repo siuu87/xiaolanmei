@@ -1,6 +1,7 @@
 import type { DiaryBook } from './diaryData';
 import { BOOK_KIND_LABEL, HAND_FONT } from './diaryData';
 import { kindIcon } from './BookSheet';
+import { InkBorder } from './InkShapes';
 import { Lock } from 'lucide-react';
 
 interface Props {
@@ -102,31 +103,60 @@ export function BookCover({ book, meta, compact = false, className = '' }: Props
         </span>
       )}
 
+      {/* 手画的封皮边 + 内侧压印框：一眼看出是硬壳本，不是一块色块 */}
+      <InkBorder
+        className="pointer-events-none text-black/35"
+        style={{ position: 'absolute', inset: 0 }}
+        r={compact ? 5 : 8}
+        seed={`cover-edge-${book.name}`}
+        amp={1.2}
+        strokeWidth={1.2}
+        laps={1}
+      />
+      <InkBorder
+        className="pointer-events-none text-white/18"
+        style={{ position: 'absolute', inset: compact ? 3 : 7 }}
+        r={compact ? 3 : 5}
+        seed={`cover-inner-${book.name}`}
+        amp={1}
+        strokeWidth={1}
+        laps={1}
+      />
+
       {/* 内容：纸质标签贴在封面下半部 */}
       <div className={`relative flex h-full flex-col justify-end ${compact ? 'p-2' : 'p-4 pl-5'}`}>
         {!compact && (
           <Icon className="mb-auto h-6 w-6 text-white/55" strokeWidth={1.6} />
         )}
-        <div
-          className={`w-fit max-w-full -rotate-[1.2deg] rounded-[2px] bg-[#f4efe3] shadow-[0_2px_6px_rgba(0,0,0,0.22)] ${
-            compact ? 'px-1.5 py-1' : 'px-3 py-2'
-          }`}
-          data-testid="diary-book-label"
+        <InkBorder
+          className="w-fit max-w-full -rotate-[1.2deg] text-[#3b3830]/30"
+          r={2}
+          seed={`label-${book.name}`}
+          amp={1.1}
+          strokeWidth={1}
+          laps={1}
         >
           <div
-            className={`truncate font-medium leading-tight text-[#3b3830] ${
-              compact ? 'text-[10px]' : 'text-[19px]'
+            className={`bg-[#f4efe3] shadow-[0_2px_6px_rgba(0,0,0,0.22)] ${
+              compact ? 'px-1.5 py-1' : 'px-3 py-2'
             }`}
-            style={{ fontFamily: HAND_FONT }}
+            data-testid="diary-book-label"
           >
-            {book.name}
-          </div>
-          {!compact && book.name.trim() !== BOOK_KIND_LABEL[book.kind] && (
-            <div className="mt-0.5 truncate text-[9px] tracking-[0.14em] text-[#3b3830]/55">
-              {BOOK_KIND_LABEL[book.kind]}
+            <div
+              className={`truncate font-medium leading-tight text-[#3b3830] ${
+                compact ? 'text-[10px]' : 'text-[19px]'
+              }`}
+              style={{ fontFamily: HAND_FONT }}
+            >
+              {book.name}
             </div>
-          )}
-        </div>
+            {!compact && book.name.trim() !== BOOK_KIND_LABEL[book.kind] && (
+              <div className="mt-0.5 truncate text-[9px] tracking-[0.14em] text-[#3b3830]/55">
+                {BOOK_KIND_LABEL[book.kind]}
+              </div>
+            )}
+          </div>
+        </InkBorder>
         {meta && (
           <div className="mt-1.5 truncate text-[10px] tracking-wide text-white/60">{meta}</div>
         )}

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { DiaryEntry, DiarySlip } from './diaryData';
 import { AUTHOR_LABEL, HAND_FONT } from './diaryData';
 import type { PageBox } from './pageLayout';
+import { InkBorder, InkTape, PaperTexture } from './InkShapes';
 
 interface Props {
   entry: DiaryEntry;
@@ -38,6 +39,7 @@ const PAD_X = 22;
  * 日记本单页（2026-11-13 按参考图重做）：
  * 一页 = 一张固定大小的纸，页眉左边谁写的、右边日期。
  * 长文不会把纸撑长 —— 用 CSS 分栏把文字排到「下一面」，页数变多、页大小不变。
+ * 纸的质感（纸纹 / 横格 / 手画纸边）走 PaperTexture，纯装饰、不碰排版。
  * 画在书壳里时由 BookDeck 负责，放大阅读器里 flow='scroll'。
  */
 export function DiaryPageFace({
@@ -86,8 +88,8 @@ export function DiaryPageFace({
     <>
       {cover && (
         <div
-          className="mb-3 overflow-hidden rounded-lg bg-ink/[0.06]"
-          style={{ breakInside: 'avoid' }}
+          className="relative mb-4 mt-1 bg-white p-[5px] pb-2 shadow-[0_10px_18px_-12px_rgba(0,0,0,0.65)]"
+          style={{ breakInside: 'avoid', transform: 'rotate(-0.7deg)' }}
         >
           <img
             src={cover}
@@ -95,23 +97,32 @@ export function DiaryPageFace({
             className="w-full object-cover"
             style={{ height: Math.round(contentH * 0.42) }}
             loading="lazy"
-            onLoad={() => pagesCb.current?.(Math.max(1, Math.round((flowRef.current?.scrollWidth ?? contentW) / contentW)))}
+            onLoad={() =>
+              pagesCb.current?.(Math.max(1, Math.round((flowRef.current?.scrollWidth ?? contentW) / contentW)))
+            }
             onError={(e) => {
               (e.currentTarget.parentElement as HTMLElement | null)?.style.setProperty('display', 'none');
             }}
             data-testid="diary-page-cover"
           />
+          {/* 胶带：压在照片上沿，像手账里随手粘的 */}
+          <InkTape
+            w={46}
+            h={14}
+            seed={`tape-${entry.id}`}
+            className="absolute -top-2 left-1/2 -translate-x-1/2 -rotate-6 text-[#fffdf3]"
+          />
         </div>
       )}
 
       {rest.length > 0 && (
-        <div className="mb-3 grid grid-cols-3 gap-1.5" style={{ breakInside: 'avoid' }}>
+        <div className="mb-3 grid grid-cols-3 gap-2 p-0.5" style={{ breakInside: 'avoid' }}>
           {rest.slice(0, 6).map((src) => (
             <img
               key={src}
               src={src}
               alt=""
-              className="aspect-square w-full rounded-md object-cover"
+              className="aspect-square w-full border-2 border-white object-cover shadow-[0_6px_12px_-9px_rgba(0,0,0,0.6)]"
               loading="lazy"
             />
           ))}
@@ -137,106 +148,133 @@ export function DiaryPageFace({
       data-testid="diary-page-face"
       style={{ width: box.w, height: box.h }}
     >
-      {/* 页眉：左边谁写的，右边日期（对齐参考图的右上日期） */}
-      <div
-        className="flex shrink-0 items-center justify-between px-5 pb-1 pt-4"
-        style={{ height: HEADER_H }}
-      >
-        <span className="text-[11px] tracking-[0.16em] text-ink/45" style={{ fontFamily: HAND_FONT }}>
-          {AUTHOR_LABEL[entry.author]}
-        </span>
-        <span className="text-[11px] tabular-nums tracking-[0.12em] text-ink/45">
-          {dottedDate(entry.date)}
-        </span>
-      </div>
+      {/* 纸的质感：纸纹 + 淡横格 + 左侧红线 + 手画的纸边（只在最底层，不碰排版） */}
+      <PaperTexture
+        w={box.w}
+        h={box.h}
+        r={6}
+        seed={`page-${entry.id}-${slice}`}
+        rules
+        ruleTop={HEADER_H + 22}
+        ruleGap={30}
+        margin={15}
+      />
 
-      {/* 正文：固定高的窗口，长文按栏排到下一面 */}
-      <div className="relative shrink-0 overflow-hidden" style={{ height: contentH, marginLeft: PAD_X, width: contentW }}>
-        {flow === 'scroll' ? (
-          <div className="relative h-full" style={{ width: contentW }}>
+      <div className="relative z-10 flex h-full w-full flex-col">
+        {/* 页眉：左边谁写的，右边日期（对齐参考图的右上日期） */}
+        <div
+          className="flex shrink-0 items-center justify-between px-5 pb-1 pt-4"
+          style={{ height: HEADER_H }}
+        >
+          <span className="text-[11px] tracking-[0.16em] text-ink/45" style={{ fontFamily: HAND_FONT }}>
+            {AUTHOR_LABEL[entry.author]}
+          </span>
+          <span className="text-[11px] tabular-nums tracking-[0.12em] text-ink/45">
+            {dottedDate(entry.date)}
+          </span>
+        </div>
+
+        {/* 正文：固定高的窗口，长文按栏排到下一面 */}
+        <div
+          className="relative shrink-0 overflow-hidden"
+          style={{ height: contentH, marginLeft: PAD_X, width: contentW }}
+        >
+          {flow === 'scroll' ? (
+            <div className="relative h-full" style={{ width: contentW }}>
+              <div
+                className="h-full overflow-y-auto overscroll-contain pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{ width: contentW }}
+              >
+                {body}
+              </div>
+              {/* 底部淡出：整页可滚时，末尾不要硬切一行字 */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#fdfbf6] to-transparent dark:from-[#221f1c]"
+              />
+            </div>
+          ) : (
             <div
-              className="h-full overflow-y-auto overscroll-contain pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              style={{ width: contentW }}
+              ref={flowRef}
+              style={{
+                width: contentW,
+                height: contentH,
+                columnWidth: contentW,
+                columnGap: 0,
+                columnFill: 'auto',
+                transform: `translateX(${-slice * contentW}px)`,
+                transition: 'transform 320ms ease',
+              }}
             >
               {body}
             </div>
-            {/* 底部淡出：整页可滚时，末尾不要硬切一行字 */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#fdfbf6] to-transparent dark:from-[#221f1c]"
-            />
-          </div>
-        ) : (
+          )}
+        </div>
+
+        {/* 页脚：留白，让纸看着像纸 */}
+        <div className="shrink-0" style={{ height: FOOT_H }} />
+
+        {/* 小纸条：压在页面右下角，摞两张；点开看全文 / 改它 */}
+        {hasSlips && (
           <div
-            ref={flowRef}
-            style={{
-              width: contentW,
-              height: contentH,
-              columnWidth: contentW,
-              columnGap: 0,
-              columnFill: 'auto',
-              transform: `translateX(${-slice * contentW}px)`,
-              transition: 'transform 320ms ease',
-            }}
+            className="pointer-events-none absolute inset-x-4 bottom-4 z-10 flex flex-col items-end gap-2"
+            data-testid="diary-page-slips"
           >
-            {body}
+            {shown.map((s, i) => {
+              const text = s.content.length > SLIP_PREVIEW ? `${s.content.slice(0, SLIP_PREVIEW)}…` : s.content;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSlipClick?.(s);
+                  }}
+                  data-testid="diary-slip"
+                  data-slip-id={s.id}
+                  className={`pointer-events-auto relative block w-[58%] max-w-[190px] text-left transition-transform active:scale-[0.98] ${
+                    i % 2 === 0 ? 'rotate-[1.6deg]' : '-rotate-[1.2deg]'
+                  }`}
+                >
+                  {/* 胶带 */}
+                  <InkTape
+                    w={34}
+                    h={11}
+                    seed={`slip-tape-${s.id}`}
+                    className="absolute -top-1.5 left-1/2 z-10 -translate-x-1/2 -rotate-3 text-white"
+                  />
+                  {/* 手撕的便签边，不再是一个规规矩矩的圆角方块 */}
+                  <InkBorder
+                    className="block w-full text-[#3a3730]/30"
+                    r={2}
+                    amp={1.4}
+                    seed={`slip-${s.id}`}
+                    strokeWidth={1}
+                  >
+                    <div
+                      className="px-2.5 py-2 shadow-[0_8px_18px_-10px_rgba(0,0,0,0.55)]"
+                      style={{ background: s.color }}
+                    >
+                      <p
+                        className="max-h-[52px] overflow-hidden whitespace-pre-wrap text-[12px] leading-[18px] text-[#3a3730]"
+                        style={{ fontFamily: HAND_FONT }}
+                      >
+                        {text}
+                      </p>
+                    </div>
+                  </InkBorder>
+                </button>
+              );
+            })}
+            {slips.length > shown.length && (
+              <span className="text-[10px] text-ink/35">还有 {slips.length - shown.length} 张</span>
+            )}
           </div>
         )}
       </div>
-
-      {/* 页脚：留白，让纸看着像纸 */}
-      <div className="shrink-0" style={{ height: FOOT_H }} />
-
-      {/* 小纸条：压在页面右下角，摞两张；点开看全文 / 改它 */}
-      {hasSlips && (
-        <div
-          className="pointer-events-none absolute inset-x-4 bottom-4 z-10 flex flex-col items-end gap-2"
-          data-testid="diary-page-slips"
-        >
-          {shown.map((s, i) => {
-            const text = s.content.length > SLIP_PREVIEW ? `${s.content.slice(0, SLIP_PREVIEW)}…` : s.content;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSlipClick?.(s);
-                }}
-                data-testid="diary-slip"
-                data-slip-id={s.id}
-                className={`pointer-events-auto relative block w-[58%] max-w-[190px] text-left transition-transform active:scale-[0.98] ${
-                  i % 2 === 0 ? 'rotate-[1.6deg]' : '-rotate-[1.2deg]'
-                }`}
-              >
-                {/* 胶带 */}
-                <span
-                  aria-hidden
-                  className="absolute -top-1.5 left-1/2 h-3 w-9 -translate-x-1/2 -rotate-3 bg-white/70 shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
-                />
-                <div
-                  className="rounded-[2px] px-2.5 py-2 shadow-[0_8px_18px_-10px_rgba(0,0,0,0.55)]"
-                  style={{ background: s.color }}
-                >
-                  <p
-                    className="max-h-[52px] overflow-hidden whitespace-pre-wrap text-[12px] leading-[18px] text-[#3a3730]"
-                    style={{ fontFamily: HAND_FONT }}
-                  >
-                    {text}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-          {slips.length > shown.length && (
-            <span className="text-[10px] text-ink/35">还有 {slips.length - shown.length} 张</span>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
 /** 纸面底色（Paper 米白纸）——翻页卡与阅读器共用 */
-export const PAPER_CLASS =
-  'bg-[#fdfbf6] text-[#3d3a35] dark:bg-[#221f1c] dark:text-[#d8d2c7]';
+export const PAPER_CLASS = 'bg-[#fdfbf6] text-[#3d3a35] dark:bg-[#221f1c] dark:text-[#d8d2c7]';

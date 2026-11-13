@@ -8,6 +8,7 @@ import { useDiaryStore } from './diaryStore';
 import { BookShelf } from './BookShelf';
 import { BookDeck } from './BookDeck';
 import { PageReader } from './PageReader';
+import { InkBorder } from './InkShapes';
 
 /**
  * 手写日记本（2026-11-13 重构）：
@@ -96,10 +97,19 @@ export function DiaryPage() {
           onClick={() => setWantWrite(true)}
           aria-label="去记录"
           data-testid="diary-page-go-write"
-          className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line px-3 text-xs font-medium text-foreground transition hover:bg-surface-2"
+          className="shrink-0"
         >
-          <PenLine className="h-3.5 w-3.5" />
-          去记录
+          <InkBorder
+            className="text-ink/25 dark:text-ink/30"
+            seed="go-write"
+            amp={1.1}
+            strokeWidth={1.2}
+          >
+            <span className="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium text-foreground transition hover:bg-surface-2">
+              <PenLine className="h-3.5 w-3.5" />
+              去记录
+            </span>
+          </InkBorder>
         </button>
       }
     >

@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { CoupleDay, DiaryEntry } from './diaryData';
 import { HAND_FONT } from './diaryData';
 import type { PageBox } from './pageLayout';
+import { inkLine } from './ink';
+import { PaperTexture } from './InkShapes';
 import { useProfileStore } from '@/stores/profileStore';
 
 interface Props {
@@ -73,54 +75,79 @@ export function CouplePageFace({ day, box, slice = 0, onPages, flow = 'paginate'
     };
   }, [contentW, contentH, theirsKey, mineKey, flow]);
 
+  // 中间那条虚线：手画的，不是 CSS 边框
+  const dividerW = Math.max(40, box.w - 40);
+  const dividerD = useMemo(
+    () => inkLine(0, 0.5, dividerW, 0.5, { seed: `divider-${day.date}`, amp: 0.5 }),
+    [dividerW, day.date],
+  );
+
   return (
     <div
       className="flex h-full w-full flex-col overflow-hidden"
       data-testid="diary-couple-face"
       style={{ width: box.w, height: box.h }}
     >
-      {/* 页眉：日期居中，两边各一条细线，像书页上的日期题头 */}
-      <div className="flex shrink-0 items-center gap-3 px-5" style={{ height: HEAD_H }}>
-        <span aria-hidden className="h-px flex-1 bg-ink/10" />
-        <span className="text-[11px] tabular-nums tracking-[0.14em] text-ink/45">
-          {dottedDate(day.date)}
-        </span>
-        <span aria-hidden className="h-px flex-1 bg-ink/10" />
+      {/* 纸的质感：纸纹 + 手画纸边（情侣本不加横格，中间那条虚线才是这里的分界） */}
+      <PaperTexture w={box.w} h={box.h} r={6} seed={`couple-${day.date}-${slice}`} outline />
+
+      <div className="relative z-10 flex h-full w-full flex-col">
+        {/* 页眉：日期居中，两边各一条细线，像书页上的日期题头 */}
+        <div className="flex shrink-0 items-center gap-3 px-5" style={{ height: HEAD_H }}>
+          <span aria-hidden className="h-px flex-1 bg-ink/10" />
+          <span className="text-[11px] tabular-nums tracking-[0.14em] text-ink/45">
+            {dottedDate(day.date)}
+          </span>
+          <span aria-hidden className="h-px flex-1 bg-ink/10" />
+        </div>
+
+        <Half
+          side="theirs"
+          name={hisName}
+          entry={day.theirs}
+          placeholder={`这一天${hisName}还没写`}
+          width={contentW}
+          height={halfH}
+          contentH={contentH}
+          slice={slice}
+          flow={flow}
+          flowRef={theirsRef}
+        />
+
+        {/* 分隔：手画的虚线 + 小星，压在纸色上 */}
+        <div className="relative shrink-0 px-5" style={{ height: DIVIDER_H }}>
+          <svg
+            aria-hidden
+            className="absolute left-5 top-1/2 -translate-y-1/2 text-ink/25"
+            width={dividerW}
+            height={2}
+            viewBox={`0 0 ${dividerW} 2`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.1}
+            strokeDasharray="5 4"
+            strokeLinecap="round"
+          >
+            <path d={dividerD} />
+          </svg>
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#fdfbf6] px-2 text-[10px] leading-none text-ink/25 dark:bg-[#221f1c]">
+            ✦
+          </span>
+        </div>
+
+        <Half
+          side="mine"
+          name={herName}
+          entry={day.mine}
+          placeholder="这半页还空着，点右上角写下今天"
+          width={contentW}
+          height={halfH}
+          contentH={contentH}
+          slice={slice}
+          flow={flow}
+          flowRef={mineRef}
+        />
       </div>
-
-      <Half
-        side="theirs"
-        name={hisName}
-        entry={day.theirs}
-        placeholder={`这一天${hisName}还没写`}
-        width={contentW}
-        height={halfH}
-        contentH={contentH}
-        slice={slice}
-        flow={flow}
-        flowRef={theirsRef}
-      />
-
-      {/* 分隔：虚线 + 小星，压在纸色上 */}
-      <div className="relative shrink-0 px-5" style={{ height: DIVIDER_H }}>
-        <div className="border-t border-dashed border-ink/15" style={{ marginTop: DIVIDER_H / 2 }} />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#fdfbf6] px-2 text-[10px] leading-none text-ink/25 dark:bg-[#221f1c]">
-          ✦
-        </span>
-      </div>
-
-      <Half
-        side="mine"
-        name={herName}
-        entry={day.mine}
-        placeholder="这半页还空着，点右上角写下今天"
-        width={contentW}
-        height={halfH}
-        contentH={contentH}
-        slice={slice}
-        flow={flow}
-        flowRef={mineRef}
-      />
     </div>
   );
 }
@@ -158,7 +185,10 @@ function Half({
   const body = (
     <>
       {cover && (
-        <div className="mb-2 overflow-hidden rounded-md bg-ink/[0.06]" style={{ breakInside: 'avoid' }}>
+        <div
+          className="relative mb-2.5 bg-white p-[4px] pb-1.5 shadow-[0_8px_14px_-10px_rgba(0,0,0,0.6)]"
+          style={{ breakInside: 'avoid', transform: 'rotate(-0.6deg)' }}
+        >
           <img
             src={cover}
             alt=""
@@ -174,7 +204,13 @@ function Half({
       {rest.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5" style={{ breakInside: 'avoid' }}>
           {rest.slice(0, 4).map((src) => (
-            <img key={src} src={src} alt="" className="h-11 w-11 rounded object-cover" loading="lazy" />
+            <img
+              key={src}
+              src={src}
+              alt=""
+              className="h-11 w-11 border-2 border-white object-cover shadow-[0_4px_10px_-7px_rgba(0,0,0,0.6)]"
+              loading="lazy"
+            />
           ))}
         </div>
       )}
