@@ -54,6 +54,10 @@ export interface DeckPage {
   date: string;
   entry?: DiaryEntry;
   pair?: CoupleDay;
+  /** 这一篇（这一天）长文自动排成了几面，这是第几面（从 0 起） */
+  slice?: number;
+  /** 一共几面；1 = 一页放得下 */
+  slices?: number;
 }
 
 /** 这个本子能不能写日记：TA 的日记只能加小纸条，不能代写 */
