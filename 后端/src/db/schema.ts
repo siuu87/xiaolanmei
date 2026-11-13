@@ -215,6 +215,10 @@ export const diaryBooks = sqliteTable('diary_books', {
   name: text('name').notNull(),
   kind: text('kind').notNull().default('me'), // me | partner | couple
   cover: text('cover').notNull().default('#7c5cff'), // 封面主色
+  /** 0/1：是否上锁（只是本机仪式感，不做加密；密码用于前端校验） */
+  locked: integer('locked').notNull().default(0),
+  /** 4 位数字密码；空串 = 还没设过密码 */
+  lockCode: text('lock_code').notNull().default(''),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),

@@ -5,17 +5,17 @@ import { PageShell } from '@/components/PageShell';
 import type { DiaryBook, DiaryEntry } from './diaryData';
 import { diaryDayKey, dayKeyToDate } from './diaryData';
 import { useDiaryStore } from './diaryStore';
-import { BookWall } from './BookWall';
+import { BookShelf } from './BookShelf';
 import { BookDeck } from './BookDeck';
 import { PageReader } from './PageReader';
 
 /**
- * 日记本（Paper 式改版）：
- * 封面墙（多本：我的 / TA 的 / 情侣日记）→ 点封面只翻开本子，停在今天那页的阅读态
- * → 左右翻页看历史 → 点某一页进入全屏阅读（可编辑 / 上下滑动）。
- * 右上角「去记录」= 打开「我的日记」并直接进编写页；翻开本子后右上角也有同款入口。
+ * 手写日记本（2026-11-13 重构）：
+ *   横向书架（左右滑动换本）→ 点封面进本子详情 → 锁屏（若上锁）→ 翻页阅读 → 右上角进编写页
  *
- * 日历深链保留：?date=YYYY-M-D 打开含当天日记的本子并定位那页（阅读态）；&new=1 翻开今天直接记录。
+ * - 书架一屏一本、scroll-snap；上锁的本子封面带锁，进详情先进锁屏
+ * - 详情默认「翻页阅读」，只有右上角能进编写；保存/返回都回翻页页
+ * - 日历深链：?date=YYYY-M-D 打开含那天日记的本子并定位（阅读态）；&new=1 直接进编写
  */
 export function DiaryPage() {
   const entries = useDiaryStore((s) => s.entries);
@@ -26,38 +26,51 @@ export function DiaryPage() {
   const dateParam = searchParams.get('date');
   const newParam = searchParams.get('new');
 
-  const [openBook, setOpenBook] = useState<DiaryBook | null>(null);
+  // 存 id 而不是对象：本子上锁/改名后，从 books 里取最新的那一份
+  const [openBookId, setOpenBookId] = useState<string | null>(null);
   const [readerEntry, setReaderEntry] = useState<DiaryEntry | null>(null);
   // 日历深链指定的日期页（打开本子后定位用）
   const [focusDate, setFocusDate] = useState<string | null>(null);
-  // 打开本子时是否直接进编写态（右上角「去记录」/ 日历 &new=1）
+  // 打开本子时是否直接进编写页（右上角「去记录」/ 日历 &new=1）
   const [startEditing, setStartEditing] = useState(false);
   // 封面墙右上角「去记录」：books 可能还没加载完，等到位再打开
   const [wantWrite, setWantWrite] = useState(false);
+
+  const openBook = openBookId ? books.find((b) => b.id === openBookId) ?? null : null;
+  const readerBook = readerEntry
+    ? books.find((b) => b.id === (readerEntry.bookId ?? 'book-me')) ?? books[0]
+    : null;
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // 封面墙右上角「去记录」：打开「我的日记」并直接进编写页
+  const openBookById = (book: DiaryBook, write = false) => {
+    setReaderEntry(null);
+    setFocusDate(null);
+    setStartEditing(write);
+    setOpenBookId(book.id);
+  };
+
+  // 书架右上角「去记录」：打开「我的日记」并直接进编写页
   useEffect(() => {
     if (!wantWrite || books.length === 0) return;
     const book = books.find((b) => b.kind === 'me') ?? books[0];
-    setOpenBook(book);
-    setFocusDate(null);
-    setStartEditing(true);
+    openBookById(book, true);
     setWantWrite(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantWrite, books]);
 
   // 日历「查看日记」：找到当天日记 → 打开它所属的本子并定位
   useEffect(() => {
     if (!dateParam || newParam) return;
-    if (books.length === 0) return; // 本子还没加载好
+    if (books.length === 0) return;
     const target = entries.find((d) => diaryDayKey(d) === dateParam);
     if (!target) return;
     const bookId = target.bookId ?? 'book-me';
     const book = books.find((b) => b.id === bookId) ?? books[0];
-    setOpenBook(book);
+    setOpenBookId(book.id);
+    setStartEditing(false);
     setFocusDate(target.date);
   }, [dateParam, newParam, entries, books]);
 
@@ -66,13 +79,9 @@ export function DiaryPage() {
     if (!newParam) return;
     if (books.length === 0) return;
     const book = books.find((b) => b.kind === 'me') ?? books[0];
-    setOpenBook(book);
+    setOpenBookId(book.id);
     setStartEditing(true);
   }, [newParam, books]);
-
-  const readerBook = readerEntry
-    ? books.find((b) => b.id === (readerEntry.bookId ?? 'book-me')) ?? books[0]
-    : null;
 
   return (
     <PageShell
@@ -92,13 +101,16 @@ export function DiaryPage() {
         </button>
       }
     >
-      <BookWall
+      <BookShelf
         books={books}
         entries={entries}
-        onOpen={(b) => setOpenBook(b)}
-        onAdd={(patch) => useDiaryStore.getState().addBook(patch)}
+        onOpen={(b) => openBookById(b)}
+        onAdd={(draft) => useDiaryStore.getState().addBook(draft)}
         onPatch={(id, patch) => useDiaryStore.getState().patchBook(id, patch)}
-        onRemove={(id) => useDiaryStore.getState().removeBook(id)}
+        onRemove={(id) => {
+          useDiaryStore.getState().removeBook(id);
+          if (openBookId === id) setOpenBookId(null);
+        }}
       />
 
       {openBook && (
@@ -108,24 +120,16 @@ export function DiaryPage() {
           focusDate={focusDate}
           startEditing={startEditing}
           onClose={() => {
-            setOpenBook(null);
+            setOpenBookId(null);
             setFocusDate(null);
             setStartEditing(false);
           }}
-          onOpenReader={(e) => {
-            setReaderEntry(e);
-            setOpenBook(null);
-            setStartEditing(false);
-          }}
+          onOpenReader={(e) => setReaderEntry(e)}
         />
       )}
 
       {readerEntry && readerBook && (
-        <PageReader
-          entry={readerEntry}
-          book={readerBook}
-          onClose={() => setReaderEntry(null)}
-        />
+        <PageReader entry={readerEntry} book={readerBook} onClose={() => setReaderEntry(null)} />
       )}
     </PageShell>
   );

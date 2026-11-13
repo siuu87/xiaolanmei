@@ -263,6 +263,8 @@ CREATE TABLE IF NOT EXISTS diary_books (
   name TEXT NOT NULL,
   kind TEXT NOT NULL DEFAULT 'me',
   cover TEXT NOT NULL DEFAULT '#7c5cff',
+  locked INTEGER NOT NULL DEFAULT 0,
+  lock_code TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -856,6 +858,14 @@ export function initDatabase(): void {
     sqlite.exec(`ALTER TABLE diaries ADD COLUMN book_id TEXT NOT NULL DEFAULT ''`);
   }
   sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_diaries_book ON diaries(book_id)`);
+  // 幂等迁移（2026-11-13 日记本上锁）：diary_books 补 locked / lock_code
+  const diaryBookCols = sqlite.prepare(`PRAGMA table_info(diary_books)`).all() as { name: string }[];
+  if (!diaryBookCols.some((c) => c.name === 'locked')) {
+    sqlite.exec(`ALTER TABLE diary_books ADD COLUMN locked INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!diaryBookCols.some((c) => c.name === 'lock_code')) {
+    sqlite.exec(`ALTER TABLE diary_books ADD COLUMN lock_code TEXT NOT NULL DEFAULT ''`);
+  }
   const bookCount = sqlite.prepare(`SELECT COUNT(*) AS n FROM diary_books WHERE deleted_at IS NULL`).get() as { n: number };
   if (bookCount.n === 0) {
     const ts = Date.now();

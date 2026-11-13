@@ -11,8 +11,22 @@ export interface DiaryBook {
   name: string;
   kind: 'me' | 'partner' | 'couple';
   cover: string; // 封面主色
+  /** 是否上锁（本机仪式感，不是加密） */
+  locked: boolean;
+  /** 4 位数字密码；空串 = 没设过 */
+  lockCode: string;
   sortOrder: number;
 }
+
+/** 密码位数 */
+export const LOCK_CODE_LEN = 4;
+
+/** 手写感用系统楷体，不引外部字体：断网也稳定 */
+export const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", serif';
+
+/** 手写纸横线背景（与 PAPER_CLASS 的纸色配套） */
+export const HAND_RULE_BG =
+  'repeating-linear-gradient(180deg, transparent 0 30px, rgba(120,110,95,0.16) 30px 31px)';
 
 /** 日记本类型：我的日记 / TA 的日记 / 情侣日记 */
 export const BOOK_KIND_LABEL: Record<DiaryBook['kind'], string> = {

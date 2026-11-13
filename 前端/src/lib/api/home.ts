@@ -19,8 +19,10 @@ export const deleteDiary = (id: string) =>
 export const listDiaryBooks = () => request<DiaryBook[]>('/api/diary/books');
 export const createDiaryBook = (book: Omit<DiaryBook, 'id' | 'sortOrder'>) =>
   request<{ id: string }>('/api/diary/books', { method: 'POST', body: JSON.stringify(book) });
-export const patchDiaryBook = (id: string, patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover'>>) =>
-  request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+export const patchDiaryBook = (
+  id: string,
+  patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'locked' | 'lockCode'>>,
+) => request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiaryBook = (id: string) =>
   request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'DELETE' });
 

@@ -1,5 +1,5 @@
 import type { DiaryEntry } from './diaryData';
-import { AUTHOR_LABEL, AUTHOR_CLASS } from './diaryData';
+import { AUTHOR_LABEL, AUTHOR_CLASS, HAND_FONT, HAND_RULE_BG } from './diaryData';
 
 interface Props {
   entry: DiaryEntry;
@@ -28,8 +28,11 @@ export function DiaryPageFace({ entry, editing, draftContent, onDraftChange, foo
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* 纸面 */}
-      <div className="relative flex-1 overflow-y-auto px-6 pb-6 pt-4">
+      {/* 纸面：手写横线 */}
+      <div
+        className="relative flex-1 overflow-y-auto px-6 pb-6 pt-4"
+        style={{ backgroundImage: HAND_RULE_BG }}
+      >
         {/* 左侧装订线（书脊） */}
         <div
           aria-hidden
@@ -40,14 +43,14 @@ export function DiaryPageFace({ entry, editing, draftContent, onDraftChange, foo
           }}
         />
         {/* 日期抬头 */}
-        <div className="mb-4 flex items-baseline gap-2">
-          <span className="font-serif text-2xl font-medium leading-none tracking-tight text-ink">
+        <div className="mb-3 flex items-baseline gap-2">
+          <span className="text-2xl font-medium leading-none tracking-tight text-ink" style={{ fontFamily: HAND_FONT }}>
             {md}
           </span>
           <span className="text-xs text-ink/40">{y}</span>
         </div>
         {/* 谁写的 */}
-        <div className={`mb-3 text-sm font-medium ${AUTHOR_CLASS[entry.author]}`}>
+        <div className={`mb-2 text-sm font-medium ${AUTHOR_CLASS[entry.author]}`} style={{ fontFamily: HAND_FONT }}>
           {AUTHOR_LABEL[entry.author]}
         </div>
         {/* 正文 */}
@@ -56,10 +59,14 @@ export function DiaryPageFace({ entry, editing, draftContent, onDraftChange, foo
             value={content}
             onChange={(e) => onDraftChange?.(e.target.value)}
             placeholder="今天……写点什么吧"
-            className="h-full min-h-48 w-full resize-none bg-transparent text-[15px] leading-7 text-ink outline-none placeholder:text-ink/30"
+            className="h-full min-h-48 w-full resize-none bg-transparent text-[16px] text-ink outline-none placeholder:text-ink/30"
+            style={{ fontFamily: HAND_FONT, lineHeight: '31px' }}
           />
         ) : (
-          <p className="whitespace-pre-wrap text-[15px] leading-7 text-ink/90">
+          <p
+            className="whitespace-pre-wrap text-[16px] text-ink/90"
+            style={{ fontFamily: HAND_FONT, lineHeight: '31px' }}
+          >
             {content || <span className="text-ink/25">（空白页）</span>}
           </p>
         )}

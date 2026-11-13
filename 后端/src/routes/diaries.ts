@@ -18,7 +18,22 @@ function toDTO(d: typeof diaries.$inferSelect) {
 }
 
 function toBookDTO(b: typeof diaryBooks.$inferSelect) {
-  return { id: b.id, name: b.name, kind: b.kind, cover: b.cover, sortOrder: b.sortOrder, createdAt: b.createdAt };
+  return {
+    id: b.id,
+    name: b.name,
+    kind: b.kind,
+    cover: b.cover,
+    // 上锁：locked 存 0/1，前端要 boolean；lockCode 只是本机仪式感，前端校验
+    locked: !!b.locked,
+    lockCode: b.lockCode,
+    sortOrder: b.sortOrder,
+    createdAt: b.createdAt,
+  };
+}
+
+/** 密码统一成 0~4 位数字，避免前端传进来奇怪字符 */
+function normCode(v: unknown): string {
+  return String(v ?? '').replace(/\D/g, '').slice(0, 4);
 }
 
 export async function diaryRoutes(app: FastifyInstance): Promise<void> {
@@ -34,7 +49,9 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/diary/books', async (req, reply) => {
-    const body = (req.body ?? {}) as { id?: string; name?: string; kind?: string; cover?: string };
+    const body = (req.body ?? {}) as {
+      id?: string; name?: string; kind?: string; cover?: string; locked?: boolean; lockCode?: string;
+    };
     const name = body.name?.trim();
     if (!name) {
       reply.code(400).send({ message: 'name 必填' });
@@ -49,6 +66,8 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
         name,
         kind: body.kind === 'partner' || body.kind === 'couple' ? body.kind : 'me',
         cover: body.cover?.trim() || '#7c5cff',
+        locked: body.locked ? 1 : 0,
+        lockCode: normCode(body.lockCode),
         sortOrder: count,
         createdAt: ts,
         updatedAt: ts,
@@ -59,11 +78,15 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch('/diary/books/:id', async (req) => {
     const { id } = req.params as { id: string };
-    const body = (req.body ?? {}) as { name?: string; kind?: string; cover?: string };
-    const patch: Partial<{ name: string; kind: string; cover: string }> = {};
+    const body = (req.body ?? {}) as {
+      name?: string; kind?: string; cover?: string; locked?: boolean; lockCode?: string;
+    };
+    const patch: Partial<{ name: string; kind: string; cover: string; locked: number; lockCode: string }> = {};
     if (body.name !== undefined) patch.name = body.name.trim();
     if (body.kind !== undefined && ['me', 'partner', 'couple'].includes(body.kind)) patch.kind = body.kind;
     if (body.cover !== undefined) patch.cover = body.cover.trim();
+    if (body.locked !== undefined) patch.locked = body.locked ? 1 : 0;
+    if (body.lockCode !== undefined) patch.lockCode = normCode(body.lockCode);
     if (Object.keys(patch).length === 0) return { ok: true };
     db.update(diaryBooks).set({ ...patch, updatedAt: now() }).where(eq(diaryBooks.id, id)).run();
     return { ok: true };
