@@ -1,162 +1,244 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { PenLine } from 'lucide-react';
-import { PageShell } from '@/components/PageShell';
-import type { DeckPage, DiaryBook } from './diaryData';
-import { diaryDayKey, dayKeyToDate } from './diaryData';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { DeckPage, DiaryBook, DiaryEntry } from './diaryData';
+import { dayKeyToDate, diaryDayKey, sortByTime } from './diaryData';
 import { useDiaryStore } from './diaryStore';
-import { BookShelf } from './BookShelf';
 import { BookDeck } from './BookDeck';
+import { BookLock } from './BookLock';
+import { BookSheet, type BookDraft } from './BookSheet';
+import { BookSwitcher } from './BookSwitcher';
+import { DlogCompose } from './DlogCompose';
+import { DlogDay } from './DlogDay';
+import { DlogHome } from './DlogHome';
 import { PageReader } from './PageReader';
-import { InkBorder } from './InkShapes';
+import { SlipEditor } from './SlipEditor';
 
 /**
- * 手写日记本（2026-11-13 重构）：
- *   横向书架（左右滑动换本）→ 点封面进本子详情 → 锁屏（若上锁）→ 翻页阅读 → 右上角进编写页
+ * 日记（2026-11-14 按 D·LOG 重做个人那两本）：
  *
- * - 书架一屏一本、scroll-snap；上锁的本子封面带锁，进详情先进锁屏
- * - 详情默认「翻页阅读」，只有右上角能进编写；保存/返回都回翻页页
- * - 日历深链：?date=YYYY-M-D 打开含那天日记的本子并定位（阅读态）；&new=1 直接进编写
+ *   月历首页（格子里是照片）→ 点某天 → 当天页（一条条「时刻」）→ ＋ 记这一刻
+ *   顶部「我的日记 ⌄」换本；右上齿轮进本子设置（改名 / 换封皮 / 上锁）
+ *
+ * - 一天可以记很多条，每条带时刻 / 心情 / 标签，写新的不覆盖旧的
+ * - 「TA 的日记」同样的照片流水账，但只能夹纸条，不能代写
+ * - 情侣本沿用原来「一天一页、上下两半」的版本，下一步再按 DuoLog 改
  */
 export function DiaryPage() {
   const entries = useDiaryStore((s) => s.entries);
   const books = useDiaryStore((s) => s.books);
   const slips = useDiaryStore((s) => s.slips);
   const load = useDiaryStore((s) => s.load);
+  const navigate = useNavigate();
 
   const [searchParams] = useSearchParams();
   const dateParam = searchParams.get('date');
   const newParam = searchParams.get('new');
 
-  // 存 id 而不是对象：本子上锁/改名后，从 books 里取最新的那一份
-  const [openBookId, setOpenBookId] = useState<string | null>(null);
-  // 全屏放大看的那一页（情侣本是「一天」）+ 它属于哪本
-  const [readerPage, setReaderPage] = useState<DeckPage | null>(null);
-  const [readerBookId, setReaderBookId] = useState<string | null>(null);
-  // 日历深链指定的日期页（打开本子后定位用）
-  const [focusDate, setFocusDate] = useState<string | null>(null);
-  // 打开本子时是否直接进编写页（右上角「去记录」/ 日历 &new=1）
-  const [startEditing, setStartEditing] = useState(false);
-  // 封面墙右上角「去记录」：books 可能还没加载完，等到位再打开
-  const [wantWrite, setWantWrite] = useState(false);
+  const today = todayISO();
 
-  const openBook = openBookId ? books.find((b) => b.id === openBookId) ?? null : null;
-  const readerBook = readerBookId ? books.find((b) => b.id === readerBookId) ?? null : null;
+  const [bookId, setBookId] = useState('');
+  /** 打开着哪一天（null = 月历首页） */
+  const [dayDate, setDayDate] = useState<string | null>(null);
+  /** 记录 / 改某一条 */
+  const [compose, setCompose] = useState<{ date: string; entry?: DiaryEntry | null } | null>(null);
+  const [switcher, setSwitcher] = useState(false);
+  const [sheet, setSheet] = useState<{ book: DiaryBook | null } | null>(null);
+  const [slipEditor, setSlipEditor] = useState<{ date: string } | null>(null);
+  /** 本次会话里解锁过 / 撬开过的本子 */
+  const [unlocked, setUnlocked] = useState<string[]>([]);
+  const [readerPage, setReaderPage] = useState<DeckPage | null>(null);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const openBookById = (book: DiaryBook, write = false) => {
-    setReaderPage(null);
-    setReaderBookId(null);
-    setFocusDate(null);
-    setStartEditing(write);
-    setOpenBookId(book.id);
-  };
-
-  // 书架右上角「去记录」：打开「我的日记」并直接进编写页
+  // 默认打开「我的日记」
   useEffect(() => {
-    if (!wantWrite || books.length === 0) return;
-    const book = books.find((b) => b.kind === 'me') ?? books[0];
-    openBookById(book, true);
-    setWantWrite(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wantWrite, books]);
+    if (bookId || books.length === 0) return;
+    setBookId((books.find((b) => b.kind === 'me') ?? books[0]).id);
+  }, [bookId, books]);
 
-  // 日历「查看日记」：找到当天日记 → 打开它所属的本子并定位
+  const book = books.find((b) => b.id === bookId) ?? null;
+
+  /** 这本的全部日记（老数据 bookId 为空 = 我的日记） */
+  const bookEntries = useMemo(
+    () => entries.filter((e) => (e.bookId || 'book-me') === (book?.id ?? 'book-me')),
+    [entries, book?.id],
+  );
+
+  /** 某一天的「时刻」 */
+  const entriesOf = (date: string) => sortByTime(bookEntries.filter((e) => e.date === date));
+
+  // 日历深链：?date=YYYY-M-D
   useEffect(() => {
-    if (!dateParam || newParam) return;
-    if (books.length === 0) return;
+    if (!dateParam || newParam || books.length === 0) return;
     const target = entries.find((d) => diaryDayKey(d) === dateParam);
-    if (!target) return;
-    const bookId = target.bookId ?? 'book-me';
-    const book = books.find((b) => b.id === bookId) ?? books[0];
-    setOpenBookId(book.id);
-    setStartEditing(false);
-    setFocusDate(target.date);
+    if (target) {
+      setBookId(target.bookId || 'book-me');
+      setDayDate(target.date);
+      return;
+    }
+    setDayDate(dayKeyToDate(dateParam));
   }, [dateParam, newParam, entries, books]);
 
-  // 日历「去记日记」：打开「我的日记」翻到今天并直接记录
+  // 日历深链：&new=1 直接记今天
   useEffect(() => {
-    if (!newParam) return;
-    if (books.length === 0) return;
-    const book = books.find((b) => b.kind === 'me') ?? books[0];
-    setOpenBookId(book.id);
-    setStartEditing(true);
-  }, [newParam, books]);
+    if (!newParam || books.length === 0) return;
+    const mine = books.find((b) => b.kind === 'me') ?? books[0];
+    setBookId(mine.id);
+    setDayDate(today);
+    setCompose({ date: today });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newParam, books.length]);
+
+  // 本子还没加载到：铺一层不透明底，别让底下的聊天透出来
+  if (!book) {
+    return (
+      <div className="min-h-screen bg-page-bg" data-testid="diary-page">
+        <div className="flex h-40 items-center justify-center text-[13px] text-muted-foreground">
+          正在打开日记…
+        </div>
+      </div>
+    );
+  }
+
+  // 上锁的本子：先过锁面（长按可撬锁，撬开这次仍算上锁）
+  if (book.locked && !unlocked.includes(book.id)) {
+    return (
+      <BookLock
+        book={book}
+        onUnlock={() => setUnlocked((prev) => [...prev, book.id])}
+        onSneak={() => setUnlocked((prev) => [...prev, book.id])}
+        onClose={() => navigate('/chat')}
+      />
+    );
+  }
+
+  const canWrite = book.kind !== 'partner';
+
+  // 情侣本：仍然用原来的「一天一页」，等下一轮按 DuoLog 重做
+  if (book.kind === 'couple') {
+    return (
+      <div className="min-h-full bg-page-bg" data-testid="diary-page">
+        <BookDeck
+          book={book}
+          entries={entries}
+          focusDate={dayDate}
+          startEditing={!!compose}
+          onClose={() => setDayDate(null)}
+          onOpenReader={(p) => setReaderPage(p)}
+        />
+        {readerPage && (
+          <PageReader
+            page={readerPage}
+            book={book}
+            slips={slips.filter((s) => (s.bookId || 'book-me') === book.id && s.date === readerPage.date)}
+            onClose={() => setReaderPage(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
-    <PageShell
-      title="日记本"
-      eyebrow="DIARY"
-      testId="diary-page"
-      right={
-        <button
-          type="button"
-          onClick={() => setWantWrite(true)}
-          aria-label="去记录"
-          data-testid="diary-page-go-write"
-          className="shrink-0"
-        >
-          <InkBorder
-            className="text-ink/25 dark:text-ink/30"
-            seed="go-write"
-            amp={1.1}
-            strokeWidth={1.2}
-          >
-            <span className="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium text-foreground transition hover:bg-surface-2">
-              <PenLine className="h-3.5 w-3.5" />
-              去记录
-            </span>
-          </InkBorder>
-        </button>
-      }
-    >
-      <BookShelf
-        books={books}
-        entries={entries}
-        onOpen={(b) => openBookById(b)}
-        onAdd={(draft) => useDiaryStore.getState().addBook(draft)}
-        onPatch={(id, patch) => useDiaryStore.getState().patchBook(id, patch)}
-        onRemove={(id) => {
-          useDiaryStore.getState().removeBook(id);
-          if (openBookId === id) setOpenBookId(null);
-        }}
-      />
+    <div className="min-h-full bg-page-bg" data-testid="diary-page">
+      {dayDate ? (
+        <DlogDay
+          book={book}
+          date={dayDate}
+          entries={entriesOf(dayDate)}
+          slips={slips.filter((s) => (s.bookId || 'book-me') === book.id && s.date === dayDate)}
+          canWrite={canWrite}
+          today={today}
+          onBack={() => setDayDate(null)}
+          onChangeDate={(d) => setDayDate(d)}
+          onCompose={(d) => setCompose({ date: d })}
+          onEdit={(e) => setCompose({ date: e.date, entry: e })}
+          onDelete={(e) => useDiaryStore.getState().removeEntry(e.id)}
+          onSlip={() => setSlipEditor({ date: dayDate })}
+        />
+      ) : (
+        <DlogHome
+          book={book}
+          entries={bookEntries}
+          today={today}
+          onOpenDay={(d) => setDayDate(d)}
+          onCompose={(d) => setCompose({ date: d })}
+          onSwitchBook={() => setSwitcher(true)}
+          onSettings={() => setSheet({ book })}
+          onBack={() => navigate('/chat')}
+          canWrite={canWrite}
+          onSlip={(d) => setSlipEditor({ date: d })}
+        />
+      )}
 
-      {openBook && (
-        <BookDeck
-          book={openBook}
+      {compose && canWrite && (
+        <DlogCompose
+          book={book}
+          date={compose.date}
+          entry={compose.entry ?? null}
+          onClose={() => setCompose(null)}
+        />
+      )}
+
+      {switcher && (
+        <BookSwitcher
+          books={books}
+          currentId={book.id}
           entries={entries}
-          focusDate={focusDate}
-          startEditing={startEditing}
-          onClose={() => {
-            setOpenBookId(null);
-            setFocusDate(null);
-            setStartEditing(false);
+          onPick={(b) => {
+            setBookId(b.id);
+            setDayDate(null);
+            setSwitcher(false);
           }}
-          onOpenReader={(p) => {
-            setReaderPage(p);
-            setReaderBookId(openBook.id);
+          onAdd={() => {
+            setSwitcher(false);
+            setSheet({ book: null });
           }}
+          onClose={() => setSwitcher(false)}
         />
       )}
 
-      {readerPage && readerBook && (
-        <PageReader
-          page={readerPage}
-          book={readerBook}
-          slips={slips.filter(
-            (s) => (s.bookId || 'book-me') === readerBook.id && s.date === readerPage.date,
-          )}
-          onClose={() => {
-            setReaderPage(null);
-            setReaderBookId(null);
+      {sheet && (
+        <BookSheet
+          book={sheet.book}
+          onClose={() => setSheet(null)}
+          onSave={(draft: BookDraft) => {
+            const store = useDiaryStore.getState();
+            if (sheet.book) {
+              store.patchBook(sheet.book.id, draft);
+            } else {
+              store.addBook({ ...draft, locked: draft.locked, lockCode: draft.lockCode });
+            }
+            setSheet(null);
           }}
+          onDelete={
+            sheet.book
+              ? () => {
+                  useDiaryStore.getState().removeBook(sheet.book!.id);
+                  setSheet(null);
+                }
+              : undefined
+          }
         />
       )}
-    </PageShell>
+
+      {slipEditor && (
+        <SlipEditor
+          date={slipEditor.date}
+          onSave={(content, color) => {
+            useDiaryStore.getState().addSlip({
+              bookId: book.id,
+              date: slipEditor.date,
+              content,
+              color,
+            });
+            setSlipEditor(null);
+          }}
+          onClose={() => setSlipEditor(null)}
+        />
+      )}
+    </div>
   );
 }
 

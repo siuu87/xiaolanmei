@@ -6,6 +6,12 @@ export interface DiaryEntry {
   /** 这一页的图片 URL（/api/files/xxx），一页可图文混排；空 = 纯文字页 */
   images?: string[];
   bookId?: string; // 归属日记本；空 = 我的日记（历史数据）
+  /** 记录时刻 HH:mm（一条 = 一天里的一个「时刻」） */
+  time?: string;
+  /** 心情 emoji（MOODS 里的一支） */
+  mood?: string;
+  /** 标签，最多 6 个 */
+  tags?: string[];
 }
 
 export interface DiaryBook {
@@ -137,4 +143,61 @@ export function diaryDayKey(e: DiaryEntry): string {
 export function dayKeyToDate(key: string): string {
   const [y, m, d] = key.split('-').map(Number);
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/* ------------------------------------------------------------------ *
+ * D·LOG 式流水账（2026-11-14）：心情 / 时刻 / 月份网格
+ * ------------------------------------------------------------------ */
+
+/** 一键点的八个心情（存 emoji 本身，不存 key，读的时候不用查表） */
+export const MOODS = ['😊', '😌', '🥰', '😪', '😔', '😤', '🤩', '🫠'] as const;
+
+/** 现在几点 HH:mm */
+export function hmNow(): string {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+}
+
+/** '09:12' → '上午 9:12'；没有就返回空串 */
+export function prettyTime(hm?: string): string {
+  if (!hm || !/^\d{1,2}:\d{2}$/.test(hm)) return '';
+  const [h, m] = hm.split(':').map(Number);
+  const ap = h < 6 ? '凌晨' : h < 12 ? '上午' : h < 13 ? '中午' : h < 18 ? '下午' : '晚上';
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${ap} ${hh}:${String(m).padStart(2, '0')}`;
+}
+
+/** 2026-11-14 → 11月14日 星期六 */
+export function prettyDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const wd = ['日', '一', '二', '三', '四', '五', '六'][new Date(y, m - 1, d).getDay()];
+  return `${m}月${d}日 星期${wd}`;
+}
+
+/** 某个日期所在月的天数 */
+export function daysInMonth(y: number, m1: number): number {
+  return new Date(y, m1, 0).getDate();
+}
+
+/** 年月 → 'YYYY-MM' */
+export function ymKey(y: number, m1: number): string {
+  return `${y}-${String(m1).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM-DD' → 那天是周几（0=周日） */
+export function weekdayOf(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+/** 往前/往后挪一天 */
+export function shiftDate(iso: string, delta: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = new Date(y, m - 1, d + delta);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+
+/** 这天的日记按时刻排序（没填时刻的排最后，同刻按创建先后） */
+export function sortByTime(list: DiaryEntry[]): DiaryEntry[] {
+  return [...list].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
 }

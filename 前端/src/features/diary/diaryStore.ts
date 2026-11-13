@@ -25,7 +25,7 @@ interface DiaryState {
   addEntry: (e: Omit<DiaryEntry, 'id'>) => void;
   patchEntry: (
     id: string,
-    patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId' | 'images'>>,
+    patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId' | 'images' | 'time' | 'mood' | 'tags'>>,
   ) => void;
   removeEntry: (id: string) => void;
   addBook: (b: Omit<DiaryBook, 'id' | 'sortOrder'>) => void;

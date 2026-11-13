@@ -253,6 +253,9 @@ CREATE TABLE IF NOT EXISTS diaries (
   content TEXT NOT NULL,
   book_id TEXT NOT NULL DEFAULT '',
   images TEXT NOT NULL DEFAULT '[]',
+  time TEXT NOT NULL DEFAULT '',
+  mood TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '[]',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -875,6 +878,20 @@ export function initDatabase(): void {
   // 幂等迁移（2026-11-13 一页图文混排）：diaries 补 images（JSON 字符串数组）
   if (!diaryCols.some((c) => c.name === 'images')) {
     sqlite.exec(`ALTER TABLE diaries ADD COLUMN images TEXT NOT NULL DEFAULT '[]'`);
+  }
+  /**
+   * 幂等迁移（2026-11-14 按 D·LOG 改成照片流水账）：
+   * - time 记录时刻 HH:mm，一天可以有多条「时刻」；
+   * - mood 心情 emoji；tags 标签（JSON 字符串数组）。
+   */
+  if (!diaryCols.some((c) => c.name === 'time')) {
+    sqlite.exec(`ALTER TABLE diaries ADD COLUMN time TEXT NOT NULL DEFAULT ''`);
+  }
+  if (!diaryCols.some((c) => c.name === 'mood')) {
+    sqlite.exec(`ALTER TABLE diaries ADD COLUMN mood TEXT NOT NULL DEFAULT ''`);
+  }
+  if (!diaryCols.some((c) => c.name === 'tags')) {
+    sqlite.exec(`ALTER TABLE diaries ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'`);
   }
   // 幂等迁移（2026-11-13 日记本上锁）：diary_books 补 locked / lock_code
   const diaryBookCols = sqlite.prepare(`PRAGMA table_info(diary_books)`).all() as { name: string }[];

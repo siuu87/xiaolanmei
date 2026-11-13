@@ -22,8 +22,32 @@ function toDTO(d: typeof diaries.$inferSelect) {
     bookId: d.bookId,
     // 一页可带多张图（/api/files/xxx），库里存 JSON 字符串
     images: parseImages(d.images),
+    // 2026-11-14 D·LOG 式流水账：时刻 / 心情 / 标签
+    time: d.time ?? '',
+    mood: d.mood ?? '',
+    tags: parseTags(d.tags),
     createdAt: d.createdAt,
   };
+}
+
+/** tags 列 → string[]，脏数据当空数组 */
+function parseTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((t): t is string => typeof t === 'string' && !!t.trim());
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((t): t is string => typeof t === 'string' && !!t.trim()) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** 入参 tags → 入库字符串（去重、去 #、限 6 个、每个 12 字） */
+function tagsToColumn(v: unknown): string {
+  const list = parseTags(v)
+    .map((t) => t.replace(/^#+/, '').trim().slice(0, 12))
+    .filter(Boolean);
+  return JSON.stringify(Array.from(new Set(list)).slice(0, 6));
 }
 
 /** images 列 → string[]，脏数据一律当空数组，别让一页日记因为 JSON 坏了打不开 */
@@ -225,6 +249,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   app.post('/diaries', async (req, reply) => {
     const body = (req.body ?? {}) as {
       id?: string; date?: string; author?: string; content?: string; bookId?: string; images?: unknown;
+      time?: string; mood?: string; tags?: unknown;
     };
     const date = body.date?.trim();
     const content = body.content?.trim() ?? '';
@@ -244,6 +269,9 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
         content,
         bookId: body.bookId?.trim() || '',
         images: imagesToColumn(images),
+        time: (body.time ?? '').trim().slice(0, 5),
+        mood: (body.mood ?? '').trim().slice(0, 8),
+        tags: tagsToColumn(body.tags),
         createdAt: ts,
         updatedAt: ts,
       })
@@ -253,12 +281,21 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch('/diaries/:id', async (req) => {
     const { id } = req.params as { id: string };
-    const body = (req.body ?? {}) as { date?: string; content?: string; bookId?: string; images?: unknown };
-    const patch: Partial<{ date: string; content: string; bookId: string; images: string }> = {};
+    const body = (req.body ?? {}) as {
+      date?: string; content?: string; bookId?: string; images?: unknown;
+      time?: string; mood?: string; tags?: unknown;
+    };
+    const patch: Partial<{
+      date: string; content: string; bookId: string; images: string;
+      time: string; mood: string; tags: string;
+    }> = {};
     if (body.date !== undefined) patch.date = body.date.trim();
     if (body.content !== undefined) patch.content = body.content;
     if (body.bookId !== undefined) patch.bookId = body.bookId.trim();
     if (body.images !== undefined) patch.images = imagesToColumn(body.images);
+    if (body.time !== undefined) patch.time = body.time.trim().slice(0, 5);
+    if (body.mood !== undefined) patch.mood = body.mood.trim().slice(0, 8);
+    if (body.tags !== undefined) patch.tags = tagsToColumn(body.tags);
     if (Object.keys(patch).length === 0) return { ok: true };
     db.update(diaries).set({ ...patch, updatedAt: now() }).where(eq(diaries.id, id)).run();
     return { ok: true };

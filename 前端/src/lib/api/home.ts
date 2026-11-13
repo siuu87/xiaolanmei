@@ -12,7 +12,7 @@ export const createDiary = (entry: DiaryEntry) =>
   request<{ id: string }>('/api/diaries', { method: 'POST', body: JSON.stringify(entry) });
 export const patchDiary = (
   id: string,
-  patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId' | 'images'>>,
+  patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId' | 'images' | 'time' | 'mood' | 'tags'>>,
 ) => request<{ ok: true }>(`/api/diaries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiary = (id: string) =>
   request<{ ok: true }>(`/api/diaries/${id}`, { method: 'DELETE' });

@@ -236,6 +236,12 @@ export const diaries = sqliteTable('diaries', {
   bookId: text('book_id').notNull().default(''),
   /** 这一页的图片（JSON 字符串数组，元素是 /api/files/xxx）；2026-11-13 起一页可图文混排 */
   images: text('images').notNull().default('[]'),
+  /** 记录时刻 HH:mm（2026-11-14 D·LOG 式流水账：一天可以有多条「时刻」） */
+  time: text('time').notNull().default(''),
+  /** 当天心情 emoji（😊 😌 😔 …）；空 = 没选 */
+  mood: text('mood').notNull().default(''),
+  /** 标签（JSON 字符串数组，如 ["咖啡","散步"]） */
+  tags: text('tags').notNull().default('[]'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
