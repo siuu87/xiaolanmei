@@ -44,9 +44,23 @@ export function TodoCard({ embedded = false }: { embedded?: boolean }) {
   };
 
   const pending = todos.filter((t) => !isTodoDone(t)).length;
+  // 空列表时卡片只留「TO-DO ＋」一行（2026-11-13 用户定：别没东西还占一大块），
+  // 所以内容区整块不渲染、内边距也收窄；有内容才恢复 p-4。
+  const isEmpty = todos.length === 0;
 
   return (
-    <div className={embedded ? undefined : 'glass rounded-[18px] border border-border/70 p-4'}>
+    <div
+      className={
+        embedded
+          ? undefined
+          : cn(
+              'glass rounded-[18px] border border-border/70',
+              isEmpty ? 'px-4 py-3' : 'p-4',
+            )
+      }
+      data-testid="todo-card"
+      data-empty={isEmpty ? '1' : '0'}
+    >
       {/* 头部：标题 + 右侧加号 */}
       <div className="flex items-center justify-between">
         <h2 className="font-serif text-xs tracking-[0.18em] text-muted-foreground">TO-DO</h2>
@@ -60,89 +74,88 @@ export function TodoCard({ embedded = false }: { embedded?: boolean }) {
         </button>
       </div>
 
-      {/* 弹性竖向滚动区：超出后内部滚动，松手回弹（embedded 时由外层右栏统一滚动） */}
-      <div
-        className={cn(
-          'mt-2',
-          !embedded &&
-            'max-h-[244px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        )}
-      >
-        {todos.length === 0 ? (
-          <p className="py-6 text-center text-[12px] font-light tracking-wide text-muted-foreground/60">
-            还没有待办，点右上角加一件
-          </p>
-        ) : pending === 0 ? (
-          <p className="py-6 text-center text-[12px] font-light tracking-wide text-muted-foreground/60">
-            今天都搞定啦 ✦
-          </p>
-        ) : (
-          <ul>
-            {todos.map((t) => {
-              const done = isTodoDone(t);
-              return (
-                <motion.li
-                  key={t.id}
-                  initial={false}
-                  animate={
-                    done
-                      ? { opacity: 0, height: 0, marginTop: 0 }
-                      : { opacity: 1, height: 'auto', marginTop: 0 }
-                  }
-                  transition={{ duration: 0.34, ease: 'easeInOut' }}
-                  className={cn(
-                    'flex items-center gap-2.5 overflow-hidden py-2',
-                    done && 'line-through',
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleTodo(t.id)}
-                    aria-label={done ? '标记未完成' : '标记完成'}
-                    className={cn(
-                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition',
+      {/* 弹性竖向滚动区：超出后内部滚动，松手回弹（embedded 时由外层右栏统一滚动）。
+          列表为空时整块不渲染 —— 卡片高度 = 标题行，不再被空态提示撑高 */}
+      {!isEmpty && (
+        <div
+          className={cn(
+            'mt-2',
+            !embedded &&
+              'max-h-[244px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          )}
+        >
+          {pending === 0 ? (
+            <p className="py-6 text-center text-[12px] font-light tracking-wide text-muted-foreground/60">
+              今天都搞定啦 ✦
+            </p>
+          ) : (
+            <ul>
+              {todos.map((t) => {
+                const done = isTodoDone(t);
+                return (
+                  <motion.li
+                    key={t.id}
+                    initial={false}
+                    animate={
                       done
-                        ? 'border-primary bg-primary'
-                        : 'border-primary/70 hover:border-primary',
+                        ? { opacity: 0, height: 0, marginTop: 0 }
+                        : { opacity: 1, height: 'auto', marginTop: 0 }
+                    }
+                    transition={{ duration: 0.34, ease: 'easeInOut' }}
+                    className={cn(
+                      'flex items-center gap-2.5 overflow-hidden py-2',
+                      done && 'line-through',
                     )}
                   >
-                    {done && <Check className="h-3 w-3 text-primary-foreground" />}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <span
+                    <button
+                      type="button"
+                      onClick={() => toggleTodo(t.id)}
+                      aria-label={done ? '标记未完成' : '标记完成'}
                       className={cn(
-                        'block truncate text-[13px] font-light leading-7 tracking-wide',
-                        done ? 'text-muted-foreground/40' : 'text-foreground/90',
+                        'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition',
+                        done
+                          ? 'border-primary bg-primary'
+                          : 'border-primary/70 hover:border-primary',
                       )}
                     >
-                      {t.text}
-                    </span>
-                    {t.note && (
-                      <div className="truncate text-[10px] font-light leading-4 text-muted-foreground/60">
-                        {t.note}
-                      </div>
+                      {done && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          'block truncate text-[13px] font-light leading-7 tracking-wide',
+                          done ? 'text-muted-foreground/40' : 'text-foreground/90',
+                        )}
+                      >
+                        {t.text}
+                      </span>
+                      {t.note && (
+                        <div className="truncate text-[10px] font-light leading-4 text-muted-foreground/60">
+                          {t.note}
+                        </div>
+                      )}
+                    </div>
+                    {t.repeat !== 'none' && (
+                      <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                        <Repeat className="h-2.5 w-2.5" />
+                        {REPEAT_LABEL[t.repeat]}
+                      </span>
                     )}
-                  </div>
-                  {t.repeat !== 'none' && (
-                    <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
-                      <Repeat className="h-2.5 w-2.5" />
-                      {REPEAT_LABEL[t.repeat]}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeTodo(t.id)}
-                    aria-label="删除"
-                    className="text-muted-foreground/30 transition hover:text-destructive"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </motion.li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                    <button
+                      type="button"
+                      onClick={() => removeTodo(t.id)}
+                      aria-label="删除"
+                      className="text-muted-foreground/30 transition hover:text-destructive"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* 新建待办弹窗（portal 到 body，避免被毛玻璃卡片的层叠上下文盖住） */}
       {creating &&
