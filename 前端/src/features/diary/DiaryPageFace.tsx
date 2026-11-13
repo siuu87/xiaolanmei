@@ -1,78 +1,82 @@
 import type { DiaryEntry } from './diaryData';
-import { AUTHOR_LABEL, AUTHOR_CLASS, HAND_FONT, HAND_RULE_BG } from './diaryData';
+import { AUTHOR_LABEL, HAND_FONT } from './diaryData';
 
 interface Props {
   entry: DiaryEntry;
-  /** 是否可编辑（由上层控制） */
-  editing?: boolean;
-  /** 编辑值（受控） */
-  draftContent?: string;
-  onDraftChange?: (v: string) => void;
-  /** 编辑态底部操作 */
-  footer?: React.ReactNode;
 }
 
-/** 把日期「9月28日」格式化 */
-function fmtDate(date: string): { md: string; y: string } {
-  const [y, m, d] = date.split('-').map(Number);
-  return { md: `${m}月${d}日`, y: String(y) };
+/** 2026.04.08 这种点分日期（参考图里日期就在页眉右侧） */
+function dottedDate(date: string): string {
+  return date.replace(/-/g, '.');
 }
 
 /**
- * 日记本单页（Paper 风）：左侧装订线 + 纸面 + 日期抬头 + 正文。
+ * 日记本单页（2026-11-13 改版，参考「整面卡片」日记 App）：
+ * 一页 = 一整面纸，右上角日期，上面可以放图、下面写字，图文同页混排。
  * 翻页卡与全屏阅读器共用，保证两边视觉一致。
  */
-export function DiaryPageFace({ entry, editing, draftContent, onDraftChange, footer }: Props) {
-  const { md, y } = fmtDate(entry.date);
-  const content = editing ? (draftContent ?? '') : entry.content;
+export function DiaryPageFace({ entry }: Props) {
+  const images = entry.images ?? [];
+  const [cover, ...rest] = images;
+  const hasText = entry.content.trim().length > 0;
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* 纸面：手写横线 */}
-      <div
-        className="relative flex-1 overflow-y-auto px-6 pb-6 pt-4"
-        style={{ backgroundImage: HAND_RULE_BG }}
-      >
-        {/* 左侧装订线（书脊） */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-2"
-          style={{
-            background:
-              'linear-gradient(90deg, rgba(0,0,0,0.10), rgba(0,0,0,0.02) 40%, rgba(0,0,0,0.05))',
-          }}
-        />
-        {/* 日期抬头 */}
-        <div className="mb-3 flex items-baseline gap-2">
-          <span className="text-2xl font-medium leading-none tracking-tight text-ink" style={{ fontFamily: HAND_FONT }}>
-            {md}
-          </span>
-          <span className="text-xs text-ink/40">{y}</span>
-        </div>
-        {/* 谁写的 */}
-        <div className={`mb-2 text-sm font-medium ${AUTHOR_CLASS[entry.author]}`} style={{ fontFamily: HAND_FONT }}>
+    <div className="flex h-full w-full flex-col overflow-hidden" data-testid="diary-page-face">
+      {/* 页眉：左边谁写的，右边日期（对齐参考图的右上日期） */}
+      <div className="flex shrink-0 items-center justify-between px-5 pb-1 pt-4">
+        <span
+          className="text-[11px] tracking-[0.16em] text-ink/45"
+          style={{ fontFamily: HAND_FONT }}
+        >
           {AUTHOR_LABEL[entry.author]}
-        </div>
-        {/* 正文 */}
-        {editing ? (
-          <textarea
-            value={content}
-            onChange={(e) => onDraftChange?.(e.target.value)}
-            placeholder="今天……写点什么吧"
-            className="h-full min-h-48 w-full resize-none bg-transparent text-[16px] text-ink outline-none placeholder:text-ink/30"
-            style={{ fontFamily: HAND_FONT, lineHeight: '31px' }}
-          />
-        ) : (
-          <p
-            className="whitespace-pre-wrap text-[16px] text-ink/90"
-            style={{ fontFamily: HAND_FONT, lineHeight: '31px' }}
-          >
-            {content || <span className="text-ink/25">（空白页）</span>}
-          </p>
-        )}
+        </span>
+        <span className="text-[11px] tabular-nums tracking-[0.12em] text-ink/45">
+          {dottedDate(entry.date)}
+        </span>
       </div>
-      {/* 编辑态底部操作 */}
-      {footer && <div className="px-6 pb-4">{footer}</div>}
+
+      {/* 这一面的内容：图在上、字在下，整体在纸内滚动 */}
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {cover && (
+          <div className="mb-3 overflow-hidden rounded-lg bg-ink/[0.06]">
+            <img
+              src={cover}
+              alt=""
+              className="h-44 w-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                (e.currentTarget.parentElement as HTMLElement | null)?.style.setProperty('display', 'none');
+              }}
+              data-testid="diary-page-cover"
+            />
+          </div>
+        )}
+
+        {rest.length > 0 && (
+          <div className="mb-3 grid grid-cols-3 gap-1.5">
+            {rest.slice(0, 6).map((src) => (
+              <img
+                key={src}
+                src={src}
+                alt=""
+                className="aspect-square w-full rounded-md object-cover"
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )}
+
+        <p
+          className="whitespace-pre-wrap text-[16px] text-ink/90"
+          style={{ fontFamily: HAND_FONT, lineHeight: '30px' }}
+        >
+          {hasText ? (
+            entry.content
+          ) : images.length > 0 ? null : (
+            <span className="text-ink/25">（空白页）</span>
+          )}
+        </p>
+      </div>
     </div>
   );
 }

@@ -252,6 +252,7 @@ CREATE TABLE IF NOT EXISTS diaries (
   author TEXT NOT NULL,
   content TEXT NOT NULL,
   book_id TEXT NOT NULL DEFAULT '',
+  images TEXT NOT NULL DEFAULT '[]',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -858,6 +859,10 @@ export function initDatabase(): void {
     sqlite.exec(`ALTER TABLE diaries ADD COLUMN book_id TEXT NOT NULL DEFAULT ''`);
   }
   sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_diaries_book ON diaries(book_id)`);
+  // 幂等迁移（2026-11-13 一页图文混排）：diaries 补 images（JSON 字符串数组）
+  if (!diaryCols.some((c) => c.name === 'images')) {
+    sqlite.exec(`ALTER TABLE diaries ADD COLUMN images TEXT NOT NULL DEFAULT '[]'`);
+  }
   // 幂等迁移（2026-11-13 日记本上锁）：diary_books 补 locked / lock_code
   const diaryBookCols = sqlite.prepare(`PRAGMA table_info(diary_books)`).all() as { name: string }[];
   if (!diaryBookCols.some((c) => c.name === 'locked')) {

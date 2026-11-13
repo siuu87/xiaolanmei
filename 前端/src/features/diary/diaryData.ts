@@ -3,6 +3,8 @@ export interface DiaryEntry {
   date: string; // YYYY-MM-DD
   author: 'me' | 'partner';
   content: string;
+  /** 这一页的图片 URL（/api/files/xxx），一页可图文混排；空 = 纯文字页 */
+  images?: string[];
   bookId?: string; // 归属日记本；空 = 我的日记（历史数据）
 }
 

@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X, Check, PenLine, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Check,
+  PenLine,
+  Trash2,
+  ImagePlus,
+  Loader2,
+} from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from './diaryData';
-import { HAND_FONT, HAND_RULE_BG } from './diaryData';
+import { HAND_FONT } from './diaryData';
 import { DiaryPageFace, PAPER_CLASS } from './DiaryPageFace';
 import { useDiaryStore } from './diaryStore';
 import { BookLock } from './BookLock';
+import { uploadImage } from '@/lib/api/attachments';
 
 interface Props {
   book: DiaryBook;
@@ -29,13 +39,19 @@ function splitDate(date: string): { md: string; y: string } {
   return { md: `${m}月${d}日`, y: String(y) };
 }
 
+/** 一页最多放几张图 */
+const MAX_IMAGES = 9;
+
 /**
  * 本子详情（2026-11-13 三态）：
  *   锁屏（仅上锁本）→ 翻页阅读 → 编写页
  *
- * - 打开默认是「翻页阅读」：Paper 式横向翻页，可拖拽/按钮翻，点当前页放大（只读）
+ * - 打开默认是「翻页阅读」：整面纸横向翻页（参考图那种一页一面），可拖拽/按钮翻，
+ *   点当前页放大（只读）；页上方居中显示「11 / 25」页码
  * - 只有右上角按钮能进编写页；保存或返回都回到这页的翻页阅读
- * - 上锁的本子先过锁屏：4 位密码正常解锁；长按锁孔 2.6 秒是「撬锁」，偷偷看完仍保持上锁
+ * - 编写页可写字也可加图片（一页图文混排）
+ * - 上锁的本子先过锁屏：一整面灰纸 + 一把锁；4 位密码正常解锁，
+ *   长按锁 2.6 秒是「撬锁」，偷偷看完仍保持上锁
  */
 export function BookDeck({ book, entries, focusDate, startEditing = false, onClose, onOpenReader }: Props) {
   const patchEntry = useDiaryStore((s) => s.patchEntry);
@@ -69,8 +85,16 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   const focusAt = focusDate ? stack.findIndex((p) => p.date === focusDate) : -1;
   const [index, setIndex] = useState(focusAt >= 0 ? focusAt : stack.length - 1);
   const [draft, setDraft] = useState(stack[focusAt >= 0 ? focusAt : stack.length - 1]?.content ?? '');
+  const [draftImages, setDraftImages] = useState<string[]>(
+    stack[focusAt >= 0 ? focusAt : stack.length - 1]?.images ?? [],
+  );
   const [syncedId, setSyncedId] = useState<string | undefined>(undefined);
   const [confirmDel, setConfirmDel] = useState(false);
+
+  // 加图
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
 
   // 翻页动画
   const [flipping, setFlipping] = useState<null | 'next' | 'prev'>(null);
@@ -98,11 +122,13 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   const page = stack[Math.min(index, Math.max(stack.length - 1, 0))];
   const pageId = page?.id;
   const pageContent = page?.content ?? '';
+  const pageImages = page?.images ?? [];
 
   // 翻到新页时把草稿同步成那页内容
   if (syncedId !== pageId) {
     setSyncedId(pageId);
     setDraft(pageContent);
+    setDraftImages(pageImages);
   }
 
   const canNext = index < stack.length - 1;
@@ -149,23 +175,46 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   // ---- 编写 ----
   const startWrite = () => {
     setConfirmDel(false);
+    setUploadErr('');
     setView('write');
   };
 
   const cancelWrite = () => {
     setDraft(page?.content ?? '');
+    setDraftImages(page?.images ?? []);
     setConfirmDel(false);
+    setUploadErr('');
     setView('read');
+  };
+
+  const pickImage = () => fileRef.current?.click();
+
+  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // 同一张图重选也要能触发
+    if (!file) return;
+    setUploading(true);
+    setUploadErr('');
+    try {
+      const up = await uploadImage(file);
+      setDraftImages((arr) => [...arr, up.url].slice(0, MAX_IMAGES));
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : '图片上传失败');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const save = () => {
     const text = draft.trim();
-    if (!text || !page) return;
+    const images = draftImages;
+    if (!page) return;
+    if (!text && images.length === 0) return;
     if (page.id === '__today__') {
-      addEntry({ date: today, author: 'me', content: text, bookId: book.id });
+      addEntry({ date: today, author: 'me', content: text, images, bookId: book.id });
       setIndex(stack.length - 1);
     } else {
-      patchEntry(page.id, { content: text });
+      patchEntry(page.id, { content: text, images });
     }
     setView('read');
     setConfirmDel(false);
@@ -203,6 +252,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   // ---- 编写页（独立一层，退出即回翻页阅读）----
   if (view === 'write') {
     const { md, y } = splitDate(page?.date ?? today);
+    const canSave = draft.trim().length > 0 || draftImages.length > 0;
     return createPortal(
       <div className="fixed inset-0 z-[1300] flex flex-col bg-page-bg" data-testid="diary-write">
         <header className="flex items-center gap-2 px-3 pb-2 pt-3">
@@ -218,7 +268,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
           <button
             type="button"
             onClick={save}
-            disabled={!draft.trim()}
+            disabled={!canSave}
             data-testid="diary-write-save"
             className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-xs font-medium text-primary-foreground transition enabled:hover:opacity-90 disabled:opacity-40"
           >
@@ -242,19 +292,59 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
               <div className="mb-3 text-sm text-ink/50" style={{ fontFamily: HAND_FONT }}>
                 我
               </div>
+
+              {/* 这一面的图片：先加图再写字，或者只放图也行 */}
+              <div className="mb-3 flex flex-wrap gap-2" data-testid="diary-write-images">
+                {draftImages.map((url) => (
+                  <div key={url} className="relative h-16 w-16 overflow-hidden rounded-md bg-ink/[0.06]">
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setDraftImages((arr) => arr.filter((u) => u !== url))}
+                      aria-label="移除这张图"
+                      className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-[2px]"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {draftImages.length < MAX_IMAGES && (
+                  <button
+                    type="button"
+                    onClick={pickImage}
+                    disabled={uploading}
+                    data-testid="diary-write-add-image"
+                    aria-label="添加图片"
+                    className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-ink/25 text-ink/45 transition enabled:hover:border-ink/45 enabled:hover:text-ink/70 disabled:opacity-60"
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <ImagePlus className="h-4 w-4" />
+                        <span className="text-[10px]">加图片</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onPickImage}
+                data-testid="diary-write-file"
+              />
+              {uploadErr && <p className="mb-2 text-[11px] text-rose-500">{uploadErr}</p>}
+
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="今天……写点什么吧"
                 data-testid="diary-write-textarea"
-                className="min-h-[46vh] w-full flex-1 resize-none bg-transparent text-[17px] text-ink outline-none placeholder:text-ink/30"
-                style={{
-                  fontFamily: HAND_FONT,
-                  lineHeight: '31px',
-                  backgroundImage: HAND_RULE_BG,
-                  backgroundAttachment: 'local',
-                  paddingTop: 5,
-                }}
+                className="min-h-[38vh] w-full flex-1 resize-none bg-transparent text-[17px] text-ink outline-none placeholder:text-ink/30"
+                style={{ fontFamily: HAND_FONT, lineHeight: '31px', paddingTop: 4 }}
               />
             </div>
           </div>
@@ -298,24 +388,19 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
       <div className="flex h-full w-full max-w-sm flex-col" onClick={(e) => e.stopPropagation()}>
         {/* 顶栏（开本动画期间淡出） */}
         <div
-          className={`flex items-center justify-between gap-2 px-1 pb-2 transition-opacity duration-300 ${
+          className={`flex items-center justify-between gap-2 px-1 pb-1 transition-opacity duration-300 ${
             opening === 'open' ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         >
           <button type="button" onClick={onClose} aria-label="合上本子" className="icon-btn shrink-0">
             <X className="h-5 w-5" />
           </button>
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-medium text-foreground" style={{ fontFamily: HAND_FONT }}>
-              {book.name}
-            </span>
-            <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] text-white"
-              style={{ background: book.cover }}
-            >
-              {index + 1} / {stack.length}
-            </span>
-          </div>
+          <span
+            className="max-w-[45%] truncate text-sm font-medium text-foreground"
+            style={{ fontFamily: HAND_FONT }}
+          >
+            {book.name}
+          </span>
           <button
             type="button"
             onClick={startWrite}
@@ -345,6 +430,17 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
+          {/* 页码：像参考图那样浮在页面正上方居中 */}
+          <div
+            className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-center pt-0.5 transition-opacity duration-300 ${
+              opening === 'open' ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <span className="text-[11px] tabular-nums tracking-[0.18em] text-muted-foreground">
+              {index + 1} / {stack.length}
+            </span>
+          </div>
+
           {/* 开本动画期间的小本封面 */}
           {opening !== 'open' && (
             <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center" aria-hidden>
@@ -355,36 +451,52 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             </div>
           )}
 
-          {/* 页栈：后面的页先画，当前页在最上 */}
-          {stack.map((p, i) => {
-            const offset = i - index;
-            if (Math.abs(offset) > 1) return null;
-            const isCurrent = offset === 0;
-            const clickable = isCurrent && opening === 'open' && !flipping;
-            return (
-              <div
-                key={`${p.id}-${i}`}
-                data-current={isCurrent ? '1' : '0'}
-                className={`absolute inset-0 transition-transform duration-[480ms] ease-[cubic-bezier(0.4,0.2,0.2,1)] ${
-                  PAPER_CLASS
-                } ${clickable ? 'cursor-pointer' : ''}`}
-                style={{
-                  transform: flipTransform(offset),
-                  transformOrigin: 'left center',
-                  transformStyle: 'preserve-3d',
-                  backfaceVisibility: 'hidden',
-                  boxShadow: isCurrent
-                    ? '0 20px 40px -24px rgba(0,0,0,0.5)'
-                    : '0 12px 28px -22px rgba(0,0,0,0.45)',
-                  zIndex: isCurrent ? 10 : 5,
-                  borderRadius: 6,
-                }}
-                onClick={() => clickable && onOpenReader(p)}
-              >
-                <DiaryPageFace entry={p} />
-              </div>
-            );
-          })}
+          {/* 页：上方留 24px 给页码；整面纸，四周叠出后面几页的边（参考图的层叠感）。
+              页栈左右内缩 3（12px），叠边才不会被外层 overflow-hidden 裁掉 */}
+          <div className="absolute inset-x-3 bottom-2 top-6">
+            {/* 叠边：静态装饰，跟着当前页，别拦事件 */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-1.5 -bottom-1.5 top-1.5 rounded-[10px] opacity-70"
+              style={{ background: book.cover }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-3 -bottom-3 top-3 rounded-[12px] opacity-25"
+              style={{ background: book.cover }}
+            />
+
+            {/* 页栈：后面的页先画，当前页在最上 */}
+            {stack.map((p, i) => {
+              const offset = i - index;
+              if (Math.abs(offset) > 1) return null;
+              const isCurrent = offset === 0;
+              const clickable = isCurrent && opening === 'open' && !flipping;
+              return (
+                <div
+                  key={`${p.id}-${i}`}
+                  data-current={isCurrent ? '1' : '0'}
+                  className={`absolute inset-0 transition-transform duration-[480ms] ease-[cubic-bezier(0.4,0.2,0.2,1)] ${
+                    PAPER_CLASS
+                  } ${clickable ? 'cursor-pointer' : ''}`}
+                  style={{
+                    transform: flipTransform(offset),
+                    transformOrigin: 'left center',
+                    transformStyle: 'preserve-3d',
+                    backfaceVisibility: 'hidden',
+                    boxShadow: isCurrent
+                      ? '0 20px 40px -24px rgba(0,0,0,0.5)'
+                      : '0 12px 28px -22px rgba(0,0,0,0.45)',
+                    zIndex: isCurrent ? 10 : 5,
+                    borderRadius: 10,
+                  }}
+                  onClick={() => clickable && onOpenReader(p)}
+                >
+                  <DiaryPageFace entry={p} />
+                </div>
+              );
+            })}
+          </div>
 
           {/* 翻页按钮：z-20 压在纸页之上；只有阅读态才出现 */}
           <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center gap-4">
@@ -393,7 +505,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
               disabled={!canPrev}
               onClick={() => startFlip('prev')}
               aria-label="上一页"
-              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg text-muted-foreground transition enabled:hover:text-foreground disabled:opacity-30"
+              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg text-muted-foreground shadow-sm transition enabled:hover:text-foreground disabled:opacity-30"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -402,7 +514,7 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
               disabled={!canNext}
               onClick={() => startFlip('next')}
               aria-label="下一页"
-              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg text-muted-foreground transition enabled:hover:text-foreground disabled:opacity-30"
+              className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-page-bg text-muted-foreground shadow-sm transition enabled:hover:text-foreground disabled:opacity-30"
             >
               <ChevronRight className="h-5 w-5" />
             </button>

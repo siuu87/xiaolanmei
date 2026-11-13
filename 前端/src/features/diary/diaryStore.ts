@@ -18,7 +18,10 @@ interface DiaryState {
   loaded: boolean;
   load: () => Promise<void>;
   addEntry: (e: Omit<DiaryEntry, 'id'>) => void;
-  patchEntry: (id: string, patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId'>>) => void;
+  patchEntry: (
+    id: string,
+    patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId' | 'images'>>,
+  ) => void;
   removeEntry: (id: string) => void;
   addBook: (b: Omit<DiaryBook, 'id' | 'sortOrder'>) => void;
   patchBook: (

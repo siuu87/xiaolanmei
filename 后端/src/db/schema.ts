@@ -232,6 +232,8 @@ export const diaries = sqliteTable('diaries', {
   author: text('author').notNull(), // me | partner
   content: text('content').notNull(),
   bookId: text('book_id').notNull().default(''),
+  /** 这一页的图片（JSON 字符串数组，元素是 /api/files/xxx）；2026-11-13 起一页可图文混排 */
+  images: text('images').notNull().default('[]'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

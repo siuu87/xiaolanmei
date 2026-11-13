@@ -10,8 +10,10 @@ import type { Course } from '@/features/schedule/timetableStore';
 export const listDiaries = () => request<DiaryEntry[]>('/api/diaries');
 export const createDiary = (entry: DiaryEntry) =>
   request<{ id: string }>('/api/diaries', { method: 'POST', body: JSON.stringify(entry) });
-export const patchDiary = (id: string, patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId'>>) =>
-  request<{ ok: true }>(`/api/diaries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+export const patchDiary = (
+  id: string,
+  patch: Partial<Pick<DiaryEntry, 'date' | 'content' | 'bookId' | 'images'>>,
+) => request<{ ok: true }>(`/api/diaries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiary = (id: string) =>
   request<{ ok: true }>(`/api/diaries/${id}`, { method: 'DELETE' });
 

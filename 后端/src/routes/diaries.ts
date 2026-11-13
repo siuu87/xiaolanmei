@@ -14,7 +14,33 @@ import { newId, now } from '../utils/id.js';
  */
 
 function toDTO(d: typeof diaries.$inferSelect) {
-  return { id: d.id, date: d.date, author: d.author, content: d.content, bookId: d.bookId, createdAt: d.createdAt };
+  return {
+    id: d.id,
+    date: d.date,
+    author: d.author,
+    content: d.content,
+    bookId: d.bookId,
+    // 一页可带多张图（/api/files/xxx），库里存 JSON 字符串
+    images: parseImages(d.images),
+    createdAt: d.createdAt,
+  };
+}
+
+/** images 列 → string[]，脏数据一律当空数组，别让一页日记因为 JSON 坏了打不开 */
+function parseImages(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((u): u is string => typeof u === 'string' && !!u);
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((u): u is string => typeof u === 'string' && !!u) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** 入参 images → 入库字符串（只留字符串、去重、限 9 张，base64 不入库只存 URL） */
+function imagesToColumn(v: unknown): string {
+  return JSON.stringify(parseImages(v).slice(0, 9));
 }
 
 function toBookDTO(b: typeof diaryBooks.$inferSelect) {
@@ -114,11 +140,15 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/diaries', async (req, reply) => {
-    const body = (req.body ?? {}) as { id?: string; date?: string; author?: string; content?: string; bookId?: string };
+    const body = (req.body ?? {}) as {
+      id?: string; date?: string; author?: string; content?: string; bookId?: string; images?: unknown;
+    };
     const date = body.date?.trim();
-    const content = body.content?.trim();
-    if (!date || !content) {
-      reply.code(400).send({ message: 'date 和 content 必填' });
+    const content = body.content?.trim() ?? '';
+    const images = parseImages(body.images);
+    // 文字与图片至少要有一个（一页可以只有一张图）
+    if (!date || (!content && images.length === 0)) {
+      reply.code(400).send({ message: 'date 必填，content 与 images 至少给一个' });
       return;
     }
     const id = body.id?.trim() || newId();
@@ -130,6 +160,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
         author: body.author === 'partner' ? 'partner' : 'me',
         content,
         bookId: body.bookId?.trim() || '',
+        images: imagesToColumn(images),
         createdAt: ts,
         updatedAt: ts,
       })
@@ -139,11 +170,12 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch('/diaries/:id', async (req) => {
     const { id } = req.params as { id: string };
-    const body = (req.body ?? {}) as { date?: string; content?: string; bookId?: string };
-    const patch: Partial<{ date: string; content: string; bookId: string }> = {};
+    const body = (req.body ?? {}) as { date?: string; content?: string; bookId?: string; images?: unknown };
+    const patch: Partial<{ date: string; content: string; bookId: string; images: string }> = {};
     if (body.date !== undefined) patch.date = body.date.trim();
-    if (body.content !== undefined) patch.content = body.content.trim();
+    if (body.content !== undefined) patch.content = body.content;
     if (body.bookId !== undefined) patch.bookId = body.bookId.trim();
+    if (body.images !== undefined) patch.images = imagesToColumn(body.images);
     if (Object.keys(patch).length === 0) return { ok: true };
     db.update(diaries).set({ ...patch, updatedAt: now() }).where(eq(diaries.id, id)).run();
     return { ok: true };

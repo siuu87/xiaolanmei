@@ -213,7 +213,7 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
                 onClick={() => {
                   setErr('');
                   setLocked((v) => !v);
-                  setOldCode('');
+                  // 只清新密码；原密码留着 —— 用户常常先输原密码再关开关，别让他白输
                   setCode('');
                   setConfirm('');
                 }}
