@@ -6,13 +6,16 @@ import {
   X,
   Check,
   PenLine,
+  StickyNote,
   Trash2,
   ImagePlus,
   Loader2,
 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry } from './diaryData';
-import { HAND_FONT } from './diaryData';
+import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
+import { HAND_FONT, canWriteDiary } from './diaryData';
 import { DiaryPageFace, PAPER_CLASS } from './DiaryPageFace';
+import { BookCover } from './BookCover';
+import { SlipEditor } from './SlipEditor';
 import { useDiaryStore } from './diaryStore';
 import { BookLock } from './BookLock';
 import { uploadImage } from '@/lib/api/attachments';
@@ -57,17 +60,46 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   const patchEntry = useDiaryStore((s) => s.patchEntry);
   const addEntry = useDiaryStore((s) => s.addEntry);
   const removeEntry = useDiaryStore((s) => s.removeEntry);
+  const slips = useDiaryStore((s) => s.slips);
+  const addSlip = useDiaryStore((s) => s.addSlip);
+  const patchSlip = useDiaryStore((s) => s.patchSlip);
+  const removeSlip = useDiaryStore((s) => s.removeSlip);
+
+  // TA 的日记写不了，只能夹小纸条
+  const canWrite = canWriteDiary(book);
 
   // 锁门：本次会话有效，退出本子再进要重新开
   const [gate, setGate] = useState<'locked' | 'open'>(book.locked ? 'locked' : 'open');
   const [sneak, setSneak] = useState(false);
-  const [view, setView] = useState<'read' | 'write'>(startEditing ? 'write' : 'read');
+  const [view, setView] = useState<'read' | 'write'>(startEditing && canWrite ? 'write' : 'read');
+  // 小纸条编辑器：null = 关着；{} = 新夹一张；{slip} = 改那张
+  const [slipEdit, setSlipEdit] = useState<{ slip?: DiarySlip } | null>(null);
+
+  // 这本里的小纸条（按日期挂到页上）
+  const bookSlips = slips.filter((s) => (s.bookId || 'book-me') === book.id);
 
   // 本子内的页：按日期升序（从过去翻到现在）
-  const pages = useMemo(
-    () => entries.filter((e) => (e.bookId ?? 'book-me') === book.id).sort((a, b) => a.date.localeCompare(b.date)),
-    [entries, book.id],
-  );
+  const pages = useMemo(() => {
+    const base = entries
+      .filter((e) => (e.bookId ?? 'book-me') === book.id)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (canWrite) return base;
+    // TA 的本子：有纸条但没日记的日期也要留一页，否则纸条过了这天就翻不到了
+    const seen = new Set(base.map((p) => p.date));
+    const extra: DiaryEntry[] = [];
+    bookSlips.forEach((s) => {
+      if (seen.has(s.date)) return;
+      seen.add(s.date);
+      extra.push({
+        id: `__slip__${s.date}`,
+        date: s.date,
+        author: 'partner',
+        content: '',
+        bookId: book.id,
+      });
+    });
+    return [...base, ...extra].sort((a, b) => a.date.localeCompare(b.date));
+  }, [entries, book.id, canWrite, bookSlips]);
 
   const today = todayISO();
   const lastPage = pages[pages.length - 1];
@@ -77,10 +109,19 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   const stack: DiaryEntry[] = useMemo(() => {
     const base = pages;
     if (todayIsBlank) {
-      return [...base, { id: '__today__', date: today, author: 'me', content: '', bookId: book.id }];
+      return [
+        ...base,
+        {
+          id: '__today__',
+          date: today,
+          author: book.kind === 'partner' ? 'partner' : 'me',
+          content: '',
+          bookId: book.id,
+        },
+      ];
     }
     return base;
-  }, [pages, todayIsBlank, today, book.id]);
+  }, [pages, todayIsBlank, today, book.id, book.kind]);
 
   const focusAt = focusDate ? stack.findIndex((p) => p.date === focusDate) : -1;
   const [index, setIndex] = useState(focusAt >= 0 ? focusAt : stack.length - 1);
@@ -134,6 +175,9 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
   const canNext = index < stack.length - 1;
   const canPrev = index > 0;
   const isTodayPage = page?.id === '__today__' || page?.date === today;
+
+  // 这本里的小纸条，按日期挂到页上
+  const slipsOf = (date: string) => bookSlips.filter((s) => s.date === date);
 
   const startFlip = (dir: 'next' | 'prev') => {
     if (flipping || view !== 'read' || gate !== 'open') return;
@@ -392,7 +436,12 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             opening === 'open' ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
         >
-          <button type="button" onClick={onClose} aria-label="合上本子" className="icon-btn shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="合上本子"
+            className="icon-btn shrink-0"
+          >
             <X className="h-5 w-5" />
           </button>
           <span
@@ -401,15 +450,27 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
           >
             {book.name}
           </span>
-          <button
-            type="button"
-            onClick={startWrite}
-            data-testid="diary-deck-write"
-            className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
-          >
-            <PenLine className="h-3.5 w-3.5" />
-            {isTodayPage ? '写日记' : '改这页'}
-          </button>
+          {canWrite ? (
+            <button
+              type="button"
+              onClick={startWrite}
+              data-testid="diary-deck-write"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              {isTodayPage ? '写日记' : '改这页'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSlipEdit({})}
+              data-testid="diary-deck-slip"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-page-line bg-page-bg px-2.5 text-xs font-medium text-foreground transition hover:bg-surface-2"
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+              夹张小纸条
+            </button>
+          )}
         </div>
 
         {/* 翻页区（带开本动画） */}
@@ -444,10 +505,9 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
           {/* 开本动画期间的小本封面 */}
           {opening !== 'open' && (
             <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center" aria-hidden>
-              <div
-                className="rounded-md shadow-[0_20px_50px_-20px_rgba(0,0,0,0.5)]"
-                style={{ width: 120, height: 150, background: book.cover, transform: 'rotateY(-8deg)' }}
-              />
+              <div style={{ width: 120, height: 150, transform: 'rotateY(-8deg)' }}>
+                <BookCover book={book} compact className="h-full w-full" />
+              </div>
             </div>
           )}
 
@@ -492,7 +552,11 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
                   }}
                   onClick={() => clickable && onOpenReader(p)}
                 >
-                  <DiaryPageFace entry={p} />
+                  <DiaryPageFace
+                    entry={p}
+                    slips={slipsOf(p.date)}
+                    onSlipClick={(s) => setSlipEdit({ slip: s })}
+                  />
                 </div>
               );
             })}
@@ -527,8 +591,41 @@ export function BookDeck({ book, entries, focusDate, startEditing = false, onClo
             opening === 'open' ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          左右滑动翻页 · 点这一页放大 · 右上角「写日记」
+          {canWrite
+            ? '左右滑动翻页 · 点这一页放大 · 右上角「写日记」'
+            : '左右滑动翻页 · 点纸条看全文 · 右上角「夹张小纸条」'}
         </div>
+
+        {/* 小纸条编辑器（TA 的日记专用；放在 stopPropagation 里面，点它不会把本子关掉） */}
+        {slipEdit && (
+          <SlipEditor
+            slip={slipEdit.slip}
+            date={slipEdit.slip?.date ?? page?.date ?? today}
+            onSave={(content, color) => {
+              const existing = slipEdit.slip;
+              if (existing) {
+                patchSlip(existing.id, { content, color });
+              } else {
+                addSlip({
+                  bookId: book.id,
+                  date: page?.date ?? today,
+                  content,
+                  color,
+                });
+              }
+              setSlipEdit(null);
+            }}
+            onDelete={
+              slipEdit.slip
+                ? () => {
+                    removeSlip(slipEdit.slip!.id);
+                    setSlipEdit(null);
+                  }
+                : undefined
+            }
+            onClose={() => setSlipEdit(null)}
+          />
+        )}
       </div>
     </div>,
     document.body,

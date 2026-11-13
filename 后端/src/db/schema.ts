@@ -215,6 +215,8 @@ export const diaryBooks = sqliteTable('diary_books', {
   name: text('name').notNull(),
   kind: text('kind').notNull().default('me'), // me | partner | couple
   cover: text('cover').notNull().default('#7c5cff'), // 封面主色
+  /** 封皮换成图片时的图 URL（/api/files/xxx）；空串 = 纯色封皮 */
+  coverImage: text('cover_image').notNull().default(''),
   /** 0/1：是否上锁（只是本机仪式感，不做加密；密码用于前端校验） */
   locked: integer('locked').notNull().default(0),
   /** 4 位数字密码；空串 = 还没设过密码 */
@@ -234,6 +236,21 @@ export const diaries = sqliteTable('diaries', {
   bookId: text('book_id').notNull().default(''),
   /** 这一页的图片（JSON 字符串数组，元素是 /api/files/xxx）；2026-11-13 起一页可图文混排 */
   images: text('images').notNull().default('[]'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 小纸条（2026-11-13）：夹在「TA 的日记」某一页上的便条。
+ * 我写不了 TA 的日记，只能留一张纸条 —— date 对应夹在哪一页，color 是纸条底色。
+ */
+export const diarySlips = sqliteTable('diary_slips', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull().default(''),
+  date: text('date').notNull(), // 夹在哪一页（YYYY-MM-DD）
+  content: text('content').notNull(),
+  color: text('color').notNull().default('#f6efd9'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

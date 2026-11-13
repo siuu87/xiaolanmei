@@ -259,11 +259,24 @@ CREATE TABLE IF NOT EXISTS diaries (
 );
 CREATE INDEX IF NOT EXISTS idx_diaries_date ON diaries(date);
 
+CREATE TABLE IF NOT EXISTS diary_slips (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  content TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#f6efd9',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_diary_slips_book ON diary_slips(book_id, date);
+
 CREATE TABLE IF NOT EXISTS diary_books (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   kind TEXT NOT NULL DEFAULT 'me',
   cover TEXT NOT NULL DEFAULT '#7c5cff',
+  cover_image TEXT NOT NULL DEFAULT '',
   locked INTEGER NOT NULL DEFAULT 0,
   lock_code TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -871,6 +884,21 @@ export function initDatabase(): void {
   if (!diaryBookCols.some((c) => c.name === 'lock_code')) {
     sqlite.exec(`ALTER TABLE diary_books ADD COLUMN lock_code TEXT NOT NULL DEFAULT ''`);
   }
+  // 幂等迁移（2026-11-13 封皮换成图片）：diary_books 补 cover_image
+  if (!diaryBookCols.some((c) => c.name === 'cover_image')) {
+    sqlite.exec(`ALTER TABLE diary_books ADD COLUMN cover_image TEXT NOT NULL DEFAULT ''`);
+  }
+  // 一次性迁移（2026-11-13 封皮换莫兰迪色）：只改还是老种子色的本子，用户自己挑过的颜色不动
+  const legacyCovers: [string, string][] = [
+    ['#7c5cff', '#9AA6B2'],
+    ['#f472b6', '#C0A9A3'],
+    ['#ffb347', '#B4A99B'],
+  ];
+  legacyCovers.forEach(([from, to]) => {
+    sqlite
+      .prepare(`UPDATE diary_books SET cover = ? WHERE cover = ? AND cover_image = ''`)
+      .run(to, from);
+  });
   const bookCount = sqlite.prepare(`SELECT COUNT(*) AS n FROM diary_books WHERE deleted_at IS NULL`).get() as { n: number };
   if (bookCount.n === 0) {
     const ts = Date.now();

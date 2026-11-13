@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { BookText, Users2, User2, Trash2, Lock, Unlock } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { BookText, Users2, User2, Trash2, Lock, Unlock, ImagePlus, Loader2, X } from 'lucide-react';
 import type { DiaryBook } from './diaryData';
 import { BOOK_KIND_LABEL, KIND_DEFAULT_COVER, COVER_PALETTE, LOCK_CODE_LEN } from './diaryData';
+import { BookCover } from './BookCover';
+import { uploadImage } from '@/lib/api/attachments';
 
 /** kind → 图标（书架与设置弹层共用） */
 export function kindIcon(kind: DiaryBook['kind']) {
@@ -14,6 +16,8 @@ export interface BookDraft {
   name: string;
   kind: DiaryBook['kind'];
   cover: string;
+  /** 封皮图片；空串 = 纯色 */
+  coverImage: string;
   locked: boolean;
   lockCode: string;
 }
@@ -35,6 +39,9 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
   const [name, setName] = useState(book?.name ?? '');
   const [kind, setKind] = useState<DiaryBook['kind']>(book?.kind ?? 'me');
   const [cover, setCover] = useState(book?.cover ?? KIND_DEFAULT_COVER[kind]);
+  const [coverImage, setCoverImage] = useState(book?.coverImage ?? '');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [locked, setLocked] = useState(book?.locked ?? false);
   // 改动已有锁时先验原密码；新建或未上锁时不需要
   const [oldCode, setOldCode] = useState('');
@@ -44,7 +51,8 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
 
   const wasLocked = book?.locked ?? false;
   const savedCode = book?.lockCode ?? '';
-  const Icon = kindIcon(kind);
+  // 老本子的颜色可能不在莫兰迪色板里 —— 补到最前面，至少能看出当前选的是哪支
+  const palette = COVER_PALETTE.includes(cover) ? COVER_PALETTE : [cover, ...COVER_PALETTE];
 
   const save = () => {
     const n = name.trim();
@@ -89,7 +97,24 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
       nextCode = code;
     }
 
-    onSave({ name: n, kind, cover, locked, lockCode: nextCode });
+    onSave({ name: n, kind, cover, coverImage, locked, lockCode: nextCode });
+  };
+
+  /** 封皮换成图片：选一张本地图 → 上传拿稳定 URL */
+  const onPickCoverImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setErr('');
+    try {
+      const up = await uploadImage(file);
+      setCoverImage(up.url);
+    } catch (err) {
+      setErr(err instanceof Error ? err.message : '图片上传失败');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -102,29 +127,12 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
         className="flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-page-line bg-page-bg shadow-[0_24px_60px_-30px_rgba(0,0,0,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 预览封面 */}
-        <div className="relative mx-4 mt-4 h-28 overflow-hidden rounded-lg" style={{ background: cover }}>
-          <div
-            aria-hidden
-            className="absolute inset-0 opacity-25"
-            style={{
-              backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 8px)',
-            }}
+        {/* 预览封面（与书架同一套 BookCover，所见即所得） */}
+        <div className="mx-4 mt-4">
+          <BookCover
+            book={{ name: name.trim() || '日记本', kind, cover, coverImage, locked }}
+            className="h-32 w-full"
           />
-          <div className="relative flex h-full flex-col justify-between p-4">
-            <Icon className="h-5 w-5 text-white/80" />
-            <div>
-              <div className="truncate text-xl font-semibold text-white drop-shadow">
-                {name.trim() || '日记本'}
-              </div>
-              <div className="mt-0.5 text-[11px] text-white/70">{BOOK_KIND_LABEL[kind]}</div>
-            </div>
-          </div>
-          {locked && (
-            <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black/25 text-white">
-              <Lock className="h-3.5 w-3.5" />
-            </span>
-          )}
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -169,23 +177,64 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
             </div>
           </div>
 
-          {/* 封面色 */}
+          {/* 封皮：莫兰迪纯色，或者换成一张图片 */}
           <div>
-            <label className="mb-1.5 block text-xs text-muted-foreground">封面颜色</label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-xs text-muted-foreground">封皮</label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  data-testid="diary-book-cover-image"
+                  className="flex h-7 items-center gap-1 rounded-full border border-page-line px-2.5 text-[11px] font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
+                >
+                  {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" />}
+                  {coverImage ? '换一张图' : '换成图片'}
+                </button>
+                {coverImage && (
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage('')}
+                    aria-label="改回纯色封皮"
+                    className="flex h-7 items-center gap-1 rounded-full px-2 text-[11px] text-muted-foreground transition hover:bg-muted"
+                  >
+                    <X className="h-3 w-3" />
+                    纯色
+                  </button>
+                )}
+              </div>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onPickCoverImage}
+              data-testid="diary-book-cover-file"
+            />
             <div className="flex flex-wrap gap-2">
-              {COVER_PALETTE.map((c) => (
+              {palette.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setCover(c)}
-                  aria-label={`封面色 ${c}`}
-                  className={`h-8 w-8 rounded-full transition ${
-                    cover === c ? 'ring-2 ring-foreground ring-offset-2 ring-offset-page-bg' : 'hover:scale-110'
+                  onClick={() => {
+                    setCover(c);
+                    setCoverImage('');
+                  }}
+                  aria-label={`封皮色 ${c}`}
+                  className={`h-7 w-7 rounded-[4px] transition ${
+                    !coverImage && cover === c
+                      ? 'ring-2 ring-foreground ring-offset-2 ring-offset-page-bg'
+                      : 'hover:scale-110'
                   }`}
                   style={{ background: c }}
                 />
               ))}
             </div>
+            <p className="mt-1.5 text-[10px] leading-4 text-muted-foreground/70">
+              莫兰迪色布面，也可以换成自己的照片 —— 名字会印在封面那块纸质标签上
+            </p>
           </div>
 
           {/* 上锁 */}

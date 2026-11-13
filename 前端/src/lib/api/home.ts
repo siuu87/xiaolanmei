@@ -2,7 +2,7 @@ import { request } from './conversations';
 import type { Todo } from '@/features/home/todoStore';
 import type { MemorialDay } from '@/features/home/memorialStore';
 import type { PeriodRecord, PeriodSettings } from '@/features/home/periodStore';
-import type { DiaryEntry, DiaryBook } from '@/features/diary/diaryData';
+import type { DiaryEntry, DiaryBook, DiarySlip } from '@/features/diary/diaryData';
 import type { InspirationNote } from '@/features/notes/notesData';
 import type { Course } from '@/features/schedule/timetableStore';
 
@@ -23,10 +23,19 @@ export const createDiaryBook = (book: Omit<DiaryBook, 'id' | 'sortOrder'>) =>
   request<{ id: string }>('/api/diary/books', { method: 'POST', body: JSON.stringify(book) });
 export const patchDiaryBook = (
   id: string,
-  patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'locked' | 'lockCode'>>,
+  patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'coverImage' | 'locked' | 'lockCode'>>,
 ) => request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiaryBook = (id: string) =>
   request<{ ok: true }>(`/api/diary/books/${id}`, { method: 'DELETE' });
+
+// ---- 小纸条（夹在 TA 的日记里）----
+export const listDiarySlips = () => request<DiarySlip[]>('/api/diary/slips');
+export const createDiarySlip = (slip: DiarySlip) =>
+  request<{ id: string }>('/api/diary/slips', { method: 'POST', body: JSON.stringify(slip) });
+export const patchDiarySlip = (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) =>
+  request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+export const deleteDiarySlip = (id: string) =>
+  request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'DELETE' });
 
 // ---- 待办 ----
 export const listTodos = () => request<Todo[]>('/api/todos');

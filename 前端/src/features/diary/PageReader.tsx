@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, BookText, User2, Users2 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry } from './diaryData';
+import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
 import { BOOK_KIND_LABEL } from './diaryData';
 import { DiaryPageFace, PAPER_CLASS } from './DiaryPageFace';
 
 interface Props {
   entry: DiaryEntry;
   book: DiaryBook;
+  /** 这一页上夹着的小纸条 */
+  slips?: DiarySlip[];
   onClose: () => void;
 }
 
@@ -17,7 +19,7 @@ const kindIcon = { me: BookText, partner: User2, couple: Users2 } as const;
  * 点某一页进入的全屏阅读器（2026-11-13 起只读）：
  * 整页手写纸面、上下滑动看长文。编写统一走本子右上角按钮，这里不再提供编辑/删除。
  */
-export function PageReader({ entry, book, onClose }: Props) {
+export function PageReader({ entry, book, slips = [], onClose }: Props) {
   const Icon = kindIcon[book.kind];
 
   // Esc 关闭（capture 阶段拦截，别让抽屉 Esc 抢）
@@ -54,7 +56,7 @@ export function PageReader({ entry, book, onClose }: Props) {
         <div
           className={`mx-3 mb-3 flex-1 overflow-y-auto rounded-xl shadow-[0_18px_40px_-26px_rgba(0,0,0,0.45)] ${PAPER_CLASS}`}
         >
-          <DiaryPageFace entry={entry} />
+          <DiaryPageFace entry={entry} slips={slips} />
         </div>
       </div>
     </div>,

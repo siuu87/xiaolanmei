@@ -20,6 +20,7 @@ import { PageReader } from './PageReader';
 export function DiaryPage() {
   const entries = useDiaryStore((s) => s.entries);
   const books = useDiaryStore((s) => s.books);
+  const slips = useDiaryStore((s) => s.slips);
   const load = useDiaryStore((s) => s.load);
 
   const [searchParams] = useSearchParams();
@@ -129,7 +130,14 @@ export function DiaryPage() {
       )}
 
       {readerEntry && readerBook && (
-        <PageReader entry={readerEntry} book={readerBook} onClose={() => setReaderEntry(null)} />
+        <PageReader
+          entry={readerEntry}
+          book={readerBook}
+          slips={slips.filter(
+            (s) => (s.bookId || 'book-me') === readerBook.id && s.date === readerEntry.date,
+          )}
+          onClose={() => setReaderEntry(null)}
+        />
       )}
     </PageShell>
   );

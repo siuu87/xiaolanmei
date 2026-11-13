@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { diaries, diaryBooks } from '../db/schema.js';
+import { diaries, diaryBooks, diarySlips } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 
 /**
@@ -43,12 +43,26 @@ function imagesToColumn(v: unknown): string {
   return JSON.stringify(parseImages(v).slice(0, 9));
 }
 
+/** 小纸条 → 前端对象（date 是夹在哪一页） */
+function toSlipDTO(s: typeof diarySlips.$inferSelect) {
+  return {
+    id: s.id,
+    bookId: s.bookId,
+    date: s.date,
+    content: s.content,
+    color: s.color,
+    createdAt: s.createdAt,
+  };
+}
+
 function toBookDTO(b: typeof diaryBooks.$inferSelect) {
   return {
     id: b.id,
     name: b.name,
     kind: b.kind,
     cover: b.cover,
+    // 封皮换成图片时的图 URL；空串 = 纯色封皮
+    coverImage: b.coverImage,
     // 上锁：locked 存 0/1，前端要 boolean；lockCode 只是本机仪式感，前端校验
     locked: !!b.locked,
     lockCode: b.lockCode,
@@ -76,7 +90,8 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/diary/books', async (req, reply) => {
     const body = (req.body ?? {}) as {
-      id?: string; name?: string; kind?: string; cover?: string; locked?: boolean; lockCode?: string;
+      id?: string; name?: string; kind?: string; cover?: string; coverImage?: string;
+      locked?: boolean; lockCode?: string;
     };
     const name = body.name?.trim();
     if (!name) {
@@ -92,6 +107,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
         name,
         kind: body.kind === 'partner' || body.kind === 'couple' ? body.kind : 'me',
         cover: body.cover?.trim() || '#7c5cff',
+        coverImage: body.coverImage?.trim() || '',
         locked: body.locked ? 1 : 0,
         lockCode: normCode(body.lockCode),
         sortOrder: count,
@@ -105,12 +121,16 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   app.patch('/diary/books/:id', async (req) => {
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as {
-      name?: string; kind?: string; cover?: string; locked?: boolean; lockCode?: string;
+      name?: string; kind?: string; cover?: string; coverImage?: string;
+      locked?: boolean; lockCode?: string;
     };
-    const patch: Partial<{ name: string; kind: string; cover: string; locked: number; lockCode: string }> = {};
+    const patch: Partial<{
+      name: string; kind: string; cover: string; coverImage: string; locked: number; lockCode: string;
+    }> = {};
     if (body.name !== undefined) patch.name = body.name.trim();
     if (body.kind !== undefined && ['me', 'partner', 'couple'].includes(body.kind)) patch.kind = body.kind;
     if (body.cover !== undefined) patch.cover = body.cover.trim();
+    if (body.coverImage !== undefined) patch.coverImage = body.coverImage.trim();
     if (body.locked !== undefined) patch.locked = body.locked ? 1 : 0;
     if (body.lockCode !== undefined) patch.lockCode = normCode(body.lockCode);
     if (Object.keys(patch).length === 0) return { ok: true };
@@ -124,6 +144,69 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
     db.update(diaryBooks).set({ deletedAt: ts, updatedAt: ts }).where(eq(diaryBooks.id, id)).run();
     // 本子里的日记软删（保留数据，可恢复）
     db.update(diaries).set({ deletedAt: ts, updatedAt: ts }).where(eq(diaries.bookId, id)).run();
+    // 夹在本子里的小纸条一起软删
+    db.update(diarySlips).set({ deletedAt: ts, updatedAt: ts }).where(eq(diarySlips.bookId, id)).run();
+    return { ok: true };
+  });
+
+  // ---- 小纸条（夹在别人本子里，写不了 TA 的日记时用）----
+  app.get('/diary/slips', async (req) => {
+    const { book } = req.query as { book?: string };
+    return db
+      .select()
+      .from(diarySlips)
+      .all()
+      .filter((s) => s.deletedAt == null && (!book || s.bookId === book))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)
+      .map(toSlipDTO);
+  });
+
+  app.post('/diary/slips', async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      id?: string; bookId?: string; date?: string; content?: string; color?: string;
+    };
+    const date = body.date?.trim();
+    const content = body.content?.trim();
+    if (!date || !content) {
+      reply.code(400).send({ message: 'date 与 content 必填' });
+      return;
+    }
+    const id = body.id?.trim() || newId();
+    const ts = now();
+    db.insert(diarySlips)
+      .values({
+        id,
+        bookId: body.bookId?.trim() || '',
+        date,
+        content,
+        color: body.color?.trim() || '#f6efd9',
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    reply.code(201).send({ id, createdAt: ts });
+  });
+
+  app.patch('/diary/slips/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { date?: string; content?: string; color?: string };
+    const patch: Partial<{ date: string; content: string; color: string }> = {};
+    if (body.date !== undefined) patch.date = body.date.trim();
+    if (body.content !== undefined) patch.content = body.content.trim();
+    if (body.color !== undefined) patch.color = body.color.trim();
+    if (Object.keys(patch).length === 0) return { ok: true };
+    if (patch.content === '') {
+      reply.code(400).send({ message: 'content 不能为空' });
+      return;
+    }
+    db.update(diarySlips).set({ ...patch, updatedAt: now() }).where(eq(diarySlips.id, id)).run();
+    return { ok: true };
+  });
+
+  app.delete('/diary/slips/:id', async (req) => {
+    const { id } = req.params as { id: string };
+    const ts = now();
+    db.update(diarySlips).set({ deletedAt: ts, updatedAt: ts }).where(eq(diarySlips.id, id)).run();
     return { ok: true };
   });
 

@@ -12,12 +12,31 @@ export interface DiaryBook {
   id: string;
   name: string;
   kind: 'me' | 'partner' | 'couple';
-  cover: string; // 封面主色
+  cover: string; // 封皮主色（莫兰迪色）
+  /** 封皮换成图片时的图 URL；空 = 纯色封皮 */
+  coverImage?: string;
   /** 是否上锁（本机仪式感，不是加密） */
   locked: boolean;
   /** 4 位数字密码；空串 = 没设过 */
   lockCode: string;
   sortOrder: number;
+}
+
+/** 小纸条：夹在本子某一页上的便条（写不了 TA 的日记时留一张） */
+export interface DiarySlip {
+  id: string;
+  bookId: string;
+  /** 夹在哪一页（YYYY-MM-DD） */
+  date: string;
+  content: string;
+  /** 纸条底色（SLIP_PALETTE 里的一支） */
+  color: string;
+  createdAt?: number;
+}
+
+/** 这个本子能不能写日记：TA 的日记只能加小纸条，不能代写 */
+export function canWriteDiary(book: Pick<DiaryBook, 'kind'>): boolean {
+  return book.kind !== 'partner';
 }
 
 /** 密码位数 */
@@ -37,18 +56,28 @@ export const BOOK_KIND_LABEL: Record<DiaryBook['kind'], string> = {
   couple: '情侣日记',
 };
 
-/** 日记本类型 → 默认封面色 */
+/** 日记本类型 → 默认封皮色（莫兰迪：低饱和、偏灰） */
 export const KIND_DEFAULT_COVER: Record<DiaryBook['kind'], string> = {
-  me: '#7c5cff',
-  partner: '#f472b6',
-  couple: '#ffb347',
+  me: '#9AA6B2',
+  partner: '#C0A9A3',
+  couple: '#B4A99B',
 };
 
-/** 可选封面色板（新建 / 换封面） */
+/**
+ * 封皮色板（莫兰迪色系，2026-11-13 按「paper 那种本子」换掉原来的高饱和色）：
+ * 全是加过灰的布料色，深色模式下也不刺眼。
+ */
 export const COVER_PALETTE = [
-  '#7c5cff', '#f472b6', '#ffb347', '#34d399',
-  '#38bdf8', '#fb7185', '#a78bfa', '#94a3b8',
+  '#A8AFA3', '#B4A99B', '#9AA6B2', '#C0A9A3',
+  '#A79FB0', '#BFAF95', '#8E9B98', '#C7B5AE',
+  '#8A8783', '#D3CCC0', '#7F8A8E', '#9C8F8F',
 ];
+
+/** 小纸条底色：很淡的一层，压在纸上不抢正文 */
+export const SLIP_PALETTE = ['#f6efd9', '#f7e4e4', '#e4ecf4', '#e6efe3', '#f3e8f5'];
+
+/** 一张纸条最多几个字 */
+export const SLIP_MAX = 160;
 
 /** 按 kind 推断默认归属本：me→我的日记，partner→TA 的日记 */
 export function defaultBookFor(kind: DiaryBook['kind'], books: DiaryBook[]): string {

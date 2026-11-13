@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Lock, Settings2 } from 'lucide-react';
+import { Plus, Settings2 } from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from './diaryData';
-import { BOOK_KIND_LABEL, HAND_FONT } from './diaryData';
-import { BookSheet, kindIcon, type BookDraft } from './BookSheet';
+import { BookSheet, type BookDraft } from './BookSheet';
+import { BookCover } from './BookCover';
 
 interface Props {
   books: DiaryBook[];
@@ -89,70 +89,21 @@ export function BookShelf({ books, entries, onOpen, onAdd, onPatch, onRemove }: 
         className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-[calc(50%-124px)] pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {books.map((b) => {
-          const Icon = kindIcon(b.kind);
           return (
             <div key={b.id} data-shelf-card className="w-[248px] shrink-0 snap-center">
-              {/* 封面 */}
+              {/* 封面（Paper 式硬壳本：书脊 + 布纹 + 纸质标签） */}
               <button
                 type="button"
                 onClick={() => onOpen(b)}
                 aria-label={`打开 ${b.name}`}
                 data-testid="diary-shelf-book"
-                className="group relative block h-[330px] w-full overflow-hidden rounded-lg text-left shadow-[0_18px_40px_-22px_rgba(0,0,0,0.55)] transition-transform duration-300 hover:-translate-y-1"
-                style={{ background: b.cover }}
+                className="group relative block h-[330px] w-full text-left transition-transform duration-300 hover:-translate-y-1"
               >
-                {/* 封面纸纹 */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 opacity-25"
-                  style={{
-                    backgroundImage:
-                      'repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0 2px, transparent 2px 9px)',
-                  }}
+                <BookCover
+                  book={b}
+                  className="h-full w-full"
+                  meta={`${countOf(entries, b.id)} 页${b.locked ? ' · 已上锁' : ''}`}
                 />
-                {/* 书脊暗边 */}
-                <div
-                  aria-hidden
-                  className="absolute inset-y-0 left-0 w-3"
-                  style={{ background: 'linear-gradient(90deg, rgba(0,0,0,0.32), transparent)' }}
-                />
-                {/* 书顶高光 */}
-                <div
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 h-4"
-                  style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.3), transparent)' }}
-                />
-
-                {/* 上锁徽标 */}
-                {b.locked && (
-                  <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white">
-                    <Lock className="h-3.5 w-3.5" />
-                  </span>
-                )}
-
-                {/* 封面内容 */}
-                <div className="relative flex h-full flex-col justify-between p-5">
-                  <Icon className="h-7 w-7 text-white/75" />
-                  <div>
-                    <div
-                      className="text-[26px] font-semibold leading-tight text-white drop-shadow"
-                      style={{ fontFamily: HAND_FONT }}
-                    >
-                      {b.name}
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/70">
-                      <span>{BOOK_KIND_LABEL[b.kind]}</span>
-                      <span className="h-0.5 w-0.5 rounded-full bg-white/50" />
-                      <span>{countOf(entries, b.id)} 页</span>
-                      {b.locked && (
-                        <>
-                          <span className="h-0.5 w-0.5 rounded-full bg-white/50" />
-                          <span>已上锁</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </button>
 
               {/* 设置（移动端没有 hover，常显） */}
