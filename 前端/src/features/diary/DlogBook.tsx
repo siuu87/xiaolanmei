@@ -547,6 +547,17 @@ export function DlogBook({
             <SmilePlus className="h-[17px] w-[17px]" />
           </button>
         )}
+        {canWrite && !closed && !isLocked(date) && (
+          <button
+            type="button"
+            onClick={() => onSlip(date)}
+            aria-label="给这页夹一张纸条"
+            data-testid="diary-page-slip"
+            className="icon-btn h-8 w-8"
+          >
+            <StickyNote className="h-[17px] w-[17px]" />
+          </button>
+        )}
         {canWrite && !closed && (
           <button
             type="button"

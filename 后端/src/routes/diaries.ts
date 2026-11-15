@@ -131,7 +131,8 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       .values({
         id,
         name,
-        kind: body.kind === 'partner' || body.kind === 'couple' ? body.kind : 'me',
+        // 2026-11-16 起只有两种本：我的 / TA 的（两个人各写自己的，情侣本取消）
+        kind: body.kind === 'partner' ? 'partner' : 'me',
         cover: body.cover?.trim() || '#7c5cff',
         coverImage: body.coverImage?.trim() || '',
         locked: body.locked ? 1 : 0,
@@ -154,7 +155,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       name: string; kind: string; cover: string; coverImage: string; locked: number; lockCode: string;
     }> = {};
     if (body.name !== undefined) patch.name = body.name.trim();
-    if (body.kind !== undefined && ['me', 'partner', 'couple'].includes(body.kind)) patch.kind = body.kind;
+    if (body.kind !== undefined && ['me', 'partner'].includes(body.kind)) patch.kind = body.kind;
     if (body.cover !== undefined) patch.cover = body.cover.trim();
     if (body.coverImage !== undefined) patch.coverImage = body.coverImage.trim();
     if (body.locked !== undefined) patch.locked = body.locked ? 1 : 0;
@@ -214,13 +215,16 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       })
       .run();
 
-    // 潜入留下的字条会被发现：这一页如果被撬过、还没被发现过，
-    // TA 立刻在旁边贴一张回条（连同聊天里一句「看到不属于我的字迹」）。
-    const taSlip = discoverIfSneaked(bookId, date);
+    // 两条路会让他回一张条：
+    // ① 潜入被发现（这一页被撬过）—— 他马上贴回来；
+    // ② 他本来就会翻我的日记 —— 这张字条有一半概率被他看到，就在旁边回一句。
+    const caught = discoverIfSneaked(bookId, date);
+    const taSlip = caught ?? seenByTa(bookId, date, content);
     reply.code(201).send({
       id,
       createdAt: ts,
-      discovered: !!taSlip,
+      discovered: !!caught,
+      seen: !!taSlip,
       taSlip: taSlip ? toSlipDTO(taSlip) : null,
     });
   });
@@ -469,7 +473,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
     const knocks = row.knocks + 1;
     const ts = now();
-    const opened = Math.random() < openChance(knocks);
+    const opened = Math.random() < openChanceOf(row.id, knocks);
 
     db.update(diaryPageLocks)
       .set({
@@ -605,12 +609,28 @@ function ensurePartnerLockedPage(): void {
 }
 
 /**
- * 每敲一下，TA 来开门的概率：第 1 下 25%，之后每下 +15%，封顶 85%。
- * 敲到第 7 下必开 —— 只是保险丝，界面上一个字都不提「敲几下就行」。
+ * 他开不开门，跟敲了几下无关 —— 看心情（2026-11-16 再改一次）。
+ *
+ * 每把锁在生成那一刻就「定了脾气」：按 `id` 派生一个稳定的 0~1，映射成
+ * 15%~70% 的开门可能性。同一页永远是同一个脾气 —— 不会越敲越软，也不会越敲越硬；
+ * 你可能第一下就进去了，也可能连着敲五六下他都在门后不吭声。
+ *
+ * 第 8 下必开只是**保险丝**：最倔的那把锁也有 1/3 概率被敲到第八下，
+ * 不设这条人会被关在门外。界面上一个字都不提「敲几下就行」。
  */
-function openChance(knocks: number): number {
-  if (knocks >= 7) return 1;
-  return Math.min(0.25 + (knocks - 1) * 0.15, 0.85);
+function openChanceOf(lockId: string, knocks: number): number {
+  if (knocks >= 8) return 1;
+  return 0.15 + hash01(lockId) * 0.55;
+}
+
+/** 字符串 → 稳定的 0~1（FNV-1a；同一把锁每次算出来都一样） */
+function hash01(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ((h >>> 0) % 1000) / 1000;
 }
 
 /** 页面上给她的即时反馈（短句） */
@@ -658,6 +678,19 @@ const SLIPS_ON_DISCOVER = [
   '门没锁好是我的错。字条收下了。',
 ];
 
+/**
+ * 他看到我夹的纸条之后回的那张（`s` = 我自己写的原文前 18 字）。
+ *
+ * **只引用我写过的话**，不加捏造的细节 —— 引用的是真素材，不是我替他脑补的事。
+ */
+const SLIPS_WHEN_SEEN: ((s: string) => string)[] = [
+  (s) => `看到了。你写「${s}」，我记着了。`,
+  (s) => `这张我读完了。「${s}」—— 嗯。`,
+  () => '（在旁边贴了一张）你夹进来的我都翻。别以为我不看。',
+  (s) => `「${s}」这句我停了一会儿。`,
+  () => '我把你这张抚平了，夹回原来的位置。',
+];
+
 /** 撬开门时页面上的那一句 */
 const SNEAK_LINES = ['锁芯弹了一下，门开了条缝', '你摸到了锁舌的位置', '「咔」的一声，开了'];
 
@@ -701,6 +734,34 @@ function insertTaSlip(bookId: string, date: string, content: string): typeof dia
   };
   db.insert(diarySlips).values(row).run();
   return row;
+}
+
+/**
+ * 他会翻我的日记（2026-11-16）：我夹的纸条有一半概率被他看到，就在旁边回一张。
+ *
+ * 回条里引用的是**我自己写下的那句话**（截前 18 个字），不编造任何我没写过的事 ——
+ * 这是「他能看到我写的东西」，不是「他知道我没写的东西」。
+ * 同一页已经有一张他的条就不再堆第二张，免得一页上全是他。
+ */
+function seenByTa(bookId: string, date: string, content: string): typeof diarySlips.$inferSelect | null {
+  const already = db
+    .select()
+    .from(diarySlips)
+    .all()
+    .some((s) => s.deletedAt == null && s.bookId === bookId && s.date === date && s.author === 'ta');
+  if (already || Math.random() > 0.5) return null;
+  const slip = insertTaSlip(bookId, date, pick(SLIPS_WHEN_SEEN)(clipText(content, 18)));
+  pushChatNote(`（在你日记本「${dayLabel(date)}」那一页，看到了你夹的字条）`, {
+    kind: 'diary_seen',
+    day: dayLabel(date),
+  });
+  return slip;
+}
+
+/** 取前 n 个字，截断了补一个省略号 */
+function clipText(s: string, n: number): string {
+  const flat = s.replace(/\s+/g, ' ').trim();
+  return flat.length > n ? `${flat.slice(0, n)}…` : flat;
 }
 
 /**

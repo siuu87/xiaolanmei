@@ -137,13 +137,18 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   addSlip: (s) => {
     const slip: DiarySlip = { ...s, id: newId(), author: 'me' };
     set((st) => ({ slips: [...st.slips, slip] }));
-    // 潜入时留的字条会被发现：后端会把 TA 的回条一起带回来，直接贴到同一页上
+    // 两条路会带回他的一张条：
+    //   ① 潜入被发现（`discovered`）—— 他贴回来说「你进来了」；
+    //   ② 他本来就会翻我的日记（`seen`）—— 看到了你夹的这张，在旁边回一句。
     void createDiarySlip(slip)
       .then((r) => {
         if (!r?.taSlip) return;
         set((st) => ({
           slips: st.slips.some((x) => x.id === r.taSlip!.id) ? st.slips : [...st.slips, r.taSlip!],
-          slipNotice: { text: '他发现了——在旁边贴了一张纸条', at: Date.now() },
+          slipNotice: {
+            text: r.discovered ? '他发现了——在旁边贴了一张纸条' : '他看到了你夹的这张纸条',
+            at: Date.now(),
+          },
         }));
       })
       .catch(() => {});

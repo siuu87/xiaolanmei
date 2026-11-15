@@ -1033,7 +1033,6 @@ export function initDatabase(): void {
     const seeds: [string, string, string, string][] = [
       ['book-me', '我的日记', 'me', '#7c5cff'],
       ['book-partner', 'TA 的日记', 'partner', '#f472b6'],
-      ['book-couple', '情侣日记', 'couple', '#ffb347'],
     ];
     seeds.forEach(([id, name, kind, cover], i) => {
       sqlite
@@ -1045,6 +1044,12 @@ export function initDatabase(): void {
         .run(id, name, kind, cover, i, ts, ts);
     });
   }
+
+  // 幂等迁移（2026-11-16 取消情侣本）：两个人各写自己的本，情侣本多余了。
+  // 已有的「情侣日记」这一本挪出书架（软删，里面的内容不删，只是不再出现）。
+  sqlite
+    .prepare(`UPDATE diary_books SET deleted_at = ?, updated_at = ? WHERE kind = 'couple' AND deleted_at IS NULL`)
+    .run(Date.now(), Date.now());
 
   /**
    * 幂等迁移（2026-10-18）：表情包分分类。

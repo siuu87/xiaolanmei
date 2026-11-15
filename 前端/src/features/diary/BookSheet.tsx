@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookText, Users2, User2, Trash2, Lock, Unlock, ImagePlus, Loader2, X } from 'lucide-react';
+import { BookText, User2, Trash2, Lock, Unlock, ImagePlus, Loader2, X } from 'lucide-react';
 import type { DiaryBook } from './diaryData';
 import { BOOK_KIND_LABEL, KIND_DEFAULT_COVER, COVER_PALETTE, LOCK_CODE_LEN } from './diaryData';
 import { BookCover } from './BookCover';
@@ -9,7 +9,6 @@ import { uploadImage } from '@/lib/api/attachments';
 
 /** kind → 图标（书架与设置弹层共用） */
 export function kindIcon(kind: DiaryBook['kind']) {
-  if (kind === 'couple') return Users2;
   if (kind === 'partner') return User2;
   return BookText;
 }
@@ -165,7 +164,7 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
           <div>
             <label className="mb-1.5 block text-xs text-muted-foreground">类型</label>
             <div className="flex gap-2">
-              {(['me', 'partner', 'couple'] as const).map((k) => {
+              {(['me', 'partner'] as const).map((k) => {
                 const KIcon = kindIcon(k);
                 return (
                   <button

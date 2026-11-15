@@ -209,11 +209,11 @@ export const agentTasks = sqliteTable('agent_tasks', {
   deletedAt: integer('deleted_at'),
 });
 
-/** 日记本（2026-11-11 Paper 式改版）：一本 = 一个封面，可建多本。kind = me 我的日记 | partner TA的日记 | couple 情侣日记 */
+/** 日记本（2026-11-11 Paper 式改版）：一本 = 一个封面，可建多本。kind = me 我的日记 | partner TA的日记（情侣本 2026-11-16 取消） */
 export const diaryBooks = sqliteTable('diary_books', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  kind: text('kind').notNull().default('me'), // me | partner | couple
+  kind: text('kind').notNull().default('me'), // me | partner（历史数据里可能还有 couple，已在 client.ts 里软删）
   cover: text('cover').notNull().default('#7c5cff'), // 封面主色
   /** 封皮换成图片时的图 URL（/api/files/xxx）；空串 = 纯色封皮 */
   coverImage: text('cover_image').notNull().default(''),

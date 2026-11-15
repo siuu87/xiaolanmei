@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { DeckPage, DiaryBook, DiaryEntry } from './diaryData';
+import type { DiaryBook, DiaryEntry } from './diaryData';
 import { dayKeyToDate, diaryDayKey } from './diaryData';
 import { useDiaryStore } from './diaryStore';
-import { BookDeck } from './BookDeck';
 import { BookLock } from './BookLock';
 import { BookSheet, type BookDraft } from './BookSheet';
 import { BookSwitcher } from './BookSwitcher';
 import { DlogBook } from './DlogBook';
 import { DlogCompose } from './DlogCompose';
 import { MonthJump } from './MonthJump';
-import { PageReader } from './PageReader';
 import { SlipEditor } from './SlipEditor';
 
 /**
@@ -21,7 +19,7 @@ import { SlipEditor } from './SlipEditor';
  *
  * - 一天可以记很多条「时刻」（时间 / 心情 / 标签 / 照片），写新的不覆盖旧的
  * - 「TA 的日记」同样一本，但只能夹纸条，不能代写
- * - 情侣本仍沿用「一天一页、上下两半」的老书（BookDeck），下一步再并进来
+ * - **情侣本 2026-11-16 取消** —— 两个人各写自己的本，再摆一本「一起写的」是多余的
  */
 export function DiaryPage() {
   const entries = useDiaryStore((s) => s.entries);
@@ -50,7 +48,6 @@ export function DiaryPage() {
   const [jump, setJump] = useState(false);
   /** 本次会话里解锁过 / 撬开过的本子 */
   const [unlocked, setUnlocked] = useState<string[]>([]);
-  const [readerPage, setReaderPage] = useState<DeckPage | null>(null);
 
   useEffect(() => {
     void load();
@@ -150,30 +147,6 @@ export function DiaryPage() {
   }
 
   const canWrite = book.kind !== 'partner';
-
-  // 情侣本：仍然用原来的「一天一页、上下两半」，下一步再并进书里
-  if (book.kind === 'couple') {
-    return (
-      <div className="min-h-full bg-page-bg" data-testid="diary-page">
-        <BookDeck
-          book={book}
-          entries={entries}
-          focusDate={focusDate}
-          startEditing={!!compose}
-          onClose={() => setFocusDate(null)}
-          onOpenReader={(p) => setReaderPage(p)}
-        />
-        {readerPage && (
-          <PageReader
-            page={readerPage}
-            book={book}
-            slips={slips.filter((s) => (s.bookId || 'book-me') === book.id && s.date === readerPage.date)}
-            onClose={() => setReaderPage(null)}
-          />
-        )}
-      </div>
-    );
-  }
 
   const current = focusDate ?? today;
 

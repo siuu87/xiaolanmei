@@ -14,11 +14,9 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
-/** 一本书的页数：情侣本一天一页，按「天」数；其它本一篇一页 */
+/** 一本书的页数：一篇日记一页 */
 function countOf(entries: DiaryEntry[], book: DiaryBook): number {
-  const list = entries.filter((e) => (e.bookId ?? 'book-me') === book.id);
-  if (book.kind === 'couple') return new Set(list.map((e) => e.date)).size;
-  return list.length;
+  return entries.filter((e) => (e.bookId ?? 'book-me') === book.id).length;
 }
 
 /**
@@ -105,7 +103,7 @@ export function BookShelf({ books, entries, onOpen, onAdd, onPatch, onRemove }: 
                 <BookCover
                   book={b}
                   className="h-full w-full"
-                  meta={`${countOf(entries, b)} ${b.kind === 'couple' ? '天' : '页'}${b.locked ? ' · 已上锁' : ''}`}
+                  meta={`${countOf(entries, b)} 页${b.locked ? ' · 已上锁' : ''}`}
                 />
               </button>
 

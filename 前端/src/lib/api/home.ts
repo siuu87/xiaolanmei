@@ -31,10 +31,13 @@ export const deleteDiaryBook = (id: string) =>
 // ---- 小纸条（夹在 TA 的日记里）----
 export const listDiarySlips = () => request<DiarySlip[]>('/api/diary/slips');
 export const createDiarySlip = (slip: DiarySlip) =>
-  request<{ id: string; discovered?: boolean; taSlip?: DiarySlip | null }>('/api/diary/slips', {
-    method: 'POST',
-    body: JSON.stringify(slip),
-  });
+  request<{ id: string; discovered?: boolean; seen?: boolean; taSlip?: DiarySlip | null }>(
+    '/api/diary/slips',
+    {
+      method: 'POST',
+      body: JSON.stringify(slip),
+    },
+  );
 export const patchDiarySlip = (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) =>
   request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiarySlip = (id: string) =>

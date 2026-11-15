@@ -17,11 +17,8 @@ interface Props {
  * 整屏不透明：项目规则不许用半透明遮罩，所以这里就是一页纯色列表。
  */
 export function BookSwitcher({ books, currentId, entries, onPick, onAdd, onClose }: Props) {
-  const countOf = (book: DiaryBook) => {
-    const mine = entries.filter((e) => (e.bookId || 'book-me') === book.id);
-    if (book.kind === 'couple') return `${new Set(mine.map((e) => e.date)).size} 天`;
-    return `${mine.length} 条`;
-  };
+  const countOf = (book: DiaryBook) =>
+    `${entries.filter((e) => (e.bookId || 'book-me') === book.id).length} 条`;
 
   return createPortal(
     <div className="fixed inset-0 z-[1400] flex flex-col bg-page-bg" data-testid="diary-book-switcher">

@@ -8,7 +8,7 @@ interface Props {
   date: string;
   /** 纸页尺寸（跟 DlogLeaf 完全一致，锁面就是这页纸本身） */
   box: PageBox;
-  /** 已经敲了几下（只是「敲过 N 下」，不代表敲够就开） */
+  /** 已经敲了几下（只喂给 data-knocks 做验收，界面上不显示次数） */
   knocks: number;
   /** TA 最新那一句反应（敲完才出现） */
   line?: string;
@@ -124,7 +124,6 @@ export function LockedLeaf({
             className="flex items-center gap-1.5 rounded-full border border-ink/25 px-4 py-2 text-[12px] text-ink/70 active:scale-95 disabled:opacity-50"
           >
             敲敲
-            {knocks > 0 && <span className="text-[10px] text-ink/35">· {knocks} 次</span>}
           </button>
         </div>
       </div>

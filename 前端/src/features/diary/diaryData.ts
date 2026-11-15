@@ -19,7 +19,8 @@ export interface DiaryEntry {
 export interface DiaryBook {
   id: string;
   name: string;
-  kind: 'me' | 'partner' | 'couple';
+  /** 2026-11-16 起只有两种：我的 / TA 的（两个人各写自己的，情侣本取消） */
+  kind: 'me' | 'partner';
   cover: string; // 封皮主色（莫兰迪色）
   /** 封皮换成图片时的图 URL；空 = 纯色封皮 */
   coverImage?: string;
@@ -64,40 +65,9 @@ export interface DiarySticker {
   rot: number;
 }
 
-/** 情侣日记的「一天」：同一天两个人的半页（上面是他、下面是我） */
-export interface CoupleDay {
-  date: string;
-  /** 我写的这半页 */
-  mine?: DiaryEntry;
-  /** 他写的这半页 */
-  theirs?: DiaryEntry;
-}
-
-/**
- * 翻页栈里的一页：
- * - 我的日记 / TA 的日记：一页 = 一篇日记（`entry`）
- * - 情侣日记：一页 = 一天，上下两半（`pair`）
- */
-export interface DeckPage {
-  /** React key + 草稿同步用的稳定标识 */
-  key: string;
-  date: string;
-  entry?: DiaryEntry;
-  pair?: CoupleDay;
-  /** 这一篇（这一天）长文自动排成了几面，这是第几面（从 0 起） */
-  slice?: number;
-  /** 一共几面；1 = 一页放得下 */
-  slices?: number;
-}
-
 /** 这个本子能不能写日记：TA 的日记只能加小纸条，不能代写 */
 export function canWriteDiary(book: Pick<DiaryBook, 'kind'>): boolean {
   return book.kind !== 'partner';
-}
-
-/** 是不是「一天一页、上下两半」的情侣本 */
-export function isCoupleBook(book: Pick<DiaryBook, 'kind'>): boolean {
-  return book.kind === 'couple';
 }
 
 /** 密码位数 */
@@ -115,7 +85,7 @@ export interface DiaryPageLock {
   id: string;
   bookId: string;
   date: string;
-  /** 已经敲了几下（只用来显示「敲过 N 下」，不代表敲够就开） */
+  /** 已经敲了几下（只用来算开门概率与保险丝，界面上不显示次数） */
   knocks: number;
   /** 被撬进来的时刻（0 = 没被撬过） */
   sneakedAt?: number;
@@ -133,18 +103,16 @@ export const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", se
 export const HAND_RULE_BG =
   'repeating-linear-gradient(180deg, transparent 0 30px, rgba(120,110,95,0.16) 30px 31px)';
 
-/** 日记本类型：我的日记 / TA 的日记 / 情侣日记 */
+/** 日记本类型：我的日记 / TA 的日记（情侣本 2026-11-16 取消 —— 两个人各写自己的） */
 export const BOOK_KIND_LABEL: Record<DiaryBook['kind'], string> = {
   me: '我的日记',
   partner: 'TA 的日记',
-  couple: '情侣日记',
 };
 
 /** 日记本类型 → 默认封皮色（莫兰迪：低饱和、偏灰） */
 export const KIND_DEFAULT_COVER: Record<DiaryBook['kind'], string> = {
   me: '#9AA6B2',
   partner: '#C0A9A3',
-  couple: '#B4A99B',
 };
 
 /**
@@ -165,7 +133,6 @@ export const SLIP_MAX = 160;
 
 /** 按 kind 推断默认归属本：me→我的日记，partner→TA 的日记 */
 export function defaultBookFor(kind: DiaryBook['kind'], books: DiaryBook[]): string {
-  if (kind === 'couple') return books.find((b) => b.kind === 'couple')?.id ?? '';
   return books.find((b) => b.kind === kind)?.id ?? '';
 }
 
