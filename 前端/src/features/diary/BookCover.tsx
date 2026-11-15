@@ -10,6 +10,8 @@ interface Props {
   meta?: string;
   /** 大封面（书架）显示封底纸质标签；小封面只留名字 */
   compact?: boolean;
+  /** 不画右侧那道纸页断面 —— 书页本身已经有纸叠了，两叠会打架 */
+  hideEdge?: boolean;
   className?: string;
 }
 
@@ -19,7 +21,7 @@ interface Props {
  * 封皮可以是莫兰迪纯色，也可以是图片（图片上压暗角，标签照样读得清）。
  * 书架、设置弹层预览、开本动画共用，三处视觉必须一致。
  */
-export function BookCover({ book, meta, compact = false, className = '' }: Props) {
+export function BookCover({ book, meta, compact = false, hideEdge = false, className = '' }: Props) {
   const Icon = kindIcon(book.kind);
   const hasImg = !!book.coverImage;
 
@@ -75,16 +77,18 @@ export function BookCover({ book, meta, compact = false, className = '' }: Props
         className={`absolute inset-y-0 ${compact ? 'left-[7px]' : 'left-[13px]'} w-px bg-white/15`}
       />
       {/* 右侧纸页断面：一眼看出这是一本装订好的本子 */}
-      <div
-        aria-hidden
-        className={`absolute inset-y-1 right-0 ${compact ? 'w-[3px]' : 'w-[5px]'}`}
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(255,255,255,0.10), rgba(247,242,232,0.9) 55%, rgba(206,198,183,0.95))',
-          borderTopRightRadius: compact ? 6 : 9,
-          borderBottomRightRadius: compact ? 6 : 9,
-        }}
-      />
+      {!hideEdge && (
+        <div
+          aria-hidden
+          className={`absolute inset-y-1 right-0 ${compact ? 'w-[3px]' : 'w-[5px]'}`}
+          style={{
+            background:
+              'linear-gradient(90deg, rgba(255,255,255,0.10), rgba(247,242,232,0.9) 55%, rgba(206,198,183,0.95))',
+            borderTopRightRadius: compact ? 6 : 9,
+            borderBottomRightRadius: compact ? 6 : 9,
+          }}
+        />
+      )}
       {/* 顶部高光 + 底部落影 */}
       <div
         aria-hidden
