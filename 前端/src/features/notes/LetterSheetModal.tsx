@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { useNotesStore } from './notesStore';
 import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme } from './notesData';
 import { letterParts, WaxSeal } from './LetterArt';
+import { TearOpen } from './TearOpen';
 
 /**
  * 信件弹窗（2026-11-11 重做，替代旧的拆信动画层）
@@ -116,6 +117,14 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
   const loaded = useNotesStore((s) => s.loaded);
   const load = useNotesStore((s) => s.load);
   const markRead = useNotesStore((s) => s.markRead);
+  const readIds = useNotesStore((s) => s.readIds);
+
+  /**
+   * 打开时这封信是不是还没拆过 —— **必须在 markRead 之前取**：
+   * markRead 的 effect 在首帧渲染之后才跑，所以首帧读到的 readIds 还是旧的。
+   * 用惰性 state 钉住这一次的判断，之后 readIds 变了也不影响。
+   */
+  const [tearing, setTearing] = useState(() => !readIds.includes(id));
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLParagraphElement>(null);
@@ -127,10 +136,13 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
     if (!loaded) void load();
   }, [loaded, load]);
 
-  // 打开即已读
+  /**
+   * 打开即已读 —— 但**撕开过程中先不标**：没撕完就关掉的信，下次进来还能再拆一次。
+   * 撕完（tearing 变 false）或者本来就已经拆过，才算读过。
+   */
   useEffect(() => {
-    if (id) markRead(id);
-  }, [id, markRead]);
+    if (id && !tearing) markRead(id);
+  }, [id, tearing, markRead]);
 
   // Esc 关。抽屉里也可能点开这层，capture 阶段吃掉，别让抽屉跟着一起关
   useEffect(() => {
@@ -208,9 +220,9 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
       {/* 信纸 + 信封：整块尺寸固定，正文长短不影响宽高 */}
       <motion.div
         initial={{ opacity: 0, y: 18, scale: 0.985 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        animate={tearing ? { opacity: 0, scale: 0.96 } : { opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 18, scale: 0.985 }}
-        transition={{ duration: 0.26, ease: 'easeOut' }}
+        transition={{ duration: 0.34, ease: 'easeOut' }}
         data-testid="letter-sheet"
         className="relative z-10 shrink-0"
         style={{ width: 'min(420px, 86vw)', height: 'min(560px, 72vh)' }}
@@ -332,6 +344,13 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
           </span>
         </div>
       </motion.div>
+
+      {/*
+        还没拆过的信：先给一层「按住往上撕」。撕完才把信纸交出来。
+        z-[15] —— 压在信纸(z-10)上面，但让右上角「收起」(z-20) 露在上面，
+        不想撕的人可以随时跳过。撕开层不铺满时正好接住整屏点击。
+      */}
+      {tearing && note && <TearOpen theme={theme} onDone={() => setTearing(false)} />}
 
       <span
         className="pointer-events-none absolute bottom-5 left-0 right-0 text-center text-[10px]"
