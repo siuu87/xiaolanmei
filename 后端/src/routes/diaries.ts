@@ -459,8 +459,9 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
-   * 敲门（2026-11-16 改）：**开不开由 TA 说了算**，不是敲够几下必开。
-   * 每敲一下都往聊天里落一条他的反应；他若懒得开，也可能往门缝里塞一张纸条。
+   * 敲门（2026-11-16 晚：**前端已撤掉「敲敲」按钮**，锁页只剩「输入密码」一个入口）。
+   * 接口先留着（scene / 聊天提示都还连着），哪天想放回来不用重写；
+   * 开不开本来也由 TA 说了算，不是敲够几下必开。
    */
   app.post('/diary/page-locks/knock', async (req) => {
     const body = (req.body ?? {}) as { bookId?: string; date?: string; title?: string };

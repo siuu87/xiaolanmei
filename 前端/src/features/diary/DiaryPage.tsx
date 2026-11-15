@@ -163,12 +163,7 @@ export function DiaryPage() {
           await useDiaryStore.getState().lockPage(book.id, date, code);
         }}
         onUnlockPage={(date) => void useDiaryStore.getState().unlockPage(book.id, date)}
-        onPageKnocked={(date, knocks, opened) => {
-          if (opened) void useDiaryStore.getState().unlockPage(book.id, date);
-          else useDiaryStore.getState().setPageKnocks(book.id, date, knocks);
-        }}
         onSneakPage={(date, tries) => useDiaryStore.getState().sneakPage(book.id, date, tries)}
-        onTaSlip={(slip) => useDiaryStore.getState().mergeSlip(slip)}
         onJump={() => setJump(true)}
         onSwitchBook={() => setSwitcher(true)}
         onSettings={() => setSheet({ book })}

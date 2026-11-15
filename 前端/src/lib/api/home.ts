@@ -70,12 +70,6 @@ export const checkDiaryPageCode = (input: { bookId: string; date: string; code: 
     method: 'POST',
     body: JSON.stringify(input),
   });
-/** 敲一下门：TA 开不开由他定，可能还从门缝塞一张纸条出来 */
-export const knockDiaryPage = (input: { bookId: string; date: string; title?: string }) =>
-  request<{ knocks: number; opened: boolean; line: string; day: string; slip: DiarySlip | null }>(
-    '/api/diary/page-locks/knock',
-    { method: 'POST', body: JSON.stringify(input) },
-  );
 /** 猜不出密码就撬：这一页会被记下「闯过」，TA 会发现 */
 export const sneakDiaryPage = (input: { bookId: string; date: string; tries: number }) =>
   request<{ ok: true; gone?: boolean; line: string }>('/api/diary/page-locks/sneak', {

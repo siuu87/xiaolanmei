@@ -66,8 +66,6 @@ interface DiaryState {
   unlockPage: (bookId: string, date: string) => Promise<void>;
   /** 撬锁：密码猜不出来时的第三条路（会被 TA 发现） */
   sneakPage: (bookId: string, date: string, tries: number) => Promise<{ ok: boolean; line: string }>;
-  /** 敲过之后同步次数（TA 开门时顺手把锁从本地抹掉） */
-  setPageKnocks: (bookId: string, date: string, knocks: number) => void;
 }
 
 /** 日记 store：书架 + 日记条目 + 小纸条，本地乐观更新 + 写穿后端，刷新不丢。 */
@@ -270,13 +268,5 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   unlockPage: async (bookId, date) => {
     set((st) => ({ pageLocks: st.pageLocks.filter((p) => !(p.bookId === bookId && p.date === date)) }));
     void unlockDiaryPage(bookId, date).catch(() => {});
-  },
-
-  setPageKnocks: (bookId, date, knocks) => {
-    set((st) => ({
-      pageLocks: st.pageLocks.map((p) =>
-        p.bookId === bookId && p.date === date ? { ...p, knocks } : p,
-      ),
-    }));
   },
 }));

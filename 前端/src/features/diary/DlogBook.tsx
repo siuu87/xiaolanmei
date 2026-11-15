@@ -18,7 +18,7 @@ import { DlogLeaf } from './DlogLeaf';
 import { LockedLeaf } from './LockedLeaf';
 import { PageLockSheet } from './PageLockSheet';
 import { StickerPicker } from './StickerPicker';
-import { checkDiaryPageCode, knockDiaryPage } from '@/lib/api/home';
+import { checkDiaryPageCode } from '@/lib/api/home';
 import { useDiaryStore } from './diaryStore';
 import { useViewport } from './pageLayout';
 
@@ -52,12 +52,8 @@ interface Props {
   /** 锁 / 解某一页 */
   onLockPage: (date: string, code: string) => Promise<void>;
   onUnlockPage: (date: string) => void;
-  /** 敲完门：同步次数，`opened` 时上层把锁删掉 */
-  onPageKnocked: (date: string, knocks: number, opened: boolean) => void;
   /** 撬锁（错够 2 次才给）：这一页会被记下「闯过」，TA 会发现 */
   onSneakPage: (date: string, tries: number) => Promise<{ ok: boolean; line: string }>;
-  /** TA 塞回来的纸条（塞进门缝的 / 发现你潜入后贴的）直接并进 store */
-  onTaSlip: (slip: DiarySlip) => void;
   onJump: () => void;
   onSwitchBook: () => void;
   onSettings: () => void;
@@ -113,9 +109,7 @@ export function DlogBook({
   onRemoveSticker,
   onLockPage,
   onUnlockPage,
-  onPageKnocked,
   onSneakPage,
-  onTaSlip,
   onJump,
   onSwitchBook,
   onSettings,
@@ -166,12 +160,10 @@ export function DlogBook({
   /** 贴纸面板（手账贴纸：选一张贴到当前这页） */
   const [stickerOpen, setStickerOpen] = useState(false);
 
-  /** 单页锁（2026-11-15）：密码面板 / 本次已翻开的页 / 敲完之后 TA 那句反应 */
+  /** 单页锁（2026-11-15）：密码面板 / 本次已翻开的页 */
   const [lockSheet, setLockSheet] = useState<{ mode: 'set' | 'open'; date: string } | null>(null);
   const [unlockedPages, setUnlockedPages] = useState<string[]>([]);
-  const [knockLines, setKnockLines] = useState<Record<string, string>>({});
-  const [knockBusy, setKnockBusy] = useState(false);
-  /** TA 敲门敲够、替她打开后浮出来的一句话 */
+  /** TA 替你开门后浮出来的一句话 */
   const [openedTip, setOpenedTip] = useState<string | null>(null);
 
   useEffect(() => {
@@ -199,28 +191,6 @@ export function DlogBook({
     return m && dd ? `${Number(m)} 月 ${Number(dd)} 日` : d;
   };
 
-  /** TA 敲门之后他那句话 + 会不会塞纸条，都从后端来（开不开由他定，不是敲够必开） */
-  const knock = async (d: string) => {
-    if (knockBusy) return;
-    setKnockBusy(true);
-    try {
-      const r = await knockDiaryPage({ bookId: book.id, date: d, title: book.name });
-      setKnockLines((prev) => ({ ...prev, [d]: r.line || '……' }));
-      onPageKnocked(d, r.knocks, r.opened);
-      if (r.slip) onTaSlip(r.slip);
-      if (r.opened) {
-        setUnlockedPages((prev) => (prev.includes(d) ? prev : [...prev, d]));
-        setOpenedTip(r.slip ? '他开了门，还塞了张纸条' : '他替你开了这一页');
-      } else if (r.slip) {
-        setOpenedTip('他没开，从门缝塞了张纸条出来');
-      }
-    } catch {
-      // 敲失败就当没敲到，不弹错打扰
-    } finally {
-      setKnockBusy(false);
-    }
-  };
-
   /** 撬锁：不是「正大光明地开」，这一页从此带着「被闯过」的记号 */
   const handleSneak = async (d: string, tries: number) => {
     const r = await onSneakPage(d, tries);
@@ -240,11 +210,6 @@ export function DlogBook({
     if (unlockedPages.includes(d)) {
       onUnlockPage(d);
       setUnlockedPages((prev) => prev.filter((x) => x !== d));
-      setKnockLines((prev) => {
-        const next = { ...prev };
-        delete next[d];
-        return next;
-      });
       return;
     }
     setLockSheet({ mode: 'open', date: d });
@@ -434,13 +399,9 @@ export function DlogBook({
       <LockedLeaf
         date={d}
         box={box}
-        knocks={lockOf(d)?.knocks ?? 0}
-        line={knockLines[d]}
-        busy={knockBusy}
         slip={slips.filter((s) => s.date === d && s.author === 'ta').slice(-1)[0]}
         sneaked={!!lockOf(d)?.sneakedAt}
         onAskCode={() => setLockSheet({ mode: 'open', date: d })}
-        onKnock={() => void knock(d)}
       />
     ) : (
       <DlogLeaf
