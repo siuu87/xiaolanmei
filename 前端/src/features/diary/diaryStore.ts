@@ -12,14 +12,20 @@ import {
   createDiarySlip,
   patchDiarySlip,
   deleteDiarySlip,
+  listDiaryStickers,
+  createDiarySticker,
+  patchDiarySticker,
+  deleteDiarySticker,
 } from '@/lib/api/home';
 import { newId } from '@/lib/id';
-import type { DiaryEntry, DiaryBook, DiarySlip } from './diaryData';
+import type { DiaryEntry, DiaryBook, DiarySlip, DiarySticker } from './diaryData';
 
 interface DiaryState {
   entries: DiaryEntry[];
   books: DiaryBook[];
   slips: DiarySlip[];
+  /** 贴在纸上的表情包贴纸（按 book + date 归到某一页） */
+  stickers: DiarySticker[];
   loaded: boolean;
   load: () => Promise<void>;
   addEntry: (e: Omit<DiaryEntry, 'id'>) => void;
@@ -37,6 +43,9 @@ interface DiaryState {
   addSlip: (s: Omit<DiarySlip, 'id'>) => void;
   patchSlip: (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) => void;
   removeSlip: (id: string) => void;
+  addSticker: (s: Omit<DiarySticker, 'id'>) => void;
+  patchSticker: (id: string, patch: Partial<Pick<DiarySticker, 'x' | 'y' | 'scale' | 'rot'>>) => void;
+  removeSticker: (id: string) => void;
 }
 
 /** 日记 store：书架 + 日记条目 + 小纸条，本地乐观更新 + 写穿后端，刷新不丢。 */
@@ -44,12 +53,18 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   entries: [],
   books: [],
   slips: [],
+  stickers: [],
   loaded: false,
 
   load: async () => {
     try {
-      const [entries, books, slips] = await Promise.all([listDiaries(), listDiaryBooks(), listDiarySlips()]);
-      set({ entries, books, slips, loaded: true });
+      const [entries, books, slips, stickers] = await Promise.all([
+        listDiaries(),
+        listDiaryBooks(),
+        listDiarySlips(),
+        listDiaryStickers(),
+      ]);
+      set({ entries, books, slips, stickers, loaded: true });
     } catch {
       set({ loaded: true });
     }
@@ -89,6 +104,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       books: s.books.filter((b) => b.id !== id),
       entries: s.entries.filter((e) => e.bookId !== id),
       slips: s.slips.filter((x) => x.bookId !== id),
+      stickers: s.stickers.filter((x) => x.bookId !== id),
     }));
     void deleteDiaryBook(id).catch(() => {});
   },
@@ -107,5 +123,21 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   removeSlip: (id) => {
     set((st) => ({ slips: st.slips.filter((x) => x.id !== id) }));
     void deleteDiarySlip(id).catch(() => {});
+  },
+
+  addSticker: (s) => {
+    const sticker: DiarySticker = { ...s, id: newId() };
+    set((st) => ({ stickers: [...st.stickers, sticker] }));
+    void createDiarySticker(sticker).catch(() => {});
+  },
+
+  patchSticker: (id, patch) => {
+    set((st) => ({ stickers: st.stickers.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
+    void patchDiarySticker(id, patch).catch(() => {});
+  },
+
+  removeSticker: (id) => {
+    set((st) => ({ stickers: st.stickers.filter((x) => x.id !== id) }));
+    void deleteDiarySticker(id).catch(() => {});
   },
 }));

@@ -2,7 +2,7 @@ import { request } from './conversations';
 import type { Todo } from '@/features/home/todoStore';
 import type { MemorialDay } from '@/features/home/memorialStore';
 import type { PeriodRecord, PeriodSettings } from '@/features/home/periodStore';
-import type { DiaryEntry, DiaryBook, DiarySlip } from '@/features/diary/diaryData';
+import type { DiaryEntry, DiaryBook, DiarySlip, DiarySticker } from '@/features/diary/diaryData';
 import type { InspirationNote } from '@/features/notes/notesData';
 import type { Course } from '@/features/schedule/timetableStore';
 
@@ -36,6 +36,23 @@ export const patchDiarySlip = (id: string, patch: Partial<Pick<DiarySlip, 'date'
   request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiarySlip = (id: string) =>
   request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'DELETE' });
+
+// ---- 日记贴纸（贴在纸上，不属于某一条时刻）----
+export const listDiaryStickers = () => request<DiarySticker[]>('/api/diary/stickers');
+export const createDiarySticker = (sticker: Omit<DiarySticker, 'id'>) =>
+  request<{ id: string; z: number }>('/api/diary/stickers', {
+    method: 'POST',
+    body: JSON.stringify(sticker),
+  });
+export const patchDiarySticker = (
+  id: string,
+  patch: Partial<Pick<DiarySticker, 'x' | 'y' | 'scale' | 'rot'>>,
+) => request<{ ok: true }>(`/api/diary/stickers/${id}`, {
+  method: 'PATCH',
+  body: JSON.stringify(patch),
+});
+export const deleteDiarySticker = (id: string) =>
+  request<{ ok: true }>(`/api/diary/stickers/${id}`, { method: 'DELETE' });
 
 // ---- 待办 ----
 export const listTodos = () => request<Todo[]>('/api/todos');

@@ -262,6 +262,29 @@ export const diarySlips = sqliteTable('diary_slips', {
   deletedAt: integer('deleted_at'),
 });
 
+/**
+ * 日记贴纸（2026-11-15）：贴在某一页上的表情包 / 小图标，像手账贴纸。
+ *
+ * - `src` 存的是**表情包 key**（内置贴图的 emoji 字符，或自定义表情包的 /api/files/xxx 地址），
+ *   渲染时走 `resolveSticker()`，跟聊天里那套表情包完全共用一份素材；
+ * - `x` / `y` 是相对纸页的 0~1 比例（换屏幕尺寸也不会跑位），`scale` / `rot` 是缩放和角度；
+ * - 只属于「这一本 · 这一天」，跟具体某条时刻无关 —— 贴纸是贴在纸上的，不是记在某一句话里的。
+ */
+export const diaryStickers = sqliteTable('diary_stickers', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull().default(''),
+  date: text('date').notNull(), // 贴在哪一页（YYYY-MM-DD）
+  src: text('src').notNull(),
+  x: real('x').notNull().default(0.5),
+  y: real('y').notNull().default(0.5),
+  scale: real('scale').notNull().default(1),
+  rot: real('rot').notNull().default(0),
+  z: integer('z').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 /** 待办（阶段 7 收尾）：repeat 为 none/daily/weekly/monthly；重复待办用 done_on 记最近完成日 */
 export const todos = sqliteTable('todos', {
   id: text('id').primaryKey(),

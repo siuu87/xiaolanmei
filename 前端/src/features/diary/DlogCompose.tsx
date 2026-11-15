@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { uploadImage } from '@/lib/api/attachments';
 import type { DiaryBook, DiaryEntry } from './diaryData';
-import { hmNow, MOODS, prettyDate, prettyTime } from './diaryData';
+import { hmNow, prettyDate, prettyTime } from './diaryData';
 import { useDiaryStore } from './diaryStore';
 
 interface Props {
@@ -17,8 +17,9 @@ const MAX_IMAGES = 9;
 
 /**
  * 记录页（D·LOG 的轻记录）：
- * 上面一排照片（可加可删），中间一句话，下面一排心情，最后是标签。
+ * 上面一排照片（可加可删），中间一句话，最后是标签。
  * 时间默认「现在」，不想要就点一下清掉；一天可以记很多条，不覆盖之前的。
+ * （表情包不放这儿 —— 贴纸是贴在纸上的，走书页右上那个笑脸入口。）
  */
 export function DlogCompose({ book, date, entry, onClose }: Props) {
   const addEntry = useDiaryStore((s) => s.addEntry);
@@ -27,7 +28,6 @@ export function DlogCompose({ book, date, entry, onClose }: Props) {
 
   const [content, setContent] = useState(entry?.content ?? '');
   const [images, setImages] = useState<string[]>(entry?.images ?? []);
-  const [mood, setMood] = useState(entry?.mood ?? '');
   const [tags, setTags] = useState<string[]>(entry?.tags ?? []);
   const [tagInput, setTagInput] = useState('');
   const [time, setTime] = useState(entry?.time ?? hmNow());
@@ -71,7 +71,6 @@ export function DlogCompose({ book, date, entry, onClose }: Props) {
       date,
       content: content.trim(),
       images,
-      mood,
       tags,
       time,
     };
@@ -200,23 +199,6 @@ export function DlogCompose({ book, date, entry, onClose }: Props) {
           rows={4}
           className="mt-3 w-full resize-none bg-transparent text-[16px] leading-7 text-foreground outline-none placeholder:text-muted-foreground/60"
         />
-
-        {/* 心情 */}
-        <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-1">
-          {MOODS.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMood((prev) => (prev === m ? '' : m))}
-              data-testid={`diary-mood-${m}`}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[20px] transition ${
-                mood === m ? 'bg-secondary ring-2 ring-foreground/70' : 'bg-secondary/50'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
 
         {/* 标签 */}
         <div className="mt-4 border-t border-page-line pt-3">

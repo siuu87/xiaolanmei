@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { diaries, diaryBooks, diarySlips } from '../db/schema.js';
+import { diaries, diaryBooks, diarySlips, diaryStickers } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 
 /**
@@ -307,4 +307,107 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
     db.update(diaries).set({ deletedAt: ts, updatedAt: ts }).where(eq(diaries.id, id)).run();
     return { ok: true };
   });
+
+  // ---- 日记贴纸（2026-11-15 手账贴纸：贴在纸上，不属于某一条时刻）----
+  app.get('/diary/stickers', async (req) => {
+    const { book, date } = req.query as { book?: string; date?: string };
+    return db
+      .select()
+      .from(diaryStickers)
+      .all()
+      .filter((s) => s.deletedAt == null && (!book || s.bookId === book) && (!date || s.date === date))
+      .sort((a, b) => a.z - b.z || a.createdAt - b.createdAt)
+      .map(toStickerDTO);
+  });
+
+  app.post('/diary/stickers', async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      id?: string; bookId?: string; date?: string; src?: string;
+      x?: number; y?: number; scale?: number; rot?: number;
+    };
+    const date = body.date?.trim();
+    const src = body.src?.trim().slice(0, 400);
+    if (!date || !src) {
+      reply.code(400).send({ message: 'date 与 src 必填' });
+      return;
+    }
+    const id = body.id?.trim() || newId();
+    const ts = now();
+    const maxZ = db
+      .select()
+      .from(diaryStickers)
+      .all()
+      .filter((s) => s.deletedAt == null && s.bookId === (body.bookId?.trim() ?? '') && s.date === date)
+      .reduce((m, s) => Math.max(m, s.z), 0);
+    db.insert(diaryStickers)
+      .values({
+        id,
+        bookId: body.bookId?.trim() || '',
+        date,
+        src,
+        x: clamp01(body.x),
+        y: clamp01(body.y),
+        scale: clampScale(body.scale),
+        rot: clampRot(body.rot),
+        z: maxZ + 1,
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    reply.code(201).send({ id, z: maxZ + 1 });
+  });
+
+  app.patch('/diary/stickers/:id', async (req) => {
+    const { id } = req.params as { id: string };
+    const body = (req.body ?? {}) as { x?: number; y?: number; scale?: number; rot?: number };
+    const patch: Partial<{ x: number; y: number; scale: number; rot: number }> = {};
+    if (body.x !== undefined) patch.x = clamp01(body.x);
+    if (body.y !== undefined) patch.y = clamp01(body.y);
+    if (body.scale !== undefined) patch.scale = clampScale(body.scale);
+    if (body.rot !== undefined) patch.rot = clampRot(body.rot);
+    if (Object.keys(patch).length === 0) return { ok: true };
+    db.update(diaryStickers).set({ ...patch, updatedAt: now() }).where(eq(diaryStickers.id, id)).run();
+    return { ok: true };
+  });
+
+  app.delete('/diary/stickers/:id', async (req) => {
+    const { id } = req.params as { id: string };
+    const ts = now();
+    db.update(diaryStickers).set({ deletedAt: ts, updatedAt: ts }).where(eq(diaryStickers.id, id)).run();
+    return { ok: true };
+  });
+}
+
+/** 贴纸在纸页上的位置：0~1 比例，越界就夹回来 */
+function clamp01(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0.5;
+  return Math.min(1, Math.max(0, Math.round(n * 1000) / 1000));
+}
+
+/** 缩放：0.4 ~ 3 倍 */
+function clampScale(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(3, Math.max(0.4, Math.round(n * 100) / 100));
+}
+
+/** 角度：-180 ~ 180 */
+function clampRot(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-180, Math.min(180, Math.round(n)));
+}
+
+function toStickerDTO(s: typeof diaryStickers.$inferSelect) {
+  return {
+    id: s.id,
+    bookId: s.bookId,
+    date: s.date,
+    src: s.src,
+    x: s.x,
+    y: s.y,
+    scale: s.scale,
+    rot: s.rot,
+  };
 }

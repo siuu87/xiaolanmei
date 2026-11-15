@@ -27,6 +27,7 @@ export function DiaryPage() {
   const entries = useDiaryStore((s) => s.entries);
   const books = useDiaryStore((s) => s.books);
   const slips = useDiaryStore((s) => s.slips);
+  const stickers = useDiaryStore((s) => s.stickers);
   const load = useDiaryStore((s) => s.load);
   const navigate = useNavigate();
 
@@ -72,6 +73,12 @@ export function DiaryPage() {
   const bookSlips = useMemo(
     () => slips.filter((s) => (s.bookId || 'book-me') === (book?.id ?? 'book-me')),
     [slips, book?.id],
+  );
+
+  /** 这本贴过的贴纸 */
+  const bookStickers = useMemo(
+    () => stickers.filter((s) => (s.bookId || 'book-me') === (book?.id ?? 'book-me')),
+    [stickers, book?.id],
   );
 
   // 日历深链：?date=YYYY-M-D
@@ -154,6 +161,7 @@ export function DiaryPage() {
         book={book}
         entries={bookEntries}
         slips={bookSlips}
+        stickers={bookStickers}
         today={today}
         canWrite={canWrite}
         focusDate={focusDate}
@@ -162,6 +170,10 @@ export function DiaryPage() {
         onEdit={(e) => setCompose({ date: e.date, entry: e })}
         onDelete={(e) => useDiaryStore.getState().removeEntry(e.id)}
         onSlip={(d) => setSlipEditor({ date: d })}
+        onAddSticker={(s) => useDiaryStore.getState().addSticker(s)}
+        onMoveSticker={(id, pos) => useDiaryStore.getState().patchSticker(id, pos)}
+        onChangeSticker={(id, patch) => useDiaryStore.getState().patchSticker(id, patch)}
+        onRemoveSticker={(id) => useDiaryStore.getState().removeSticker(id)}
         onJump={() => setJump(true)}
         onSwitchBook={() => setSwitcher(true)}
         onSettings={() => setSheet({ book })}

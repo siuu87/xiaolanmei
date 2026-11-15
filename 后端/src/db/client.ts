@@ -274,6 +274,22 @@ CREATE TABLE IF NOT EXISTS diary_slips (
 );
 CREATE INDEX IF NOT EXISTS idx_diary_slips_book ON diary_slips(book_id, date);
 
+CREATE TABLE IF NOT EXISTS diary_stickers (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  src TEXT NOT NULL,
+  x REAL NOT NULL DEFAULT 0.5,
+  y REAL NOT NULL DEFAULT 0.5,
+  scale REAL NOT NULL DEFAULT 1,
+  rot REAL NOT NULL DEFAULT 0,
+  z INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_diary_stickers_book ON diary_stickers(book_id, date);
+
 CREATE TABLE IF NOT EXISTS diary_books (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

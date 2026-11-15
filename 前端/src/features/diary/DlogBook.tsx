@@ -6,12 +6,14 @@ import {
   ChevronRight,
   Plus,
   Settings,
+  SmilePlus,
   StickyNote,
 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
+import type { DiaryBook, DiaryEntry, DiarySlip, DiarySticker } from './diaryData';
 import { shiftDate, sortByTime } from './diaryData';
 import { BookCover } from './BookCover';
 import { DlogLeaf } from './DlogLeaf';
+import { StickerPicker } from './StickerPicker';
 import { useViewport } from './pageLayout';
 
 interface Props {
@@ -19,6 +21,8 @@ interface Props {
   /** 这本书的全部日记（不分日期） */
   entries: DiaryEntry[];
   slips: DiarySlip[];
+  /** 这本书里贴过的全部贴纸（不分日期） */
+  stickers: DiarySticker[];
   today: string;
   canWrite: boolean;
   /** 打开时翻到哪一天（null = 今天） */
@@ -29,6 +33,10 @@ interface Props {
   onEdit: (entry: DiaryEntry) => void;
   onDelete: (entry: DiaryEntry) => void;
   onSlip: (date: string) => void;
+  onAddSticker: (s: Omit<DiarySticker, 'id'>) => void;
+  onMoveSticker: (id: string, pos: { x: number; y: number }) => void;
+  onChangeSticker: (id: string, patch: { scale?: number; rot?: number }) => void;
+  onRemoveSticker: (id: string) => void;
   onJump: () => void;
   onSwitchBook: () => void;
   onSettings: () => void;
@@ -66,6 +74,7 @@ export function DlogBook({
   book,
   entries,
   slips,
+  stickers,
   today,
   canWrite,
   focusDate,
@@ -74,6 +83,10 @@ export function DlogBook({
   onEdit,
   onDelete,
   onSlip,
+  onAddSticker,
+  onMoveSticker,
+  onChangeSticker,
+  onRemoveSticker,
   onJump,
   onSwitchBook,
   onSettings,
@@ -120,6 +133,9 @@ export function DlogBook({
   const [closed, setClosed] = useState(true);
   const [coverAnim, setCoverAnim] = useState<'open' | 'shut' | null>(null);
   const coverRef = useRef<HTMLDivElement | null>(null);
+
+  /** 贴纸面板（手账贴纸：选一张贴到当前这页） */
+  const [stickerOpen, setStickerOpen] = useState(false);
 
   // 第一次定位：有深链日期就翻到那天，否则停在今天；深链（?date= / ?new=1）直接翻开
   useEffect(() => {
@@ -271,6 +287,23 @@ export function DlogBook({
   const baseDate = anim && anim.dir === -1 ? days[anim.from] : date;
 
   const entriesOf = (d: string) => sortByTime(entries.filter((e) => e.date === d));
+  const stickersOf = (d: string) => stickers.filter((s) => s.date === d);
+
+  /** 挑中一张表情 → 贴到当前这页（位置错开一点，连贴几张不会全叠在中间） */
+  const dropSticker = (src: string) => {
+    const n = stickersOf(date).length;
+    onAddSticker({
+      bookId: book.id,
+      date,
+      src,
+      // 左右三档、上下五档轮着走 —— 连贴四五张也是一小片散落，不是一摞
+      x: 0.5 + ((n % 3) - 1) * 0.15,
+      y: 0.28 + (n % 5) * 0.11,
+      scale: 1,
+      rot: (n % 5) * 5 - 10,
+    });
+    setStickerOpen(false);
+  };
 
   // 横划翻页（纵向滚动留给纸内正文）；合着的时候横划一下就是翻开
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -336,6 +369,17 @@ export function DlogBook({
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </button>
         <span className="flex-1" />
+        {canWrite && !closed && (
+          <button
+            type="button"
+            onClick={() => setStickerOpen(true)}
+            aria-label="贴一张表情"
+            data-testid="diary-sticker-open"
+            className="icon-btn h-8 w-8"
+          >
+            <SmilePlus className="h-[17px] w-[17px]" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onJump}
@@ -464,6 +508,7 @@ export function DlogBook({
               date={baseDate}
               entries={entriesOf(baseDate)}
               slips={slips.filter((s) => s.date === baseDate)}
+              stickers={stickersOf(baseDate)}
               box={box}
               pageNo={days.indexOf(baseDate) + 1}
               total={days.length}
@@ -471,6 +516,9 @@ export function DlogBook({
               onEdit={onEdit}
               onDelete={onDelete}
               onCompose={() => onCompose(baseDate)}
+              onMoveSticker={onMoveSticker}
+              onChangeSticker={onChangeSticker}
+              onRemoveSticker={onRemoveSticker}
             />
             <GutterShade />
           </div>
@@ -496,6 +544,7 @@ export function DlogBook({
                   date={days[anim.from]}
                   entries={entriesOf(days[anim.from])}
                   slips={slips.filter((s) => s.date === days[anim.from])}
+                  stickers={stickersOf(days[anim.from])}
                   box={box}
                   pageNo={anim.from + 1}
                   total={days.length}
@@ -503,6 +552,9 @@ export function DlogBook({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onCompose={() => onCompose(days[anim.from])}
+                  onMoveSticker={onMoveSticker}
+                  onChangeSticker={onChangeSticker}
+                  onRemoveSticker={onRemoveSticker}
                 />
                 <GutterShade />
               </div>
@@ -598,6 +650,9 @@ export function DlogBook({
           </button>
         </div>
       )}
+
+      {/* 贴纸面板：选一张表情贴到当前这页 */}
+      {stickerOpen && <StickerPicker onPick={dropSticker} onClose={() => setStickerOpen(false)} />}
 
       {/* 在这页上写 / 夹纸条 */}
       {!closed && (

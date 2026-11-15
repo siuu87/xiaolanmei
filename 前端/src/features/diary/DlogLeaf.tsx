@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { PenLine, Trash2 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
+import type { DiaryBook, DiaryEntry, DiarySlip, DiarySticker } from './diaryData';
 import { HAND_FONT, prettyTime, weekdayOf } from './diaryData';
 import type { PageBox } from './pageLayout';
 import { PaperTexture } from './InkShapes';
 import { PhotoViewer } from './PhotoViewer';
+import { StickerLayer } from './StickerLayer';
 import { TapedPhoto } from './TapedPhoto';
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
   /** 这一天全部「时刻」，已按时间排好 */
   entries: DiaryEntry[];
   slips: DiarySlip[];
+  /** 贴在这一页上的表情包贴纸 */
+  stickers: DiarySticker[];
   /** 纸页尺寸（由书壳按视口算好，固定比例） */
   box: PageBox;
   /** 第几页 / 共几页（页脚印出来） */
@@ -24,6 +27,9 @@ interface Props {
   onDelete: (entry: DiaryEntry) => void;
   /** 空页点一下就能写 */
   onCompose: () => void;
+  onMoveSticker: (id: string, pos: { x: number; y: number }) => void;
+  onChangeSticker: (id: string, patch: { scale?: number; rot?: number }) => void;
+  onRemoveSticker: (id: string) => void;
 }
 
 /** 纸面底色（米白纸 / 深色下的暖黑），整本书统一 */
@@ -53,6 +59,7 @@ export function DlogLeaf({
   date,
   entries,
   slips,
+  stickers,
   box,
   pageNo,
   total,
@@ -60,10 +67,12 @@ export function DlogLeaf({
   onEdit,
   onDelete,
   onCompose,
+  onMoveSticker,
+  onChangeSticker,
+  onRemoveSticker,
 }: Props) {
   const day = Number(date.slice(-2));
   const month = Number(date.slice(5, 7));
-  const moods = Array.from(new Set(entries.map((e) => e.mood).filter(Boolean)));
   const photos = entries.reduce((n, e) => n + (e.images?.length ?? 0), 0);
   const contentH = box.h - HEAD_H - FOOT_H;
   /** 点开的大图（这一条的全部照片，能左右翻） */
@@ -105,7 +114,6 @@ export function DlogLeaf({
             </span>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[12px] leading-none">{moods.join('')}</span>
             <span className="text-[9px] leading-none tracking-[0.06em] text-ink/40">
               {entries.length > 0
                 ? `${entries.length} 个时刻${photos > 0 ? ` · ${photos} 张` : ''}`
@@ -143,7 +151,6 @@ export function DlogLeaf({
                       <span className="inline-block -rotate-[1.2deg] bg-[#f2e8d2] px-1.5 py-[3px] text-[10px] leading-none tabular-nums text-[#6b6353] dark:bg-[#413a31] dark:text-[#c3b9a7]">
                         {(e.time && prettyTime(e.time)) || `第 ${i + 1} 条`}
                       </span>
-                      {e.mood && <span className="text-[11px] leading-none">{e.mood}</span>}
                       <span className="flex-1" />
                       {canWrite && (
                         <span className="flex items-center gap-0.5">
@@ -288,6 +295,17 @@ export function DlogLeaf({
           </span>
         </div>
       </div>
+
+      {/* 贴纸：压在正文之上（真实贴纸本来就会盖住字），位置按纸页比例存 */}
+      <StickerLayer
+        stickers={stickers}
+        w={box.w}
+        h={box.h}
+        canEdit={canWrite}
+        onMove={onMoveSticker}
+        onChange={onChangeSticker}
+        onRemove={onRemoveSticker}
+      />
 
       {/* 点开的大图：portal 到 body，不受这页裁切影响 */}
       {viewer && (

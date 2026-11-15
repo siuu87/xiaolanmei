@@ -8,7 +8,9 @@ export interface DiaryEntry {
   bookId?: string; // 归属日记本；空 = 我的日记（历史数据）
   /** 记录时刻 HH:mm（一条 = 一天里的一个「时刻」） */
   time?: string;
-  /** 心情 emoji（MOODS 里的一支） */
+  /**
+   * 心情 emoji —— **2026-11-15 起不再用**（改成了贴纸），字段只为老数据留着，不显示也不写。
+   */
   mood?: string;
   /** 标签，最多 6 个 */
   tags?: string[];
@@ -38,6 +40,23 @@ export interface DiarySlip {
   /** 纸条底色（SLIP_PALETTE 里的一支） */
   color: string;
   createdAt?: number;
+}
+
+/** 日记贴纸（2026-11-15）：贴在某一页上的表情包，像手账贴纸 */
+export interface DiarySticker {
+  id: string;
+  bookId: string;
+  /** 贴在哪一页（YYYY-MM-DD） */
+  date: string;
+  /** 表情包 key：内置贴图的 emoji 字符，或自定义表情包的图片地址（走 resolveSticker 解析） */
+  src: string;
+  /** 相对纸页的位置（0~1），换屏幕尺寸不会跑位 */
+  x: number;
+  y: number;
+  /** 缩放 0.4 ~ 3 */
+  scale: number;
+  /** 旋转角度 -180 ~ 180 */
+  rot: number;
 }
 
 /** 情侣日记的「一天」：同一天两个人的半页（上面是他、下面是我） */
@@ -146,11 +165,8 @@ export function dayKeyToDate(key: string): string {
 }
 
 /* ------------------------------------------------------------------ *
- * D·LOG 式流水账（2026-11-14）：心情 / 时刻 / 月份网格
+ * D·LOG 式流水账（2026-11-14）：时刻 / 月份网格
  * ------------------------------------------------------------------ */
-
-/** 一键点的八个心情（存 emoji 本身，不存 key，读的时候不用查表） */
-export const MOODS = ['😊', '😌', '🥰', '😪', '😔', '😤', '🤩', '🫠'] as const;
 
 /** 现在几点 HH:mm */
 export function hmNow(): string {
