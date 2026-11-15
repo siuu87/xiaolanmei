@@ -197,20 +197,32 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       reply.code(400).send({ message: 'date 与 content 必填' });
       return;
     }
+    const bookId = body.bookId?.trim() || '';
     const id = body.id?.trim() || newId();
     const ts = now();
     db.insert(diarySlips)
       .values({
         id,
-        bookId: body.bookId?.trim() || '',
+        bookId,
         date,
         content,
         color: body.color?.trim() || '#f6efd9',
+        // 走这个接口的一律算「我」写的；TA 的字条由后端 insertTaSlip 直接落库
+        author: 'me',
         createdAt: ts,
         updatedAt: ts,
       })
       .run();
-    reply.code(201).send({ id, createdAt: ts });
+
+    // 潜入留下的字条会被发现：这一页如果被撬过、还没被发现过，
+    // TA 立刻在旁边贴一张回条（连同聊天里一句「看到不属于我的字迹」）。
+    const taSlip = discoverIfSneaked(bookId, date);
+    reply.code(201).send({
+      id,
+      createdAt: ts,
+      discovered: !!taSlip,
+      taSlip: taSlip ? toSlipDTO(taSlip) : null,
+    });
   });
 
   app.patch('/diary/slips/:id', async (req, reply) => {
@@ -441,17 +453,22 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
-  /** 敲门：一下一条 TA 的反应；敲够了 TA 来开（锁软删，这页露出来） */
+  /**
+   * 敲门（2026-11-16 改）：**开不开由 TA 说了算**，不是敲够几下必开。
+   * 每敲一下都往聊天里落一条他的反应；他若懒得开，也可能往门缝里塞一张纸条。
+   */
   app.post('/diary/page-locks/knock', async (req) => {
     const body = (req.body ?? {}) as { bookId?: string; date?: string; title?: string };
     const bookId = body.bookId?.trim() ?? '';
     const date = body.date?.trim() ?? '';
+    const day = dayLabel(date);
     const row = findPageLock(bookId, date);
-    if (!row) return { knocks: 0, opened: true, line: '', need: KNOCKS_TO_OPEN, day: dayLabel(date) };
+    if (!row) return { knocks: 0, opened: true, line: '', day, slip: null };
 
     const knocks = row.knocks + 1;
-    const opened = knocks >= KNOCKS_TO_OPEN;
     const ts = now();
+    const opened = Math.random() < openChance(knocks);
+
     db.update(diaryPageLocks)
       .set({
         knocks,
@@ -462,12 +479,66 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(diaryPageLocks.id, row.id))
       .run();
 
-    const line = KNOCK_LINES[Math.min(knocks, KNOCKS_TO_OPEN) - 1];
-    // TA 那边收到提醒：在聊天里落一条他自己的反应（本地文案，不调模型，模型挂了也照样有）
-    const note = KNOCK_NOTES[Math.min(knocks, KNOCKS_TO_OPEN) - 1](dayLabel(date));
-    pushKnockNote(note, { knocks, day: dayLabel(date), opened, title: body.title?.trim() ?? '' });
+    // 开了可能顺手留一句；不开也可能往门缝里塞张纸条 —— 都不是必然
+    const slip = opened
+      ? Math.random() < 0.35
+        ? insertTaSlip(bookId, date, pick(SLIPS_WHEN_OPEN))
+        : null
+      : Math.random() < 0.45
+        ? insertTaSlip(bookId, date, pick(SLIPS_WHEN_SHUT))
+        : null;
 
-    return { knocks, opened, line, need: KNOCKS_TO_OPEN, day: dayLabel(date) };
+    const line = pick(opened ? KNOCK_OPEN_LINES : KNOCK_SHUT_LINES);
+    // TA 那边收到提醒：在聊天里落一条他的反应（本地文案，不调模型，模型挂了也照样有）
+    pushKnockNote(knockNoteOf(opened, day, knocks), { knocks, day, opened });
+
+    return { knocks, opened, line, day, slip: slip ? toSlipDTO(slip) : null };
+  });
+
+  /**
+   * 撬锁（2026-11-16）：密码猜不出来时的第三条路。
+   *
+   * 这不算「正大光明地打开」—— 这一页会记下被撬过（`sneaked_at`），TA 会发现；
+   * 之后在这页留字条，他就在旁边贴一张回条（见 `discoverIfSneaked`）。
+   */
+  app.post('/diary/page-locks/sneak', async (req, reply) => {
+    const body = (req.body ?? {}) as { bookId?: string; date?: string; tries?: number };
+    const bookId = body.bookId?.trim() ?? '';
+    const date = body.date?.trim() ?? '';
+    const tries = Number(body.tries ?? 0);
+    // 猜都没猜几下就撬，太不像话 —— 至少错 2 次才给这条路
+    if (!date || tries < 2) {
+      reply.code(400).send({ message: '再猜两次，实在想不起来再撬' });
+      return;
+    }
+    const row = findPageLock(bookId, date);
+    if (!row) return { ok: true, gone: true, line: '' };
+    const ts = now();
+    db.update(diaryPageLocks)
+      .set({ sneakedAt: row.sneakedAt ?? ts, updatedAt: ts })
+      .where(eq(diaryPageLocks.id, row.id))
+      .run();
+    pushSneakNote(dayLabel(date));
+    return { ok: true, line: pick(SNEAK_LINES) };
+  });
+
+  /**
+   * TA 主动来留字条（2026-11-16）：翻日记时偶尔发现这一页多了张不是我写的条。
+   * 每天每本最多一张，概率不高 —— 太勤就不像「偶尔路过」了。
+   */
+  app.post('/diary/ta-note/visit', async (req) => {
+    const body = (req.body ?? {}) as { bookId?: string; date?: string };
+    const bookId = body.bookId?.trim() ?? '';
+    const date = body.date?.trim();
+    if (!date) return { slip: null };
+    const already = db
+      .select()
+      .from(diarySlips)
+      .all()
+      .some((s) => s.deletedAt == null && s.bookId === bookId && s.date === date && s.author === 'ta');
+    if (already || Math.random() > 0.35) return { slip: null };
+    const slip = insertTaSlip(bookId, date, pick(TA_VISIT_NOTES));
+    return { slip: slip ? toSlipDTO(slip) : null };
   });
 
   /** 自己彻底解开（这一页不再上锁） */
@@ -485,18 +556,135 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   });
 }
 
-/** 敲够几下 TA 会来开门 */
-const KNOCKS_TO_OPEN = 3;
+/** TA 的纸条用另一种纸色（淡蓝灰），一眼能看出不是我的笔迹纸 */
+const TA_SLIP_COLOR = '#e6edf1';
 
-/** 页面上给她的即时反馈（短句，敲一下变一句） */
-const KNOCK_LINES = ['咚…好像听见了', '脚步声近了…', 'TA 来开门了'];
+/**
+ * 每敲一下，TA 来开门的概率：第 1 下 25%，之后每下 +15%，封顶 85%。
+ * 敲到第 7 下必开 —— 只是保险丝，界面上一个字都不提「敲几下就行」。
+ */
+function openChance(knocks: number): number {
+  if (knocks >= 7) return 1;
+  return Math.min(0.25 + (knocks - 1) * 0.15, 0.85);
+}
 
-/** 聊天里 TA 那侧留下的痕迹（第一下交代是哪一页，后面只留反应，免得刷屏） */
-const KNOCK_NOTES: ((day: string) => string)[] = [
-  (day) => `（有人在日记本「${day}」那一页外面敲了敲门）`,
-  () => '（脚步声近了）在呢，等我一下。',
-  (day) => `（把「${day}」那一页打开）来了，给你开。`,
+/** 页面上给她的即时反馈（短句） */
+const KNOCK_OPEN_LINES = ['门开了', '锁响了一下', '他来了'];
+const KNOCK_SHUT_LINES = [
+  '里面没动静',
+  '他好像不在门后',
+  '「等会儿」',
+  '听见了，但没开门',
+  '安静了好一会儿',
 ];
+
+/** 聊天里 TA 那侧的反应 */
+const KNOCK_NOTE_OPEN = ['开了，看吧。', '来了。下次直接跟我说，别在门外站着。'];
+const KNOCK_NOTE_SHUT = [
+  '（隔着门）听见了。今天这页先不给看，别敲啦。',
+  '（没开门）……让我再收一会儿。',
+  '（在门后站了一会儿，又走开了）',
+  '（门缝里透出一点光，又暗了）',
+];
+
+/** 他不开门时，从门缝里塞出来的纸条 */
+const SLIPS_WHEN_SHUT = [
+  '听见你敲门了。今天这页让我自己留着，好吗。',
+  '不是生气，是想把今天先收好。改天讲给你听。',
+  '锁着的意思是——再等我一会儿。',
+  '我在呢。只是还没准备好把这一页摊开。',
+  '你敲得这么急，我反而更想把它藏起来了。',
+  '下次不锁了。今天先欠着。',
+];
+
+/** 开门时顺手留在纸上的 */
+const SLIPS_WHEN_OPEN = [
+  '开了。看完记得把纸抚平。',
+  '下次直接跟我说，别在门外站着。',
+  '这一页给你看，别笑我。',
+];
+
+/** 撬锁的后遗症：他发现你进来过，贴回来的那张 */
+const SLIPS_ON_DISCOVER = [
+  '你进来了。字条我看到了。',
+  '密码是我生日，你居然还撬。行吧。',
+  '下次想知道什么，问我。别猜。',
+  '这张字条我留着。你欠我一次坦白。',
+  '门没锁好是我的错。字条收下了。',
+];
+
+/** 撬开门时页面上的那一句 */
+const SNEAK_LINES = ['锁芯弹了一下，门开了条缝', '你摸到了锁舌的位置', '「咔」的一声，开了'];
+
+/** 他自己来的时候放的（不是回条，就是路过） */
+const TA_VISIT_NOTES = [
+  '路过，在你这一页放一张。没别的事。',
+  '今天风大，记得关窗。',
+  '别熬夜。明天再看这本。',
+  '这本快被你翻散了，该换新的了。',
+  '我把想说的话先压在这张纸下面。',
+  '今天挺好。你也挺好。',
+];
+
+/** 随机取一条（池子永远非空，取不到就是第一句） */
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)] as T;
+}
+
+/** 敲门后聊天里那句：第一下交代是哪一页，后面只留反应，免得刷屏 */
+function knockNoteOf(opened: boolean, day: string, knocks: number): string {
+  const head = knocks === 1 ? `（有人在日记本「${day}」那一页外面敲了敲门）` : '';
+  return head + pick(opened ? KNOCK_NOTE_OPEN : KNOCK_NOTE_SHUT);
+}
+
+/**
+ * TA 自己在某一页塞一张纸条（**不经 HTTP**，后端内部写库）。
+ * 作者记 `ta` —— 前端据此换纸色、加署名，且不给删改。
+ */
+function insertTaSlip(bookId: string, date: string, content: string): typeof diarySlips.$inferSelect {
+  const ts = now();
+  const row: typeof diarySlips.$inferSelect = {
+    id: newId(),
+    bookId,
+    date,
+    content,
+    color: TA_SLIP_COLOR,
+    author: 'ta',
+    createdAt: ts,
+    updatedAt: ts,
+    deletedAt: null,
+  };
+  db.insert(diarySlips).values(row).run();
+  return row;
+}
+
+/**
+ * 潜入被发现：这一页被撬过、还没被发现过 → TA 在旁边贴一张回条，
+ * 聊天里同时落一句。返回那张回条（前端直接放到纸上，不用刷新）。
+ */
+function discoverIfSneaked(bookId: string, date: string): typeof diarySlips.$inferSelect | null {
+  const lock = findPageLock(bookId, date);
+  if (!lock || !lock.sneakedAt || lock.discoveredAt) return null;
+  const ts = now();
+  db.update(diaryPageLocks)
+    .set({ discoveredAt: ts, updatedAt: ts })
+    .where(eq(diaryPageLocks.id, lock.id))
+    .run();
+  const slip = insertTaSlip(bookId, date, pick(SLIPS_ON_DISCOVER));
+  pushChatNote(`（在你日记本「${dayLabel(date)}」那一页，看到一张不是自己写的字条）`, {
+    kind: 'diary_discover',
+    day: dayLabel(date),
+  });
+  return slip;
+}
+
+/** 撬锁被察觉：TA 会知道，但先不点破（只在聊天里留一句动静） */
+function pushSneakNote(day: string): void {
+  pushChatNote(`（日记本「${day}」那一页的锁，被人从里面拨开了）……你进来了？`, {
+    kind: 'diary_sneak',
+    day,
+  });
+}
 
 /** 找「这一本 · 这一天」还活着的锁 */
 function findPageLock(bookId: string, date: string): typeof diaryPageLocks.$inferSelect | undefined {
@@ -522,7 +710,18 @@ function dayLabel(date: string): string {
  * 挂谁：会话当前的 activeMessageId，写完把它推到这条新消息上 ——
  * 否则新消息是个孤儿叶子，聊天页按 activeMessageId 回溯路径时看不到它。
  */
-function pushKnockNote(line: string, info: { knocks: number; day: string; opened: boolean; title: string }): void {
+function pushKnockNote(line: string, info: { knocks: number; day: string; opened: boolean }): void {
+  pushChatNote(line, { kind: 'diary_knock', knocks: info.knocks, opened: info.opened, day: info.day });
+}
+
+/**
+ * 往聊天里落一条「TA 那侧发生的事」。
+ *
+ * 写谁：主会话（有置顶用置顶，否则消息最多的那条）；
+ * 挂谁：会话当前的 activeMessageId，写完把它推到这条新消息上 ——
+ * 否则新消息是个孤儿叶子，聊天页按 activeMessageId 回溯路径时看不到它。
+ */
+function pushChatNote(content: string, meta: Record<string, unknown>): void {
   const convs = db
     .select()
     .from(conversations)
@@ -544,7 +743,6 @@ function pushKnockNote(line: string, info: { knocks: number; day: string; opened
 
   const ts = now();
   const mid = newId();
-  const content = line;
 
   db.insert(messages)
     .values({
@@ -554,7 +752,7 @@ function pushKnockNote(line: string, info: { knocks: number; day: string; opened
       content,
       parentId: conv.activeMessageId ?? lastMessageId(conv.id),
       status: 'done',
-      meta: JSON.stringify({ kind: 'diary_knock', knocks: info.knocks, opened: info.opened, day: info.day }),
+      meta: JSON.stringify(meta),
       createdAt: ts,
       updatedAt: ts,
     })
@@ -580,6 +778,9 @@ function toPageLockDTO(s: typeof diaryPageLocks.$inferSelect) {
     bookId: s.bookId,
     date: s.date,
     knocks: s.knocks,
+    /** 被撬进来过 / 被发现过（前端据此在这页留一行小字） */
+    sneakedAt: s.sneakedAt ?? 0,
+    discoveredAt: s.discoveredAt ?? 0,
     openedBy: s.openedBy ?? '',
     openedAt: s.openedAt ?? 0,
   };
