@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>礼物盒 · 重做方案</title>
+<style>
+  :root{
+    --page:#FBF4E8; --card:#FFFFFF; --line:#E8DAC6; --ink:#4A3A2A; --meta:#8A7458;
+    --boxA:#F3E4CC; --boxB:#E7D2B2; --boxC:#D9BE99; --boxD:#C4A47C;
+    --ribbon:#B4736E; --shade:60 30% 20%;
+  }
+  html[data-theme="dark"]{
+    --page:#171310; --card:#221C16; --line:#3A2F25; --ink:#EADFCF; --meta:#C9B69C;
+    --boxA:#4A3B2C; --boxB:#3B2E22; --boxC:#2F251B; --boxD:#241C15;
+    --ribbon:#C9827C; --shade:0 0% 0%;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:28px 20px 64px;background:var(--page);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{max-width:1080px;margin:0 auto 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  h1{margin:0;font-size:26px;letter-spacing:.02em;font-weight:600}
+  .sub{margin:6px 0 0;font-size:12.5px;color:var(--meta);line-height:1.7}
+  .bar{display:flex;gap:8px}
+  .bar button{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:7px 13px;border-radius:999px;font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  section{max-width:1080px;margin:0 auto 34px}
+  h2{font-size:13px;letter-spacing:.16em;color:var(--meta);font-weight:500;margin:0 0 14px;text-transform:uppercase}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:16px 14px 14px;flex:1 1 240px;max-width:330px;
+  }
+  .card h3{margin:0 0 2px;font-size:13.5px;font-weight:600}
+  .card p{margin:0 0 8px;font-size:11.5px;color:var(--meta);line-height:1.6;min-height:34px}
+  .stage{height:210px;display:flex;align-items:center;justify-content:center}
+  svg{display:block;overflow:visible}
+  .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--meta);margin-left:6px;vertical-align:1px}
+  .note{
+    max-width:1080px;margin:0 auto;padding:14px 16px;border-left:2px solid var(--ribbon);
+    background:color-mix(in srgb,var(--ribbon) 7%,transparent);border-radius:0 10px 10px 0;
+    font-size:12px;line-height:1.8;color:var(--meta);
+  }
+  .note b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>礼物盒 · 重做方案</h1>
+    <p class="sub">现在那版是「纯色圆角矩形 + 十字缎带」，没有盒盖、没有厚度、没有顶面 —— 所以看着像图标。<br>下面三种画法都是真盒子，挑一个我照着改。</p>
+  </div>
+  <div class="bar">
+    <button onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">切换深浅</button>
+  </div>
+</header>
+
+<!-- ============ 三种盒型 ============ -->
+<section>
+  <h2>一 · 三种盒型</h2>
+  <div class="row">
+
+    <!-- A 正视 + 盒盖分离 -->
+    <div class="card">
+      <h3>A · 正视，盖是分开的<span class="tag">最稳</span></h3>
+      <p>盒身 + 宽一圈的盖檐，盖和身之间有一道缝。缎带垂到桌面。</p>
+      <div class="stage">
+        <svg width="190" height="190" viewBox="0 0 200 200">
+          <defs>
+            <linearGradient id="aBody" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--boxC)"/>
+              <stop offset="38%" stop-color="var(--boxA)"/>
+              <stop offset="100%" stop-color="var(--boxB)"/>
+            </linearGradient>
+            <linearGradient id="aLid" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--boxD)"/>
+              <stop offset="40%" stop-color="var(--boxA)"/>
+              <stop offset="100%" stop-color="var(--boxB)"/>
+            </linearGradient>
+            <filter id="soft"><feGaussianBlur stdDeviation="4"/></filter>
+          </defs>
+
+          <!-- 投影 -->
+          <ellipse cx="100" cy="176" rx="66" ry="9" fill="hsl(var(--shade)/.20)" filter="url(#soft)"/>
+          <ellipse cx="100" cy="173" rx="48" ry="4" fill="hsl(var(--shade)/.22)"/>
+
+          <!-- 盒身 -->
+          <rect x="38" y="72" width="124" height="100" rx="3" fill="url(#aBody)"/>
+          <!-- 盒身两侧压暗：圆柱感 -->
+          <rect x="38" y="72" width="16" height="100" fill="hsl(var(--shade)/.10)"/>
+          <rect x="146" y="72" width="16" height="100" fill="hsl(var(--shade)/.07)"/>
+
+          <!-- 竖缎带（贴盒身） -->
+          <rect x="91" y="72" width="18" height="100" fill="var(--ribbon)" opacity=".92"/>
+          <rect x="91" y="72" width="6" height="100" fill="#fff" opacity=".14"/>
+
+          <!-- 盒盖：宽一圈 + 檐 -->
+          <rect x="29" y="58" width="142" height="26" rx="3" fill="url(#aLid)"/>
+          <rect x="29" y="58" width="142" height="7" fill="#fff" opacity=".18"/>
+          <rect x="29" y="80" width="142" height="4" fill="hsl(var(--shade)/.20)"/>
+          <!-- 盖上的横缎带 -->
+          <rect x="29" y="62" width="142" height="15" fill="var(--ribbon)" opacity=".92"/>
+          <rect x="29" y="62" width="142" height="5" fill="#fff" opacity=".14"/>
+
+          <!-- 蝴蝶结 -->
+          <g transform="translate(100 60)">
+            <ellipse cx="-13" cy="0" rx="13" ry="8.5" fill="var(--ribbon)" transform="rotate(-12)"/>
+            <ellipse cx="13" cy="0" rx="13" ry="8.5" fill="var(--ribbon)" transform="rotate(12)"/>
+            <ellipse cx="-13" cy="0" rx="7" ry="4.5" fill="#fff" opacity=".16" transform="rotate(-12)"/>
+            <ellipse cx="13" cy="0" rx="7" ry="4.5" fill="#fff" opacity=".16" transform="rotate(12)"/>
+            <circle r="5.5" fill="var(--ribbon)"/>
+            <circle r="2.4" fill="#fff" opacity=".3"/>
+            <!-- 两条飘带垂到桌上 -->
+            <path d="M-3 4 C-8 22 -18 40 -22 56" stroke="var(--ribbon)" stroke-width="6" fill="none" stroke-linecap="round" opacity=".9"/>
+            <path d="M3 4 C8 24 16 42 20 58" stroke="var(--ribbon)" stroke-width="6" fill="none" stroke-linecap="round" opacity=".75"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- B 等轴测 -->
+    <div class="card">
+      <h3>B · 等轴测，看得见盒顶<span class="tag">最立体</span></h3>
+      <p>三个面明暗分开，缎带在顶面交叉、从侧面垂下来。拆开时盖子能真的抬起来。</p>
+      <div class="stage">
+        <svg width="190" height="190" viewBox="0 0 200 200">
+          <defs>
+            <linearGradient id="bTop" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#FFF6E6"/>
+              <stop offset="100%" stop-color="var(--boxA)"/>
+            </linearGradient>
+            <linearGradient id="bL" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--boxB)"/>
+              <stop offset="100%" stop-color="var(--boxC)"/>
+            </linearGradient>
+            <linearGradient id="bR" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--boxC)"/>
+              <stop offset="100%" stop-color="var(--boxD)"/>
+            </linearGradient>
+            <filter id="soft2"><feGaussianBlur stdDeviation="5"/></filter>
+          </defs>
+
+          <ellipse cx="100" cy="172" rx="74" ry="11" fill="hsl(var(--shade)/.22)" filter="url(#soft2)"/>
+
+          <!-- 盒身三面 -->
+          <path d="M28 74 L100 112 L100 168 L28 130 Z" fill="url(#bL)"/>
+          <path d="M100 112 L172 74 L172 130 L100 168 Z" fill="url(#bR)"/>
+          <path d="M100 36 L172 74 L100 112 L28 74 Z" fill="url(#bTop)"/>
+
+          <!-- 盖：整体比盒身大一档，带裙边 -->
+          <g>
+            <path d="M22 70 L100 110 L100 122 L22 82 Z" fill="var(--boxC)"/>
+            <path d="M100 110 L178 70 L178 82 L100 122 Z" fill="var(--boxD)"/>
+            <path d="M100 28 L178 70 L100 110 L22 70 Z" fill="url(#bTop)"/>
+            <path d="M100 28 L178 70 L100 110 L22 70 Z" fill="none" stroke="hsl(var(--shade)/.16)" stroke-width="1"/>
+          </g>
+
+          <!-- 缎带：只有两条 —— 一条绕前后、一条绕左右，都贴着盖面走，不许溢出轮廓 -->
+          <path d="M100 28 L100 110 L100 168" stroke="var(--ribbon)" stroke-width="12" opacity=".95"/>
+          <path d="M22 70 L178 70" stroke="var(--ribbon)" stroke-width="12" opacity=".95"/>
+          <!-- 侧面那两段竖直的 -->
+          <path d="M28 82 L28 130" stroke="var(--ribbon)" stroke-width="10" opacity=".42"/>
+          <path d="M172 82 L172 130" stroke="var(--ribbon)" stroke-width="10" opacity=".36"/>
+          <!-- 带子的高光 -->
+          <path d="M100 28 L100 110" stroke="#fff" stroke-width="3" opacity=".15"/>
+
+          <!-- 结：两个环 + 中间的疙瘩 + 两条飘带 -->
+          <g transform="translate(100 70)">
+            <path d="M0 0 C-15 -11 -28 -5 -26 6 C-24 15 -9 11 0 0 Z" fill="var(--ribbon)"/>
+            <path d="M0 0 C15 -11 28 -5 26 6 C24 15 9 11 0 0 Z" fill="var(--ribbon)"/>
+            <path d="M0 0 C-12 -7 -22 -3 -21 4" stroke="#fff" stroke-width="2" fill="none" opacity=".18"/>
+            <ellipse rx="5.5" ry="5" fill="var(--ribbon)"/>
+            <ellipse rx="2.2" ry="2" fill="#fff" opacity=".3"/>
+            <path d="M-2 4 C-8 18 -15 30 -20 40" stroke="var(--ribbon)" stroke-width="5.5" fill="none" stroke-linecap="round" opacity=".9"/>
+            <path d="M2 4 C7 16 13 27 17 37" stroke="var(--ribbon)" stroke-width="5.5" fill="none" stroke-linecap="round" opacity=".78"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- C 拆开态 -->
+    <div class="card">
+      <h3>C · 拆开态，盖斜在一边<span class="tag">拆完的样子</span></h3>
+      <p>盖抬起、斜靠在旁边，里面是暗的，内容物从口子里露出来。</p>
+      <div class="stage">
+        <svg width="190" height="190" viewBox="0 0 200 200">
+          <ellipse cx="104" cy="174" rx="76" ry="11" fill="hsl(var(--shade)/.22)" filter="url(#soft2)"/>
+
+          <!-- 盒身（内壁可见） -->
+          <path d="M34 86 L104 124 L104 172 L34 134 Z" fill="var(--boxC)"/>
+          <path d="M104 124 L174 86 L174 134 L104 172 Z" fill="var(--boxD)"/>
+          <!-- 内壁：比外面暗，有纵深 -->
+          <path d="M104 100 L174 62 L174 86 L104 124 Z" fill="hsl(var(--shade)/.42)"/>
+          <path d="M34 62 L104 100 L104 124 L34 86 Z" fill="hsl(var(--shade)/.30)"/>
+
+          <!-- 里面透出来的暖光 -->
+          <path d="M104 100 L174 62 L104 124 L34 86 Z" fill="#FFE2AE" opacity=".16"/>
+          <ellipse cx="104" cy="106" rx="34" ry="16" fill="#FFE7B8" opacity=".28" filter="url(#soft2)"/>
+
+          <!-- 内容物：一小束花的剪影 -->
+          <g transform="translate(104 96)" opacity=".95">
+            <path d="M0 18 C0 6 -2 0 -3 -8" stroke="#9BAE86" stroke-width="1.6" fill="none"/>
+            <path d="M0 18 C4 8 8 2 10 -4" stroke="#9BAE86" stroke-width="1.6" fill="none"/>
+            <path d="M0 18 C-4 8 -9 2 -11 -3" stroke="#9BAE86" stroke-width="1.6" fill="none"/>
+            <circle cx="-3" cy="-10" r="5" fill="#E8B4B8"/>
+            <circle cx="11" cy="-6" r="4.6" fill="#BBA9D8"/>
+            <circle cx="-12" cy="-5" r="4.2" fill="#9DB8D8"/>
+          </g>
+
+          <!-- 盖子：斜靠在盒口右边，一角还搭在盒沿上（不能悬空） -->
+          <g transform="translate(150 58) rotate(19)">
+            <path d="M-34 18 L34 18 L34 30 L-34 30 Z" fill="var(--boxD)"/>
+            <path d="M-34 18 L34 18 L26 2 L-26 2 Z" fill="var(--boxA)"/>
+            <path d="M-26 2 L26 2" stroke="hsl(var(--shade)/.14)" stroke-width="1"/>
+            <!-- 盖上的缎带 + 松开的结 -->
+            <path d="M-4 2 L-4 30" stroke="var(--ribbon)" stroke-width="9" opacity=".9"/>
+            <path d="M-34 21 L34 21" stroke="var(--ribbon)" stroke-width="7" opacity=".8"/>
+            <path d="M0 18 C-14 26 -26 34 -34 40" stroke="var(--ribbon)" stroke-width="5" fill="none" opacity=".7" stroke-linecap="round"/>
+          </g>
+
+          <!-- 桌上散落的缎带 -->
+          <path d="M44 176 C60 168 76 170 88 176" stroke="var(--ribbon)" stroke-width="5" fill="none" opacity=".45" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 拆开四步 ============ -->
+<section>
+  <h2>二 · 拆开的过程（用 B 的盒型，盖真的抬起来）</h2>
+  <div class="row">
+
+    <div class="card" style="flex:0 0 200px;max-width:200px">
+      <h3 style="font-size:12px">① 封着</h3>
+      <div class="stage" style="height:150px">
+        <svg width="150" height="150" viewBox="0 0 200 200">
+          <path d="M28 82 L100 120 L100 164 L28 126 Z" fill="var(--boxB)"/>
+          <path d="M100 120 L172 82 L172 126 L100 164 Z" fill="var(--boxC)"/>
+          <path d="M100 44 L172 82 L100 120 L28 82 Z" fill="var(--boxA)"/>
+          <path d="M100 44 L100 120" stroke="var(--ribbon)" stroke-width="11" opacity=".9"/>
+          <path d="M28 82 L100 120 L172 82" stroke="var(--ribbon)" stroke-width="11" opacity=".9" fill="none"/>
+          <g transform="translate(100 82)">
+            <ellipse cx="-10" cy="0" rx="10" ry="6.5" fill="var(--ribbon)" transform="rotate(-18)"/>
+            <ellipse cx="10" cy="0" rx="10" ry="6.5" fill="var(--ribbon)" transform="rotate(18)"/>
+            <circle r="4" fill="var(--ribbon)"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card" style="flex:0 0 200px;max-width:200px">
+      <h3 style="font-size:12px">② 缎带松开</h3>
+      <div class="stage" style="height:150px">
+        <svg width="150" height="150" viewBox="0 0 200 200">
+          <path d="M28 82 L100 120 L100 164 L28 126 Z" fill="var(--boxB)"/>
+          <path d="M100 120 L172 82 L172 126 L100 164 Z" fill="var(--boxC)"/>
+          <path d="M100 44 L172 82 L100 120 L28 82 Z" fill="var(--boxA)"/>
+          <path d="M100 44 L100 120" stroke="var(--ribbon)" stroke-width="11" opacity=".45"/>
+          <path d="M28 82 L100 120 L172 82" stroke="var(--ribbon)" stroke-width="11" opacity=".45" fill="none"/>
+          <!-- 带子滑到盒腰、垂下来 -->
+          <path d="M28 82 C20 100 16 116 14 130" stroke="var(--ribbon)" stroke-width="9" fill="none" opacity=".8" stroke-linecap="round"/>
+          <path d="M172 82 C180 100 184 116 186 130" stroke="var(--ribbon)" stroke-width="9" fill="none" opacity=".7" stroke-linecap="round"/>
+          <circle cx="28" cy="82" r="6" fill="var(--ribbon)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card" style="flex:0 0 200px;max-width:200px">
+      <h3 style="font-size:12px">③ 盖子抬起</h3>
+      <div class="stage" style="height:150px">
+        <svg width="150" height="150" viewBox="0 0 200 200">
+          <path d="M28 82 L100 120 L100 164 L28 126 Z" fill="var(--boxB)"/>
+          <path d="M100 120 L172 82 L172 126 L100 164 Z" fill="var(--boxC)"/>
+          <path d="M100 44 L172 82 L100 120 L28 82 Z" fill="hsl(var(--shade)/.40)"/>
+          <path d="M100 44 L172 82 L100 120 L28 82 Z" fill="#FFE2AE" opacity=".12"/>
+          <!-- 盖子上移、微倾 -->
+          <g transform="translate(5 -12) rotate(6 100 82)">
+            <path d="M22 78 L100 118 L100 128 L22 88 Z" fill="var(--boxC)"/>
+            <path d="M100 118 L178 78 L178 88 L100 128 Z" fill="var(--boxD)"/>
+            <path d="M100 36 L178 78 L100 118 L22 78 Z" fill="var(--boxA)"/>
+            <path d="M100 36 L100 118" stroke="var(--ribbon)" stroke-width="10" opacity=".6"/>
+            <path d="M22 78 L100 118 L178 78" stroke="var(--ribbon)" stroke-width="10" opacity=".6" fill="none"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card" style="flex:0 0 200px;max-width:200px">
+      <h3 style="font-size:12px">④ 露出内容</h3>
+      <div class="stage" style="height:150px">
+        <svg width="150" height="150" viewBox="0 0 200 200">
+          <path d="M28 82 L100 120 L100 164 L28 126 Z" fill="var(--boxB)"/>
+          <path d="M100 120 L172 82 L172 126 L100 164 Z" fill="var(--boxC)"/>
+          <path d="M100 44 L172 82 L100 120 L28 82 Z" fill="hsl(var(--shade)/.34)"/>
+          <path d="M100 44 L172 82 L100 120 L28 82 Z" fill="#FFE2AE" opacity=".18"/>
+          <!-- 花束升起 -->
+          <g transform="translate(100 66)">
+            <path d="M0 46 C0 26 -3 12 -4 -2" stroke="#9BAE86" stroke-width="2" fill="none"/>
+            <path d="M0 46 C5 26 10 14 12 2" stroke="#9BAE86" stroke-width="2" fill="none"/>
+            <path d="M0 46 C-5 26 -11 14 -13 4" stroke="#9BAE86" stroke-width="2" fill="none"/>
+            <circle cx="-4" cy="-6" r="7" fill="#E8B4B8"/>
+            <circle cx="14" cy="-2" r="6.2" fill="#BBA9D8"/>
+            <circle cx="-15" cy="-1" r="5.8" fill="#9DB8D8"/>
+            <path d="M-12 30 C-20 34 -26 40 -30 44" stroke="var(--ribbon)" stroke-width="5" fill="none" opacity=".5"/>
+          </g>
+          <g transform="translate(13 -22) rotate(10 100 82)">
+            <path d="M22 78 L100 118 L100 128 L22 88 Z" fill="var(--boxC)" opacity=".95"/>
+            <path d="M100 118 L178 78 L178 88 L100 128 Z" fill="var(--boxD)" opacity=".95"/>
+            <path d="M100 36 L178 78 L100 118 L22 78 Z" fill="var(--boxA)" opacity=".95"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 五种礼物 ============ -->
+<section>
+  <h2>三 · 五类礼物各长各的盒型（不再是同一个方盒换颜色）</h2>
+  <div class="row">
+    <div class="card"><h3>花束</h3><p>长条花盒，花头从盖口探出来。</p>
+      <div class="stage" style="height:140px">
+        <svg width="130" height="130" viewBox="0 0 200 200">
+          <path d="M56 92 L100 116 L100 168 L56 144 Z" fill="var(--boxB)"/>
+          <path d="M100 116 L144 92 L144 144 L100 168 Z" fill="var(--boxC)"/>
+          <path d="M100 68 L144 92 L100 116 L56 92 Z" fill="var(--boxA)"/>
+          <g transform="translate(100 60)">
+            <path d="M0 30 C0 20 -2 12 -3 6" stroke="#9BAE86" stroke-width="2" fill="none"/>
+            <path d="M0 30 C5 20 9 14 11 8" stroke="#9BAE86" stroke-width="2" fill="none"/>
+            <path d="M0 30 C-5 20 -9 14 -11 8" stroke="#9BAE86" stroke-width="2" fill="none"/>
+            <circle cx="-3" cy="2" r="6.5" fill="#E8B4B8"/>
+            <circle cx="12" cy="5" r="6" fill="#BBA9D8"/>
+            <circle cx="-12" cy="6" r="5.6" fill="#9DB8D8"/>
+          </g>
+          <path d="M100 116 L100 168" stroke="var(--ribbon)" stroke-width="10" opacity=".7"/>
+        </svg>
+      </div></div>
+
+    <div class="card"><h3>信</h3><p>不是盒子，就是一封压着火漆的信。</p>
+      <div class="stage" style="height:140px">
+        <svg width="130" height="130" viewBox="0 0 200 200">
+          <rect x="34" y="74" width="132" height="84" rx="2" fill="var(--boxA)"/>
+          <path d="M34 74 L100 126 L166 74" fill="none" stroke="hsl(var(--shade)/.20)" stroke-width="1.4"/>
+          <circle cx="100" cy="126" r="12" fill="var(--ribbon)"/>
+          <circle cx="96" cy="122" r="4" fill="#fff" opacity=".25"/>
+        </svg>
+      </div></div>
+
+    <div class="card"><h3>悄悄话</h3><p>小圆罐，缎带绕一圈打个结。</p>
+      <div class="stage" style="height:140px">
+        <svg width="130" height="130" viewBox="0 0 200 200">
+          <ellipse cx="100" cy="166" rx="44" ry="7" fill="hsl(var(--shade)/.18)"/>
+          <path d="M64 96 L64 158 C64 168 136 168 136 158 L136 96 Z" fill="var(--boxB)"/>
+          <ellipse cx="100" cy="96" rx="36" ry="12" fill="var(--boxA)"/>
+          <ellipse cx="100" cy="92" rx="36" ry="12" fill="var(--boxC)"/>
+          <path d="M64 118 C80 128 120 128 136 118" stroke="var(--ribbon)" stroke-width="8" fill="none" opacity=".85"/>
+          <g transform="translate(100 120)">
+            <ellipse cx="-8" cy="0" rx="8" ry="5.4" fill="var(--ribbon)" transform="rotate(-20)"/>
+            <ellipse cx="8" cy="0" rx="8" ry="5.4" fill="var(--ribbon)" transform="rotate(20)"/>
+            <circle r="3.4" fill="var(--ribbon)"/>
+          </g>
+        </svg>
+      </div></div>
+
+    <div class="card"><h3>表情</h3><p>扁扁的糖盒，盖顶印着图案。</p>
+      <div class="stage" style="height:140px">
+        <svg width="130" height="130" viewBox="0 0 200 200">
+          <path d="M46 104 L100 132 L100 158 L46 130 Z" fill="var(--boxB)"/>
+          <path d="M100 132 L154 104 L154 130 L100 158 Z" fill="var(--boxC)"/>
+          <path d="M100 92 L154 104 L100 132 L46 104 Z" fill="var(--boxA)"/>
+          <path d="M100 78 L158 104 L100 130 L42 104 Z" fill="var(--boxA)"/>
+          <path d="M100 78 L158 104 L100 130 L42 104 Z" fill="none" stroke="hsl(var(--shade)/.14)" stroke-width="1"/>
+          <circle cx="100" cy="104" r="11" fill="var(--ribbon)" opacity=".55"/>
+          <path d="M100 78 L100 130" stroke="var(--ribbon)" stroke-width="8" opacity=".55"/>
+        </svg>
+      </div></div>
+
+    <div class="card"><h3>彩蛋</h3><p>不倒翁式的小蛋，拆开是上下两半。</p>
+      <div class="stage" style="height:140px">
+        <svg width="130" height="130" viewBox="0 0 200 200">
+          <defs>
+            <radialGradient id="eggShade" cx="0.32" cy="0.3" r="0.78">
+              <stop offset="0%" stop-color="#fff" stop-opacity=".55"/>
+              <stop offset="58%" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="100%" stop-color="hsl(var(--shade))" stop-opacity=".45"/>
+            </radialGradient>
+          </defs>
+          <ellipse cx="100" cy="168" rx="34" ry="6" fill="hsl(var(--shade)/.18)"/>
+          <path d="M100 62 C128 62 148 110 148 138 C148 158 126 168 100 168 C74 168 52 158 52 138 C52 110 72 62 100 62 Z" fill="var(--boxA)"/>
+          <path d="M100 62 C128 62 148 110 148 138 C148 158 126 168 100 168 C74 168 52 158 52 138 C52 110 72 62 100 62 Z" fill="url(#eggShade)" opacity=".5"/>
+          <path d="M54 124 C78 136 122 136 146 124" stroke="var(--ribbon)" stroke-width="7" fill="none" opacity=".8"/>
+          <path d="M74 96 C88 88 112 88 126 96" stroke="#fff" stroke-width="4" fill="none" opacity=".28" stroke-linecap="round"/>
+        </svg>
+      </div></div>
+  </div>
+</section>
+
+<p class="note">
+  <b>要你定的就一件事：盒型走哪个。</b> 我建议 <b>B（等轴测）</b> —— 只有它能同时做到「看得出是盒子」和「盖子能真的抬起来」，拆开的四步才做得出来。
+  代价是每个礼物类型都要单独画，比现在那套圆角矩形多不少工作量，但这是「像实物」和「像图标」的分界线。<br>
+  拆开的时间线我按 <b>0.9 秒</b> 排：缎带松 0.2s → 盖抬起 0.35s → 中间停顿露出内容 0.15s → 交给花束/信。现在点一下直接切整屏，中间什么都没有。
+</p>
+
+</body>
+</html>
