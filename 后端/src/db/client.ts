@@ -290,6 +290,21 @@ CREATE TABLE IF NOT EXISTS diary_stickers (
 );
 CREATE INDEX IF NOT EXISTS idx_diary_stickers_book ON diary_stickers(book_id, date);
 
+CREATE TABLE IF NOT EXISTS diary_page_locks (
+  id TEXT PRIMARY KEY,
+  book_id TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL,
+  code TEXT NOT NULL,
+  knocks INTEGER NOT NULL DEFAULT 0,
+  last_knock_at INTEGER,
+  opened_by TEXT,
+  opened_at INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_diary_page_locks_page ON diary_page_locks(book_id, date);
+
 CREATE TABLE IF NOT EXISTS diary_books (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

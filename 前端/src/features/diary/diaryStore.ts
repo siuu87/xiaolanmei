@@ -16,9 +16,12 @@ import {
   createDiarySticker,
   patchDiarySticker,
   deleteDiarySticker,
+  listDiaryPageLocks,
+  lockDiaryPage,
+  unlockDiaryPage,
 } from '@/lib/api/home';
 import { newId } from '@/lib/id';
-import type { DiaryEntry, DiaryBook, DiarySlip, DiarySticker } from './diaryData';
+import type { DiaryEntry, DiaryBook, DiaryPageLock, DiarySlip, DiarySticker } from './diaryData';
 
 interface DiaryState {
   entries: DiaryEntry[];
@@ -26,6 +29,8 @@ interface DiaryState {
   slips: DiarySlip[];
   /** 贴在纸上的表情包贴纸（按 book + date 归到某一页） */
   stickers: DiarySticker[];
+  /** 锁着的页（只锁某一天，不影响整本） */
+  pageLocks: DiaryPageLock[];
   loaded: boolean;
   load: () => Promise<void>;
   addEntry: (e: Omit<DiaryEntry, 'id'>) => void;
@@ -46,6 +51,12 @@ interface DiaryState {
   addSticker: (s: Omit<DiarySticker, 'id'>) => void;
   patchSticker: (id: string, patch: Partial<Pick<DiarySticker, 'x' | 'y' | 'scale' | 'rot'>>) => void;
   removeSticker: (id: string) => void;
+  /** 给某一天上锁（同一本同一天重复上锁会换密码、敲的次数归零） */
+  lockPage: (bookId: string, date: string, code: string) => Promise<void>;
+  /** 彻底解开这一页（自己解 / TA 敲够了来开） */
+  unlockPage: (bookId: string, date: string) => Promise<void>;
+  /** 敲过之后同步次数（TA 开门时顺手把锁从本地抹掉） */
+  setPageKnocks: (bookId: string, date: string, knocks: number) => void;
 }
 
 /** 日记 store：书架 + 日记条目 + 小纸条，本地乐观更新 + 写穿后端，刷新不丢。 */
@@ -54,17 +65,19 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   books: [],
   slips: [],
   stickers: [],
+  pageLocks: [],
   loaded: false,
 
   load: async () => {
     try {
-      const [entries, books, slips, stickers] = await Promise.all([
+      const [entries, books, slips, stickers, pageLocks] = await Promise.all([
         listDiaries(),
         listDiaryBooks(),
         listDiarySlips(),
         listDiaryStickers(),
+        listDiaryPageLocks(),
       ]);
-      set({ entries, books, slips, stickers, loaded: true });
+      set({ entries, books, slips, stickers, pageLocks, loaded: true });
     } catch {
       set({ loaded: true });
     }
@@ -139,5 +152,32 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   removeSticker: (id) => {
     set((st) => ({ stickers: st.stickers.filter((x) => x.id !== id) }));
     void deleteDiarySticker(id).catch(() => {});
+  },
+
+  lockPage: async (bookId, date, code) => {
+    // 先本地落一条（锁面立刻出现），再把后端返回的 id 认回来
+    const tmp: DiaryPageLock = { id: newId(), bookId, date, knocks: 0, openedBy: '', openedAt: 0 };
+    set((st) => ({
+      pageLocks: [...st.pageLocks.filter((p) => !(p.bookId === bookId && p.date === date)), tmp],
+    }));
+    try {
+      const { id } = await lockDiaryPage({ bookId, date, code });
+      set((st) => ({ pageLocks: st.pageLocks.map((p) => (p.id === tmp.id ? { ...p, id } : p)) }));
+    } catch {
+      set((st) => ({ pageLocks: st.pageLocks.filter((p) => p.id !== tmp.id) }));
+    }
+  },
+
+  unlockPage: async (bookId, date) => {
+    set((st) => ({ pageLocks: st.pageLocks.filter((p) => !(p.bookId === bookId && p.date === date)) }));
+    void unlockDiaryPage(bookId, date).catch(() => {});
+  },
+
+  setPageKnocks: (bookId, date, knocks) => {
+    set((st) => ({
+      pageLocks: st.pageLocks.map((p) =>
+        p.bookId === bookId && p.date === date ? { ...p, knocks } : p,
+      ),
+    }));
   },
 }));

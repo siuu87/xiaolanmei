@@ -4,16 +4,21 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Lock,
+  LockOpen,
   Plus,
   Settings,
   SmilePlus,
   StickyNote,
 } from 'lucide-react';
-import type { DiaryBook, DiaryEntry, DiarySlip, DiarySticker } from './diaryData';
+import type { DiaryBook, DiaryEntry, DiaryPageLock, DiarySlip, DiarySticker } from './diaryData';
 import { shiftDate, sortByTime } from './diaryData';
 import { BookCover } from './BookCover';
 import { DlogLeaf } from './DlogLeaf';
+import { LockedLeaf } from './LockedLeaf';
+import { PageLockSheet } from './PageLockSheet';
 import { StickerPicker } from './StickerPicker';
+import { checkDiaryPageCode, knockDiaryPage } from '@/lib/api/home';
 import { useViewport } from './pageLayout';
 
 interface Props {
@@ -23,6 +28,8 @@ interface Props {
   slips: DiarySlip[];
   /** 这本书里贴过的全部贴纸（不分日期） */
   stickers: DiarySticker[];
+  /** 这本书里锁着的页（只锁某一天，不锁整本） */
+  pageLocks: DiaryPageLock[];
   today: string;
   canWrite: boolean;
   /** 打开时翻到哪一天（null = 今天） */
@@ -37,6 +44,11 @@ interface Props {
   onMoveSticker: (id: string, pos: { x: number; y: number }) => void;
   onChangeSticker: (id: string, patch: { scale?: number; rot?: number }) => void;
   onRemoveSticker: (id: string) => void;
+  /** 锁 / 解某一页 */
+  onLockPage: (date: string, code: string) => Promise<void>;
+  onUnlockPage: (date: string) => void;
+  /** 敲完门：同步次数，`opened` 时上层把锁删掉 */
+  onPageKnocked: (date: string, knocks: number, opened: boolean) => void;
   onJump: () => void;
   onSwitchBook: () => void;
   onSettings: () => void;
@@ -75,6 +87,7 @@ export function DlogBook({
   entries,
   slips,
   stickers,
+  pageLocks,
   today,
   canWrite,
   focusDate,
@@ -87,6 +100,9 @@ export function DlogBook({
   onMoveSticker,
   onChangeSticker,
   onRemoveSticker,
+  onLockPage,
+  onUnlockPage,
+  onPageKnocked,
   onJump,
   onSwitchBook,
   onSettings,
@@ -136,6 +152,92 @@ export function DlogBook({
 
   /** 贴纸面板（手账贴纸：选一张贴到当前这页） */
   const [stickerOpen, setStickerOpen] = useState(false);
+
+  /** 单页锁（2026-11-15）：密码面板 / 本次已翻开的页 / 敲完之后 TA 那句反应 */
+  const [lockSheet, setLockSheet] = useState<{ mode: 'set' | 'open'; date: string } | null>(null);
+  const [unlockedPages, setUnlockedPages] = useState<string[]>([]);
+  const [knockLines, setKnockLines] = useState<Record<string, string>>({});
+  const [knockBusy, setKnockBusy] = useState(false);
+  /** TA 敲门敲够、替她打开后浮出来的一句话 */
+  const [openedTip, setOpenedTip] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openedTip) return;
+    const t = window.setTimeout(() => setOpenedTip(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [openedTip]);
+
+  // pageLocks 传进来前已经按本筛过，这里只按日期找
+  const lockOf = (d: string) => pageLocks.find((l) => l.date === d);
+  /** 这一页现在看不了：有锁，而且这次还没翻开过 */
+  const isLocked = (d: string) => !!lockOf(d) && !unlockedPages.includes(d);
+
+  const dayLabelOf = (d: string) => {
+    const [, m, dd] = d.split('-');
+    return m && dd ? `${Number(m)} 月 ${Number(dd)} 日` : d;
+  };
+
+  /** 敲敲门：每一下 TA 都会在聊天里收到一条提醒，敲够 3 下 TA 来替你打开 */
+  const knock = async (d: string) => {
+    if (knockBusy) return;
+    setKnockBusy(true);
+    try {
+      const r = await knockDiaryPage({ bookId: book.id, date: d, title: book.name });
+      setKnockLines((prev) => ({ ...prev, [d]: r.line || '……' }));
+      onPageKnocked(d, r.knocks, r.opened);
+      if (r.opened) {
+        setUnlockedPages((prev) => (prev.includes(d) ? prev : [...prev, d]));
+        setOpenedTip('他替你开了这一页');
+      }
+    } catch {
+      // 敲失败就当没敲到，不弹错打扰
+    } finally {
+      setKnockBusy(false);
+    }
+  };
+
+  /** 顶栏那把锁：没锁 → 设密码；已锁且这次开过 → 直接解开；已锁没开 → 输密码 */
+  const tapLock = (d: string) => {
+    const l = lockOf(d);
+    if (!l) {
+      setLockSheet({ mode: 'set', date: d });
+      return;
+    }
+    if (unlockedPages.includes(d)) {
+      onUnlockPage(d);
+      setUnlockedPages((prev) => prev.filter((x) => x !== d));
+      setKnockLines((prev) => {
+        const next = { ...prev };
+        delete next[d];
+        return next;
+      });
+      return;
+    }
+    setLockSheet({ mode: 'open', date: d });
+  };
+
+  /** 密码面板提交：set = 落锁；open = 验码后这次翻开（锁还在） */
+  const submitCode = async (code: string): Promise<string | null> => {
+    if (!lockSheet) return null;
+    const d = lockSheet.date;
+    if (lockSheet.mode === 'set') {
+      try {
+        await onLockPage(d, code);
+      } catch {
+        return '锁没落上，再试一次';
+      }
+      setLockSheet(null);
+      return null;
+    }
+    try {
+      await checkDiaryPageCode({ bookId: book.id, date: d, code });
+    } catch {
+      return '密码不对，再想想';
+    }
+    setUnlockedPages((prev) => (prev.includes(d) ? prev : [...prev, d]));
+    setLockSheet(null);
+    return null;
+  };
 
   // 第一次定位：有深链日期就翻到那天，否则停在今天；深链（?date= / ?new=1）直接翻开
   useEffect(() => {
@@ -289,6 +391,41 @@ export function DlogBook({
   const entriesOf = (d: string) => sortByTime(entries.filter((e) => e.date === d));
   const stickersOf = (d: string) => stickers.filter((s) => s.date === d);
 
+  /**
+   * 这一页画成什么：锁着就是一张灰纸 + 一把锁（`LockedLeaf`，尺寸/圆角与纸页一致），
+   * 否则是正常纸页。翻页的两层都走这里，免得翻到一半漏出锁页里的字。
+   */
+  const renderLeaf = (d: string, pageNo: number) =>
+    isLocked(d) ? (
+      <LockedLeaf
+        date={d}
+        box={box}
+        knocks={lockOf(d)?.knocks ?? 0}
+        line={knockLines[d]}
+        busy={knockBusy}
+        onAskCode={() => setLockSheet({ mode: 'open', date: d })}
+        onKnock={() => void knock(d)}
+      />
+    ) : (
+      <DlogLeaf
+        book={book}
+        date={d}
+        entries={entriesOf(d)}
+        slips={slips.filter((s) => s.date === d)}
+        stickers={stickersOf(d)}
+        box={box}
+        pageNo={pageNo}
+        total={days.length}
+        canWrite={canWrite}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onCompose={() => onCompose(d)}
+        onMoveSticker={onMoveSticker}
+        onChangeSticker={onChangeSticker}
+        onRemoveSticker={onRemoveSticker}
+      />
+    );
+
   /** 挑中一张表情 → 贴到当前这页（位置错开一点，连贴几张不会全叠在中间） */
   const dropSticker = (src: string) => {
     const n = stickersOf(date).length;
@@ -369,7 +506,7 @@ export function DlogBook({
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </button>
         <span className="flex-1" />
-        {canWrite && !closed && (
+        {canWrite && !closed && !isLocked(date) && (
           <button
             type="button"
             onClick={() => setStickerOpen(true)}
@@ -378,6 +515,18 @@ export function DlogBook({
             className="icon-btn h-8 w-8"
           >
             <SmilePlus className="h-[17px] w-[17px]" />
+          </button>
+        )}
+        {canWrite && !closed && (
+          <button
+            type="button"
+            onClick={() => tapLock(date)}
+            aria-label={lockOf(date) ? '这一页锁着（点开输密码 / 解开）' : '锁住这一页'}
+            data-testid="diary-page-lock-toggle"
+            data-locked={lockOf(date) ? '1' : '0'}
+            className={`icon-btn h-8 w-8 ${lockOf(date) ? 'text-primary' : ''}`}
+          >
+            {lockOf(date) ? <Lock className="h-[17px] w-[17px]" /> : <LockOpen className="h-[17px] w-[17px]" />}
           </button>
         )}
         <button
@@ -503,23 +652,7 @@ export function DlogBook({
             className="absolute rounded-[7px] shadow-[0_18px_34px_-18px_rgba(0,0,0,0.55)]"
             style={{ left: SPINE, top: 0, zIndex: 2 }}
           >
-            <DlogLeaf
-              book={book}
-              date={baseDate}
-              entries={entriesOf(baseDate)}
-              slips={slips.filter((s) => s.date === baseDate)}
-              stickers={stickersOf(baseDate)}
-              box={box}
-              pageNo={days.indexOf(baseDate) + 1}
-              total={days.length}
-              canWrite={canWrite}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onCompose={() => onCompose(baseDate)}
-              onMoveSticker={onMoveSticker}
-              onChangeSticker={onChangeSticker}
-              onRemoveSticker={onRemoveSticker}
-            />
+            {renderLeaf(baseDate, days.indexOf(baseDate) + 1)}
             <GutterShade />
           </div>
 
@@ -539,23 +672,7 @@ export function DlogBook({
               }}
             >
               <div className="relative" style={{ backfaceVisibility: 'hidden' }}>
-                <DlogLeaf
-                  book={book}
-                  date={days[anim.from]}
-                  entries={entriesOf(days[anim.from])}
-                  slips={slips.filter((s) => s.date === days[anim.from])}
-                  stickers={stickersOf(days[anim.from])}
-                  box={box}
-                  pageNo={anim.from + 1}
-                  total={days.length}
-                  canWrite={canWrite}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onCompose={() => onCompose(days[anim.from])}
-                  onMoveSticker={onMoveSticker}
-                  onChangeSticker={onChangeSticker}
-                  onRemoveSticker={onRemoveSticker}
-                />
+                {renderLeaf(days[anim.from], anim.from + 1)}
                 <GutterShade />
               </div>
               {/* 纸背：转过 90° 之后看到的就是这张空白的背面，不然纸会凭空消失 */}
@@ -602,6 +719,18 @@ export function DlogBook({
                 className="absolute inset-0 rounded-[6px_9px_9px_6px] bg-[#efe8d8] shadow-[inset_16px_0_30px_-18px_rgba(0,0,0,0.4)] dark:bg-[#211d19]"
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               />
+            </div>
+          )}
+
+          {/* TA 替她打开那一页之后，浮一句就走 */}
+          {openedTip && (
+            <div
+              className="pointer-events-none absolute inset-x-0 top-3 z-[5] flex justify-center"
+              data-testid="diary-opened-tip"
+            >
+              <span className="rounded-full bg-ink/85 px-3 py-1 text-[11px] text-page-bg shadow-[0_6px_16px_-8px_rgba(0,0,0,0.6)]">
+                {openedTip}
+              </span>
             </div>
           )}
         </div>
@@ -654,8 +783,18 @@ export function DlogBook({
       {/* 贴纸面板：选一张表情贴到当前这页 */}
       {stickerOpen && <StickerPicker onPick={dropSticker} onClose={() => setStickerOpen(false)} />}
 
-      {/* 在这页上写 / 夹纸条 */}
-      {!closed && (
+      {/* 单页锁的密码面板 */}
+      {lockSheet && (
+        <PageLockSheet
+          mode={lockSheet.mode}
+          dayLabel={dayLabelOf(lockSheet.date)}
+          onClose={() => setLockSheet(null)}
+          onSubmit={submitCode}
+        />
+      )}
+
+      {/* 在这页上写 / 夹纸条（锁着的页不写） */}
+      {!closed && !isLocked(date) && (
         <button
           type="button"
           onClick={() => (canWrite ? onCompose(date) : onSlip(date))}

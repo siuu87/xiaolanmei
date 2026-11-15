@@ -2,7 +2,7 @@ import { request } from './conversations';
 import type { Todo } from '@/features/home/todoStore';
 import type { MemorialDay } from '@/features/home/memorialStore';
 import type { PeriodRecord, PeriodSettings } from '@/features/home/periodStore';
-import type { DiaryEntry, DiaryBook, DiarySlip, DiarySticker } from '@/features/diary/diaryData';
+import type { DiaryEntry, DiaryBook, DiaryPageLock, DiarySlip, DiarySticker } from '@/features/diary/diaryData';
 import type { InspirationNote } from '@/features/notes/notesData';
 import type { Course } from '@/features/schedule/timetableStore';
 
@@ -53,6 +53,29 @@ export const patchDiarySticker = (
 });
 export const deleteDiarySticker = (id: string) =>
   request<{ ok: true }>(`/api/diary/stickers/${id}`, { method: 'DELETE' });
+
+// ---- 单页锁（只锁某一天那一页；密码不下发，校验走后端）----
+export const listDiaryPageLocks = () =>
+  request<DiaryPageLock[]>('/api/diary/page-locks');
+export const lockDiaryPage = (input: { bookId: string; date: string; code: string }) =>
+  request<{ id: string }>('/api/diary/page-locks', { method: 'PUT', body: JSON.stringify(input) });
+export const checkDiaryPageCode = (input: { bookId: string; date: string; code: string }) =>
+  request<{ ok: true; gone?: boolean }>('/api/diary/page-locks/check', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+/** 敲一下门：返回已经敲了几下、TA 有没有来开，以及 TA 这一句反应 */
+export const knockDiaryPage = (input: { bookId: string; date: string; title?: string }) =>
+  request<{ knocks: number; opened: boolean; line: string; need: number; day: string }>(
+    '/api/diary/page-locks/knock',
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+export const unlockDiaryPage = (bookId: string, date: string) =>
+  request<{ ok: true }>(
+    `/api/diary/page-locks?book=${encodeURIComponent(bookId)}&date=${encodeURIComponent(date)}`,
+    { method: 'DELETE' },
+  );
+
 
 // ---- 待办 ----
 export const listTodos = () => request<Todo[]>('/api/todos');

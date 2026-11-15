@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { diaries, diaryBooks, diarySlips, diaryStickers } from '../db/schema.js';
+import { diaries, diaryBooks, diaryPageLocks, diarySlips, diaryStickers, conversations, messages } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 
 /**
@@ -376,6 +376,211 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
     db.update(diaryStickers).set({ deletedAt: ts, updatedAt: ts }).where(eq(diaryStickers.id, id)).run();
     return { ok: true };
   });
+
+  /* ------------------------------------------------------------------
+   * 单页锁（2026-11-15）：只锁「这一本 · 这一天」这一页。
+   *
+   * - 输密码 = 本次翻开（锁还在，下次翻到又锁）；
+   * - 敲敲 = 给 TA 的暗号：每敲一下往聊天里落一条 TA 的反应，
+   *   敲够 KNOCKS_TO_OPEN 下，TA 来替你把这一页打开（锁真删掉）。
+   * ------------------------------------------------------------------ */
+
+  app.get('/diary/page-locks', async (req) => {
+    const { book } = req.query as { book?: string };
+    return db
+      .select()
+      .from(diaryPageLocks)
+      .all()
+      .filter((s) => s.deletedAt == null && (!book || s.bookId === book))
+      .map(toPageLockDTO);
+  });
+
+  /** 上锁 / 改密码：同一本同一天只留一行，重锁会覆盖密码并把敲的次数归零 */
+  app.put('/diary/page-locks', async (req, reply) => {
+    const body = (req.body ?? {}) as { bookId?: string; date?: string; code?: string };
+    const date = body.date?.trim();
+    const code = String(body.code ?? '').trim();
+    if (!date || !/^\d{4}$/.test(code)) {
+      reply.code(400).send({ message: 'date 与 4 位数字密码必填' });
+      return;
+    }
+    const bookId = body.bookId?.trim() ?? '';
+    const ts = now();
+    const prev = db
+      .select()
+      .from(diaryPageLocks)
+      .all()
+      .find((s) => s.bookId === bookId && s.date === date);
+
+    if (prev) {
+      db.update(diaryPageLocks)
+        .set({ code, knocks: 0, lastKnockAt: null, openedBy: null, openedAt: null, deletedAt: null, updatedAt: ts })
+        .where(eq(diaryPageLocks.id, prev.id))
+        .run();
+      return { id: prev.id };
+    }
+
+    const id = newId();
+    db.insert(diaryPageLocks)
+      .values({ id, bookId, date, code, knocks: 0, createdAt: ts, updatedAt: ts })
+      .run();
+    return { id };
+  });
+
+  /** 验密码：只回对错，不删锁（「本次翻开」由前端记） */
+  app.post('/diary/page-locks/check', async (req, reply) => {
+    const body = (req.body ?? {}) as { bookId?: string; date?: string; code?: string };
+    const row = findPageLock(body.bookId?.trim() ?? '', body.date?.trim() ?? '');
+    if (!row) return { ok: true, gone: true };
+    if (row.code !== String(body.code ?? '').trim()) {
+      reply.code(400).send({ message: '密码不对' });
+      return;
+    }
+    return { ok: true };
+  });
+
+  /** 敲门：一下一条 TA 的反应；敲够了 TA 来开（锁软删，这页露出来） */
+  app.post('/diary/page-locks/knock', async (req) => {
+    const body = (req.body ?? {}) as { bookId?: string; date?: string; title?: string };
+    const bookId = body.bookId?.trim() ?? '';
+    const date = body.date?.trim() ?? '';
+    const row = findPageLock(bookId, date);
+    if (!row) return { knocks: 0, opened: true, line: '', need: KNOCKS_TO_OPEN, day: dayLabel(date) };
+
+    const knocks = row.knocks + 1;
+    const opened = knocks >= KNOCKS_TO_OPEN;
+    const ts = now();
+    db.update(diaryPageLocks)
+      .set({
+        knocks,
+        lastKnockAt: ts,
+        updatedAt: ts,
+        ...(opened ? { openedBy: 'ta', openedAt: ts, deletedAt: ts } : {}),
+      })
+      .where(eq(diaryPageLocks.id, row.id))
+      .run();
+
+    const line = KNOCK_LINES[Math.min(knocks, KNOCKS_TO_OPEN) - 1];
+    // TA 那边收到提醒：在聊天里落一条他自己的反应（本地文案，不调模型，模型挂了也照样有）
+    const note = KNOCK_NOTES[Math.min(knocks, KNOCKS_TO_OPEN) - 1](dayLabel(date));
+    pushKnockNote(note, { knocks, day: dayLabel(date), opened, title: body.title?.trim() ?? '' });
+
+    return { knocks, opened, line, need: KNOCKS_TO_OPEN, day: dayLabel(date) };
+  });
+
+  /** 自己彻底解开（这一页不再上锁） */
+  app.delete('/diary/page-locks', async (req) => {
+    const { book, date } = req.query as { book?: string; date?: string };
+    const row = findPageLock(book?.trim() ?? '', date?.trim() ?? '');
+    if (row) {
+      const ts = now();
+      db.update(diaryPageLocks)
+        .set({ openedBy: 'me', openedAt: ts, deletedAt: ts, updatedAt: ts })
+        .where(eq(diaryPageLocks.id, row.id))
+        .run();
+    }
+    return { ok: true };
+  });
+}
+
+/** 敲够几下 TA 会来开门 */
+const KNOCKS_TO_OPEN = 3;
+
+/** 页面上给她的即时反馈（短句，敲一下变一句） */
+const KNOCK_LINES = ['咚…好像听见了', '脚步声近了…', 'TA 来开门了'];
+
+/** 聊天里 TA 那侧留下的痕迹（第一下交代是哪一页，后面只留反应，免得刷屏） */
+const KNOCK_NOTES: ((day: string) => string)[] = [
+  (day) => `（有人在日记本「${day}」那一页外面敲了敲门）`,
+  () => '（脚步声近了）在呢，等我一下。',
+  (day) => `（把「${day}」那一页打开）来了，给你开。`,
+];
+
+/** 找「这一本 · 这一天」还活着的锁 */
+function findPageLock(bookId: string, date: string): typeof diaryPageLocks.$inferSelect | undefined {
+  if (!date) return undefined;
+  return db
+    .select()
+    .from(diaryPageLocks)
+    .all()
+    .find((s) => s.deletedAt == null && s.bookId === bookId && s.date === date);
+}
+
+/** 2026-11-15 → 11 月 15 日 */
+function dayLabel(date: string): string {
+  const [, m, d] = date.split('-');
+  if (!m || !d) return date;
+  return `${Number(m)} 月 ${Number(d)} 日`;
+}
+
+/**
+ * 把「敲门」这件事推到聊天里：TA 那侧会真的多一条消息。
+ *
+ * 写谁：主会话（有置顶用置顶，否则最近更新的一条）；
+ * 挂谁：会话当前的 activeMessageId，写完把它推到这条新消息上 ——
+ * 否则新消息是个孤儿叶子，聊天页按 activeMessageId 回溯路径时看不到它。
+ */
+function pushKnockNote(line: string, info: { knocks: number; day: string; opened: boolean; title: string }): void {
+  const convs = db
+    .select()
+    .from(conversations)
+    .all()
+    .filter((c) => c.deletedAt == null);
+  if (convs.length === 0) return;
+
+  // 主会话怎么认：置顶优先，其次**消息最多**的那条 ——
+  // 不能用「最近更新」，库里躺着一堆测试会话，谁最后被点开谁的 updatedAt 就最大。
+  const counts = new Map<string, number>();
+  for (const m of db.select().from(messages).all()) {
+    if (m.deletedAt != null) continue;
+    counts.set(m.conversationId, (counts.get(m.conversationId) ?? 0) + 1);
+  }
+  const conv = convs.sort(
+    (a, b) =>
+      Number(b.pinned) - Number(a.pinned) || (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0),
+  )[0];
+
+  const ts = now();
+  const mid = newId();
+  const content = line;
+
+  db.insert(messages)
+    .values({
+      id: mid,
+      conversationId: conv.id,
+      role: 'assistant',
+      content,
+      parentId: conv.activeMessageId ?? lastMessageId(conv.id),
+      status: 'done',
+      meta: JSON.stringify({ kind: 'diary_knock', knocks: info.knocks, opened: info.opened, day: info.day }),
+      createdAt: ts,
+      updatedAt: ts,
+    })
+    .run();
+  db.update(conversations)
+    .set({ activeMessageId: mid, updatedAt: ts })
+    .where(eq(conversations.id, conv.id))
+    .run();
+}
+
+/** 会话里最后一条消息（activeMessageId 为空时兜底当父节点） */
+function lastMessageId(conversationId: string): string | null {
+  const rows = db.select().from(messages).where(eq(messages.conversationId, conversationId)).all();
+  const alive = rows.filter((m) => m.deletedAt == null);
+  if (alive.length === 0) return null;
+  return alive.sort((a, b) => b.createdAt - a.createdAt)[0].id;
+}
+
+function toPageLockDTO(s: typeof diaryPageLocks.$inferSelect) {
+  // 注意：**不返回 code** —— 密码只在校验接口里比对
+  return {
+    id: s.id,
+    bookId: s.bookId,
+    date: s.date,
+    knocks: s.knocks,
+    openedBy: s.openedBy ?? '',
+    openedAt: s.openedAt ?? 0,
+  };
 }
 
 /** 贴纸在纸页上的位置：0~1 比例，越界就夹回来 */

@@ -28,6 +28,7 @@ export function DiaryPage() {
   const books = useDiaryStore((s) => s.books);
   const slips = useDiaryStore((s) => s.slips);
   const stickers = useDiaryStore((s) => s.stickers);
+  const pageLocks = useDiaryStore((s) => s.pageLocks);
   const load = useDiaryStore((s) => s.load);
   const navigate = useNavigate();
 
@@ -79,6 +80,12 @@ export function DiaryPage() {
   const bookStickers = useMemo(
     () => stickers.filter((s) => (s.bookId || 'book-me') === (book?.id ?? 'book-me')),
     [stickers, book?.id],
+  );
+
+  /** 这本锁着的页 */
+  const bookPageLocks = useMemo(
+    () => pageLocks.filter((p) => (p.bookId || 'book-me') === (book?.id ?? 'book-me')),
+    [pageLocks, book?.id],
   );
 
   // 日历深链：?date=YYYY-M-D
@@ -162,6 +169,7 @@ export function DiaryPage() {
         entries={bookEntries}
         slips={bookSlips}
         stickers={bookStickers}
+        pageLocks={bookPageLocks}
         today={today}
         canWrite={canWrite}
         focusDate={focusDate}
@@ -174,6 +182,14 @@ export function DiaryPage() {
         onMoveSticker={(id, pos) => useDiaryStore.getState().patchSticker(id, pos)}
         onChangeSticker={(id, patch) => useDiaryStore.getState().patchSticker(id, patch)}
         onRemoveSticker={(id) => useDiaryStore.getState().removeSticker(id)}
+        onLockPage={async (date, code) => {
+          await useDiaryStore.getState().lockPage(book.id, date, code);
+        }}
+        onUnlockPage={(date) => void useDiaryStore.getState().unlockPage(book.id, date)}
+        onPageKnocked={(date, knocks, opened) => {
+          if (opened) void useDiaryStore.getState().unlockPage(book.id, date);
+          else useDiaryStore.getState().setPageKnocks(book.id, date, knocks);
+        }}
         onJump={() => setJump(true)}
         onSwitchBook={() => setSwitcher(true)}
         onSettings={() => setSheet({ book })}

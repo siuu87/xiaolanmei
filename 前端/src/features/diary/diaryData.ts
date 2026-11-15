@@ -98,6 +98,27 @@ export function isCoupleBook(book: Pick<DiaryBook, 'kind'>): boolean {
 /** 密码位数 */
 export const LOCK_CODE_LEN = 4;
 
+/**
+ * 单页锁（2026-11-15）：只锁「这一本 · 这一天」。
+ *
+ * 锁着的页翻开时是一张灰纸 + 一把锁，两条路能进去：
+ * 输 4 位密码（本次翻开，锁还在），或者**敲敲** —— 每敲一下 TA 会收到一条提醒，
+ * 敲够 `PAGE_LOCK_KNOCKS` 下，TA 来替你打开（锁就真没了）。
+ */
+export interface DiaryPageLock {
+  id: string;
+  bookId: string;
+  date: string;
+  /** 已经敲了几下 */
+  knocks: number;
+  /** 谁打开的：ta / me / 空 */
+  openedBy: string;
+  openedAt: number;
+}
+
+/** 敲几下 TA 会来开门（和后台 `KNOCKS_TO_OPEN` 对齐） */
+export const PAGE_LOCK_KNOCKS = 3;
+
 /** 手写感用系统楷体，不引外部字体：断网也稳定 */
 export const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", serif';
 

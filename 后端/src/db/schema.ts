@@ -285,6 +285,29 @@ export const diaryStickers = sqliteTable('diary_stickers', {
   deletedAt: integer('deleted_at'),
 });
 
+/**
+ * 单页锁（2026-11-15）：只锁「某一本 · 某一天」这一页，不影响整本。
+ *
+ * - `code` 是 4 位数字密码，**只在校验时用，GET 不下发**；
+ * - `knocks` 是「敲门」次数：每敲一下 TA 那边收到一条提醒，敲够了（3 下）TA 会来替她打开
+ *   （软删这一行 + `opened_by = 'ta'`），打开后这页就露出来了；
+ * - 同一本同一天只留一行，重新上锁会覆盖密码并把 `knocks` 归零。
+ */
+export const diaryPageLocks = sqliteTable('diary_page_locks', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull().default(''),
+  date: text('date').notNull(),
+  code: text('code').notNull(),
+  knocks: integer('knocks').notNull().default(0),
+  lastKnockAt: integer('last_knock_at'),
+  /** ta = 敲够了 TA 来开的 / me = 自己输密码开的 */
+  openedBy: text('opened_by'),
+  openedAt: integer('opened_at'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
 /** 待办（阶段 7 收尾）：repeat 为 none/daily/weekly/monthly；重复待办用 done_on 记最近完成日 */
 export const todos = sqliteTable('todos', {
   id: text('id').primaryKey(),
