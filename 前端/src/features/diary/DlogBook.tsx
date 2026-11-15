@@ -19,6 +19,7 @@ import { LockedLeaf } from './LockedLeaf';
 import { PageLockSheet } from './PageLockSheet';
 import { StickerPicker } from './StickerPicker';
 import { checkDiaryPageCode, knockDiaryPage } from '@/lib/api/home';
+import { useDiaryStore } from './diaryStore';
 import { useViewport } from './pageLayout';
 
 interface Props {
@@ -49,6 +50,10 @@ interface Props {
   onUnlockPage: (date: string) => void;
   /** 敲完门：同步次数，`opened` 时上层把锁删掉 */
   onPageKnocked: (date: string, knocks: number, opened: boolean) => void;
+  /** 撬锁（错够 2 次才给）：这一页会被记下「闯过」，TA 会发现 */
+  onSneakPage: (date: string, tries: number) => Promise<{ ok: boolean; line: string }>;
+  /** TA 塞回来的纸条（塞进门缝的 / 发现你潜入后贴的）直接并进 store */
+  onTaSlip: (slip: DiarySlip) => void;
   onJump: () => void;
   onSwitchBook: () => void;
   onSettings: () => void;
@@ -103,6 +108,8 @@ export function DlogBook({
   onLockPage,
   onUnlockPage,
   onPageKnocked,
+  onSneakPage,
+  onTaSlip,
   onJump,
   onSwitchBook,
   onSettings,
@@ -167,6 +174,15 @@ export function DlogBook({
     return () => window.clearTimeout(t);
   }, [openedTip]);
 
+  /** 纸条轻提示（他发现了 / 这页多了一张他留的纸条）→ 复用页面顶部那条胶囊 */
+  const slipNotice = useDiaryStore((s) => s.slipNotice);
+  const clearSlipNotice = useDiaryStore((s) => s.clearSlipNotice);
+  useEffect(() => {
+    if (!slipNotice) return;
+    setOpenedTip(slipNotice.text);
+    clearSlipNotice();
+  }, [slipNotice, clearSlipNotice]);
+
   // pageLocks 传进来前已经按本筛过，这里只按日期找
   const lockOf = (d: string) => pageLocks.find((l) => l.date === d);
   /** 这一页现在看不了：有锁，而且这次还没翻开过 */
@@ -177,7 +193,7 @@ export function DlogBook({
     return m && dd ? `${Number(m)} 月 ${Number(dd)} 日` : d;
   };
 
-  /** 敲敲门：每一下 TA 都会在聊天里收到一条提醒，敲够 3 下 TA 来替你打开 */
+  /** TA 敲门之后他那句话 + 会不会塞纸条，都从后端来（开不开由他定，不是敲够必开） */
   const knock = async (d: string) => {
     if (knockBusy) return;
     setKnockBusy(true);
@@ -185,15 +201,27 @@ export function DlogBook({
       const r = await knockDiaryPage({ bookId: book.id, date: d, title: book.name });
       setKnockLines((prev) => ({ ...prev, [d]: r.line || '……' }));
       onPageKnocked(d, r.knocks, r.opened);
+      if (r.slip) onTaSlip(r.slip);
       if (r.opened) {
         setUnlockedPages((prev) => (prev.includes(d) ? prev : [...prev, d]));
-        setOpenedTip('他替你开了这一页');
+        setOpenedTip(r.slip ? '他开了门，还塞了张纸条' : '他替你开了这一页');
+      } else if (r.slip) {
+        setOpenedTip('他没开，从门缝塞了张纸条出来');
       }
     } catch {
       // 敲失败就当没敲到，不弹错打扰
     } finally {
       setKnockBusy(false);
     }
+  };
+
+  /** 撬锁：不是「正大光明地开」，这一页从此带着「被闯过」的记号 */
+  const handleSneak = async (d: string, tries: number) => {
+    const r = await onSneakPage(d, tries);
+    if (!r.ok) return;
+    setUnlockedPages((prev) => (prev.includes(d) ? prev : [...prev, d]));
+    setLockSheet(null);
+    setOpenedTip(r.line || '你撬开了这一页');
   };
 
   /** 顶栏那把锁：没锁 → 设密码；已锁且这次开过 → 直接解开；已锁没开 → 输密码 */
@@ -403,6 +431,8 @@ export function DlogBook({
         knocks={lockOf(d)?.knocks ?? 0}
         line={knockLines[d]}
         busy={knockBusy}
+        slip={slips.filter((s) => s.date === d && s.author === 'ta').slice(-1)[0]}
+        sneaked={!!lockOf(d)?.sneakedAt}
         onAskCode={() => setLockSheet({ mode: 'open', date: d })}
         onKnock={() => void knock(d)}
       />
@@ -790,6 +820,11 @@ export function DlogBook({
           dayLabel={dayLabelOf(lockSheet.date)}
           onClose={() => setLockSheet(null)}
           onSubmit={submitCode}
+          onSneak={
+            lockSheet.mode === 'open'
+              ? (fails) => handleSneak(lockSheet.date, fails)
+              : undefined
+          }
         />
       )}
 

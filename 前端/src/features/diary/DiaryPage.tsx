@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { DeckPage, DiaryBook, DiaryEntry } from './diaryData';
 import { dayKeyToDate, diaryDayKey } from './diaryData';
@@ -63,6 +63,22 @@ export function DiaryPage() {
   }, [bookId, books]);
 
   const book = books.find((b) => b.id === bookId) ?? null;
+
+  /**
+   * TA 主动来留字条：打开这本时问一次（同一本只问一次，免得来回翻页一直掷骰子）。
+   * 命中了他会在当前这页多一张纸条，页面上浮一句「这页多了一张他留的纸条」。
+   * TA 自己的本不问 —— 那是他写的本子，不是他往你这儿塞纸条。
+   *
+   * 注意：这两个 hook 必须放在所有 early return **之前**（整本锁 / 情侣本都会提前 return），
+   * 否则 hook 数量在两次渲染间变化，React 直接抛「Rendered more hooks than during the previous render」。
+   */
+  const askedTaNote = useRef('');
+  useEffect(() => {
+    if (!book || book.kind === 'partner') return;
+    if (askedTaNote.current === book.id) return;
+    askedTaNote.current = book.id;
+    void useDiaryStore.getState().askTaNote(book.id, focusDate ?? today);
+  }, [book, focusDate, today]);
 
   /** 这本的全部日记（老数据 bookId 为空 = 我的日记） */
   const bookEntries = useMemo(
@@ -190,6 +206,8 @@ export function DiaryPage() {
           if (opened) void useDiaryStore.getState().unlockPage(book.id, date);
           else useDiaryStore.getState().setPageKnocks(book.id, date, knocks);
         }}
+        onSneakPage={(date, tries) => useDiaryStore.getState().sneakPage(book.id, date, tries)}
+        onTaSlip={(slip) => useDiaryStore.getState().mergeSlip(slip)}
         onJump={() => setJump(true)}
         onSwitchBook={() => setSwitcher(true)}
         onSettings={() => setSheet({ book })}

@@ -31,7 +31,10 @@ export const deleteDiaryBook = (id: string) =>
 // ---- 小纸条（夹在 TA 的日记里）----
 export const listDiarySlips = () => request<DiarySlip[]>('/api/diary/slips');
 export const createDiarySlip = (slip: DiarySlip) =>
-  request<{ id: string }>('/api/diary/slips', { method: 'POST', body: JSON.stringify(slip) });
+  request<{ id: string; discovered?: boolean; taSlip?: DiarySlip | null }>('/api/diary/slips', {
+    method: 'POST',
+    body: JSON.stringify(slip),
+  });
 export const patchDiarySlip = (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) =>
   request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiarySlip = (id: string) =>
@@ -64,12 +67,24 @@ export const checkDiaryPageCode = (input: { bookId: string; date: string; code: 
     method: 'POST',
     body: JSON.stringify(input),
   });
-/** 敲一下门：返回已经敲了几下、TA 有没有来开，以及 TA 这一句反应 */
+/** 敲一下门：TA 开不开由他定，可能还从门缝塞一张纸条出来 */
 export const knockDiaryPage = (input: { bookId: string; date: string; title?: string }) =>
-  request<{ knocks: number; opened: boolean; line: string; need: number; day: string }>(
+  request<{ knocks: number; opened: boolean; line: string; day: string; slip: DiarySlip | null }>(
     '/api/diary/page-locks/knock',
     { method: 'POST', body: JSON.stringify(input) },
   );
+/** 猜不出密码就撬：这一页会被记下「闯过」，TA 会发现 */
+export const sneakDiaryPage = (input: { bookId: string; date: string; tries: number }) =>
+  request<{ ok: true; gone?: boolean; line: string }>('/api/diary/page-locks/sneak', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+/** TA 主动来留字条：翻到某页时问一句「他今天留过吗」 */
+export const claimTaDiaryNote = (input: { bookId: string; date: string }) =>
+  request<{ slip: DiarySlip | null }>('/api/diary/ta-note/visit', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 export const unlockDiaryPage = (bookId: string, date: string) =>
   request<{ ok: true }>(
     `/api/diary/page-locks?book=${encodeURIComponent(bookId)}&date=${encodeURIComponent(date)}`,

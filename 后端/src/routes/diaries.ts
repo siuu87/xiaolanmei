@@ -401,6 +401,8 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/diary/page-locks', async (req) => {
     const { book } = req.query as { book?: string };
+    // TA 的日记本里，他自己会锁一页 —— 前端的「敲 / 猜 / 撬」才有对象
+    ensurePartnerLockedPage();
     return db
       .select()
       .from(diaryPageLocks)
@@ -558,6 +560,49 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
 /** TA 的纸条用另一种纸色（淡蓝灰），一眼能看出不是我的笔迹纸 */
 const TA_SLIP_COLOR = '#e6edf1';
+
+/**
+ * TA 的日记本里，他自己锁着的一页（2026-11-16）。
+ *
+ * 这一页的密码只有他知道 —— 我翻到只能**敲敲门**问他要、或者硬撬。
+ * 每次 `GET /diary/page-locks` 兜一次：他的本一旦没有活锁，就补上，
+ * 锁在「最近写过的那个日期」（没写过就今天）。整本删了 / 锁被撬开后不会再补同一页。
+ */
+function ensurePartnerLockedPage(): void {
+  const books = db
+    .select()
+    .from(diaryBooks)
+    .all()
+    .filter((b) => b.deletedAt == null && b.kind === 'partner');
+  if (books.length === 0) return;
+
+  const locks = db.select().from(diaryPageLocks).all();
+  for (const b of books) {
+    if (locks.some((l) => l.deletedAt == null && l.bookId === b.id)) continue;
+    const days = db
+      .select()
+      .from(diaries)
+      .all()
+      .filter((d) => d.deletedAt == null && d.bookId === b.id)
+      .sort((x, y) => y.date.localeCompare(x.date));
+    // 这本一个字都没有就不锁 —— 锁一页空白没意义
+    if (days.length === 0) continue;
+    const date = days[0].date;
+    const ts = now();
+    db.insert(diaryPageLocks)
+      .values({
+        id: newId(),
+        bookId: b.id,
+        date,
+        // 4 位随机：不是给前端看的，只在 check 里比对
+        code: String(Math.floor(1000 + Math.random() * 9000)),
+        knocks: 0,
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+  }
+}
 
 /**
  * 每敲一下，TA 来开门的概率：第 1 下 25%，之后每下 +15%，封顶 85%。

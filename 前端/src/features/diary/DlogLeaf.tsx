@@ -80,6 +80,45 @@ export function DlogLeaf({
   /** 拼贴可用宽度：稍微顶出左右留白一点，像贴到了格子外 */
   const collageW = box.w - PAD_X * 2 + 6;
 
+  /**
+   * 夹在这页的纸条（我夹的 + 他塞进来的）。
+   * 抽出来是因为**空页也要显示** —— 有时候这一天只留了一张纸条，一个字没写。
+   */
+  const slipBlock =
+    slips.length > 0 ? (
+      <div className="flex shrink-0 flex-col gap-1.5" data-testid="diary-leaf-slips">
+        {slips.slice(-2).map((s) => {
+          const byTa = s.author === 'ta';
+          return (
+            <div
+              key={s.id}
+              data-slip-id={s.id}
+              data-slip-author={byTa ? 'ta' : 'me'}
+              className={`px-2 py-1.5 shadow-[0_5px_10px_-8px_rgba(0,0,0,0.5)] ${
+                byTa ? 'rotate-[0.9deg]' : 'rotate-[-0.6deg]'
+              }`}
+              style={{ background: s.color }}
+            >
+              {byTa && (
+                <span className="mb-0.5 block text-[8px] leading-none tracking-[0.1em] text-[#3b3830]/45">
+                  他留的
+                </span>
+              )}
+              <p
+                className="max-h-[42px] overflow-hidden whitespace-pre-wrap text-[10px] leading-[16px] text-[#3b3830]"
+                style={{ fontFamily: HAND_FONT }}
+              >
+                {s.content}
+              </p>
+            </div>
+          );
+        })}
+        {slips.length > 2 && (
+          <span className="text-[9px] text-ink/30">还有 {slips.length - 2} 张纸条</span>
+        )}
+      </div>
+    ) : null;
+
   return (
     <div
       className={`relative overflow-hidden rounded-[7px] ${PAPER}`}
@@ -127,21 +166,24 @@ export function DlogLeaf({
         {/* 正文：固定高的窗口，写太多就在页内滚 */}
         <div className="relative shrink-0" style={{ height: contentH }}>
           {entries.length === 0 ? (
-            <button
-              type="button"
-              onClick={canWrite ? onCompose : undefined}
-              data-testid="diary-leaf-empty"
-              className="flex h-full w-full flex-col items-center justify-center gap-2 px-8 text-center"
-            >
-              <span className="text-[15px] tracking-[0.4em] text-ink/15">· · ·</span>
-              <span className="text-[11px] leading-5 text-ink/35" style={{ fontFamily: HAND_FONT }}>
-                {canWrite
-                  ? stickers.length > 0
-                    ? '这天还空着，点一下写点什么'
-                    : '这天还是空白的，点一下就能写'
-                  : '这天没有留下字迹'}
-              </span>
-            </button>
+            <div className="flex h-full flex-col justify-between px-3 py-2">
+              <button
+                type="button"
+                onClick={canWrite ? onCompose : undefined}
+                data-testid="diary-leaf-empty"
+                className="flex flex-1 flex-col items-center justify-center gap-2 px-5 text-center"
+              >
+                <span className="text-[15px] tracking-[0.4em] text-ink/15">· · ·</span>
+                <span className="text-[11px] leading-5 text-ink/35" style={{ fontFamily: HAND_FONT }}>
+                  {canWrite
+                    ? stickers.length > 0
+                      ? '这天还空着，点一下写点什么'
+                      : '这天还是空白的，点一下就能写'
+                    : '这天没有留下字迹'}
+                </span>
+              </button>
+              {slipBlock}
+            </div>
           ) : (
             <div
               className="h-full overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -255,29 +297,8 @@ export function DlogLeaf({
                 );
               })}
 
-              {/* 夹在这一页里的纸条（TA 的本只能留纸条） */}
-              {slips.length > 0 && (
-                <div className="mb-1 mt-2 flex flex-col gap-1.5">
-                  {slips.slice(-2).map((s) => (
-                    <div
-                      key={s.id}
-                      data-slip-id={s.id}
-                      className="rotate-[-0.6deg] px-2 py-1.5 shadow-[0_5px_10px_-8px_rgba(0,0,0,0.5)]"
-                      style={{ background: s.color }}
-                    >
-                      <p
-                        className="max-h-[42px] overflow-hidden whitespace-pre-wrap text-[10px] leading-[16px] text-[#3b3830]"
-                        style={{ fontFamily: HAND_FONT }}
-                      >
-                        {s.content}
-                      </p>
-                    </div>
-                  ))}
-                  {slips.length > 2 && (
-                    <span className="text-[9px] text-ink/30">还有 {slips.length - 2} 张纸条</span>
-                  )}
-                </div>
-              )}
+              {/* 夹在这一页里的纸条：我夹的 + TA 塞进来的（他的换个纸色并署名） */}
+              {slipBlock && <div className="mb-1 mt-2">{slipBlock}</div>}
             </div>
           )}
 

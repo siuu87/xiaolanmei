@@ -37,10 +37,15 @@ export interface DiarySlip {
   /** 夹在哪一页（YYYY-MM-DD） */
   date: string;
   content: string;
-  /** 纸条底色（SLIP_PALETTE 里的一支） */
+  /** 纸条底色（SLIP_PALETTE 里的一支；TA 的走另一个色，见 TA_SLIP_COLOR） */
   color: string;
+  /** me = 我夹的 / ta = TA 塞进来的（TA 的只读，样式也不同） */
+  author?: 'me' | 'ta';
   createdAt?: number;
 }
+
+/** TA 塞进来的纸条默认用的纸色（与后端 TA_SLIP_COLOR 一致） */
+export const TA_SLIP_COLOR = '#e6edf1';
 
 /** 日记贴纸（2026-11-15）：贴在某一页上的表情包，像手账贴纸 */
 export interface DiarySticker {
@@ -99,25 +104,27 @@ export function isCoupleBook(book: Pick<DiaryBook, 'kind'>): boolean {
 export const LOCK_CODE_LEN = 4;
 
 /**
- * 单页锁（2026-11-15）：只锁「这一本 · 这一天」。
+ * 单页锁（2026-11-15，2026-11-16 改「他开不开由他定」）：
+ * 只锁「这一本 · 这一天」。
  *
- * 锁着的页翻开时是一张灰纸 + 一把锁，两条路能进去：
- * 输 4 位密码（本次翻开，锁还在），或者**敲敲** —— 每敲一下 TA 会收到一条提醒，
- * 敲够 `PAGE_LOCK_KNOCKS` 下，TA 来替你打开（锁就真没了）。
+ * 锁着的页翻开时是一张灰纸 + 一把锁，进去有三条路：
+ * 输 4 位密码（本次翻开，锁还在）、**敲敲**（每敲一下 TA 都会收到提醒，
+ * 开不开由他定，可能塞张纸条出来）、**撬锁**（猜错几次后硬撬，他会发现）。
  */
 export interface DiaryPageLock {
   id: string;
   bookId: string;
   date: string;
-  /** 已经敲了几下 */
+  /** 已经敲了几下（只用来显示「敲过 N 下」，不代表敲够就开） */
   knocks: number;
+  /** 被撬进来的时刻（0 = 没被撬过） */
+  sneakedAt?: number;
+  /** TA 发现我潜入留字条的时刻（0 = 还没发现） */
+  discoveredAt?: number;
   /** 谁打开的：ta / me / 空 */
   openedBy: string;
   openedAt: number;
 }
-
-/** 敲几下 TA 会来开门（和后台 `KNOCKS_TO_OPEN` 对齐） */
-export const PAGE_LOCK_KNOCKS = 3;
 
 /** 手写感用系统楷体，不引外部字体：断网也稳定 */
 export const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", serif';

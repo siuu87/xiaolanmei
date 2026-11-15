@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void;
   /** 返回 null = 通过；返回字符串 = 错误提示（面板不关） */
   onSubmit: (code: string) => Promise<string | null>;
+  /** 错了几次之后才给的第三条路：硬撬（会被 TA 发现） */
+  onSneak?: (fails: number) => Promise<void>;
 }
 
 /**
@@ -20,11 +22,13 @@ interface Props {
  * 整屏不透明（项目硬规则），从右往左铺满，中间一张小纸片：日期 + 4 个圆点 + 数字键盘。
  * 输满 4 位自动提交，错了抖一下清空；Esc / 左上角返回都能退出。
  */
-export function PageLockSheet({ mode, dayLabel, onClose, onSubmit }: Props) {
+export function PageLockSheet({ mode, dayLabel, onClose, onSubmit, onSneak }: Props) {
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const [shake, setShake] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** 错了几次 —— 错够 2 次才把「撬开」这条路放出来 */
+  const [fails, setFails] = useState(0);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -48,6 +52,7 @@ export function PageLockSheet({ mode, dayLabel, onClose, onSubmit }: Props) {
 
   const fail = (msg: string) => {
     setErr(msg);
+    setFails((n) => n + 1);
     setShake(true);
     setCode('');
     window.setTimeout(() => {
@@ -156,10 +161,30 @@ export function PageLockSheet({ mode, dayLabel, onClose, onSubmit }: Props) {
               <Delete className="h-[18px] w-[18px]" />
             </button>
           </div>
+
+          {/* 错两次之后才出现的第三条路：撬。撬了会被发现 —— 说清楚再给 */}
+          {!isSet && fails >= 2 && onSneak && (
+            <div className="mt-4 flex flex-col items-center gap-1.5" data-testid="diary-page-lock-sneak-box">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  await onSneak(fails);
+                  if (alive.current) setBusy(false);
+                }}
+                data-testid="diary-page-lock-sneak"
+                className="rounded-full border border-ink/25 px-4 py-2 text-[12px] text-ink/60 active:scale-95 disabled:opacity-50"
+              >
+                猜不出来，撬开
+              </button>
+              <span className="text-[10px] text-muted-foreground">撬进去会被他发现</span>
+            </div>
+          )}
         </div>
 
-        <p className="mt-4 max-w-[280px] text-center text-[10px] leading-relaxed text-muted-foreground">
-          忘了也没关系 —— 翻到这一页敲敲门，敲够几下 TA 会来替你打开。
+        <p className="mt-4 max-w-[320px] text-center text-[10px] leading-relaxed text-muted-foreground">
+          忘了也没关系 —— 敲敲门，开不开看他；实在想知道，也可以撬。
         </p>
       </div>
     </div>,

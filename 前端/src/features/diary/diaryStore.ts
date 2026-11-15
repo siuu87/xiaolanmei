@@ -19,6 +19,8 @@ import {
   listDiaryPageLocks,
   lockDiaryPage,
   unlockDiaryPage,
+  sneakDiaryPage,
+  claimTaDiaryNote,
 } from '@/lib/api/home';
 import { newId } from '@/lib/id';
 import type { DiaryEntry, DiaryBook, DiaryPageLock, DiarySlip, DiarySticker } from './diaryData';
@@ -48,6 +50,13 @@ interface DiaryState {
   addSlip: (s: Omit<DiarySlip, 'id'>) => void;
   patchSlip: (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) => void;
   removeSlip: (id: string) => void;
+  /** 后端塞回来的纸条（TA 的回条 / 他主动留的）直接并进 store，不重复写库 */
+  mergeSlip: (slip: DiarySlip) => void;
+  /** 纸条相关的轻提示（「他发现了」/「这页多了一张他留的纸条」），由 DlogBook 弹出来 */
+  slipNotice: { text: string; at: number } | null;
+  clearSlipNotice: () => void;
+  /** TA 主动来留字条（每次翻日记问一次，命中才会有） */
+  askTaNote: (bookId: string, date: string) => Promise<DiarySlip | null>;
   addSticker: (s: Omit<DiarySticker, 'id'>) => void;
   patchSticker: (id: string, patch: Partial<Pick<DiarySticker, 'x' | 'y' | 'scale' | 'rot'>>) => void;
   removeSticker: (id: string) => void;
@@ -55,6 +64,8 @@ interface DiaryState {
   lockPage: (bookId: string, date: string, code: string) => Promise<void>;
   /** 彻底解开这一页（自己解 / TA 敲够了来开） */
   unlockPage: (bookId: string, date: string) => Promise<void>;
+  /** 撬锁：密码猜不出来时的第三条路（会被 TA 发现） */
+  sneakPage: (bookId: string, date: string, tries: number) => Promise<{ ok: boolean; line: string }>;
   /** 敲过之后同步次数（TA 开门时顺手把锁从本地抹掉） */
   setPageKnocks: (bookId: string, date: string, knocks: number) => void;
 }
@@ -64,6 +75,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   entries: [],
   books: [],
   slips: [],
+  slipNotice: null,
   stickers: [],
   pageLocks: [],
   loaded: false,
@@ -123,9 +135,54 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   },
 
   addSlip: (s) => {
-    const slip: DiarySlip = { ...s, id: newId() };
+    const slip: DiarySlip = { ...s, id: newId(), author: 'me' };
     set((st) => ({ slips: [...st.slips, slip] }));
-    void createDiarySlip(slip).catch(() => {});
+    // 潜入时留的字条会被发现：后端会把 TA 的回条一起带回来，直接贴到同一页上
+    void createDiarySlip(slip)
+      .then((r) => {
+        if (!r?.taSlip) return;
+        set((st) => ({
+          slips: st.slips.some((x) => x.id === r.taSlip!.id) ? st.slips : [...st.slips, r.taSlip!],
+          slipNotice: { text: '他发现了——在旁边贴了一张纸条', at: Date.now() },
+        }));
+      })
+      .catch(() => {});
+  },
+
+  mergeSlip: (slip) => {
+    set((st) => ({
+      slips: st.slips.some((x) => x.id === slip.id) ? st.slips : [...st.slips, slip],
+    }));
+  },
+
+  clearSlipNotice: () => set({ slipNotice: null }),
+
+  askTaNote: async (bookId, date) => {
+    try {
+      const r = await claimTaDiaryNote({ bookId, date });
+      if (!r?.slip) return null;
+      set((st) => ({
+        slips: st.slips.some((x) => x.id === r.slip!.id) ? st.slips : [...st.slips, r.slip!],
+        slipNotice: { text: '这页多了一张他留的纸条', at: Date.now() },
+      }));
+      return r.slip;
+    } catch {
+      return null;
+    }
+  },
+
+  sneakPage: async (bookId, date, tries) => {
+    try {
+      const r = await sneakDiaryPage({ bookId, date, tries });
+      set((st) => ({
+        pageLocks: st.pageLocks.map((p) =>
+          p.bookId === bookId && p.date === date ? { ...p, sneakedAt: p.sneakedAt || Date.now() } : p,
+        ),
+      }));
+      return { ok: true, line: r.line ?? '' };
+    } catch {
+      return { ok: false, line: '' };
+    }
   },
 
   patchSlip: (id, patch) => {
