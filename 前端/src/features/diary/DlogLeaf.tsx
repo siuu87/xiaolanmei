@@ -117,7 +117,9 @@ export function DlogLeaf({
             <span className="text-[9px] leading-none tracking-[0.06em] text-ink/40">
               {entries.length > 0
                 ? `${entries.length} 个时刻${photos > 0 ? ` · ${photos} 张` : ''}`
-                : '空白页'}
+                : stickers.length > 0
+                  ? `贴了 ${stickers.length} 张`
+                  : '空白页'}
             </span>
           </div>
         </div>
@@ -133,7 +135,11 @@ export function DlogLeaf({
             >
               <span className="text-[15px] tracking-[0.4em] text-ink/15">· · ·</span>
               <span className="text-[11px] leading-5 text-ink/35" style={{ fontFamily: HAND_FONT }}>
-                {canWrite ? '这天还是空白的，点一下就能写' : '这天没有留下字迹'}
+                {canWrite
+                  ? stickers.length > 0
+                    ? '这天还空着，点一下写点什么'
+                    : '这天还是空白的，点一下就能写'
+                  : '这天没有留下字迹'}
               </span>
             </button>
           ) : (
