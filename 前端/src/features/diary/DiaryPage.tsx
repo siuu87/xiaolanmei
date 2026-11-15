@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
 import { dayKeyToDate, diaryDayKey, slipSpot } from './diaryData';
 import { useDiaryStore } from './diaryStore';
-import { BookLock } from './BookLock';
 import { BookSheet, type BookDraft } from './BookSheet';
 import { BookSwitcher } from './BookSwitcher';
 import { DlogBook } from './DlogBook';
@@ -47,8 +46,6 @@ export function DiaryPage() {
   const [slipEditor, setSlipEditor] = useState<{ date: string; slip?: DiarySlip | null } | null>(null);
   /** 月历跳页 */
   const [jump, setJump] = useState(false);
-  /** 本次会话里解锁过 / 撬开过的本子 */
-  const [unlocked, setUnlocked] = useState<string[]>([]);
 
   useEffect(() => {
     void load();
@@ -132,18 +129,6 @@ export function DiaryPage() {
           正在打开日记…
         </div>
       </div>
-    );
-  }
-
-  // 上锁的本子：先过锁面（长按可撬锁，撬开这次仍算上锁）
-  if (book.locked && !unlocked.includes(book.id)) {
-    return (
-      <BookLock
-        book={book}
-        onUnlock={() => setUnlocked((prev) => [...prev, book.id])}
-        onSneak={() => setUnlocked((prev) => [...prev, book.id])}
-        onClose={() => navigate('/chat')}
-      />
     );
   }
 
@@ -239,7 +224,7 @@ export function DiaryPage() {
             if (sheet.book) {
               store.patchBook(sheet.book.id, draft);
             } else {
-              store.addBook({ ...draft, locked: draft.locked, lockCode: draft.lockCode });
+              store.addBook({ ...draft });
             }
             setSheet(null);
           }}

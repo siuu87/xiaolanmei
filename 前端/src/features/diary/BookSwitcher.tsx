@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { Check, ChevronLeft, Lock, Plus } from 'lucide-react';
+import { Check, ChevronLeft, Plus } from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from './diaryData';
 import { BOOK_KIND_LABEL } from './diaryData';
 
@@ -55,7 +55,6 @@ export function BookSwitcher({ books, currentId, entries, onPick, onAdd, onClose
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="flex items-center gap-1 truncate text-[14px] font-semibold text-foreground">
                     {b.name}
-                    {b.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
                     {b.name.trim() === BOOK_KIND_LABEL[b.kind] ? countOf(b) : `${BOOK_KIND_LABEL[b.kind]} · ${countOf(b)}`}

@@ -24,10 +24,7 @@ export interface DiaryBook {
   cover: string; // 封皮主色（莫兰迪色）
   /** 封皮换成图片时的图 URL；空 = 纯色封皮 */
   coverImage?: string;
-  /** 是否上锁（本机仪式感，不是加密） */
-  locked: boolean;
-  /** 4 位数字密码；空串 = 没设过 */
-  lockCode: string;
+  // 整本锁 2026-11-16 撤掉：锁只锁「一天」（DiaryPageLock）。一本一锁会连翻页都进不去。
   sortOrder: number;
 }
 

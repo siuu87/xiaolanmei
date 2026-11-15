@@ -2,11 +2,10 @@ import type { DiaryBook } from './diaryData';
 import { BOOK_KIND_LABEL, HAND_FONT } from './diaryData';
 import { kindIcon } from './BookSheet';
 import { InkBorder } from './InkShapes';
-import { Lock } from 'lucide-react';
 
 interface Props {
-  book: Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'coverImage' | 'locked'>;
-  /** 副信息，例如「3 页 · 已上锁」；不传就不显示 */
+  book: Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'coverImage'>;
+  /** 副信息，例如「3 页」；不传就不显示 */
   meta?: string;
   /** 大封面（书架）显示封底纸质标签；小封面只留名字 */
   compact?: boolean;
@@ -100,12 +99,6 @@ export function BookCover({ book, meta, compact = false, hideEdge = false, class
         className="absolute inset-x-0 bottom-0 h-8"
         style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.14), transparent)' }}
       />
-
-      {book.locked && (
-        <span className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/28 text-white/90 backdrop-blur-[1px]">
-          <Lock className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
-        </span>
-      )}
 
       {/* 手画的封皮边 + 内侧压印框：一眼看出是硬壳本，不是一块色块 */}
       <InkBorder

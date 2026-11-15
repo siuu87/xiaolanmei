@@ -1027,6 +1027,10 @@ export function initDatabase(): void {
   if (!diaryBookCols.some((c) => c.name === 'lock_code')) {
     sqlite.exec(`ALTER TABLE diary_books ADD COLUMN lock_code TEXT NOT NULL DEFAULT ''`);
   }
+  // 整本锁 2026-11-16 撤掉（用户：上锁只上这一天的日记）：
+  // 锁的粒度收成「一天」（diary_page_locks），一本一锁会连翻页都进不去。
+  // 两列留着当废弃列，但老库里锁着的本子全部放开 —— 幂等，已经是 0 的不会动。
+  sqlite.exec(`UPDATE diary_books SET locked = 0, lock_code = '' WHERE locked <> 0 OR lock_code <> ''`);
   // 幂等迁移（2026-11-13 封皮换成图片）：diary_books 补 cover_image
   if (!diaryBookCols.some((c) => c.name === 'cover_image')) {
     sqlite.exec(`ALTER TABLE diary_books ADD COLUMN cover_image TEXT NOT NULL DEFAULT ''`);

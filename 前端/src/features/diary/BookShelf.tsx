@@ -103,7 +103,7 @@ export function BookShelf({ books, entries, onOpen, onAdd, onPatch, onRemove }: 
                 <BookCover
                   book={b}
                   className="h-full w-full"
-                  meta={`${countOf(entries, b)} 页${b.locked ? ' · 已上锁' : ''}`}
+                  meta={`${countOf(entries, b)} 页`}
                 />
               </button>
 

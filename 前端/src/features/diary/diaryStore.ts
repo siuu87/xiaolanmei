@@ -44,7 +44,7 @@ interface DiaryState {
   addBook: (b: Omit<DiaryBook, 'id' | 'sortOrder'>) => void;
   patchBook: (
     id: string,
-    patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'coverImage' | 'locked' | 'lockCode'>>,
+    patch: Partial<Pick<DiaryBook, 'name' | 'kind' | 'cover' | 'coverImage'>>,
   ) => void;
   removeBook: (id: string) => void;
   addSlip: (s: Omit<DiarySlip, 'id'>) => void;

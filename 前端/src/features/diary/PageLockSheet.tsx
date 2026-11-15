@@ -88,7 +88,7 @@ export function PageLockSheet({ mode, dayLabel, onClose, onSubmit, onSneak }: Pr
           className="truncate text-[11px] tracking-[0.16em] text-muted-foreground/70"
           style={{ fontFamily: HAND_FONT }}
         >
-          {isSet ? '锁住这一页' : '打开这一页'}
+          {isSet ? '锁住这一天' : '打开这一天'}
         </span>
       </header>
 
@@ -108,7 +108,9 @@ export function PageLockSheet({ mode, dayLabel, onClose, onSubmit, onSneak }: Pr
             {dayLabel}
           </p>
           <p className="mt-1 text-center text-[11px] leading-relaxed text-ink/40" style={{ fontFamily: HAND_FONT }}>
-            {isSet ? '设一个 4 位数字，只有你和知道密码的人能翻' : '输入 4 位密码，这一次就能看'}
+            {isSet
+              ? '只锁这一天，别的日子照常翻。设一个 4 位数字就好'
+              : '输入 4 位密码，这一次就能看；锁还留在这天'}
           </p>
 
           <div

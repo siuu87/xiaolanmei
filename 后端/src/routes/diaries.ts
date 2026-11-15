@@ -95,17 +95,12 @@ function toBookDTO(b: typeof diaryBooks.$inferSelect) {
     cover: b.cover,
     // 封皮换成图片时的图 URL；空串 = 纯色封皮
     coverImage: b.coverImage,
-    // 上锁：locked 存 0/1，前端要 boolean；lockCode 只是本机仪式感，前端校验
-    locked: !!b.locked,
-    lockCode: b.lockCode,
+    // 整本锁 2026-11-16 撤掉：锁的粒度是「一天」（diary_page_locks），
+    // 一本一锁会连翻页都进不去，跟「只锁这一天的日记」相冲。`locked/lock_code`
+    // 两列留在库里当废弃列（老库照旧能起），但**不再下发**。
     sortOrder: b.sortOrder,
     createdAt: b.createdAt,
   };
-}
-
-/** 密码统一成 0~4 位数字，避免前端传进来奇怪字符 */
-function normCode(v: unknown): string {
-  return String(v ?? '').replace(/\D/g, '').slice(0, 4);
 }
 
 export async function diaryRoutes(app: FastifyInstance): Promise<void> {
@@ -123,7 +118,6 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   app.post('/diary/books', async (req, reply) => {
     const body = (req.body ?? {}) as {
       id?: string; name?: string; kind?: string; cover?: string; coverImage?: string;
-      locked?: boolean; lockCode?: string;
     };
     const name = body.name?.trim();
     if (!name) {
@@ -141,8 +135,6 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
         kind: body.kind === 'partner' ? 'partner' : 'me',
         cover: body.cover?.trim() || '#7c5cff',
         coverImage: body.coverImage?.trim() || '',
-        locked: body.locked ? 1 : 0,
-        lockCode: normCode(body.lockCode),
         sortOrder: count,
         createdAt: ts,
         updatedAt: ts,
@@ -155,17 +147,14 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as {
       name?: string; kind?: string; cover?: string; coverImage?: string;
-      locked?: boolean; lockCode?: string;
     };
     const patch: Partial<{
-      name: string; kind: string; cover: string; coverImage: string; locked: number; lockCode: string;
+      name: string; kind: string; cover: string; coverImage: string;
     }> = {};
     if (body.name !== undefined) patch.name = body.name.trim();
     if (body.kind !== undefined && ['me', 'partner'].includes(body.kind)) patch.kind = body.kind;
     if (body.cover !== undefined) patch.cover = body.cover.trim();
     if (body.coverImage !== undefined) patch.coverImage = body.coverImage.trim();
-    if (body.locked !== undefined) patch.locked = body.locked ? 1 : 0;
-    if (body.lockCode !== undefined) patch.lockCode = normCode(body.lockCode);
     if (Object.keys(patch).length === 0) return { ok: true };
     db.update(diaryBooks).set({ ...patch, updatedAt: now() }).where(eq(diaryBooks.id, id)).run();
     return { ok: true };

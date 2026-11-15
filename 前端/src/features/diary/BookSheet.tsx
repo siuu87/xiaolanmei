@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookText, User2, Trash2, Lock, Unlock, ImagePlus, Loader2, X } from 'lucide-react';
+import { BookText, User2, Trash2, ImagePlus, Loader2, X, Lock } from 'lucide-react';
 import type { DiaryBook } from './diaryData';
-import { BOOK_KIND_LABEL, KIND_DEFAULT_COVER, COVER_PALETTE, LOCK_CODE_LEN } from './diaryData';
+import { BOOK_KIND_LABEL, KIND_DEFAULT_COVER, COVER_PALETTE } from './diaryData';
 import { BookCover } from './BookCover';
 import { InkBorder } from './InkShapes';
 import { uploadImage } from '@/lib/api/attachments';
@@ -19,8 +19,6 @@ export interface BookDraft {
   cover: string;
   /** 封皮图片；空串 = 纯色 */
   coverImage: string;
-  locked: boolean;
-  lockCode: string;
 }
 
 interface Props {
@@ -30,12 +28,7 @@ interface Props {
   onDelete?: () => void;
 }
 
-/** 只留数字，最多 4 位 */
-function digits(v: string): string {
-  return v.replace(/\D/g, '').slice(0, LOCK_CODE_LEN);
-}
-
-/** 新建 / 编辑本子：名字 + 类型 + 封面色 + 上锁 */
+/** 新建 / 编辑本子：名字 + 类型 + 封皮 */
 export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
   const [name, setName] = useState(book?.name ?? '');
   const [kind, setKind] = useState<DiaryBook['kind']>(book?.kind ?? 'me');
@@ -43,15 +36,8 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
   const [coverImage, setCoverImage] = useState(book?.coverImage ?? '');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [locked, setLocked] = useState(book?.locked ?? false);
-  // 改动已有锁时先验原密码；新建或未上锁时不需要
-  const [oldCode, setOldCode] = useState('');
-  const [code, setCode] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState('');
 
-  const wasLocked = book?.locked ?? false;
-  const savedCode = book?.lockCode ?? '';
   // 老本子的颜色可能不在莫兰迪色板里 —— 补到最前面，至少能看出当前选的是哪支
   const palette = COVER_PALETTE.includes(cover) ? COVER_PALETTE : [cover, ...COVER_PALETTE];
 
@@ -61,44 +47,7 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
       setErr('先给本子起个名字');
       return;
     }
-
-    let nextCode = locked ? savedCode : '';
-
-    if (wasLocked && locked) {
-      if (oldCode !== savedCode) {
-        setErr('原密码不对');
-        return;
-      }
-      if (code) {
-        if (code.length !== LOCK_CODE_LEN) {
-          setErr(`新密码要 ${LOCK_CODE_LEN} 位数字`);
-          return;
-        }
-        if (code !== confirm) {
-          setErr('两次输入的新密码不一样');
-          return;
-        }
-        nextCode = code;
-      }
-    } else if (wasLocked && !locked) {
-      if (oldCode !== savedCode) {
-        setErr('原密码不对，关不掉锁');
-        return;
-      }
-      nextCode = '';
-    } else if (locked) {
-      if (code.length !== LOCK_CODE_LEN) {
-        setErr(`密码要 ${LOCK_CODE_LEN} 位数字`);
-        return;
-      }
-      if (code !== confirm) {
-        setErr('两次输入的密码不一样');
-        return;
-      }
-      nextCode = code;
-    }
-
-    onSave({ name: n, kind, cover, coverImage, locked, lockCode: nextCode });
+    onSave({ name: n, kind, cover, coverImage });
   };
 
   /** 封皮换成图片：选一张本地图 → 上传拿稳定 URL */
@@ -132,7 +81,7 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
         {/* 预览封面（与书架同一套 BookCover，所见即所得） */}
         <div className="mx-4 mt-4">
           <BookCover
-            book={{ name: name.trim() || '日记本', kind, cover, coverImage, locked }}
+            book={{ name: name.trim() || '日记本', kind, cover, coverImage }}
             className="h-32 w-full"
           />
         </div>
@@ -248,93 +197,18 @@ export function BookSheet({ book, onClose, onSave, onDelete }: Props) {
             </p>
           </div>
 
-          {/* 上锁 */}
-          <div className="rounded-xl border border-page-line p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {locked ? (
-                  <Lock className="h-4 w-4 text-foreground" />
-                ) : (
-                  <Unlock className="h-4 w-4 text-muted-foreground" />
-                )}
-                <div>
-                  <div className="text-sm font-medium text-foreground">上锁</div>
-                  <div className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-                    上锁后要先输 4 位密码，才能翻开
-                  </div>
-                </div>
+          {/* 上锁 2026-11-16 收成按天：锁落在「那一天」上，不在整本上 */}
+          <div
+            className="flex items-start gap-2 rounded-xl border border-page-line p-3"
+            data-testid="diary-book-lock-hint"
+          >
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <div>
+              <div className="text-sm font-medium text-foreground">锁是锁某一天的</div>
+              <div className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                翻到想锁的那一页，点顶栏那把锁，设 4 位密码 —— 只锁那一天，别的日子照常翻。
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={locked}
-                aria-label="上锁"
-                data-testid="diary-book-lock-toggle"
-                onClick={() => {
-                  setErr('');
-                  setLocked((v) => !v);
-                  // 只清新密码；原密码留着 —— 用户常常先输原密码再关开关，别让他白输
-                  setCode('');
-                  setConfirm('');
-                }}
-                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                  locked ? 'bg-primary' : 'bg-muted-foreground/30'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    locked ? 'translate-x-[22px]' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
             </div>
-
-            {/* 关锁时也要能验原密码，所以条件是「现在锁着 或 本来就锁过」 */}
-            {(locked || wasLocked) && (
-              <div className="mt-3 space-y-2">
-                {wasLocked && (
-                  <input
-                    value={oldCode}
-                    onChange={(e) => setOldCode(digits(e.target.value))}
-                    inputMode="numeric"
-                    type="password"
-                    maxLength={LOCK_CODE_LEN}
-                    placeholder={locked ? '原密码（改密码 / 关锁要验）' : '输入原密码才能关掉锁'}
-                    aria-label="原密码"
-                    data-testid="diary-book-lock-old"
-                    className="h-10 w-full rounded-lg bg-muted/60 px-3 text-sm tracking-[0.4em] text-foreground outline-none focus:bg-muted/80"
-                  />
-                )}
-                {locked && (
-                  <>
-                    <input
-                      value={code}
-                      onChange={(e) => setCode(digits(e.target.value))}
-                      inputMode="numeric"
-                      type="password"
-                      maxLength={LOCK_CODE_LEN}
-                      placeholder={
-                        wasLocked ? `新密码（留空＝不改，${LOCK_CODE_LEN} 位）` : `设置 ${LOCK_CODE_LEN} 位数字密码`
-                      }
-                      aria-label="密码"
-                      data-testid="diary-book-lock-code"
-                      className="h-10 w-full rounded-lg bg-muted/60 px-3 text-sm tracking-[0.4em] text-foreground outline-none focus:bg-muted/80"
-                    />
-                    <input
-                      value={confirm}
-                      onChange={(e) => setConfirm(digits(e.target.value))}
-                      inputMode="numeric"
-                      type="password"
-                      maxLength={LOCK_CODE_LEN}
-                      placeholder="再输一次"
-                      aria-label="确认密码"
-                      data-testid="diary-book-lock-confirm"
-                      className="h-10 w-full rounded-lg bg-muted/60 px-3 text-sm tracking-[0.4em] text-foreground outline-none focus:bg-muted/80"
-                    />
-                  </>
-                )}
-              </div>
-            )}
           </div>
 
           {err && (

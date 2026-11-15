@@ -4,6 +4,23 @@
 
 ## 2026-11-16
 
+### 锁只锁这一天：整本锁撤掉
+
+用户：「上锁可以只上这一天的日记的锁」。
+
+- 说明一下现状：锁其实一直是按天的（`diary_page_locks` 按 `book_id + date` 存，顶栏那把锁只作用于
+  当前翻到的那一页）。真正让人以为是「整本」的是**齿轮 → 本子设置里那个「整本上锁」开关** ——
+  两套锁并存，一进 Set 就以为只能锁整本。
+- **整本锁整个撤掉**：删 `BookLock.tsx`（157 行）、`BookSheet` 里的上锁开关与三段密码校验、
+  `DiaryPage` 的锁面分支与会话级 `unlocked`、`BookCover` 的封面锁角标、`BookShelf/BookSwitcher`
+  的「已上锁」徽标；`DiaryBook` 类型、store、api 的 `locked / lockCode` 一起摘掉。
+- 后端 `toBookDTO` 不再下发 `locked / lockCode`，`POST/PATCH /diary/books` 也不再接收（`normCode` 顺手删了）；
+  `diary_books.locked / lock_code` 两列留在库里当废弃列，`client.ts` 启动时幂等 `UPDATE ... SET locked=0`，
+  老库里锁着的本子自动放开。
+- 设置里那个开关换成一个说明块（`data-testid="diary-book-lock-hint"`）：
+  「锁是锁某一天的 —— 翻到想锁的那一页，点顶栏那把锁，设 4 位密码」。
+- 锁面板文案改写成「只锁这一天，别的日子照常翻」，标题从「锁住这一页」改成「锁住这一天」。
+
 ### 便签改成方方的小块，他的回条也不会马上来
 
 用户：「这个便签可以是方方的小块，然后他的纸条不要那么快就出现，可以是很久之后才加的，
