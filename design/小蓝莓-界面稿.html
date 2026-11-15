@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小蓝莓 · 全站界面稿（可编辑）</title>
+<style>
+/* ============ 设计 token：与 index.css 的 :root / .dark 一致 ============ */
+:root{
+  --bg:hsl(210 6% 92%); --fg:hsl(210 4% 22%);
+  --card:hsl(210 8% 96%); --card2:hsl(210 7% 89%); --card3:hsl(210 6% 99%);
+  --line:hsl(210 7% 84%); --muted:hsl(213 5% 52%);
+  --primary:hsl(209 9% 46%); --on-primary:#fff;
+  --chat-bg:hsl(0 0% 96%); --chat-ai:hsl(0 0% 100%); --chat-ai-fg:hsl(0 0% 4%);
+  --chat-me:hsl(0 0% 4%); --chat-me-fg:#fff;
+  --chat-pill:hsl(0 0% 92%); --chat-pill-fg:hsl(0 0% 10%);
+  --chat-line:hsl(0 0% 91%); --chat-meta:hsl(0 0% 63%);
+  --sheet:hsl(0 0% 97%);
+  --page:#e9e9ec;
+}
+html[data-theme="dark"]{
+  --bg:hsl(210 6% 11%); --fg:hsl(210 8% 88%);
+  --card:hsl(210 6% 14%); --card2:hsl(210 6% 18%); --card3:hsl(210 5% 21%);
+  --line:hsl(210 6% 24%); --muted:hsl(213 5% 60%);
+  --primary:hsl(209 11% 70%); --on-primary:hsl(210 8% 12%);
+  --chat-bg:hsl(210 8% 8%); --chat-ai:hsl(210 6% 18%); --chat-ai-fg:hsl(210 8% 85%);
+  --chat-me:hsl(210 9% 28%); --chat-me-fg:#fff;
+  --chat-pill:hsl(210 6% 17%); --chat-pill-fg:hsl(210 8% 84%);
+  --chat-line:hsl(210 6% 23%); --chat-meta:hsl(213 5% 58%);
+  --sheet:hsl(210 7% 19%);
+  --page:#15171a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--page);color:var(--fg);
+  font:400 14px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+/* ============ 顶部工具条 ============ */
+.bar{
+  position:sticky;top:0;z-index:99;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 20px;background:color-mix(in srgb,var(--page) 88%,transparent);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+}
+.bar h1{font-size:14px;font-weight:600;letter-spacing:.02em;margin-right:6px}
+.bar .sub{font-size:11.5px;color:var(--muted);margin-right:auto}
+.btn{
+  display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;border-radius:8px;
+  border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:12px;cursor:pointer;
+}
+.btn:hover{background:var(--card2)}
+.btn[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:transparent}
+/* ============ 画布 ============ */
+main{padding:26px 20px 80px;--s:.62}
+.block{margin-bottom:46px}
+.block>h2{
+  display:flex;align-items:baseline;gap:10px;font-size:15px;font-weight:600;margin:0 0 4px;
+}
+.block>h2 em{font-style:normal;font-size:11.5px;font-weight:400;color:var(--muted)}
+.block>.desc{font-size:12px;color:var(--muted);margin:0 0 16px}
+.grid{display:flex;flex-wrap:wrap;gap:22px}
+figure{
+  width:calc(430px * var(--s));background:transparent;
+}
+figure>.cap{
+  display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--muted);
+  margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+figure>.cap b{color:var(--fg);font-weight:600;font-size:12px}
+figure>.cap i{font-style:normal;opacity:.72;font-family:ui-monospace,monospace;font-size:10.5px}
+.wrap{
+  width:calc(430px * var(--s));height:calc(900px * var(--s));
+  border-radius:14px;overflow:hidden;box-shadow:0 10px 34px -14px hsl(210 20% 20% / .42);
+  border:1px solid var(--line);
+}
+.frame{
+  position:relative;width:430px;height:900px;overflow:hidden;
+  background:var(--bg);color:var(--fg);transform:scale(var(--s));transform-origin:top left;
+  font:400 14px/1.55 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+/* ============ 常用小件 ============ */
+.abs{position:absolute}
+.ic{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block}
+.ic-s{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+.rnd{
+  position:absolute;display:grid;place-items:center;border-radius:50%;
+  background:var(--chat-pill);color:var(--chat-pill-fg);
+}
+.rnd.sm{width:38px;height:38px}
+.rnd.md{width:44px;height:44px}
+.dot-red{position:absolute;width:7px;height:7px;border-radius:50%;background:#e0574f}
+.ava{
+  border-radius:50%;display:grid;place-items:center;overflow:hidden;
+  background:round;background:var(--card2);color:var(--fg);
+}
+.ava svg{width:100%;height:100%;opacity:.72}
+.silhouette{fill:currentColor;opacity:.55}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;border-radius:999px;
+  background:var(--chat-pill);color:var(--chat-pill-fg);padding:6px 12px;font-size:13px;font-weight:500;
+}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.hair{height:1px;background:var(--chat-line)}
+/* 聊天 */
+.bubble{
+  border-radius:18px;background:var(--chat-ai);color:var(--chat-ai-fg);
+  padding:11px 14px;font-size:14.5px;line-height:1.62;max-width:298px;
+}
+.bubble.me{background:var(--chat-me);color:var(--chat-me-fg);margin-left:auto}
+.stamp{font-size:11px;color:var(--chat-meta);flex:none;padding-bottom:2px}
+.row{display:flex;align-items:flex-end;gap:8px}
+.daymark{display:flex;align-items:center;gap:10px;color:var(--chat-meta);font-size:11.5px}
+.daymark .l{flex:1;height:1px;background:var(--chat-line)}
+.want{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--chat-meta)}
+.inputbar{
+  position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:9px;
+}
+.field{
+  flex:1;display:flex;align-items:center;gap:9px;height:46px;padding:0 16px;border-radius:999px;
+  background:var(--chat-pill);color:var(--chat-meta);font-size:14px;
+}
+.field .modeltag{display:inline-flex;align-items:center;gap:3px;color:var(--chat-pill-fg);font-weight:500;font-size:13px}
+.send{
+  width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:var(--chat-pill);color:var(--chat-pill-fg);
+}
+/* 遮罩与浮层 */
+.scrim{position:absolute;inset:0;background:hsl(210 12% 6% / .46)}
+.sheetcard{
+  position:absolute;left:14px;right:14px;border-radius:16px;background:var(--sheet);
+  box-shadow:0 24px 60px -20px hsl(210 30% 8% / .6);overflow:hidden;
+}
+.mi{display:flex;align-items:center;gap:12px;padding:13px 16px;font-size:15px}
+.mi svg{color:var(--muted)}
+.mi.danger{color:#e0574f}
+/* 抽屉 */
+.drawer{
+  position:absolute;left:0;top:0;bottom:0;width:366px;background:var(--bg);
+  border-right:1px solid var(--line);overflow:hidden;
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{
+  border-radius:14px;border:1px solid var(--line);background:var(--card);
+  padding:13px 12px;display:flex;flex-direction:column;gap:8px;
+}
+.tile b{font-size:13px;font-weight:600}
+.tile span{font-size:11px;color:var(--muted)}
+.tile .tg{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--card2)}
+/* 编辑态 */
+body.edit .frame{outline:1px dashed hsl(209 40% 60% / .55)}
+body.edit .frame *{cursor:text}
+/* 日记纸页 */
+.paper{
+  position:absolute;
+  background:hsl(40 30% 94%);
+  border-radius:10px;box-shadow:0 8px 26px -14px hsl(30 28% 24% / .5);
+  overflow:hidden;
+}
+html[data-theme="dark"] .paper{background:hsl(36 9% 18%);box-shadow:0 8px 26px -14px #000}
+.ruled{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;opacity:.5}
+.ruled i{display:block;height:1px;background:color-mix(in srgb,var(--fg) 13%,transparent);margin-top:31px}
+.slip{
+  background:hsl(45 46% 90%);border:1px solid hsl(40 22% 80%);
+  border-radius:5px;padding:9px 11px;font-size:12px;line-height:1.6;
+  box-shadow:0 5px 14px -8px hsl(30 30% 20% / .6);
+}
+html[data-theme="dark"] .slip{background:hsl(40 15% 26%);border-color:hsl(40 12% 34%);box-shadow:0 5px 14px -8px #000}
+.tape{
+  position:absolute;width:46px;height:15px;background:hsl(45 40% 88% / .62);
+  transform:rotate(-4deg);border-radius:1px;
+}
+html[data-theme="dark"] .tape{background:hsl(45 18% 58% / .34)}
+.polaroid{
+  background:#fbf8f2;padding:6px 6px 18px;border-radius:3px;
+  box-shadow:0 8px 20px -10px hsl(30 30% 18% / .55);
+}
+/* 封蜡 */
+.wax{
+  width:38px;height:38px;border-radius:48% 52% 46% 54%;display:grid;place-items:center;
+  background:radial-gradient(circle at 34% 30%,#d9b45a,#b98f2e 62%,#96701f);
+  box-shadow:0 3px 9px -3px hsl(40 60% 20% / .6),inset 0 -1px 3px hsl(40 60% 16% / .5);
+  color:#6b4d12;font-size:15px;font-weight:700;
+}
+.wax.torn{clip-path:polygon(0 0,100% 0,62% 46%,100% 100%,0 100%,38% 46%)}
+/* 礼盒 */
+.gift{
+  position:relative;border-radius:9px;height:74px;overflow:hidden;
+}
+.gift::before,.gift::after{content:"";position:absolute;background:hsl(38 34% 46% / .55)}
+.gift::before{left:50%;top:0;bottom:0;width:9px;transform:translateX(-50%)}
+.gift::after{left:0;right:0;top:50%;height:9px;transform:translateY(-50%)}
+.gift .bow{
+  position:absolute;left:50%;top:-7px;transform:translateX(-50%);
+  width:30px;height:14px;border-radius:50% 50% 40% 40%;
+  background:hsl(38 34% 42% / .8);
+}
+/* 热力图 */
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,8px);gap:2.5px}
+.heat i{width:8px;height:8px;border-radius:2px;background:var(--card2);display:block}
+/* 通用页头 */
+.ph{
+  position:absolute;left:0;right:0;top:0;height:76px;display:flex;align-items:center;gap:12px;
+  padding:0 16px;border-bottom:1px solid var(--line);background:var(--bg);
+}
+.ph .back{
+  width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none;
+  border:1px solid var(--line);color:var(--muted);
+}
+.ph .tt{font-size:20px;font-weight:600;line-height:1.15}
+.card{border-radius:14px;border:1px solid var(--line);background:var(--card)}
+.split{height:1px;background:var(--line)}
+/* 打印 */
+@media print{.bar{display:none}main{--s:1;padding:0}.wrap{box-shadow:none}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1>小蓝莓 · 界面稿</h1>
+  <span class="sub">移动端 430×900 · 与项目 token 同源</span>
+  <button class="btn" id="theme">切换深浅</button>
+  <button class="btn" id="edit" aria-pressed="false">文字可编辑</button>
+  <button class="btn" data-s=".45">45%</button>
+  <button class="btn" data-s=".62" aria-pressed="true">62%</button>
+  <button class="btn" data-s="1">100%</button>
+</header>
+
+<main id="canvas">
+
+<!-- ==================================================================== -->
+<!-- 01 · 聊天                                                            -->
+<!-- ==================================================================== -->
+<section class="block">
+  <h2>01 · 聊天 <em>12 屏</em></h2>
+  <p class="desc">顶栏 104px 透明浮在消息区上；气泡 AI 左 / 我 右；底部输入胶囊常驻。</p>
+  <div class="grid">
+
+    <!-- 1.1 -->
+    <figure>
+      <div class="cap"><b>1.1</b> 聊天主页 <i>/chat</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div class="rnd md" style="left:16px;top:34px"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div>
+        <div class="rnd md" style="left:70px;top:34px"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <span class="dot-red" style="left:104px;top:36px"></span>
+
+        <div class="ava" style="left:193px;top:10px;width:44px;height:44px">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg>
+        </div>
+        <div class="pill" style="left:182px;top:62px;height:28px">小蓝莓
+          <svg class="ic-s" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+
+        <div class="rnd md" style="right:70px;top:34px"><svg class="ic" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></div>
+        <div class="rnd md" style="right:16px;top:34px"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m20.5 20.5-4.2-4.2"/></svg></div>
+
+        <div class="daymark" style="left:56px;right:56px;top:126px"><span class="l"></span>今天 · 16:53<span class="l"></span></div>
+
+        <div class="want" style="left:22px;top:154px">
+          <svg class="ic-s" viewBox="0 0 24 24" style="width:11px;height:11px;opacity:.6"><path d="m9 18 6-6-6-6"/></svg>
+          对方想说
+        </div>
+        <div class="row" style="left:22px;top:176px;width:386px">
+          <div class="bubble">（在你日记本「11 月 15 日」那一页，看到了你夹的字条）</div>
+          <span class="stamp">16:53</span>
+        </div>
+
+        <div class="inputbar">
+          <div class="field">
+            <span class="modeltag">模型
+              <svg class="ic-s" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+            <span>说点什么…</span>
+          </div>
+          <div class="send"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.2 -->
+    <figure>
+      <div class="cap"><b>1.2</b> 长按消息菜单 <i>chat / msg-menu</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div class="daymark" style="left:56px;right:56px;top:126px;opacity:.5"><span class="l"></span>今天 · 16:53<span class="l"></span></div>
+        <div class="work row" style="left:22px;top:176px;width:386px">
+          <div class="bubble" style="background:var(--chat-me);color:var(--chat-me-fg)">我最近老想着做一个能看见心情的日历</div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheetcard" style="top:250px">
+          <div class="mi"><svg class="ic-s" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>复制</div>
+          <div class="hair"></div>
+          <div class="mi"><svg class="ic-s" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>记进灵感库</div>
+          <div class="hair"></div>
+          <div class="mi"><svg class="ic-s" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>编辑并重发</div>
+          <div class="hair"></div>
+          <div class="mi"><svg class="ic-s" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>回滚到此处</div>
+          <div class="hair"></div>
+          <div class="mi"><svg class="ic-s" viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0v4a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="14" r="2"/></svg>设为今晚电台想听的</div>
+          <div class="hair"></div>
+          <div class="mi"><svg class="ic-s" viewBox="0 0 24 24"><path d="M9 17H7a4 4 0 0 1 0-8h2M15 9h2a4 4 0 0 1 0 8h-2M8 13h8"/></svg>引用</div>
+        </div>
+        <div class="sheetcard" style="bottom:16px;left:110px;right:110px;text-align:center;padding:13px 0;font-size:15px;font-weight:500">取消</div>
+      </div></div>
+    </figure>
+
+    <!-- 1.3 -->
+    <figure>
+      <div class="cap"><b>1.3</b> 主抽屉 · 日常看板 <i>shell/Drawer</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--bg)">
+        <div class="scrim" style="left:366px"></div>
+        <div class="drawer">
+          <div style="position:absolute;left:0;right:0;top:16px;display:flex;justify-content:flex-end;padding:0 14px">
+            <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:44px;display:flex;justify-content:center;gap:44px">
+            <div style="text-align:center">
+              <div class="eyebrow" style="margin-bottom:6px">TA</div>
+              <div class="ava" style="width:56px;height:56px;margin:0 auto">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg>
+              </div>
+            </div>
+            <div style="display:grid;place-items:center;padding-top:26px;color:var(--muted)"><svg class="ic-s" viewBox="0 0 24 24"><path d="M20.8 8.6a5 5 0 0 0-8.8-2.9 5 5 0 0 0-8.8 2.9c0 5 8.8 10.4 8.8 10.4s8.8-5.4 8.8-10.4z"/></svg></div>
+            <div style="text-align:center">
+              <div class="eyebrow" style="margin-bottom:6px">ME</div>
+              <div class="ava" style="width:56px;height:56px;margin:0 auto">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:140px;text-align:center">
+            <div style="font-size:12px;color:var(--muted)">在一起</div>
+            <div style="font-size:34px;font-weight:300;letter-spacing:.02em;margin-top:2px">2955<span style="font-size:13px;font-weight:400;margin-left:3px">天</span></div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:3px">2018.10.13 起</div>
+          </div>
+
+          <div style="position:absolute;left:16px;right:16px;top:262px">
+            <div class="eyebrow">日常生活 · Daily</div>
+            <div style="margin-top:10px;border-radius:16px;background:var(--card);border:1px solid var(--line);padding:14px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:14px;font-size:12.5px;color:var(--muted);margin-bottom:12px">
+                <span>‹</span><b style="color:var(--fg);font-weight:600">2026年11月</b><span>›</span>
+              </div>
+              <div style="display:flex;gap:10px">
+                <div style="width:88px;flex:none;padding-top:22px">
+                  <div style="font-size:13px;font-weight:600">星期日</div>
+                  <div style="font-size:40px;font-weight:300;line-height:1.05">15</div>
+                  <div style="font-size:10.5px;color:var(--muted)">2026年11月</div>
+                </div>
+                <div style="flex:1;font-size:10.5px;color:var(--muted)">
+                  <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:5px">
+                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;gap:3px 0;font-size:12px;color:var(--fg)">
+                    <span></span><span style="color:#d2708a">1</span><span style="color:#d2708a">2</span><span style="color:#d2708a">3</span><span style="color:#d2708a">4</span><span>5</span><span>6</span>
+                    <span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span>
+                    <span style="border:1.5px solid var(--primary);border-radius:50%;width:22px;height:22px;display:grid;place-items:center;margin:0 auto">15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span>
+                    <span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span>
+                    <span>29</span><span>30</span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;border-radius:14px;border:1px solid var(--line);padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
+              <span class="eyebrow">TO · DO</span>
+              <span style="color:var(--muted);font-size:18px">＋</span>
+            </div>
+
+            <div style="margin-top:12px;display:flex;gap:12px">
+              <div style="width:186px;border-radius:14px;background:var(--card);border:1px solid var(--line);padding:12px">
+                <div style="display:flex;justify-content:space-between;font-size:11.5px"><span>Token 记录</span><span style="color:var(--muted)">全部站子 ⌄</span></div>
+                <div style="width:96px;height:96px;border-radius:50%;border:5px solid var(--card2);margin:14px auto 10px;display:grid;place-items:center;text-align:center">
+                  <div><div style="font-size:15px;font-weight:600">¥0.00</div><div style="font-size:10px;color:var(--muted)">已花费</div></div>
+                </div>
+                <div style="font-size:11px;color:var(--muted);text-align:center">还剩一<br><span style="display:inline-block;margin-top:6px;color:var(--fg)">查看明细 ›</span></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+                <div style="flex:1;border-radius:14px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M3 8.5 12 4l9 4.5v8L12 21l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5M12 13v8"/></svg>
+                </div>
+                <div style="display:flex;gap:10px">
+                  <div class="rnd sm" style="position:static;flex:1;border-radius:12px">&nbsp;</div>
+                  <div class="rnd sm" style="position:static;flex:1;border-radius:12px">&nbsp;</div>
+                  <div class="rnd sm" style="position:static;flex:1;border-radius:12px">&nbsp;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:16px;right:16px;bottom:58px">
+            <div class="eyebrow" style="margin-bottom:8px">模块 · Modules</div>
+            <div style="border-radius:14px;border:1px solid var(--line);padding:12px 14px;display:flex;align-items:center;gap:9px;font-size:13.5px">
+              <span style="color:var(--muted)">☆</span><b style="font-weight:500">together</b>
+              <span style="margin-left:auto;font-size:11.5px;color:var(--muted)">4 项 ⌄</span>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:0;right:0;bottom:0;height:46px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:11px;color:var(--muted)">
+            <span>◷ v1 · 数据本地同步</span><span>全部设置 ⚙</span>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.4 -->
+    <figure>
+      <div class="cap"><b>1.4</b> 抽屉下钻 · 工具箱 <i>toolboxSections</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--bg)">
+        <div class="scrim" style="left:366px"></div>
+        <div class="drawer">
+          <div style="position:absolute;left:0;right:0;top:16px;display:flex;align-items:center;justify-content:space-between;padding:0 14px">
+            <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+            <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+          </div>
+          <div style="position:absolute;left:16px;right:16px;top:74px">
+            <div style="font-size:20px;font-weight:600">工具箱</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:2px">连接器 · 感知 · 工作区</div>
+            <div class="grid2" style="margin-top:16px">
+              <div class="tile"><div class="tg"><svg class="ic-s" viewBox="0 0 24 24"><path d="M10 3H4a1 1 0 0 0-1 1v6h7zM14 3h6a1 1 0 0 1 1 1v6h-7zM10 14H3v6a1 1 0 0 0 1 1h6zM14 14h7v6a1 1 0 0 1-1 1h-6z"/></svg></div><b>插件</b><span>连接器 · 工具</span></div>
+              <div class="tile"><div class="tg"><svg class="ic-s" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg></div><b>手机感知</b><span>电量 · 步数</span></div>
+              <div class="tile"><div class="tg"><svg class="ic-s" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><b>工作区</b><span>文件 · 代码</span></div>
+              <div class="tile"><div class="tg"><svg class="ic-s" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></div><b>技能</b><span>扩展能力</span></div>
+              <div class="tile" style="grid-column:span 2"><div class="tg"><svg class="ic-s" viewBox="0 0 24 24"><path d="M9 19c-4 1.5-5-2-7-2m14-1.5a5.6 5.6 0 0 0 1.5-4A6.6 6.6 0 0 0 11 5a6.6 6.6 0 0 0-6.5 6.5c0 1.5.5 2.9 1.5 4 0 1.5-.5 2.3-1 3 1.7.2 3-.5 3.5-1 1 .3 2 .5 3 .5s2-.2 3-.5c.5.5 1.8 1.2 3.5 1-.5-.7-1-1.5-1-3z"/></svg></div><b>开源项目</b><span>依赖 · 更新</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.5 -->
+    <figure>
+      <div class="cap"><b>1.5</b> 更多功能 <i>chat / + 面板</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div class="daymark" style="left:56px;right:56px;top:126px"><span class="l"></span>今天 · 16:53<span class="l"></span></div>
+        <div class="row" style="left:22px;top:176px;width:386px">
+          <div class="bubble">（在你日记本「11 月 15 日」那一页，看到了你夹的字条）</div>
+          <span class="stamp">16:53</span>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:298px;border-radius:22px 22px 0 0;background:var(--sheet);padding:14px 18px">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--chat-line);margin:0 auto 20px"></div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px 6px;text-align:center">
+            <div><div class="rnd sm" style="position:static;margin:0 auto;width:46px;height:46px"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14.5a4.5 4.5 0 0 0 7 0"/></svg></div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">表情包</div></div>
+            <div><div class="rnd sm" style="position:static;margin:0 auto;width:46px;height:46px"><svg class="ic" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">通话</div></div>
+            <div><div class="rnd sm" style="position:static;margin:0 auto;width:46px;height:46px"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5L20 17"/></svg></div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">图片</div></div>
+            <div><div class="rnd sm" style="position:static;margin:0 auto;width:46px;height:46px"><svg class="ic" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.2l1.1-2h8.4l1.1 2h1.2A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg></div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">拍照</div></div>
+            <div><div class="rnd sm" style="position:static;margin:0 auto;width:46px;height:46px"><svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">文件</div></div>
+            <div><div class="rnd sm" style="position:static;margin:0 auto;width:46px;height:46px"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div><div style="font-size:10.5px;color:var(--muted);margin-top:6px">语音</div></div>
+          </div>
+          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:26px">表情包可继续导入 · 长按可管理</div>
+        </div>
+        <div class="inputbar">
+          <div class="field">
+            <span class="modeltag">模型
+              <svg class="ic-s" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+            <span>说点什么…</span>
+          </div>
+          <div class="send" style="background:var(--chat-pill)"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.6 -->
+    <figure>
+      <div class="cap"><b>1.6</b> 表情包面板 <i>StickerPanel</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div class="row" style="left:22px;top:126px;width:386px">
+          <div class="bubble">（在你日记本「11 月 15 日」那一页，看到了你夹的字条）</div>
+          <span class="stamp">16:53</span>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:392px;border-radius:22px 22px 0 0;background:var(--sheet);padding:14px 18px">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--chat-line);margin:0 auto 16px"></div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <span class="pill" style="font-size:12px;background:var(--card3)">表情</span>
+            <span class="pill" style="font-size:12px;background:transparent;color:var(--muted)">贴纸</span>
+            <span class="pill" style="font-size:12px;background:transparent;color:var(--muted)">我的</span>
+            <span style="margin-left:auto;color:var(--muted);font-size:12px">导入</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🥺</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🫂</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">☕️</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🌙</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🫐</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">😶</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🌿</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">😴</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🍵</div>
+            <div style="aspect-ratio:1;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:22px">🫧</div>
+          </div>
+          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:18px">长按可管理 · 删除或移出常用</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.7 -->
+    <figure>
+      <div class="cap"><b>1.7</b> 模型切换 <i>ModelPicker</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div class="scrim" style="background:hsl(210 12% 6% / .3)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:430px;border-radius:22px 22px 0 0;background:var(--sheet);padding:18px 18px 0">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--chat-line);margin:0 auto 18px"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:16px;font-weight:600">选择模型</div>
+            <div style="color:var(--muted)"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+          </div>
+          <div class="eyebrow" style="margin:16px 0 8px">当前使用</div>
+          <div style="border-radius:14px;border:1.5px solid var(--primary);background:var(--card);padding:13px 14px;display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;border-radius:50%;background:#5fae7a"></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:600">qwen2.5:7b</div><div style="font-size:11.5px;color:var(--muted)">本地 Ollama · 127.0.0.1:11434</div></div>
+            <span style="font-size:11.5px;color:var(--primary)">✓</span>
+          </div>
+          <div class="eyebrow" style="margin:18px 0 8px">可用</div>
+          <div style="border-radius:14px;border:1px solid var(--line);padding:13px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--muted)"></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:500">默认对话</div><div style="font-size:11.5px;color:var(--muted)">跟随设置里的主模型</div></div>
+          </div>
+          <div style="border-radius:14px;border:1px solid var(--line);padding:13px 14px;display:flex;align-items:center;gap:10px">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--muted)"></div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:500">未配置</div><div style="font-size:11.5px;color:var(--muted)">去设置里填 base url 与 key</div></div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.8 -->
+    <figure>
+      <div class="cap"><b>1.8</b> 搜索记录 <i>SearchOverlay</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div style="position:absolute;left:0;right:0;top:0;height:104px;display:flex;align-items:center;gap:10px;padding:0 16px">
+          <div class="field" style="height:42px">
+            <svg class="ic-s" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m20.5 20.5-4.2-4.2"/></svg>
+            <span>搜索指定内容</span>
+          </div>
+          <span style="font-size:14px;color:var(--muted)">取消</span>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;top:112px">
+          <div class="eyebrow">按类型</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <span class="pill" style="font-size:12px">全部</span>
+            <span class="pill" style="font-size:12px;background:transparent;border:1px solid var(--chat-line);color:var(--muted)">消息</span>
+            <span class="pill" style="font-size:12px;background:transparent;border:1px solid var(--chat-line);color:var(--muted)">日记</span>
+            <span class="pill" style="font-size:12px;background:transparent;border:1px solid var(--chat-line);color:var(--muted)">信件</span>
+          </div>
+          <div class="eyebrow" style="margin:24px 0 10px">最近搜过</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:11px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--chat-line);font-size:13.5px">
+              <svg class="ic-s" viewBox="0 0 24 24" style="color:var(--muted)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>日记 字条
+            </div>
+            <div style="padding:11px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--chat-line);font-size:13.5px">
+              <svg class="ic-s" viewBox="0 0 24 24" style="color:var(--muted)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>深夜来信
+            </div>
+          </div>
+          <div style="margin-top:40px;text-align:center;font-size:12px;color:var(--chat-meta)">输入关键词后，会同时搜消息、日记和信件</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.9 -->
+    <figure>
+      <div class="cap"><b>1.9</b> 内心与记忆 <i>MindDrawer → 心潮</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--bg)">
+        <div style="position:absolute;left:0;right:0;top:0;height:66px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;gap:12px">
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9.5px">XINCHAO</div><div style="font-size:19px;font-weight:600;line-height:1.2">心潮</div></div>
+          <div style="margin-left:auto;color:var(--muted)"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div>
+        </div>
+        <div style="position:absolute;left:16px;top:80px;display:flex;gap:8px">
+          <span class="pill" style="background:var(--card2);font-size:12.5px">心潮</span>
+          <span class="pill" style="background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12.5px">记忆</span>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:126px;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:16px">
+          <div style="font-size:15px;font-weight:600">心潮还没启动</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.7">服务不可达。启动后这边会显示花瓣、念头池、情绪、时间线、小屋和内核。</div>
+          <div style="margin-top:12px;border-radius:10px;background:var(--card2);padding:10px 12px;font-family:ui-monospace,monospace;font-size:11.5px;color:var(--muted);line-height:1.7">
+            cd xinchao<br>node --env-file=.env src/server.js
+          </div>
+          <div style="margin-top:12px;display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:8px;background:hsl(209 62% 58%);color:#fff;font-size:12.5px;font-weight:500">重试</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.10 -->
+    <figure>
+      <div class="cap"><b>1.10</b> 心情弹层 <i>MoodPopover</i></div>
+      <div class="wrap"><div class="frame" style="background:var(--chat-bg)">
+        <div class="scrim" style="background:hsl(210 12% 6% / .24)"></div>
+        <div class="sheetcard" style="left:40px;right:40px;top:150px;padding:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:14px;font-weight:600">此刻</div>
+            <div style="font-size:11px;color:var(--muted)">刚刚</div>
+          </div>
+          <div style="height:1px;background:var(--line);margin:12px 0"></div>
+          <div style="font-size:12.5px;color:var(--muted);line-height:1.9">
+            <div style="display:flex;justify-content:space-between"><span>平静</span><span style="color:var(--fg)">72</span></div>
+            <div style="height:5px;border-radius:3px;background:var(--card2);overflow:hidden;margin:4px 0 10px"><div style="width:72%;height:100%;background:var(--primary)"></div></div>
+            <div style="display:flex;justify-content:space-between"><span>想念</span><span style="color:var(--fg)">58</span></div>
+            <div style="height:5px;border-radius:3px;background:var(--card2);overflow:hidden;margin:4px 0 10px"><div style="width:58%;height:100%;background:var(--primary)"></div></div>
+            <div style="display:flex;justify-content:space-between"><span>疲惫</span><span style="color:var(--fg)">31</span></div>
+            <div style="height:5px;border-radius:3px;background:var(--card2);overflow:hidden;margin:4px 0 0"><div style="width:31%;height:100%;background:var(--primary)"></div></div>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:14px">这一刻没有留下心声。</div>
+        </div>
+        <div class="inputbar">
+          <div class="field">
+            <span class="modeltag">模型
+              <svg class="ic-s" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
+            <span>说点什么…</span>
+          </div>
+          <div class="send"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.11 -->
+    <figure>
+      <div class="cap"><b>1.11</b> 来电 <i>CallRingingLayer</i></div>
+      <div class="wrap"><div class="frame" style="background:hsl(210 10% 9%)">
+        <div style="position:absolute;left:0;right:0;top:96px;text-align:center;color:hsl(210 8% 88%)">
+          <div style="font-size:11.5px;letter-spacing:.16em;opacity:.55">INCOMING</div>
+          <div style="font-size:22px;font-weight:600;margin-top:10px">小蓝莓</div>
+          <div style="font-size:12px;opacity:.5;margin-top:4px">语音通话 · 正在呼叫你</div>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:250px;display:grid;place-items:center">
+          <div style="width:132px;height:132px;border-radius:50%;background:hsl(210 8% 17%);display:grid;place-items:center">
+            <div style="width:104px;height:104px;border-radius:50%;background:hsl(210 8% 22%);display:grid;place-items:center">
+              <svg viewBox="0 0 24 24" style="width:60px;height:60px"><circle cx="12" cy="8.6" r="4.1" fill="hsl(210 8% 62%)"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" fill="hsl(210 8% 62%)"/></svg>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:96px;display:flex;justify-content:center;gap:78px">
+          <div style="text-align:center">
+            <div style="width:64px;height:64px;border-radius:50%;background:#bf4a45;display:grid;place-items:center;margin:0 auto">
+              <svg class="ic" viewBox="0 0 24 24" style="width:26px;height:26px;color:#fff;transform:rotate(135deg)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+            </div>
+            <div style="font-size:11.5px;color:hsl(210 8% 70%);margin-top:9px">挂断</div>
+          </div>
+          <div style="text-align:center">
+            <div style="width:64px;height:64px;border-radius:50%;background:#4b9a6d;display:grid;place-items:center;margin:0 auto">
+              <svg class="ic" viewBox="0 0 24 24" style="width:26px;height:26px;color:#fff"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+            </div>
+            <div style="font-size:11.5px;color:hsl(210 8% 70%);margin-top:9px">接听</div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 1.12 -->
+    <figure>
+      <div class="cap"><b>1.12</b> 通话中 <i>CallOverlay</i></div>
+      <div class="wrap"><div class="frame" style="background:hsl(210 10% 9%)">
+        <div style="position:absolute;left:0;right:0;top:84px;text-align:center;color:hsl(210 8% 88%)">
+          <div style="font-size:22px;font-weight:600">小蓝莓</div>
+          <div style="font-size:12.5px;opacity:.55;margin-top:6px;font-variant-numeric:tabular-nums">02:14</div>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:206px;display:grid;place-items:center">
+          <div style="width:152px;height:152px;border-radius:50%;background:hsl(210 8% 17%);display:grid;place-items:center">
+            <svg viewBox="0 0 24 24" style="width:76px;height:76px"><circle cx="12" cy="8.6" r="4.1" fill="hsl(210 8% 64%)"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" fill="hsl(210 8% 64%)"/></svg>
+          </div>
+        </div>
+        <div style="position:absolute;left:34px;right:34px;top:420px;display:flex;gap:6px;align-items:flex-end;justify-content:center;height:44px">
+          <span style="width:4px;height:14px;border-radius:2px;background:hsl(210 10% 40%)"></span>
+          <span style="width:4px;height:26px;border-radius:2px;background:hsl(210 10% 46%)"></span>
+          <span style="width:4px;height:38px;border-radius:2px;background:hsl(210 10% 54%)"></span>
+          <span style="width:4px;height:20px;border-radius:2px;background:hsl(210 10% 44%)"></span>
+          <span style="width:4px;height:32px;border-radius:2px;background:hsl(210 10% 50%)"></span>
+          <span style="width:4px;height:10px;border-radius:2px;background:hsl(210 10% 38%)"></span>
+          <span style="width:4px;height:28px;border-radius:2px;background:hsl(210 10% 48%)"></span>
+          <span style="width:4px;height:40px;border-radius:2px;background:hsl(210 10% 56%)"></span>
+          <span style="width:4px;height:22px;border-radius:2px;background:hsl(210 10% 44%)"></span>
+          <span style="width:4px;height:34px;border-radius:2px;background:hsl(210 10% 52%)"></span>
+          <span style="width:4px;height:16px;border-radius:2px;background:hsl(210 10% 40%)"></span>
+          <span style="width:4px;height:30px;border-radius:2px;background:hsl(210 10% 48%)"></span>
+          <span style="width:4px;height:44px;border-radius:2px;background:hsl(210 10% 58%)"></span>
+          <span style="width:4px;height:18px;border-radius:2px;background:hsl(210 10% 42%)"></span>
+        </div>
+        <div style="position:absolute;left:30px;right:30px;bottom:120px;display:flex;justify-content:space-between">
+          <div style="text-align:center"><div class="rnd sm" style="position:static;width:58px;height:58px;background:hsl(210 8% 16%)"><svg class="ic" viewBox="0 0 24 24" style="color:hsl(210 8% 78%)"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M6 11a6 6 0 0 0 12 0M12 18v3"/></svg></div><div style="font-size:11px;color:hsl(210 8% 62%);margin-top:7px">静音</div></div>
+          <div style="text-align:center"><div class="rnd sm" style="position:static;width:58px;height:58px;background:hsl(210 8% 16%)"><svg class="ic" viewBox="0 0 24 24" style="color:hsl(210 8% 78%)"><path d="M3 12a9 9 0 0 1 18 0v5a3 3 0 0 1-3 3h-3"/><rect x="2" y="11" width="4" height="7" rx="2"/><rect x="18" y="11" width="4" height="7" rx="2"/></svg></div><div style="font-size:11px;color:hsl(210 8% 62%);margin-top:7px">免提</div></div>
+          <div style="text-align:center"><div class="rnd sm" style="position:static;width:58px;height:58px;background:hsl(210 8% 16%)"><svg class="ic" viewBox="0 0 24 24" style="color:hsl(210 8% 78%)"><path d="M17 2v4a3 3 0 0 0 3 3h2"/><path d="M21 15a19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 3.3 2H2"/><path d="M2 8h4"/></svg></div><div style="font-size:11px;color:hsl(210 8% 62%);margin-top:7px">录音</div></div>
+          <div style="text-align:center"><div class="rnd sm" style="position:static;width:58px;height:58px;background:#bf4a45"><svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px;color:#fff;transform:rotate(135deg)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg></div><div style="font-size:11px;color:hsl(210 8% 62%);margin-top:7px">挂断</div></div>
+        </div>
+      </div></div>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 02 · 日记                                                            -->
+<!-- ==================================================================== -->
+<section class="block">
+  <h2>02 · 日记 <em>7 屏</em></h2>
+  <p class="desc">一屏一页纸；纸上的线是画出来的（ink），不是 border。字条与贴图压在纸面上。</p>
+  <div class="grid">
+
+    <!-- 2.1 -->
+    <figure>
+      <div class="cap"><b>2.1</b> 一天一页 <i>DlogLeaf</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9.5px">D · LOG</div><div class="tt">我的日记</div></div>
+          <div style="margin-left:auto;font-size:12px;color:var(--muted)">11 月 ▾</div>
+        </div>
+
+        <div class="paper" style="left:14px;right:14px;top:92px;bottom:66px;padding:26px 24px">
+          <div class="ruled"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div style="position:relative">
+            <div style="font-size:21px;font-weight:600;letter-spacing:.02em">11 月 15 日</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:3px">星期日 · 多云 · 记于 16:53</div>
+
+            <div style="font-size:14px;line-height:2.05;margin-top:20px;color:color-mix(in srgb,var(--fg) 88%,transparent)">
+              今天把灵感库整个重做了一遍，从两层结构收成一条流。<br>
+              他说想看看长什么样，我就一屏一屏截给他。<br>
+              晚上还得把日记那块收个尾。
+            </div>
+
+            <div class="slip" style="position:absolute;left:150px;top:190px;width:168px;transform:rotate(-2.2deg)">
+              <div class="tape" style="left:56px;top:-7px"></div>
+              记得问他：那次日历的想法，是不是也要记进灵感库？
+            </div>
+
+            <div class="polaroid" style="position:absolute;left:8px;top:250px;width:112px;transform:rotate(1.8deg)">
+              <div style="height:96px;border-radius:2px;background:linear-gradient(160deg,hsl(210 16% 34%),hsl(210 12% 22%));display:grid;place-items:center;color:hsl(210 10% 62%);font-size:10px">窗外</div>
+              <div style="font-size:9.5px;text-align:center;margin-top:3px;color:#8a7f6b">11.15 傍晚</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:18px;right:18px;bottom:20px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:5px"><svg class="ic-s" viewBox="0 0 24 24" style="width:13px;height:13px"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>这一页锁着</span>
+          <span>第 3 页 / 共 12 页</span>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 2.2 -->
+    <figure>
+      <div class="cap"><b>2.2</b> 写日记 <i>DlogCompose</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <span style="font-size:14px;color:var(--muted)">取消</span>
+          <div><div class="eyebrow" style="font-size:9.5px">11 / 15</div><div class="tt" style="font-size:17px">写点什么</div></div>
+          <span style="margin-left:auto;font-size:14px;color:var(--primary);font-weight:500">记下</span>
+        </div>
+
+        <div class="paper" style="left:14px;right:14px;top:92px;bottom:112px;padding:26px 24px">
+          <div class="ruled"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div style="position:relative">
+            <div style="font-size:21px;font-weight:600">11 月 15 日</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:3px">星期日 · 自动存</div>
+            <div style="font-size:14px;line-height:2.05;margin-top:20px">
+              今天把灵感库整个重做了一遍，从两层收成一条流。<br>
+              他说想看看长什么样，我就一屏一屏截给他<span style="display:inline-block;width:1.5px;height:17px;background:var(--primary);vertical-align:-3px;animation:none"></span>
+            </div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;height:100px;border-top:1px solid var(--line);background:var(--bg);display:flex;align-items:center;padding:0 18px;gap:12px">
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><circle cx="12" cy="12" r="9"/><path d="M9 9.5h.01M15 9.5h.01M8.5 14.5a4.5 4.5 0 0 0 7 0"/></svg></div>
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5L20 17"/></svg></div>
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M4 4h16v12H4z"/><path d="M8 8h8M8 12h5"/></svg></div>
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)">
+            <span style="width:5px;height:5px;border-radius:50%;background:#5fae7a"></span>已保存
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 2.3 -->
+    <figure>
+      <div class="cap"><b>2.3</b> 这一页上锁 <i>PageLockSheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="paper" style="left:14px;right:14px;top:92px;bottom:66px;padding:26px 24px;filter:blur(2.5px);opacity:.5">
+          <div style="font-size:21px;font-weight:600">11 月 15 日</div>
+          <div style="font-size:14px;line-height:2.05;margin-top:20px">今天把灵感库整个重做了一遍</div>
+        </div>
+        <div class="scrim"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:400px;border-radius:22px 22px 0 0;background:var(--sheet);padding:18px 22px">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 20px"></div>
+          <div style="text-align:center">
+            <div style="width:46px;height:46px;border-radius:50%;background:var(--card2);display:grid;place-items:center;margin:0 auto">
+              <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            </div>
+            <div style="font-size:16px;font-weight:600;margin-top:14px">这一页锁着</div>
+            <div style="font-size:12.5px;color:var(--muted);margin-top:6px">输四位数，或者敲敲门等他来开</div>
+          </div>
+          <div style="display:flex;justify-content:center;gap:12px;margin:22px 0 6px">
+            <span style="width:44px;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:19px">•</span>
+            <span style="width:44px;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:19px">•</span>
+            <span style="width:44px;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:19px">•</span>
+            <span style="width:44px;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:19px">•</span>
+          </div>
+          <div style="text-align:center;font-size:11.5px;color:#b9615c;margin-bottom:16px">密码不对，再想想</div>
+          <div style="height:46px;border-radius:12px;background:var(--card2);display:grid;place-items:center;font-size:14px;font-weight:500">敲敲门</div>
+          <div style="text-align:center;font-size:11.5px;color:var(--muted);margin-top:12px">敲过两次他都没开 · 可以撬</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 2.4 -->
+    <figure>
+      <div class="cap"><b>2.4</b> 撬开之后 <i>LockedLeaf / sneak</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:17px">11 月 15 日</div>
+          <div style="margin-left:auto;font-size:11px;color:#c08a3e">被撬过</div>
+        </div>
+        <div class="paper" style="left:14px;right:14px;top:92px;bottom:66px;padding:26px 24px">
+          <div class="ruled"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div style="position:relative">
+            <div style="font-size:14px;line-height:2.05;color:color-mix(in srgb,var(--fg) 88%,transparent)">
+              今天把灵感库整个重做了一遍，从两层结构收成一条流。<br>
+              他说想看看长什么样，我就一屏一屏截给他。<br>
+              晚上还得把日记那块收个尾。
+            </div>
+
+            <div class="slip" style="position:absolute;left:24px;top:210px;width:230px;transform:rotate(1.4deg);border:1px solid color-mix(in srgb,var(--primary) 32%,transparent)">
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">他刚贴上的</div>
+              看到了。这一页不该我看到，但我看了。<br>下次别撬，直接问我。
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;bottom:22px;font-size:11px;color:var(--muted);text-align:center">
+          撬过的页面会留下痕迹 · 他下次进来就看得见
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 2.5 -->
+    <figure>
+      <div class="cap"><b>2.5</b> 贴纸面板 <i>StickerPicker</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="paper" style="left:14px;right:14px;top:80px;bottom:66px;padding:26px 24px">
+          <div style="font-size:21px;font-weight:600">11 月 15 日</div>
+          <div style="font-size:14px;line-height:2.05;margin-top:18px;color:color-mix(in srgb,var(--fg) 88%,transparent)">今天把灵感库整</div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:330px;border-radius:22px 22px 0 0;background:var(--sheet);padding:14px 18px">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <span class="pill" style="font-size:12px;background:var(--card3)">表情</span>
+            <span class="pill" style="font-size:12px;background:transparent;color:var(--muted)">贴纸</span>
+            <span class="pill" style="font-size:12px;background:transparent;color:var(--muted)">我的</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🌿</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">☕️</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🌙</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🫐</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🍂</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🕯️</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🫧</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🌧️</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🧸</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">📎</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">🎧</div>
+            <div style="aspect-ratio:1;display:grid;place-items:center;font-size:21px">✦</div>
+          </div>
+          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:16px">点一下贴到当前页 · 长按拖动</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 2.6 -->
+    <figure>
+      <div class="cap"><b>2.6</b> 换本子 <i>BookSwitcher</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+          <div class="tt" style="font-size:17px">我的本子</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:96px;display:flex;flex-direction:column;gap:12px">
+          <div class="card" style="padding:15px;display:flex;align-items:center;gap:14px;border-color:var(--primary)">
+            <div style="width:44px;height:56px;border-radius:4px;background:color-mix(in srgb,var(--primary) 24%,var(--card2));box-shadow:inset -4px 0 0 hsl(0 0% 0% / .16)"></div>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:600">我的日记</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">D · LOG · 流水账，一天一页</div></div>
+            <span style="font-size:11.5px;color:var(--primary)">使用中</span>
+          </div>
+          <div class="card" style="padding:15px;display:flex;align-items:center;gap:14px">
+            <div style="width:44px;height:56px;border-radius:4px;background:color-mix(in srgb,#b98f2e 26%,var(--card2));box-shadow:inset -4px 0 0 hsl(0 0% 0% / .16)"></div>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:600">他的日记</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">只读 · 他写的东西你只能看</div></div>
+            <span style="font-size:11.5px;color:var(--muted)">打开</span>
+          </div>
+          <div class="card" style="padding:15px;display:flex;align-items:center;gap:14px">
+            <div style="width:44px;height:56px;border-radius:4px;background:color-mix(in srgb,#a3748a 26%,var(--card2));box-shadow:inset -4px 0 0 hsl(0 0% 0% / .16)"></div>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:600">一起写的</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">情侣本 · 一天一页，两人都能写</div></div>
+            <span style="font-size:11.5px;color:var(--muted)">打开</span>
+          </div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;bottom:26px;font-size:11px;color:var(--muted);line-height:1.8">
+          他的本子只能读。想给他留话，用字条夹在他的页面里，他会看到。
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 2.7 -->
+    <figure>
+      <div class="cap"><b>2.7</b> 拍立得大图 <i>PhotoViewer</i></div>
+      <div class="wrap"><div class="frame" style="background:#0c0d0f">
+        <div style="position:absolute;left:28px;right:28px;top:150px">
+          <div class="polaroid" style="transform:rotate(-1.2deg);padding:9px 9px 34px">
+            <div style="height:300px;border-radius:2px;background:linear-gradient(160deg,hsl(210 16% 34%),hsl(210 12% 20%));display:grid;place-items:center;color:hsl(210 10% 58%);font-size:12px">窗外 · 傍晚</div>
+            <div style="font-size:12px;text-align:center;margin-top:9px;color:#8a7f6b">11.15 傍晚 17:20</div>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:96px;display:flex;align-items:center;justify-content:space-around;color:hsl(210 8% 74%);font-size:11.5px">
+          <span style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg class="ic-s" viewBox="0 0 24 24" style="width:19px;height:19px"><path d="M12 3v12M6 9l6 6 6-6M4 21h16"/></svg>保存</span>
+          <span style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg class="ic-s" viewBox="0 0 24 24" style="width:19px;height:19px"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>配一句话</span>
+          <span style="display:flex;flex-direction:column;align-items:center;gap:6px;color:#c07a75"><svg class="ic-s" viewBox="0 0 24 24" style="width:19px;height:19px"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>删除</span>
+        </div>
+        <div style="position:absolute;right:18px;top:22px;width:34px;height:34px;border-radius:50%;background:hsl(210 8% 16%);display:grid;place-items:center;color:hsl(210 8% 76%)">
+          <svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </div>
+      </div></div>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 03 · 灵感                                                            -->
+<!-- ==================================================================== -->
+<section class="block">
+  <h2>03 · 灵感 <em>4 屏</em></h2>
+  <p class="desc">一条灵感流；详情是整屏分段白卡；记录灵感靠贴链接自动解析。</p>
+  <div class="grid">
+
+    <!-- 3.1 -->
+    <figure>
+      <div class="cap"><b>3.1</b> 灵感详情 <i>InspirationDetail</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="background:var(--bg)">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div style="margin-left:auto;display:flex;gap:14px;color:var(--muted)">
+            <svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            <svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:76px;bottom:0;overflow:hidden;padding:16px">
+          <div class="card" style="padding:16px">
+            <div style="font-size:19px;font-weight:600;line-height:1.4">vitejs/vite：新一代前端构建工具</div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <span class="pill" style="font-size:11px;padding:3px 9px;background:var(--card2)">GitHub</span>
+              <span class="pill" style="font-size:11px;padding:3px 9px;background:transparent;border:1px solid var(--line);color:var(--muted)">#前端</span>
+              <span class="pill" style="font-size:11px;padding:3px 9px;background:transparent;border:1px solid var(--line);color:var(--muted)">#工具</span>
+            </div>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:10px">
+            <div class="eyebrow" style="margin-bottom:8px">我的笔记</div>
+            <div style="font-size:13.5px;line-height:1.85;color:color-mix(in srgb,var(--fg) 86%,transparent)">启动快得离谱，冷启动 300ms。想把它的依赖预构建思路借过来看看。</div>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:10px">
+            <div class="eyebrow" style="margin-bottom:10px">正文</div>
+            <div style="font-size:13px;line-height:1.9;color:color-mix(in srgb,var(--fg) 80%,transparent)">
+              Vite 用原生 ESM 直接跑源码，把打包留到生产。<br><br>
+              依赖用 esbuild 预构建，源码按需转译，所以开发态几乎不用等。
+            </div>
+          </div>
+
+          <div class="card" style="padding:10px;margin-top:10px">
+            <div style="height:120px;border-radius:9px;background:linear-gradient(140deg,hsl(210 18% 26%),hsl(210 14% 16%));display:grid;place-items:center;color:hsl(210 10% 62%);font-size:11.5px">GitHub 预览图 16:9</div>
+          </div>
+
+          <div class="card" style="padding:14px 16px;margin-top:10px;display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted)">
+            <svg class="ic-s" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M9 17H7a4 4 0 0 1 0-8h2M15 9h2a4 4 0 0 1 0 8h-2M8 13h8"/></svg>
+            <span style="color:var(--primary)">github.com/vitejs/vite</span>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 3.2 -->
+    <figure>
+      <div class="cap"><b>3.2</b> 记录灵感 <i>ComposeSheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="background:var(--bg);justify-content:space-between">
+          <span style="font-size:14px;color:var(--muted)">取消</span>
+          <div class="tt" style="font-size:17px">记录灵感</div>
+          <span style="font-size:14px;color:var(--primary);font-weight:500">保存</span>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div style="border-radius:12px;background:var(--card);border:1px solid var(--line);padding:12px 14px;display:flex;align-items:center;gap:9px;font-size:13px">
+            <svg class="ic-s" viewBox="0 0 24 24" style="width:15px;height:15px;color:var(--muted)"><path d="M9 17H7a4 4 0 0 1 0-8h2M15 9h2a4 4 0 0 1 0 8h-2M8 13h8"/></svg>
+            <span style="color:var(--primary)">https://github.com/vitejs/vite</span>
+            <span style="margin-left:auto;font-size:11px;color:#5fae7a">已解析</span>
+          </div>
+
+          <div class="card" style="margin-top:10px;padding:12px;display:flex;gap:12px">
+            <div style="width:76px;height:48px;border-radius:7px;background:linear-gradient(140deg,hsl(210 18% 26%),hsl(210 14% 16%));flex:none"></div>
+            <div style="min-width:0">
+              <div style="font-size:13px;font-weight:600;line-height:1.5">vitejs/vite</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">新一代前端构建工具 · 0.8s</div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px;font-size:15px;line-height:1.85;color:var(--muted);min-height:110px">
+            写点什么…<br>
+            <span style="color:var(--fg)">冷启动 300ms，想把依赖预构建的思路借过来。</span>
+          </div>
+
+          <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="pill" style="font-size:11.5px;background:var(--card2)">#前端</span>
+            <span class="pill" style="font-size:11.5px;background:var(--card2)">#工具</span>
+            <span class="pill" style="font-size:11.5px;background:transparent;border:1px dashed var(--line);color:var(--muted)">+ 标签</span>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 3.3 -->
+    <figure>
+      <div class="cap"><b>3.3</b> 统计 <i>StatsSheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="background:var(--bg);justify-content:space-between">
+          <div class="tt" style="font-size:17px">统计</div>
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:96px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div class="card" style="padding:14px;text-align:center">
+              <div style="font-size:26px;font-weight:300">128</div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:2px">总条数</div>
+            </div>
+            <div class="card" style="padding:14px;text-align:center">
+              <div style="font-size:26px;font-weight:300">9</div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:2px">本周</div>
+            </div>
+            <div class="card" style="padding:14px;text-align:center">
+              <div style="font-size:26px;font-weight:300">6</div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:2px">连续天数</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+              <span style="font-size:13px;font-weight:600">最近 26 周</span>
+              <span style="font-size:10.5px;color:var(--muted)">少 → 多</span>
+            </div>
+            <div class="heat" id="heatgrid"></div>
+          </div>
+
+          <div class="card" style="padding:16px;margin-top:12px">
+            <div class="eyebrow" style="margin-bottom:10px">来源分布</div>
+            <div style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:9px">
+              <div><div style="display:flex;justify-content:space-between;color:var(--fg)"><span>自己写的</span><span>62</span></div><div style="height:5px;border-radius:3px;background:var(--card2);margin-top:5px"><div style="width:48%;height:100%;border-radius:3px;background:var(--primary)"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;color:var(--fg)"><span>GitHub</span><span>34</span></div><div style="height:5px;border-radius:3px;background:var(--card2);margin-top:5px"><div style="width:27%;height:100%;border-radius:3px;background:var(--primary)"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;color:var(--fg)"><span>小红书</span><span>22</span></div><div style="height:5px;border-radius:3px;background:var(--card2);margin-top:5px"><div style="width:17%;height:100%;border-radius:3px;background:var(--primary)"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;color:var(--fg)"><span>网页</span><span>10</span></div><div style="height:5px;border-radius:3px;background:var(--card2);margin-top:5px"><div style="width:8%;height:100%;border-radius:3px;background:var(--primary)"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 3.4 -->
+    <figure>
+      <div class="cap"><b>3.4</b> 书签脚本 <i>BookmarkSheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="background:var(--bg);justify-content:space-between">
+          <div class="tt" style="font-size:17px">剪藏书签</div>
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:96px">
+          <div style="font-size:13px;line-height:1.85;color:color-mix(in srgb,var(--fg) 84%,transparent)">
+            把下面一段存成书签，在任意页面点一下，就能把当前页面剪进灵感库。
+          </div>
+          <div style="margin-top:14px;border-radius:12px;background:var(--card2);padding:14px;font-family:ui-monospace,monospace;font-size:10.5px;line-height:1.75;color:var(--muted);max-height:190px;overflow:hidden">
+            javascript:(()=&gt;{const t=document.title,u=location.href,s=document.getSelection().toString();window.open('http://localhost:5173/wishlist#clip='+encodeURIComponent(JSON.stringify({url:u,title:t,text:s})),'_blank')})()
+          </div>
+          <div style="margin-top:14px;height:44px;border-radius:12px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-size:14px;font-weight:500">复制脚本</div>
+
+          <div style="margin-top:26px">
+            <div class="eyebrow" style="margin-bottom:10px">怎么装</div>
+            <div style="font-size:12.5px;line-height:2;color:var(--muted)">
+              1 · 复制上面那段<br>
+              2 · 随便加一个书签，把网址改成它<br>
+              3 · 在要剪的页面点一下
+            </div>
+          </div>
+
+          <div style="margin-top:22px;border-radius:12px;border:1px solid var(--line);padding:13px 14px;font-size:11.5px;line-height:1.8;color:var(--muted)">
+            <b style="color:var(--fg);font-weight:600">已知限制</b><br>
+            小红书服务端拿不到正文，只能拆「标题 - 作者」；正文和配图要走这个书签。
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 04 · 阅读与信                                                        -->
+<!-- ==================================================================== -->
+<section class="block">
+  <h2>04 · 阅读与信 <em>4 屏</em></h2>
+  <p class="desc">阅读器是分栏朗读；信是火漆信封，拆开即永久撕开。</p>
+  <div class="grid">
+
+    <!-- 4.1 -->
+    <figure>
+      <div class="cap"><b>4.1</b> 阅读器 <i>/read/:id</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9px">READ</div><div class="tt" style="font-size:16px">阅读</div></div>
+          <div style="margin-left:auto;display:flex;gap:7px">
+            <span class="pill" style="font-size:11px;padding:4px 10px">摘录</span>
+            <span class="pill" style="font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--line);color:var(--muted)">分段</span>
+          </div>
+        </div>
+        <div style="position:absolute;left:20px;right:20px;top:92px">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:.1em">CHAPTER 3</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">我们读书，而后知道自己并不孤单</div>
+          <div style="font-size:15px;line-height:2.1;margin-top:22px;color:color-mix(in srgb,var(--fg) 90%,transparent)">
+            那天的风很轻，把窗帘吹得鼓起来，像有人在里面呼吸。<br><br>
+            我坐在窗边翻一本书，翻到一半就停了，因为楼下有人在叫你的名字。<br><br>
+            <span style="background:color-mix(in srgb,var(--primary) 18%,transparent);border-bottom:1px solid var(--primary)">你应了一声，然后跑下楼，脚步一直响到第三层。</span>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:92px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around">
+          <div style="text-align:center;font-size:10.5px;color:var(--muted)"><div style="width:44px;height:44px;border-radius:50%;background:var(--primary);display:grid;place-items:center;margin:0 auto 5px"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;color:var(--on-primary)"><path d="M7 4v16l13-8z"/></svg></div>开始</div>
+          <div style="text-align:center;font-size:10.5px;color:var(--muted)"><div class="rnd sm" style="position:static;margin:0 auto 5px;width:44px;height:44px"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M8 5v14M16 5v14"/></svg></div>暂停</div>
+          <div style="text-align:center;font-size:10.5px;color:var(--muted)"><div class="rnd sm" style="position:static;margin:0 auto 5px;width:44px;height:44px"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></div>停止</div>
+          <div style="text-align:center;font-size:10.5px;color:var(--muted)"><div class="rnd sm" style="position:static;margin:0 auto 5px;width:44px;height:44px"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg></div>收藏</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 4.2 -->
+    <figure>
+      <div class="cap"><b>4.2</b> 书详情 <i>BookDetailModal</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="scrim"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:620px;border-radius:22px 22px 0 0;background:var(--sheet);padding:18px 22px">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 20px"></div>
+          <div style="display:flex;gap:16px">
+            <div style="width:92px;height:130px;border-radius:5px;background:linear-gradient(150deg,hsl(210 20% 30%),hsl(210 16% 18%));flex:none;display:grid;place-items:center;color:hsl(210 10% 66%);font-size:10px;text-align:center;padding:8px">书的封面</div>
+            <div style="min-width:0">
+              <div style="font-size:17px;font-weight:600;line-height:1.4">夜晚的潜水艇</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:6px">陈春成 · 短篇小说集</div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <span class="pill" style="font-size:10.5px;padding:3px 8px">在读</span>
+                <span class="pill" style="font-size:10.5px;padding:3px 8px;background:transparent;border:1px solid var(--line);color:var(--muted)">已读 34%</span>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.9;color:color-mix(in srgb,var(--fg) 78%,transparent);margin-top:16px">
+            九个短篇，写人在现实里给自己找的退路。有人把自己折进山，有人把整座园林搬进梦里。
+          </div>
+          <div class="eyebrow" style="margin:20px 0 8px">章节</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:11px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;font-size:13px"><span>01 · 夜晚的潜水艇</span><span style="color:var(--muted);font-size:11.5px">已读</span></div>
+            <div style="padding:11px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;font-size:13px"><span>02 · 竹峰寺</span><span style="color:var(--primary);font-size:11.5px">在读</span></div>
+            <div style="padding:11px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;font-size:13px"><span>03 · 传彩笔</span><span style="color:var(--muted);font-size:11.5px">12 分钟</span></div>
+          </div>
+          <div style="margin-top:16px;height:46px;border-radius:12px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-size:14px;font-weight:500">继续读</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 4.3 -->
+    <figure>
+      <div class="cap"><b>4.3</b> 拆信 <i>LetterSheetModal</i></div>
+      <div class="wrap"><div class="frame" style="background:#15171a">
+        <div style="position:absolute;left:0;right:0;top:22px;text-align:center;color:hsl(210 8% 76%);font-size:11.5px;letter-spacing:.14em">深夜来信 · 第 3 封</div>
+        <div style="position:absolute;left:26px;right:26px;top:74px;bottom:52px;border-radius:8px;background:linear-gradient(150deg,#2c3350,#1d2237);box-shadow:0 20px 50px -20px #000;overflow:hidden">
+          <div style="position:absolute;left:0;right:0;top:0;height:100%;background:linear-gradient(180deg,transparent 58%,hsl(30 30% 90% / .1) 58%)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:110px;background:hsl(0 0% 0% / .12)"></div>
+          <div style="position:absolute;left:18px;top:16px;display:flex;align-items:center;gap:6px;color:#cfd4e6;font-size:11px">
+            <span style="width:14px;height:16px;border-radius:2px;background:#c0564f;display:grid;place-items:center;font-size:8px;color:#fff">信</span>深夜来信 · 第 3 封
+          </div>
+          <div class="wax" style="position:absolute;left:50%;top:120px;transform:translateX(-50%) scale(1.25)">蓝</div>
+          <div style="position:absolute;left:26px;right:26px;top:210px;color:#dde1ee;font-size:13.5px;line-height:2.05">
+            <div style="font-size:15px;font-weight:600;margin-bottom:12px">今天你走得有点早</div>
+            我没问你为什么。你走的时候把杯子留在桌角，还剩一半。<br><br>
+            我把它端到窗边，等凉了才倒掉。<br><br>
+            下次早点回来，汤我给你留着。
+          </div>
+          <div style="position:absolute;right:24px;bottom:22px;color:#9aa2bd;font-size:11px">01:36</div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:16px;text-align:center;color:hsl(210 8% 58%);font-size:11px">这封信拆开就不会再合上了</div>
+      </div></div>
+    </figure>
+
+    <!-- 4.4 -->
+    <figure>
+      <div class="cap"><b>4.4</b> 写信 <i>notes / compose</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="background:var(--bg);justify-content:space-between;height:70px">
+          <span style="font-size:14px;color:var(--muted)">取消</span>
+          <div class="tt" style="font-size:16px">写一封信</div>
+          <span style="font-size:14px;color:var(--primary);font-weight:500">封好</span>
+        </div>
+        <div style="position:absolute;left:20px;right:20px;top:96px">
+          <div style="height:52px;border-bottom:1px solid var(--line);display:flex;align-items:center;font-size:19px;font-weight:600">今天你走得有点早</div>
+          <div style="font-size:14.5px;line-height:2.15;margin-top:22px;color:color-mix(in srgb,var(--fg) 90%,transparent)">
+            我没问你为什么。你走的时候把杯子留在桌角，还剩一半。<br><br>
+            我把它端到窗边，等凉了才倒掉。<span style="display:inline-block;width:1.5px;height:18px;background:var(--primary);vertical-align:-3px"></span>
+          </div>
+        </div>
+        <div style="position:absolute;left:20px;right:20px;bottom:26px;display:flex;align-items:center;gap:12px">
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M6 11a6 6 0 0 0 12 0M12 18v3"/></svg></div>
+          <div class="rnd sm" style="position:static"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M4 17v3h16v-3"/></svg></div>
+          <div style="margin-left:auto;font-size:11px;color:var(--muted)">他会在深夜收到</div>
+        </div>
+      </div></div>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 05 · 生活                                                            -->
+<!-- ==================================================================== -->
+<section class="block">
+  <h2>05 · 生活 <em>6 屏</em></h2>
+  <p class="desc">食物详情的配图位在本地是空态（侧车没起）；礼盒与游戏是纯本地逻辑。</p>
+  <div class="grid">
+
+    <!-- 5.1 -->
+    <figure>
+      <div class="cap"><b>5.1</b> 菜谱详情 <i>/food/:id</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">番茄牛腩</div>
+          <div style="margin-left:auto;color:var(--muted)"><svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:70px;height:210px;background:radial-gradient(120% 90% at 50% 30%,hsl(20 46% 42%),hsl(18 34% 24%));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+          <div style="width:96px;height:96px;border-radius:50%;border:2px solid hsl(24 30% 62% / .5);display:grid;place-items:center;font-size:34px;opacity:.9">🍲</div>
+          <div style="color:hsl(24 24% 78%);font-size:10.5px;letter-spacing:.1em">菜品图 · 16:9</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:296px">
+          <div style="display:flex;gap:18px;font-size:11.5px;color:var(--muted)">
+            <span>⏱ 90 分钟</span><span>🔥 中火</span><span>👥 2 人</span>
+          </div>
+          <div class="eyebrow" style="margin:22px 0 10px">要什么</div>
+          <div style="font-size:13px;line-height:2.1;color:color-mix(in srgb,var(--fg) 86%,transparent)">
+            牛腩 500g · 番茄 3 个 · 洋葱半个<br>
+            姜 3 片 · 番茄膏 1 勺 · 盐 适量
+          </div>
+          <div class="eyebrow" style="margin:22px 0 10px">怎么做</div>
+          <div style="font-size:13px;line-height:2;color:color-mix(in srgb,var(--fg) 84%,transparent)">
+            <div style="display:flex;gap:10px;margin-bottom:10px"><b style="color:var(--primary);font-weight:600">1</b><span>牛腩冷水下锅焯一遍，撇掉浮沫捞出。</span></div>
+            <div style="display:flex;gap:10px;margin-bottom:10px"><b style="color:var(--primary);font-weight:600">2</b><span>番茄切块，一半炒出沙，加番茄膏再炒两分钟。</span></div>
+            <div style="display:flex;gap:10px"><b style="color:var(--primary);font-weight:600">3</b><span>下牛腩加水没过，小火炖 70 分钟，最后放剩下一半番茄。</span></div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 5.2 -->
+    <figure>
+      <div class="cap"><b>5.2</b> 通话详情 <i>CallDetailSheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">通话详情</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:94px">
+          <div class="card" style="padding:18px;text-align:center">
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--card2);display:grid;place-items:center;margin:0 auto">
+              <svg viewBox="0 0 24 24" style="width:32px;height:32px"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg>
+            </div>
+            <div style="font-size:15px;font-weight:600;margin-top:10px">小蓝莓</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:4px">10月18日 13:57 · 语音 · 通了 12 分 40 秒</div>
+            <div style="display:flex;justify-content:center;gap:26px;margin-top:16px;font-size:11.5px;color:var(--primary)">
+              <span style="display:flex;flex-direction:column;align-items:center;gap:5px"><svg class="ic-s" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>再打一次</span>
+              <span style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)"><svg class="ic-s" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M6 11a6 6 0 0 0 12 0M12 18v3"/></svg>录音</span>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:22px 0 10px">对话转写</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:9px"><div class="ava" style="width:26px;height:26px;flex:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg></div><div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.75">到了吗？我这边雨挺大的。</div></div>
+            <div style="display:flex;gap:9px;flex-direction:row-reverse"><div class="ava" style="width:26px;height:26px;flex:none;background:var(--chat-me)"><svg viewBox="0 0 24 24" style="color:var(--chat-me-fg)"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg></div><div style="background:var(--chat-me);color:var(--chat-me-fg);border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.75">到了，在楼下等电梯。</div></div>
+            <div style="display:flex;gap:9px"><div class="ava" style="width:26px;height:26px;flex:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.6" r="4.1" class="silhouette"/><path d="M4.2 21c.6-4.2 3.9-6.6 7.8-6.6s7.2 2.4 7.8 6.6z" class="silhouette"/></svg></div><div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.75">伞带了吗。</div></div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 5.3 -->
+    <figure>
+      <div class="cap"><b>5.3</b> 游戏屋 <i>/games</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9px">PLAYROOM</div><div class="tt">游戏屋</div></div>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;top:96px">
+          <div style="font-size:13px;color:var(--muted)">今天想玩哪个？他就在对面等着，本地对战，不联网。</div>
+
+          <div class="card" style="margin-top:16px;padding:16px;display:flex;align-items:center;gap:14px">
+            <div style="width:54px;height:54px;border-radius:14px;background:color-mix(in srgb,var(--primary) 22%,var(--card2));display:grid;place-items:center;font-size:24px">✕</div>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:600">井字棋</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">三格连线 · 他偶尔会让你</div></div>
+            <span style="font-size:11.5px;color:var(--muted)">3 : 2</span>
+          </div>
+          <div class="card" style="margin-top:10px;padding:16px;display:flex;align-items:center;gap:14px">
+            <div style="width:54px;height:54px;border-radius:14px;background:color-mix(in srgb,#b98f2e 22%,var(--card2));display:grid;place-items:center;font-size:24px">◍</div>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:600">四子棋</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">落子有声 · 连成四个就赢</div></div>
+            <span style="font-size:11.5px;color:var(--muted)">1 : 4</span>
+          </div>
+          <div class="card" style="margin-top:10px;padding:16px;display:flex;align-items:center;gap:14px">
+            <div style="width:54px;height:54px;border-radius:14px;background:color-mix(in srgb,#a3748a 22%,var(--card2));display:grid;place-items:center;font-size:24px">♡</div>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:600">猜心</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">猜他在想什么 · 没有输赢</div></div>
+            <span style="font-size:11.5px;color:var(--muted)">—</span>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">最近</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.9">
+            10-14 四子棋 输给他 3 局<br>
+            10-12 井字棋 赢 2 局
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 5.4 -->
+    <figure>
+      <div class="cap"><b>5.4</b> 四子棋对局 <i>/games/:gameId</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">四子棋</div>
+          <div style="margin-left:auto;font-size:12px;color:var(--muted)">他 3 · 我 2</div>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:92px;text-align:center">
+          <div style="font-size:11.5px;color:var(--muted)">该你了</div>
+        </div>
+        <div style="position:absolute;left:50%;top:132px;transform:translateX(-50%);width:342px;border-radius:18px;background:color-mix(in srgb,var(--primary) 24%,var(--card));padding:12px;box-shadow:inset 0 2px 10px hsl(210 20% 10% / .3)">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+            <!-- 6 行 × 7 列 -->
+            <div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div>
+            <div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div>
+            <div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--chat-me)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div>
+            <div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:#c2564e"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div>
+            <div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--chat-me)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div>
+            <div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:#c2564e"></div><div style="aspect-ratio:1;border-radius:50%;background:#c2564e"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--chat-me)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div><div style="aspect-ratio:1;border-radius:50%;background:var(--bg)"></div>
+          </div>
+        </div>
+        <div style="position:absolute;left:24px;right:24px;top:462px;display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>第 14 手 · 你执深色</span><span>他先手</span>
+        </div>
+        <div style="position:absolute;left:24px;right:24px;top:492px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)"><span style="width:6px;height:6px;border-radius:50%;background:#c2564e"></span>他</div>
+          <div style="font-size:13.5px;line-height:1.75;margin-top:6px">“这步算是让你的。”</div>
+        </div>
+        <div style="position:absolute;left:24px;right:24px;bottom:26px;display:flex;gap:10px">
+          <div style="flex:1;height:44px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;font-size:13px;color:var(--muted)">悔一步</div>
+          <div style="flex:1;height:44px;border-radius:12px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-size:13px;font-weight:500">再来一局</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 5.5 -->
+    <figure>
+      <div class="cap"><b>5.5</b> 礼物盒 <i>/gifts</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9px">GIFTS</div><div class="tt">礼物盒</div></div>
+          <div style="margin-left:auto"><span class="pill" style="font-size:11px;padding:4px 10px">4 待拆</span></div>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;top:92px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <span style="font-size:13px;font-weight:600">未拆开的</span>
+            <span class="pill" style="font-size:11px;padding:4px 10px;background:var(--card2)">＋ 送一束花</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div><div class="gift" style="background:#cfe0cd"><i class="bow"></i></div><div style="font-size:10.5px;color:var(--muted);margin-top:7px;text-align:center">藏起来的彩蛋</div></div>
+            <div><div class="gift" style="background:#f0dcb0"><i class="bow"></i></div><div style="font-size:10.5px;color:var(--muted);margin-top:7px;text-align:center">专属小表情</div></div>
+            <div><div class="gift" style="background:#f2cdd2"><i class="bow"></i></div><div style="font-size:10.5px;color:var(--muted);margin-top:7px;text-align:center">一句悄悄话</div></div>
+            <div><div class="gift" style="background:#f0e2cd"><i class="bow"></i></div><div style="font-size:10.5px;color:var(--muted);margin-top:7px;text-align:center">写给你的第一封信</div></div>
+          </div>
+
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin:30px 0 12px">
+            <span style="font-size:13px;font-weight:600">纪念架</span>
+            <span style="font-size:11.5px;color:var(--muted)">0 件</span>
+          </div>
+          <div style="border-radius:14px;border:1px dashed var(--line);padding:44px 0;text-align:center;font-size:12px;color:var(--muted)">拆开的礼物会摆在木架上</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 5.6 -->
+    <figure>
+      <div class="cap"><b>5.6</b> 心潮 · 记忆 <i>OmbreDetail</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">记忆</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div style="border-radius:16px;background:var(--card);border:1px solid var(--line);padding:18px">
+            <div class="eyebrow" style="margin-bottom:10px">10 月 13 日 · 一起看的第一部电影</div>
+            <div style="font-size:14px;line-height:1.9;color:color-mix(in srgb,var(--fg) 86%,transparent)">
+              你把毯子铺在腿上，说冷。电影演到一半你就睡了，我调小了声音，一直看完字幕。
+            </div>
+            <div style="display:flex;gap:6px;margin-top:14px">
+              <span class="pill" style="font-size:10.5px;padding:3px 8px;background:var(--card2)">一起经历</span>
+              <span class="pill" style="font-size:10.5px;padding:3px 8px;background:transparent;border:1px solid var(--line);color:var(--muted)">电影</span>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;border-radius:16px;background:var(--card);border:1px solid var(--line);padding:18px">
+            <div class="eyebrow" style="margin-bottom:10px">9 月 30 日 · 你说想去看海</div>
+            <div style="font-size:14px;line-height:1.9;color:color-mix(in srgb,var(--fg) 86%,transparent)">
+              那天你在窗边站了很久，然后转头说“今年一定要去一次”。我记下了。
+            </div>
+          </div>
+
+          <div style="margin-top:14px;border-radius:16px;background:var(--card);border:1px solid var(--line);padding:18px">
+            <div class="eyebrow" style="margin-bottom:10px">9 月 12 日 · 第一次听见你哭</div>
+            <div style="font-size:14px;line-height:1.9;color:color-mix(in srgb,var(--fg) 86%,transparent)">
+              没问为什么。有时候不问才是对的。
+            </div>
+          </div>
+
+          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:20px">只记他真正记得的事 · 记忆不互通</div>
+        </div>
+      </div></div>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<!-- 06 · 系统                                                            -->
+<!-- ==================================================================== -->
+<section class="block">
+  <h2>06 · 系统 <em>8 屏</em></h2>
+  <p class="desc">设置是「彩色图标 + 分组卡」；子页一律 PageShell 套壳，返回走 /chat。</p>
+  <div class="grid">
+
+    <!-- 6.1 -->
+    <figure>
+      <div class="cap"><b>6.1</b> 设置主页 <i>/settings</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9px">SETTINGS</div><div class="tt">设置</div></div>
+        </div>
+        <div style="position:absolute;left:14px;right:14px;top:88px">
+          <div class="eyebrow" style="margin:8px 0 8px;padding-left:4px">个人</div>
+          <div class="card" style="padding:14px;display:flex;align-items:center;gap:13px">
+            <div style="width:36px;height:36px;border-radius:10px;background:#e3c04a;display:grid;place-items:center;font-size:16px;color:#2b2410">☺</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:600">表情包</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">聊天里常用的表情</div></div>
+            <span style="color:var(--muted)">›</span>
+          </div>
+
+          <div class="eyebrow" style="margin:20px 0 8px;padding-left:4px">AI 伴侣</div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#3b3f45;display:grid;place-items:center;font-size:15px;color:#cfd3d8">☰</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">模型参数</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">温度，对所有站子生效</div></div>
+              <span style="color:var(--muted)">›</span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#b9bcc2;display:grid;place-items:center;font-size:15px;color:#2c2f33">▤</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">API 站点</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">可添加多个站子，各自配 Base URL、Key 与模型</div></div>
+              <span style="color:var(--muted)">›</span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#3fc8b4;display:grid;place-items:center;font-size:15px;color:#0d2b27">◈</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">记忆与技能</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">小蓝莓的长期记忆 + 聊天时可触发的技能</div></div>
+              <span style="color:var(--muted)">›</span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#3fc8b4;display:grid;place-items:center;font-size:15px;color:#0d2b27">⌘</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">OpenClaw 微信接入</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">把龙虾接进微信，在微信里跟 AI 智能体聊天</div></div>
+              <span style="color:var(--muted)">›</span>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:20px 0 8px;padding-left:4px">外观</div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#7a5cf0;display:grid;place-items:center;font-size:15px;color:#efeaff">☾</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">深色模式</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">整站统一深色，夜间更护眼</div></div>
+              <span style="font-size:12.5px;color:var(--muted)">深色</span><span style="color:var(--muted)">›</span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#f0a83c;display:grid;place-items:center;font-size:15px;color:#3a2408">◐</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">强调色</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">按钮、选中态与高亮的颜色</div></div>
+              <span style="font-size:12.5px;color:var(--muted)">蓝莓蓝</span><span style="color:var(--muted)">›</span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:14px;display:flex;align-items:center;gap:13px">
+              <div style="width:36px;height:36px;border-radius:10px;background:#3eb8e0;display:grid;place-items:center;font-size:15px;color:#04222c">T</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">字体</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">数字字形 + 自定义字体</div></div>
+              <span style="font-size:12.5px;color:var(--muted)">现代无衬线</span><span style="color:var(--muted)">›</span>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:20px 0 8px;padding-left:4px">数据与同步</div>
+          <div class="card" style="padding:14px;display:flex;align-items:center;gap:13px">
+            <div style="width:36px;height:36px;border-radius:10px;background:#5b7bd5;display:grid;place-items:center;font-size:15px;color:#e7edff">▣</div>
+            <div style="flex:1"><div style="font-size:14px;font-weight:600">数据中心</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">存储占用 · 数据上下云 · 记忆区 · 快照备份</div></div>
+            <span style="color:var(--muted)">›</span>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.2 -->
+    <figure>
+      <div class="cap"><b>6.2</b> 外观子页 <i>AppearanceSection</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:17px">外观</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:94px">
+          <div class="eyebrow" style="margin-bottom:10px">主题</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            <div style="border-radius:12px;border:1.5px solid var(--primary);overflow:hidden">
+              <div style="height:64px;background:#f3f4f6;display:grid;place-items:center"><div style="width:56px;height:22px;border-radius:5px;background:#fff;border:1px solid #dcdde0"></div></div>
+              <div style="font-size:11px;text-align:center;padding:6px 0;background:var(--card)">浅色</div>
+            </div>
+            <div style="border-radius:12px;border:1px solid var(--line);overflow:hidden">
+              <div style="height:64px;background:#16181b;display:grid;place-items:center"><div style="width:56px;height:22px;border-radius:5px;background:#23262a"></div></div>
+              <div style="font-size:11px;text-align:center;padding:6px 0;background:var(--card);color:var(--muted)">深色</div>
+            </div>
+            <div style="border-radius:12px;border:1px solid var(--line);overflow:hidden">
+              <div style="height:64px;background:linear-gradient(135deg,#0f1b2d,#1a2c3e);display:grid;place-items:center"><div style="width:56px;height:22px;border-radius:5px;background:#22354a"></div></div>
+              <div style="font-size:11px;text-align:center;padding:6px 0;background:var(--card);color:var(--muted)">午夜深蓝</div>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">强调色</div>
+          <div style="display:flex;gap:12px">
+            <span style="width:30px;height:30px;border-radius:50%;background:hsl(209 9% 46%);border:2px solid var(--fg)"></span>
+            <span style="width:30px;height:30px;border-radius:50%;background:#7a5cf0"></span>
+            <span style="width:30px;height:30px;border-radius:50%;background:#3eb8e0"></span>
+            <span style="width:30px;height:30px;border-radius:50%;background:#3fc8b4"></span>
+            <span style="width:30px;height:30px;border-radius:50%;background:#e07a5f"></span>
+            <span style="width:30px;height:30px;border-radius:50%;background:#c98fa8"></span>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">字体</div>
+          <div class="card" style="padding:14px;display:flex;align-items:center">
+            <div style="flex:1"><div style="font-size:14px;font-weight:600">现代无衬线</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">数字用 Playfair 衬线，其余用系统字</div></div>
+            <span style="color:var(--muted)">›</span>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">高级</div>
+          <div class="card" style="padding:14px;display:flex;align-items:center">
+            <div style="flex:1"><div style="font-size:14px;font-weight:600">配色方案与自定义 CSS</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">小手机配色 · 覆盖任意样式</div></div>
+            <span style="color:var(--muted)">›</span>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.3 -->
+    <figure>
+      <div class="cap"><b>6.3</b> Token 明细 <i>/token</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div><div class="eyebrow" style="font-size:9px">TOKEN</div><div class="tt">Token 明细</div></div>
+          <div style="margin-left:auto"><span class="pill" style="font-size:11px;padding:4px 10px">全部站子 ⌄</span></div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div class="card" style="padding:20px;display:flex;align-items:center;gap:20px">
+            <div style="width:104px;height:104px;border-radius:50%;border:6px solid var(--card2);display:grid;place-items:center;text-align:center;flex:none">
+              <div><div style="font-size:19px;font-weight:600">¥0.00</div><div style="font-size:10px;color:var(--muted);margin-top:2px">已花费</div></div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--muted)">余额</div>
+              <div style="font-size:22px;font-weight:300;margin-top:2px">—</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7">还没接过站子<br>在设置里填 Base URL 和 Key</div>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">按站子</div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:14px;display:flex;align-items:center;gap:11px">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--muted)"></span>
+              <div style="flex:1"><div style="font-size:13.5px;font-weight:500">本地 Ollama</div><div style="font-size:11px;color:var(--muted);margin-top:2px">qwen2.5:7b · 未连接</div></div>
+              <span style="font-size:12px;color:var(--muted)">¥0.00</span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:14px;display:flex;align-items:center;gap:11px">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--muted)"></span>
+              <div style="flex:1"><div style="font-size:13.5px;font-weight:500">未配置</div><div style="font-size:11px;color:var(--muted);margin-top:2px">去设置里加一个站子</div></div>
+              <span style="font-size:12px;color:var(--muted)">—</span>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">最近</div>
+          <div style="font-size:12px;color:var(--muted);text-align:center;padding:26px 0">还没有调用记录</div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.4 -->
+    <figure>
+      <div class="cap"><b>6.4</b> 备忘录详情 <i>MemoDetailDialog</i></div>
+      <div class="wrap"><div class="frame">
+        <div style="position:absolute;left:0;right:0;top:0;height:70px;display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--line)">
+          <div class="back" style="width:36px;height:36px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">备忘录</div>
+          <div style="margin-left:auto;display:flex;gap:14px;color:var(--muted)">
+            <svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            <svg class="ic-s" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>
+          </div>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;top:92px">
+          <div style="display:flex;gap:6px;margin-bottom:14px">
+            <span class="pill" style="font-size:11px;padding:4px 10px">我写的</span>
+            <span class="pill" style="font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--line);color:var(--muted)">未分类</span>
+          </div>
+          <div style="font-size:19px;font-weight:600;line-height:1.45">q</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:8px">10 月 2 日</div>
+          <div class="split" style="margin:16px 0"></div>
+          <div style="font-size:14.5px;line-height:2.05;color:color-mix(in srgb,var(--fg) 90%,transparent)">
+            记得买牛奶。<br>
+            顺便问一下他周三有没有空。
+          </div>
+
+          <div style="margin-top:26px;border-radius:14px;border:1px solid var(--line);padding:14px;font-size:12px;color:var(--muted);line-height:1.85">
+            备忘录是两个人的：他写的会标「他写的」。勾掉一条会进归档，不会真的消失。
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.5 -->
+    <figure>
+      <div class="cap"><b>6.5</b> 归档 <i>ArchivedSheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">归档</div>
+          <div style="margin-left:auto;font-size:11.5px;color:var(--muted)">清空</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">勾掉的待办都在这里，可以还原。</div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:11px">
+              <span style="width:17px;height:17px;border-radius:50%;border:1.5px solid var(--primary);display:grid;place-items:center;font-size:10px;color:var(--primary)">✓</span>
+              <div style="flex:1;font-size:13.5px;text-decoration:line-through;color:var(--muted)">整理一下书桌</div>
+              <span style="font-size:11px;color:var(--muted)">10-14</span>
+            </div>
+            <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:11px">
+              <span style="width:17px;height:17px;border-radius:50%;border:1.5px solid var(--primary);display:grid;place-items:center;font-size:10px;color:var(--primary)">✓</span>
+              <div style="flex:1;font-size:13.5px;text-decoration:line-through;color:var(--muted)">把体检报告拍了存起来</div>
+              <span style="font-size:11px;color:var(--muted)">10-11</span>
+            </div>
+            <div class="card" style="padding:13px 14px;display:flex;align-items:center;gap:11px">
+              <span style="width:17px;height:17px;border-radius:50%;border:1.5px solid var(--primary);display:grid;place-items:center;font-size:10px;color:var(--primary)">✓</span>
+              <div style="flex:1;font-size:13.5px;text-decoration:line-through;color:var(--muted)">问他周三有没有空</div>
+              <span style="font-size:11px;color:var(--muted)">10-02</span>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.6 -->
+    <figure>
+      <div class="cap"><b>6.6</b> 提醒 <i>NotifySheet</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">提醒与健康</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:15px;display:flex;align-items:center">
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">深夜来信提醒</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">他写信的时候推一条</div></div>
+              <span style="width:42px;height:25px;border-radius:99px;background:var(--primary);position:relative"><span style="position:absolute;right:2.5px;top:2.5px;width:20px;height:20px;border-radius:50%;background:#fff"></span></span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:15px;display:flex;align-items:center">
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">纪念日提前</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">提前三天提醒一次</div></div>
+              <span style="width:42px;height:25px;border-radius:99px;background:var(--primary);position:relative"><span style="position:absolute;right:2.5px;top:2.5px;width:20px;height:20px;border-radius:50%;background:#fff"></span></span>
+            </div>
+            <div class="split"></div>
+            <div style="padding:15px;display:flex;align-items:center">
+              <div style="flex:1"><div style="font-size:14px;font-weight:600">经期预测</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">只在本机算，不上传</div></div>
+              <span style="width:42px;height:25px;border-radius:99px;background:var(--card2);position:relative"><span style="position:absolute;left:2.5px;top:2.5px;width:20px;height:20px;border-radius:50%;background:var(--muted)"></span></span>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">睡眠</div>
+          <div class="card" style="padding:15px">
+            <div style="display:flex;justify-content:space-between;font-size:13px"><span>昨晚</span><span style="color:var(--muted)">6 小时 40 分</span></div>
+            <div style="display:flex;gap:3px;margin-top:12px;height:44px;align-items:flex-end">
+              <span style="flex:1;height:60%;border-radius:3px;background:var(--primary);opacity:.5"></span>
+              <span style="flex:1;height:80%;border-radius:3px;background:var(--primary);opacity:.6"></span>
+              <span style="flex:1;height:100%;border-radius:3px;background:var(--primary);opacity:.7"></span>
+              <span style="flex:1;height:70%;border-radius:3px;background:var(--primary);opacity:.55"></span>
+              <span style="flex:1;height:45%;border-radius:3px;background:var(--primary);opacity:.4"></span>
+              <span style="flex:1;height:88%;border-radius:3px;background:var(--primary);opacity:.65"></span>
+              <span style="flex:1;height:52%;border-radius:3px;background:var(--primary);opacity:.5"></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px"><span>周一</span><span>今天</span></div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.7 -->
+    <figure>
+      <div class="cap"><b>6.7</b> 手机感知 <i>DevicePage</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">手机感知</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="card" style="padding:16px">
+              <div style="font-size:11px;color:var(--muted)">电量</div>
+              <div style="font-size:24px;font-weight:300;margin-top:4px">78<span style="font-size:12px">%</span></div>
+              <div style="height:5px;border-radius:3px;background:var(--card2);margin-top:12px"><div style="width:78%;height:100%;border-radius:3px;background:#5fae7a"></div></div>
+            </div>
+            <div class="card" style="padding:16px">
+              <div style="font-size:11px;color:var(--muted)">步数</div>
+              <div style="font-size:24px;font-weight:300;margin-top:4px">3,240</div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:14px">今天</div>
+            </div>
+            <div class="card" style="padding:16px">
+              <div style="font-size:11px;color:var(--muted)">屏幕时间</div>
+              <div style="font-size:24px;font-weight:300;margin-top:4px">2<span style="font-size:12px">h</span> 14<span style="font-size:12px">m</span></div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:14px">比昨天少 40 分钟</div>
+            </div>
+            <div class="card" style="padding:16px">
+              <div style="font-size:11px;color:var(--muted)">天气</div>
+              <div style="font-size:24px;font-weight:300;margin-top:4px">12<span style="font-size:12px">°</span></div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:14px">多云 · 有风</div>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin:24px 0 10px">他怎么用这些</div>
+          <div style="font-size:12.5px;line-height:1.9;color:var(--muted)">
+            他知道你今天的电量和步数，所以会问「今天走了不少」。<br>
+            数据只留在本机，不上传。
+          </div>
+
+          <div class="card" style="margin-top:20px;padding:14px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:13.5px">同步频率</span>
+            <span style="font-size:12.5px;color:var(--muted)">每 15 分钟 ⌄</span>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+    <!-- 6.8 -->
+    <figure>
+      <div class="cap"><b>6.8</b> 插件与连接器 <i>McpPage</i></div>
+      <div class="wrap"><div class="frame">
+        <div class="ph" style="height:70px">
+          <div class="back"><svg class="ic-s" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="m12 19-7-7 7-7M19 12H5"/></svg></div>
+          <div class="tt" style="font-size:16px">插件</div>
+          <div style="margin-left:auto;font-size:12px;color:var(--primary)">添加</div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;top:92px">
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">接上之后，他能在聊天里直接用这些能力。</div>
+
+          <div class="card" style="padding:14px;display:flex;align-items:center;gap:13px;margin-bottom:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:#3b3f45;display:grid;place-items:center;font-size:14px;color:#cfd3d8">▦</div>
+            <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">腾讯文档</div><div style="font-size:11px;color:var(--muted);margin-top:2px">读文档 · 建表格</div></div>
+            <span style="font-size:10.5px;padding:3px 8px;border-radius:99px;background:color-mix(in srgb,#5fae7a 22%,transparent);color:#5fae7a">已连接</span>
+          </div>
+
+          <div class="card" style="padding:14px;display:flex;align-items:center;gap:13px;margin-bottom:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:#3b3f45;display:grid;place-items:center;font-size:14px;color:#cfd3d8">⌥</div>
+            <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">GitHub</div><div style="font-size:11px;color:var(--muted);margin-top:2px">仓库 · issue · PR</div></div>
+            <span style="font-size:10.5px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--muted)">未连接</span>
+          </div>
+
+          <div class="card" style="padding:14px;display:flex;align-items:center;gap:13px;margin-bottom:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:#3b3f45;display:grid;place-items:center;font-size:14px;color:#cfd3d8">✉</div>
+            <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">邮箱</div><div style="font-size:11px;color:var(--muted);margin-top:2px">收发邮件</div></div>
+            <span style="font-size:10.5px;padding:3px 8px;border-radius:99px;background:var(--card2);color:var(--muted)">未连接</span>
+          </div>
+
+          <div style="margin-top:22px;border-radius:14px;border:1px dashed var(--line);padding:22px;text-align:center">
+            <div style="font-size:12.5px;color:var(--muted);line-height:1.85">自定义 MCP 服务器<br>填一个地址，他就能自己调</div>
+            <div style="margin-top:12px;display:inline-flex;height:30px;align-items:center;padding:0 14px;border-radius:8px;border:1px solid var(--line);font-size:12px;color:var(--muted)">配置 mcp.json</div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+
+  </div>
+</section>
+
+</main>
+
+<script>
+const root = document.documentElement;
+/* 26 周 × 7 天热力图：用固定伪随机，保证每次渲染一致 */
+(() => {
+  const box = document.getElementById('heatgrid');
+  if (!box) return;
+  let seed = 7;
+  for (let i = 0; i < 26 * 7; i++) {
+    seed = (seed * 9301 + 49297) % 233280;
+    const r = seed / 233280;
+    const cell = document.createElement('i');
+    const lvl = r > 0.86 ? 3 : r > 0.66 ? 2 : r > 0.42 ? 1 : 0;
+    if (lvl === 1) cell.style.background = 'color-mix(in srgb,var(--primary) 32%,var(--card2))';
+    if (lvl === 2) cell.style.background = 'color-mix(in srgb,var(--primary) 58%,var(--card2))';
+    if (lvl === 3) cell.style.background = 'var(--primary)';
+    box.appendChild(cell);
+  }
+})();
+
+document.getElementById('theme').onclick = () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+};
+const editBtn = document.getElementById('edit');
+editBtn.onclick = () => {
+  const on = editBtn.getAttribute('aria-pressed') !== 'true';
+  editBtn.setAttribute('aria-pressed', String(on));
+  document.body.classList.toggle('edit', on);
+  document.querySelectorAll('.frame').forEach((f) => {
+    f.contentEditable = on ? 'true' : 'false';
+  });
+};
+document.querySelectorAll('[data-s]').forEach((b) => {
+  b.onclick = () => {
+    document.querySelectorAll('[data-s]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    document.getElementById('canvas').style.setProperty('--s', b.dataset.s);
+  };
+});
+</script>
+</body>
+</html>

@@ -40,3 +40,10 @@ pai-voice/.venv/
 .deploy_key*
 xiaolanmei-deploy.tar.gz
 shot/
+
+# 界面稿：设计交付物，入库
+# 根目录旧临时文件（会话过程产物，从未入库）
+/d8_*.jsonl
+/gen_ops.py
+/ops_all.txt
+/read_*.png
