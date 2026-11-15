@@ -114,11 +114,18 @@ export function DlogCompose({ book, date, entry, onClose }: Props) {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10">
-        {/* 照片 */}
-        <div className="flex flex-wrap gap-2" data-testid="diary-compose-images">
-          {images.map((src) => (
-            <div key={src} className="relative h-[86px] w-[86px]">
-              <img src={src} alt="" className="h-full w-full rounded-xl object-cover" />
+        {/* 照片：一张张小拍立得，随手歪一点，跟纸页上贴出去的样子一致 */}
+        <div className="flex flex-wrap gap-2.5 pt-1" data-testid="diary-compose-images">
+          {images.map((src, k) => (
+            <div
+              key={src}
+              className="relative bg-[#fbf8f0] p-[3px] pb-2 dark:bg-[#4a4238]"
+              style={{
+                transform: `rotate(${k % 2 ? 1.7 : -1.9}deg)`,
+                boxShadow: '0 7px 13px -8px rgba(38,32,24,0.6)',
+              }}
+            >
+              <img src={src} alt="" className="h-[78px] w-[78px] object-cover" />
               <button
                 type="button"
                 onClick={() => setImages((prev) => prev.filter((x) => x !== src))}
@@ -134,10 +141,10 @@ export function DlogCompose({ book, date, entry, onClose }: Props) {
               type="button"
               onClick={() => fileRef.current?.click()}
               data-testid="diary-compose-add-image"
-              className="flex h-[86px] w-[86px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-page-line text-muted-foreground"
+              className="flex h-[92px] w-[84px] flex-col items-center justify-center gap-1 border border-dashed border-page-line text-muted-foreground"
             >
               <ImagePlus className="h-5 w-5" />
-              <span className="text-[10px]">{uploading ? '上传中' : '加照片'}</span>
+              <span className="text-[10px]">{uploading ? '上传中' : '贴张照片'}</span>
             </button>
           )}
           <input

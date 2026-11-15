@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { PenLine, Trash2 } from 'lucide-react';
 import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
-import { HAND_FONT, weekdayOf } from './diaryData';
+import { HAND_FONT, prettyTime, weekdayOf } from './diaryData';
 import type { PageBox } from './pageLayout';
 import { PaperTexture } from './InkShapes';
+import { PhotoViewer } from './PhotoViewer';
+import { TapedPhoto } from './TapedPhoto';
 
 interface Props {
   book: DiaryBook;
@@ -63,6 +66,10 @@ export function DlogLeaf({
   const moods = Array.from(new Set(entries.map((e) => e.mood).filter(Boolean)));
   const photos = entries.reduce((n, e) => n + (e.images?.length ?? 0), 0);
   const contentH = box.h - HEAD_H - FOOT_H;
+  /** 点开的大图（这一条的全部照片，能左右翻） */
+  const [viewer, setViewer] = useState<{ images: string[]; start: number; caption: string } | null>(null);
+  /** 拼贴可用宽度：稍微顶出左右留白一点，像贴到了格子外 */
+  const collageW = box.w - PAD_X * 2 + 6;
 
   return (
     <div
@@ -124,7 +131,7 @@ export function DlogLeaf({
           ) : (
             <div
               className="h-full overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              style={{ paddingLeft: PAD_X, paddingRight: PAD_X, paddingTop: 2 }}
+              style={{ paddingLeft: PAD_X, paddingRight: PAD_X, paddingTop: 2, paddingBottom: 18 }}
               data-testid="diary-leaf-body"
             >
               {entries.map((e, i) => {
@@ -132,8 +139,9 @@ export function DlogLeaf({
                 return (
                   <article key={e.id} data-testid="diary-moment" className="mb-3 last:mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] tabular-nums leading-none text-ink/40">
-                        {e.time || `第 ${i + 1} 条`}
+                      {/* 时间写成一小块手写标签，像贴上去的 */}
+                      <span className="inline-block -rotate-[1.2deg] bg-[#f2e8d2] px-1.5 py-[3px] text-[10px] leading-none tabular-nums text-[#6b6353] dark:bg-[#413a31] dark:text-[#c3b9a7]">
+                        {(e.time && prettyTime(e.time)) || `第 ${i + 1} 条`}
                       </span>
                       {e.mood && <span className="text-[11px] leading-none">{e.mood}</span>}
                       <span className="flex-1" />
@@ -168,26 +176,56 @@ export function DlogLeaf({
                       </p>
                     )}
 
-                    {imgs.length === 1 && (
-                      <img
-                        src={imgs[0]}
-                        alt=""
-                        loading="lazy"
-                        className="mt-1 w-full rounded-[3px] object-cover"
-                        style={{ height: Math.round(contentH * 0.3) }}
-                      />
-                    )}
-                    {imgs.length > 1 && (
-                      <div className="mt-1 grid grid-cols-3 gap-1">
-                        {imgs.slice(0, 6).map((src) => (
-                          <img
-                            key={src}
-                            src={src}
-                            alt=""
-                            loading="lazy"
-                            className="aspect-square w-full rounded-[2px] object-cover"
-                          />
-                        ))}
+                    {/* 照片：手账式拼贴（拍立得白框 + 胶带 + 随手歪的角度） */}
+                    {imgs.length > 0 && (
+                      <div
+                        className="flex flex-wrap items-start gap-x-2"
+                        style={{ marginTop: 6, marginLeft: -2, marginRight: -2, paddingTop: 6, paddingBottom: 4, rowGap: 12 }}
+                        data-testid="diary-moment-photos"
+                      >
+                        {imgs.slice(0, 5).map((src, k) => {
+                          const single = imgs.length === 1;
+                          const w = single
+                            ? Math.min(236, Math.round(collageW * 0.8))
+                            : Math.round((collageW - 10) / 2);
+                          const firstTag = (e.tags ?? [])[0];
+                          const cap = single
+                            ? (e.time && prettyTime(e.time)) || (firstTag ? `#${firstTag}` : undefined)
+                            : undefined;
+                          return (
+                            <TapedPhoto
+                              key={src}
+                              src={src}
+                              w={w}
+                              ratio={single ? 0.72 : 0.8}
+                              caption={cap}
+                              tape={k % 3 === 0 ? 'top' : k % 3 === 1 ? 'right' : 'left'}
+                              offsetX={imgs.length === 3 && k === 2 ? 26 : 0}
+                              offsetY={k % 2 === 1 ? 9 : 0}
+                              onClick={() =>
+                                setViewer({
+                                  images: imgs,
+                                  start: k,
+                                  caption: [
+                                    e.time ? prettyTime(e.time) : '',
+                                    ...(e.tags ?? []).map((t) => `#${t}`),
+                                  ]
+                                    .filter(Boolean)
+                                    .join('   '),
+                                })
+                              }
+                            />
+                          );
+                        })}
+                        {imgs.length > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => setViewer({ images: imgs, start: 5, caption: '' })}
+                            className="mt-2 flex h-9 items-center justify-center rounded-[2px] bg-black/5 px-2.5 text-[11px] text-ink/45 dark:bg-white/10"
+                          >
+                            +{imgs.length - 5}
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -234,7 +272,7 @@ export function DlogLeaf({
           {entries.length > 0 && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-[#fdfbf6] to-transparent dark:from-[#262220]"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-[#fdfbf6] to-transparent dark:from-[#262220]"
             />
           )}
         </div>
@@ -250,6 +288,16 @@ export function DlogLeaf({
           </span>
         </div>
       </div>
+
+      {/* 点开的大图：portal 到 body，不受这页裁切影响 */}
+      {viewer && (
+        <PhotoViewer
+          images={viewer.images}
+          start={viewer.start}
+          caption={viewer.caption}
+          onClose={() => setViewer(null)}
+        />
+      )}
     </div>
   );
 }
