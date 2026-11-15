@@ -77,6 +77,9 @@ function toSlipDTO(s: typeof diarySlips.$inferSelect) {
     color: s.color,
     // me = 我夹的 / ta = TA 塞进来的（前端用不同纸色和署名区分，TA 的不给改）
     author: (s.author === 'ta' ? 'ta' : 'me') as 'me' | 'ta',
+    // 贴在纸上的位置（0~1 比例）；null = 还没摆过，前端按「这一页第几张」给默认落点
+    x: s.x ?? null,
+    y: s.y ?? null,
     createdAt: s.createdAt,
   };
 }
@@ -191,6 +194,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   app.post('/diary/slips', async (req, reply) => {
     const body = (req.body ?? {}) as {
       id?: string; bookId?: string; date?: string; content?: string; color?: string;
+      x?: number; y?: number;
     };
     const date = body.date?.trim();
     const content = body.content?.trim();
@@ -210,6 +214,9 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
         color: body.color?.trim() || '#f6efd9',
         // 走这个接口的一律算「我」写的；TA 的字条由后端 insertTaSlip 直接落库
         author: 'me',
+        // 贴在纸上的位置：新夹的条前端会算一个落点；没带就留空，渲染时按第几张补
+        x: body.x !== undefined ? clamp01(body.x) : null,
+        y: body.y !== undefined ? clamp01(body.y) : null,
         createdAt: ts,
         updatedAt: ts,
       })
@@ -231,11 +238,14 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch('/diary/slips/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    const body = (req.body ?? {}) as { date?: string; content?: string; color?: string };
-    const patch: Partial<{ date: string; content: string; color: string }> = {};
+    const body = (req.body ?? {}) as { date?: string; content?: string; color?: string; x?: number; y?: number };
+    const patch: Partial<{ date: string; content: string; color: string; x: number; y: number }> = {};
     if (body.date !== undefined) patch.date = body.date.trim();
     if (body.content !== undefined) patch.content = body.content.trim();
     if (body.color !== undefined) patch.color = body.color.trim();
+    // 拖动纸条只改位置：0 是合法坐标，所以判 undefined 而不是真假
+    if (body.x !== undefined) patch.x = clamp01(body.x);
+    if (body.y !== undefined) patch.y = clamp01(body.y);
     if (Object.keys(patch).length === 0) return { ok: true };
     if (patch.content === '') {
       reply.code(400).send({ message: 'content 不能为空' });
@@ -721,6 +731,13 @@ function knockNoteOf(opened: boolean, day: string, knocks: number): string {
  */
 function insertTaSlip(bookId: string, date: string, content: string): typeof diarySlips.$inferSelect {
   const ts = now();
+  // 落在哪儿：跟同页已有的条错开一点，别正好压在我夹的那张上面（与前端 slipSpot 同一套算法）
+  const samePage = db
+    .select()
+    .from(diarySlips)
+    .all()
+    .filter((s) => s.deletedAt == null && s.bookId === bookId && s.date === date).length;
+  const spot = slipSpot(samePage);
   const row: typeof diarySlips.$inferSelect = {
     id: newId(),
     bookId,
@@ -728,6 +745,8 @@ function insertTaSlip(bookId: string, date: string, content: string): typeof dia
     content,
     color: TA_SLIP_COLOR,
     author: 'ta',
+    x: spot.x,
+    y: spot.y,
     createdAt: ts,
     updatedAt: ts,
     deletedAt: null,
@@ -897,6 +916,18 @@ function clamp01(v: unknown): number {
   const n = Number(v);
   if (!Number.isFinite(n)) return 0.5;
   return Math.min(1, Math.max(0, Math.round(n * 1000) / 1000));
+}
+
+/**
+ * 纸条贴在纸页上的默认落点（2026-11-16）：这一页第 n 张 → 略微错开。
+ * 连夹两三张不会全叠在正中，也不会掉到页脚外面。
+ * **与前端 `slipSpot()` 同一套公式**，两边改要一起改。
+ */
+function slipSpot(n: number): { x: number; y: number } {
+  return {
+    x: clamp01(0.5 + ((n % 3) - 1) * 0.13),
+    y: clamp01(0.58 + ((n % 4) - 1) * 0.1),
+  };
 }
 
 /** 缩放：0.4 ~ 3 倍 */

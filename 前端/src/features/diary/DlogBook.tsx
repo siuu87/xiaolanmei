@@ -41,6 +41,10 @@ interface Props {
   onEdit: (entry: DiaryEntry) => void;
   onDelete: (entry: DiaryEntry) => void;
   onSlip: (date: string) => void;
+  /** 纸条贴到别处（拖完松手才写库，0~1 比例） */
+  onMoveSlip: (id: string, pos: { x: number; y: number }) => void;
+  /** 点开一张纸条：我的去改，他的去读 */
+  onOpenSlip: (slip: DiarySlip) => void;
   onAddSticker: (s: Omit<DiarySticker, 'id'>) => void;
   onMoveSticker: (id: string, pos: { x: number; y: number }) => void;
   onChangeSticker: (id: string, patch: { scale?: number; rot?: number }) => void;
@@ -101,6 +105,8 @@ export function DlogBook({
   onEdit,
   onDelete,
   onSlip,
+  onMoveSlip,
+  onOpenSlip,
   onAddSticker,
   onMoveSticker,
   onChangeSticker,
@@ -453,6 +459,8 @@ export function DlogBook({
         onMoveSticker={onMoveSticker}
         onChangeSticker={onChangeSticker}
         onRemoveSticker={onRemoveSticker}
+        onMoveSlip={onMoveSlip}
+        onOpenSlip={onOpenSlip}
       />
     );
 

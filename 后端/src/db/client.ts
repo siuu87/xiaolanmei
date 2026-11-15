@@ -269,6 +269,8 @@ CREATE TABLE IF NOT EXISTS diary_slips (
   content TEXT NOT NULL,
   color TEXT NOT NULL DEFAULT '#f6efd9',
   author TEXT NOT NULL DEFAULT 'me',
+  x REAL,
+  y REAL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -996,6 +998,13 @@ export function initDatabase(): void {
   const diarySlipCols = sqlite.prepare(`PRAGMA table_info(diary_slips)`).all() as { name: string }[];
   if (!diarySlipCols.some((c) => c.name === 'author')) {
     sqlite.exec(`ALTER TABLE diary_slips ADD COLUMN author TEXT NOT NULL DEFAULT 'me'`);
+  }
+  // 幂等迁移（2026-11-16 纸条也能随便贴）：diary_slips 补位置 x / y（0~1 比例，可空 = 老数据）
+  if (!diarySlipCols.some((c) => c.name === 'x')) {
+    sqlite.exec(`ALTER TABLE diary_slips ADD COLUMN x REAL`);
+  }
+  if (!diarySlipCols.some((c) => c.name === 'y')) {
+    sqlite.exec(`ALTER TABLE diary_slips ADD COLUMN y REAL`);
   }
   const diaryLockCols = sqlite.prepare(`PRAGMA table_info(diary_page_locks)`).all() as { name: string }[];
   if (!diaryLockCols.some((c) => c.name === 'sneaked_at')) {

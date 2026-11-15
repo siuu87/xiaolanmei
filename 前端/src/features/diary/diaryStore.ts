@@ -48,7 +48,7 @@ interface DiaryState {
   ) => void;
   removeBook: (id: string) => void;
   addSlip: (s: Omit<DiarySlip, 'id'>) => void;
-  patchSlip: (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) => void;
+  patchSlip: (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color' | 'x' | 'y'>>) => void;
   removeSlip: (id: string) => void;
   /** 后端塞回来的纸条（TA 的回条 / 他主动留的）直接并进 store，不重复写库 */
   mergeSlip: (slip: DiarySlip) => void;

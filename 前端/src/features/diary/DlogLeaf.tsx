@@ -5,6 +5,7 @@ import { HAND_FONT, prettyTime, weekdayOf } from './diaryData';
 import type { PageBox } from './pageLayout';
 import { PaperTexture } from './InkShapes';
 import { PhotoViewer } from './PhotoViewer';
+import { SlipLayer } from './SlipLayer';
 import { StickerLayer } from './StickerLayer';
 import { TapedPhoto } from './TapedPhoto';
 
@@ -30,6 +31,10 @@ interface Props {
   onMoveSticker: (id: string, pos: { x: number; y: number }) => void;
   onChangeSticker: (id: string, patch: { scale?: number; rot?: number }) => void;
   onRemoveSticker: (id: string) => void;
+  /** 纸条换个位置（贴在纸上，0~1 比例） */
+  onMoveSlip: (id: string, pos: { x: number; y: number }) => void;
+  /** 点开一张纸条：我的去改，他的去读 */
+  onOpenSlip: (slip: DiarySlip) => void;
 }
 
 /** 纸面底色（米白纸 / 深色下的暖黑），整本书统一 */
@@ -70,6 +75,8 @@ export function DlogLeaf({
   onMoveSticker,
   onChangeSticker,
   onRemoveSticker,
+  onMoveSlip,
+  onOpenSlip,
 }: Props) {
   const day = Number(date.slice(-2));
   const month = Number(date.slice(5, 7));
@@ -81,43 +88,20 @@ export function DlogLeaf({
   const collageW = box.w - PAD_X * 2 + 6;
 
   /**
-   * 夹在这页的纸条（我夹的 + 他塞进来的）。
-   * 抽出来是因为**空页也要显示** —— 有时候这一天只留了一张纸条，一个字没写。
+   * 页眉右上那行小字：写了几个时刻 / 贴了几张 / 夹了几张。
+   * 纸条 2026-11-16 起浮在纸面上（`SlipLayer`），空页也可能只夹着一张纸条。
    */
-  const slipBlock =
-    slips.length > 0 ? (
-      <div className="flex shrink-0 flex-col gap-1.5" data-testid="diary-leaf-slips">
-        {slips.slice(-2).map((s) => {
-          const byTa = s.author === 'ta';
-          return (
-            <div
-              key={s.id}
-              data-slip-id={s.id}
-              data-slip-author={byTa ? 'ta' : 'me'}
-              className={`px-2 py-1.5 shadow-[0_5px_10px_-8px_rgba(0,0,0,0.5)] ${
-                byTa ? 'rotate-[0.9deg]' : 'rotate-[-0.6deg]'
-              }`}
-              style={{ background: s.color }}
-            >
-              {byTa && (
-                <span className="mb-0.5 block text-[8px] leading-none tracking-[0.1em] text-[#3b3830]/45">
-                  他留的
-                </span>
-              )}
-              <p
-                className="max-h-[42px] overflow-hidden whitespace-pre-wrap text-[10px] leading-[16px] text-[#3b3830]"
-                style={{ fontFamily: HAND_FONT }}
-              >
-                {s.content}
-              </p>
-            </div>
-          );
-        })}
-        {slips.length > 2 && (
-          <span className="text-[9px] text-ink/30">还有 {slips.length - 2} 张纸条</span>
-        )}
-      </div>
-    ) : null;
+  const marks =
+    entries.length > 0
+      ? `${entries.length} 个时刻${photos > 0 ? ` · ${photos} 张` : ''}`
+      : stickers.length > 0 || slips.length > 0
+        ? [
+            stickers.length > 0 ? `贴了 ${stickers.length} 张` : '',
+            slips.length > 0 ? `夹了 ${slips.length} 张` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : '空白页';
 
   return (
     <div
@@ -153,36 +137,34 @@ export function DlogLeaf({
             </span>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[9px] leading-none tracking-[0.06em] text-ink/40">
-              {entries.length > 0
-                ? `${entries.length} 个时刻${photos > 0 ? ` · ${photos} 张` : ''}`
-                : stickers.length > 0
-                  ? `贴了 ${stickers.length} 张`
-                  : '空白页'}
-            </span>
+            <span className="text-[9px] leading-none tracking-[0.06em] text-ink/40">{marks}</span>
           </div>
         </div>
 
         {/* 正文：固定高的窗口，写太多就在页内滚 */}
         <div className="relative shrink-0" style={{ height: contentH }}>
           {entries.length === 0 ? (
-            <div className="flex h-full flex-col justify-between px-3 py-2">
+            /* 空页：夹着纸条时提示贴着页眉，别被压在纸条底下 */
+            <div
+              className={`flex h-full flex-col px-3 ${slips.length > 0 ? 'pt-3' : 'justify-center py-2'}`}
+            >
               <button
                 type="button"
                 onClick={canWrite ? onCompose : undefined}
                 data-testid="diary-leaf-empty"
-                className="flex flex-1 flex-col items-center justify-center gap-2 px-5 text-center"
+                className={`flex flex-col items-center justify-center gap-2 px-5 text-center ${
+                  slips.length > 0 ? 'py-1' : 'py-6'
+                }`}
               >
                 <span className="text-[15px] tracking-[0.4em] text-ink/15">· · ·</span>
                 <span className="text-[11px] leading-5 text-ink/35" style={{ fontFamily: HAND_FONT }}>
                   {canWrite
-                    ? stickers.length > 0
+                    ? stickers.length > 0 || slips.length > 0
                       ? '这天还空着，点一下写点什么'
                       : '这天还是空白的，点一下就能写'
                     : '这天没有留下字迹'}
                 </span>
               </button>
-              {slipBlock}
             </div>
           ) : (
             <div
@@ -296,9 +278,6 @@ export function DlogLeaf({
                   </article>
                 );
               })}
-
-              {/* 夹在这一页里的纸条：我夹的 + TA 塞进来的（他的换个纸色并署名） */}
-              {slipBlock && <div className="mb-1 mt-2">{slipBlock}</div>}
             </div>
           )}
 
@@ -322,6 +301,9 @@ export function DlogLeaf({
           </span>
         </div>
       </div>
+
+      {/* 纸条：贴在纸上的一层（能拖、点开能改），落在正文之上、贴纸之下 */}
+      <SlipLayer slips={slips} w={box.w} h={box.h} onMove={onMoveSlip} onOpen={onOpenSlip} />
 
       {/* 贴纸：压在正文之上（真实贴纸本来就会盖住字），位置按纸页比例存 */}
       <StickerLayer

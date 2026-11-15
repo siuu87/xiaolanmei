@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { DiaryBook, DiaryEntry } from './diaryData';
-import { dayKeyToDate, diaryDayKey } from './diaryData';
+import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
+import { dayKeyToDate, diaryDayKey, slipSpot } from './diaryData';
 import { useDiaryStore } from './diaryStore';
 import { BookLock } from './BookLock';
 import { BookSheet, type BookDraft } from './BookSheet';
@@ -43,7 +43,8 @@ export function DiaryPage() {
   const [compose, setCompose] = useState<{ date: string; entry?: DiaryEntry | null } | null>(null);
   const [switcher, setSwitcher] = useState(false);
   const [sheet, setSheet] = useState<{ book: DiaryBook | null } | null>(null);
-  const [slipEditor, setSlipEditor] = useState<{ date: string } | null>(null);
+  /** 纸条编辑器：`slip` 空 = 新夹一张，有 = 改 / 读已有那张 */
+  const [slipEditor, setSlipEditor] = useState<{ date: string; slip?: DiarySlip | null } | null>(null);
   /** 月历跳页 */
   const [jump, setJump] = useState(false);
   /** 本次会话里解锁过 / 撬开过的本子 */
@@ -167,6 +168,8 @@ export function DiaryPage() {
         onEdit={(e) => setCompose({ date: e.date, entry: e })}
         onDelete={(e) => useDiaryStore.getState().removeEntry(e.id)}
         onSlip={(d) => setSlipEditor({ date: d })}
+        onMoveSlip={(id, pos) => useDiaryStore.getState().patchSlip(id, pos)}
+        onOpenSlip={(slip) => setSlipEditor({ date: slip.date, slip })}
         onAddSticker={(s) => useDiaryStore.getState().addSticker(s)}
         onMoveSticker={(id, pos) => useDiaryStore.getState().patchSticker(id, pos)}
         onChangeSticker={(id, patch) => useDiaryStore.getState().patchSticker(id, patch)}
@@ -253,16 +256,36 @@ export function DiaryPage() {
 
       {slipEditor && (
         <SlipEditor
+          slip={slipEditor.slip ?? null}
           date={slipEditor.date}
           onSave={(content, color) => {
-            useDiaryStore.getState().addSlip({
-              bookId: book.id,
-              date: slipEditor.date,
-              content,
-              color,
-            });
+            const store = useDiaryStore.getState();
+            if (slipEditor.slip) {
+              // 改内容不挪位置：纸条还在原来贴的地方
+              store.patchSlip(slipEditor.slip.id, { content, color });
+            } else {
+              // 新夹的这张落在哪：按这一页已有的条数错开（与后端 insertTaSlip 同一套公式）
+              const n = bookSlips.filter((s) => s.date === slipEditor.date).length;
+              const spot = slipSpot(n);
+              store.addSlip({
+                bookId: book.id,
+                date: slipEditor.date,
+                content,
+                color,
+                x: spot.x,
+                y: spot.y,
+              });
+            }
             setSlipEditor(null);
           }}
+          onDelete={
+            slipEditor.slip
+              ? () => {
+                  useDiaryStore.getState().removeSlip(slipEditor.slip!.id);
+                  setSlipEditor(null);
+                }
+              : undefined
+          }
           onClose={() => setSlipEditor(null)}
         />
       )}

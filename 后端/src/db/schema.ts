@@ -259,6 +259,13 @@ export const diarySlips = sqliteTable('diary_slips', {
   color: text('color').notNull().default('#f6efd9'),
   /** me = 我夹的 / ta = TA 自己塞进来的（2026-11-16 双向字条） */
   author: text('author').notNull().default('me'),
+  /**
+   * 贴在纸上的位置（2026-11-16 纸条也能随便摆）：
+   * 相对纸页的 0~1 比例，跟贴纸同一套坐标（换屏幕尺寸不跑位）。
+   * 可空 —— 老数据没摆过，前端按「这一页第几张」给个错开的默认落点。
+   */
+  x: real('x'),
+  y: real('y'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

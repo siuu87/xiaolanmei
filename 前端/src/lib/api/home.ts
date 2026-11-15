@@ -38,8 +38,10 @@ export const createDiarySlip = (slip: DiarySlip) =>
       body: JSON.stringify(slip),
     },
   );
-export const patchDiarySlip = (id: string, patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color'>>) =>
-  request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+export const patchDiarySlip = (
+  id: string,
+  patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color' | 'x' | 'y'>>,
+) => request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
 export const deleteDiarySlip = (id: string) =>
   request<{ ok: true }>(`/api/diary/slips/${id}`, { method: 'DELETE' });
 

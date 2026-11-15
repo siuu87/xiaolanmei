@@ -19,12 +19,16 @@ function dotted(date: string): string {
 }
 
 /**
- * 小纸条编辑器（2026-11-13）：
+ * 小纸条编辑器（2026-11-13，2026-11-16 加「读他的条」）：
  * 「TA 的日记」写不了，只能夹一张纸条 —— 一张淡色便条、几行楷体手写，
  * 底下选纸色。整屏纯色不透明（不用半透明遮罩），保存后回本子的翻页页，
  * 纸条就压在那一天的纸面上。
+ *
+ * 纸条现在贴在纸上（`SlipLayer`）只露几行，点纸条进来这里看全文 / 改 / 撕；
+ * **TA 塞的条是只读的**（`author === 'ta'`）：不给改字、不给换色、不给撕。
  */
 export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
+  const byTa = slip?.author === 'ta';
   const [content, setContent] = useState(slip?.content ?? '');
   const [color, setColor] = useState(slip?.color ?? SLIP_PALETTE[0]);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -50,21 +54,25 @@ export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <div className="eyebrow leading-none">{slip ? 'SLIP' : 'NEW SLIP'}</div>
+          <div className="eyebrow leading-none">
+            {byTa ? 'FROM TA' : slip ? 'SLIP' : 'NEW SLIP'}
+          </div>
           <div className="mt-0.5 truncate text-sm font-medium text-foreground">
-            {slip ? '改这张纸条' : '夹一张小纸条'} · {dotted(date)}
+            {byTa ? '他留的纸条' : slip ? '改这张纸条' : '夹一张小纸条'} · {dotted(date)}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => canSave && onSave(content.trim(), color)}
-          disabled={!canSave}
-          data-testid="diary-slip-save"
-          className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-xs font-medium text-primary-foreground transition enabled:hover:opacity-90 disabled:opacity-40"
-        >
-          <Check className="h-3.5 w-3.5" />
-          夹进去
-        </button>
+        {!byTa && (
+          <button
+            type="button"
+            onClick={() => canSave && onSave(content.trim(), color)}
+            disabled={!canSave}
+            data-testid="diary-slip-save"
+            className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-xs font-medium text-primary-foreground transition enabled:hover:opacity-90 disabled:opacity-40"
+          >
+            <Check className="h-3.5 w-3.5" />
+            夹进去
+          </button>
+        )}
       </header>
 
       <div className="flex flex-1 flex-col justify-center px-5 pb-6">
@@ -81,44 +89,61 @@ export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
               className="absolute -top-2 left-1/2 h-5 w-16 -translate-x-1/2 -rotate-2 bg-white/65 shadow-[0_1px_3px_rgba(0,0,0,0.18)]"
             />
             <p className="mb-1 text-[10px] tracking-[0.16em] text-[#3a3730]/45" style={{ fontFamily: HAND_FONT }}>
-              留给 TA
+              {byTa ? 'TA 写的' : '留给 TA'}
             </p>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value.slice(0, SLIP_MAX))}
-              placeholder="写几句就好，别太长……"
-              autoFocus
-              data-testid="diary-slip-textarea"
-              className="h-[38vh] w-full resize-none bg-transparent text-[15px] text-[#3a3730] outline-none placeholder:text-[#3a3730]/30"
-              style={{ fontFamily: HAND_FONT, lineHeight: '27px' }}
-            />
-            <div className="mt-1 text-right text-[10px] tabular-nums text-[#3a3730]/35">
-              {content.length} / {SLIP_MAX}
-            </div>
+            {byTa ? (
+              // 他的条只读：看全文，不给改也不给撕
+              <p
+                className="whitespace-pre-wrap py-1 text-[15px] text-[#3a3730]"
+                style={{ fontFamily: HAND_FONT, lineHeight: '27px' }}
+                data-testid="diary-slip-readonly"
+              >
+                {slip?.content}
+              </p>
+            ) : (
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value.slice(0, SLIP_MAX))}
+                placeholder="写几句就好，别太长……"
+                autoFocus
+                data-testid="diary-slip-textarea"
+                className="h-[38vh] w-full resize-none bg-transparent text-[15px] text-[#3a3730] outline-none placeholder:text-[#3a3730]/30"
+                style={{ fontFamily: HAND_FONT, lineHeight: '27px' }}
+              />
+            )}
+            {!byTa && (
+              <div className="mt-1 text-right text-[10px] tabular-nums text-[#3a3730]/35">
+                {content.length} / {SLIP_MAX}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 纸条颜色 */}
-        <div className="mt-5 flex items-center justify-center gap-2.5">
-          {SLIP_PALETTE.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              aria-label={`纸条颜色 ${c}`}
-              className={`h-7 w-7 rounded-full transition ${
-                color === c ? 'ring-2 ring-foreground ring-offset-2 ring-offset-page-bg' : 'hover:scale-110'
-              }`}
-              style={{ background: c, border: '1px solid rgba(0,0,0,0.06)' }}
-            />
-          ))}
-        </div>
+        {/* 纸条颜色（他留的条不给换） */}
+        {!byTa && (
+          <div className="mt-5 flex items-center justify-center gap-2.5">
+            {SLIP_PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                aria-label={`纸条颜色 ${c}`}
+                className={`h-7 w-7 rounded-full transition ${
+                  color === c ? 'ring-2 ring-foreground ring-offset-2 ring-offset-page-bg' : 'hover:scale-110'
+                }`}
+                style={{ background: c, border: '1px solid rgba(0,0,0,0.06)' }}
+              />
+            ))}
+          </div>
+        )}
         <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
-          TA 的日记你写不了，但可以留张纸条压在那一页上
+          {byTa
+            ? '这是他贴在这页上的，你只能看'
+            : '夹好的纸条可以拖到纸上任何位置，再点一下就回到这里改'}
         </p>
       </div>
 
-      {slip && onDelete && (
+      {slip && onDelete && !byTa && (
         <footer className="flex justify-center pb-4">
           <button
             type="button"

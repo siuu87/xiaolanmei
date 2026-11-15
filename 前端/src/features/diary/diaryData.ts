@@ -42,7 +42,24 @@ export interface DiarySlip {
   color: string;
   /** me = 我夹的 / ta = TA 塞进来的（TA 的只读，样式也不同） */
   author?: 'me' | 'ta';
+  /**
+   * 贴在纸上的位置（2026-11-16 纸条也能随便摆）：相对纸页的 0~1 比例，
+   * 跟贴纸同一套坐标。空 = 还没摆过，用 `slipSpot(第几张)` 补一个落点。
+   */
+  x?: number | null;
+  y?: number | null;
   createdAt?: number;
+}
+
+/**
+ * 纸条默认落点：这一页第 n 张 → 略微错开（连夹两三张不会全叠在正中）。
+ * **与后端 `slipSpot()` 同一套公式**，两边改要一起改。
+ */
+export function slipSpot(n: number): { x: number; y: number } {
+  return {
+    x: 0.5 + ((n % 3) - 1) * 0.13,
+    y: 0.58 + ((n % 4) - 1) * 0.1,
+  };
 }
 
 /** TA 塞进来的纸条默认用的纸色（与后端 TA_SLIP_COLOR 一致） */
