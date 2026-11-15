@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { diaries, diaryBooks, diaryPageLocks, diarySlips, diaryStickers, conversations, messages } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
+import { taSlipLine, type SlipScene } from '../services/diaryVoice.js';
 
 /**
  * 日记路由（阶段 7 收尾）：情侣双方日记的持久化。
@@ -80,6 +81,8 @@ function toSlipDTO(s: typeof diarySlips.$inferSelect) {
     // 贴在纸上的位置（0~1 比例）；null = 还没摆过，前端按「这一页第几张」给默认落点
     x: s.x ?? null,
     y: s.y ?? null,
+    // 到点之前不下发（见 isRevealed）；前端不用管这个字段，只在验收时要看得见
+    revealAt: s.revealAt ?? null,
     createdAt: s.createdAt,
   };
 }
@@ -186,7 +189,8 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       .select()
       .from(diarySlips)
       .all()
-      .filter((s) => s.deletedAt == null && (!book || s.bookId === book))
+      // TA 的条写完不是立刻能看见：`reveal_at` 没到的一律不下发（到点自动浮现）
+      .filter((s) => s.deletedAt == null && isRevealed(s) && (!book || s.bookId === book))
       .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)
       .map(toSlipDTO);
   });
@@ -222,18 +226,14 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       })
       .run();
 
-    // 两条路会让他回一张条：
-    // ① 潜入被发现（这一页被撬过）—— 他马上贴回来；
-    // ② 他本来就会翻我的日记 —— 这张字条有一半概率被他看到，就在旁边回一句。
-    const caught = discoverIfSneaked(bookId, date);
-    const taSlip = caught ?? seenByTa(bookId, date, content);
-    reply.code(201).send({
-      id,
-      createdAt: ts,
-      discovered: !!caught,
-      seen: !!taSlip,
-      taSlip: taSlip ? toSlipDTO(taSlip) : null,
-    });
+    // 他会不会回，都不是当场的事（2026-11-16）：
+    // ① 这一页被撬过、还没被发现 → 他会发现，但可能过一两天才贴条回来；
+    // ② 他翻我的日记看到了这张 —— 也可能半天之后才动笔。
+    // 所以这里只**埋**一张未来的条（reveal_at 在未来），当下什么都不说：
+    // 秒回不像真的，提前提示「他看到了」反而会让人盯着页面等一张不会立刻出现的纸。
+    discoverIfSneaked(bookId, date);
+    seenByTa(bookId, date, content);
+    reply.code(201).send({ id, createdAt: ts });
   });
 
   app.patch('/diary/slips/:id', async (req, reply) => {
@@ -495,20 +495,20 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(diaryPageLocks.id, row.id))
       .run();
 
-    // 开了可能顺手留一句；不开也可能往门缝里塞张纸条 —— 都不是必然
-    const slip = opened
-      ? Math.random() < 0.35
-        ? insertTaSlip(bookId, date, pick(SLIPS_WHEN_OPEN))
-        : null
-      : Math.random() < 0.45
-        ? insertTaSlip(bookId, date, pick(SLIPS_WHEN_SHUT))
-        : null;
+    // 开了可能顺手留一句；不开也可能往门缝里塞张纸条 —— 都不是必然。
+    // 而且**都不当场出现**：门缝那张要过一会儿才递出来（15 分钟~2 小时），
+    // 开门后留的更晚（1 小时~1 天）—— 他不会站在门口等着给你写字。
+    if (opened) {
+      if (Math.random() < 0.35) queueTaSlip(bookId, date, 'knock_open', randMs(1, 24));
+    } else if (Math.random() < 0.45) {
+      queueTaSlip(bookId, date, 'knock_shut', randMs(0.25, 2));
+    }
 
     const line = pick(opened ? KNOCK_OPEN_LINES : KNOCK_SHUT_LINES);
     // TA 那边收到提醒：在聊天里落一条他的反应（本地文案，不调模型，模型挂了也照样有）
     pushKnockNote(knockNoteOf(opened, day, knocks), { knocks, day, opened });
 
-    return { knocks, opened, line, day, slip: slip ? toSlipDTO(slip) : null };
+    return { knocks, opened, line, day, slip: null };
   });
 
   /**
@@ -541,6 +541,7 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
   /**
    * TA 主动来留字条（2026-11-16）：翻日记时偶尔发现这一页多了张不是我写的条。
    * 每天每本最多一张，概率不高 —— 太勤就不像「偶尔路过」了。
+   * 而且他不会正好在你翻到这一页时动手：条埋在 2~18 小时之后。
    */
   app.post('/diary/ta-note/visit', async (req) => {
     const body = (req.body ?? {}) as { bookId?: string; date?: string };
@@ -553,8 +554,8 @@ export async function diaryRoutes(app: FastifyInstance): Promise<void> {
       .all()
       .some((s) => s.deletedAt == null && s.bookId === bookId && s.date === date && s.author === 'ta');
     if (already || Math.random() > 0.35) return { slip: null };
-    const slip = insertTaSlip(bookId, date, pick(TA_VISIT_NOTES));
-    return { slip: slip ? toSlipDTO(slip) : null };
+    queueTaSlip(bookId, date, 'visit', randMs(2, 18));
+    return { slip: null };
   });
 
   /** 自己彻底解开（这一页不再上锁） */
@@ -726,10 +727,18 @@ function knockNoteOf(opened: boolean, day: string, knocks: number): string {
 }
 
 /**
- * TA 自己在某一页塞一张纸条（**不经 HTTP**，后端内部写库）。
+ * TA 自己在某一页贴一张便签（**不经 HTTP**，后端内部写库）。
+ *
  * 作者记 `ta` —— 前端据此换纸色、加署名，且不给删改。
+ * `revealAt` 定在**未来**：到点之前读接口不下发 —— 他不是秒回你，而是半天、
+ * 一两天之后你翻到那一页，才发现多了张纸。
  */
-function insertTaSlip(bookId: string, date: string, content: string): typeof diarySlips.$inferSelect {
+function insertTaSlip(
+  bookId: string,
+  date: string,
+  content: string,
+  revealAt: number | null,
+): typeof diarySlips.$inferSelect {
   const ts = now();
   // 落在哪儿：跟同页已有的条错开一点，别正好压在我夹的那张上面（与前端 slipSpot 同一套算法）
   const samePage = db
@@ -747,6 +756,7 @@ function insertTaSlip(bookId: string, date: string, content: string): typeof dia
     author: 'ta',
     x: spot.x,
     y: spot.y,
+    revealAt,
     createdAt: ts,
     updatedAt: ts,
     deletedAt: null,
@@ -756,25 +766,103 @@ function insertTaSlip(bookId: string, date: string, content: string): typeof dia
 }
 
 /**
- * 他会翻我的日记（2026-11-16）：我夹的纸条有一半概率被他看到，就在旁边回一张。
+ * 埋一张「很久之后才出现」的便签（2026-11-16）。
  *
- * 回条里引用的是**我自己写下的那句话**（截前 18 个字），不编造任何我没写过的事 ——
- * 这是「他能看到我写的东西」，不是「他知道我没写的东西」。
+ * 两步走：
+ * 1. **同步**先挑一句兜底文案落库，`reveal_at` 定在未来 —— 调用方立刻返回，
+ *    不用等模型，敲门、夹条这些操作一点都不卡；
+ * 2. **后台**再让模型按完整人设重写这张便签，回来了就原地换掉正文。
+ *
+ * 因为纸要过十几小时才浮现，第二步慢十几秒也没人看得见；
+ * 模型不通的话留在库里的就是兜底那句（读着也自然，不会出现一张空白纸）。
+ */
+function queueTaSlip(
+  bookId: string,
+  date: string,
+  scene: SlipScene,
+  delay: number,
+  opts?: { myNote?: string },
+): void {
+  const myNote = opts?.myNote?.trim() ?? '';
+  const fallback =
+    scene === 'knock_shut'
+      ? pick(SLIPS_WHEN_SHUT)
+      : scene === 'knock_open'
+        ? pick(SLIPS_WHEN_OPEN)
+        : scene === 'discover'
+          ? pick(SLIPS_ON_DISCOVER)
+          : scene === 'seen'
+            ? pick(SLIPS_WHEN_SEEN)(clipText(myNote || '这一页', 18))
+            : pick(TA_VISIT_NOTES);
+
+  const row = insertTaSlip(bookId, date, fallback, now() + delay);
+  void rewriteWithPersona(row.id, { scene, date, myNote });
+}
+
+/**
+ * 后台把兜底文案换成人设版：喂**这一页真实存在的字**（我夹的条、我写的日记、
+ * 他自己写的），让模型以他的语气写那 1~2 句。
+ */
+function rewriteWithPersona(
+  slipId: string,
+  m: { scene: SlipScene; date: string; myNote?: string },
+): void {
+  const sameDay = db
+    .select()
+    .from(diaries)
+    .all()
+    .filter((d) => d.deletedAt == null && d.date === m.date && !!d.content.trim());
+
+  void taSlipLine({
+    scene: m.scene,
+    dayLabel: dayLabel(m.date),
+    myNote: m.myNote,
+    myEntry: sameDay
+      .filter((d) => d.author !== 'partner')
+      .map((d) => d.content)
+      .join('\n'),
+    hisEntry: sameDay
+      .filter((d) => d.author === 'partner')
+      .map((d) => d.content)
+      .join('\n'),
+  })
+    .then((line) => {
+      if (!line) return;
+      db.update(diarySlips)
+        .set({ content: line, updatedAt: now() })
+        .where(eq(diarySlips.id, slipId))
+        .run();
+    })
+    .catch(() => {
+      // 换字失败就留着兜底文案，这条路径不许抛错
+    });
+}
+
+/** 毫秒延迟：小时区间随机（0.25 小时 = 15 分钟） */
+function randMs(fromH: number, toH: number): number {
+  return Math.round((fromH + Math.random() * (toH - fromH)) * 3_600_000);
+}
+
+/** 这张条到点没有：`reveal_at` 空 = 一直可见（我自己夹的条都是空） */
+function isRevealed(s: typeof diarySlips.$inferSelect): boolean {
+  return s.revealAt == null || s.revealAt <= now();
+}
+
+/**
+ * 他会翻我的日记（2026-11-16）：我夹的纸条有一半概率被他看到 —— 但不是**当场**看到。
+ *
+ * 条埋在 6~36 小时之后：他可能晚上翻、可能隔天才翻，回的那张也短，
+ * 全部素材只用我自己写下的话，不编造任何我没写过的事。
  * 同一页已经有一张他的条就不再堆第二张，免得一页上全是他。
  */
-function seenByTa(bookId: string, date: string, content: string): typeof diarySlips.$inferSelect | null {
+function seenByTa(bookId: string, date: string, content: string): void {
   const already = db
     .select()
     .from(diarySlips)
     .all()
     .some((s) => s.deletedAt == null && s.bookId === bookId && s.date === date && s.author === 'ta');
-  if (already || Math.random() > 0.5) return null;
-  const slip = insertTaSlip(bookId, date, pick(SLIPS_WHEN_SEEN)(clipText(content, 18)));
-  pushChatNote(`（在你日记本「${dayLabel(date)}」那一页，看到了你夹的字条）`, {
-    kind: 'diary_seen',
-    day: dayLabel(date),
-  });
-  return slip;
+  if (already || Math.random() > 0.5) return;
+  queueTaSlip(bookId, date, 'seen', randMs(6, 36), { myNote: content });
 }
 
 /** 取前 n 个字，截断了补一个省略号 */
@@ -784,23 +872,18 @@ function clipText(s: string, n: number): string {
 }
 
 /**
- * 潜入被发现：这一页被撬过、还没被发现过 → TA 在旁边贴一张回条，
- * 聊天里同时落一句。返回那张回条（前端直接放到纸上，不用刷新）。
+ * 潜入被发现：这一页被撬过、还没被发现过 → 记下「他知道了」，
+ * 并把回条埋到 10~48 小时之后 —— 他是慢慢想明白这件事的，不是当场抓包。
  */
-function discoverIfSneaked(bookId: string, date: string): typeof diarySlips.$inferSelect | null {
+function discoverIfSneaked(bookId: string, date: string): void {
   const lock = findPageLock(bookId, date);
-  if (!lock || !lock.sneakedAt || lock.discoveredAt) return null;
+  if (!lock || !lock.sneakedAt || lock.discoveredAt) return;
   const ts = now();
   db.update(diaryPageLocks)
     .set({ discoveredAt: ts, updatedAt: ts })
     .where(eq(diaryPageLocks.id, lock.id))
     .run();
-  const slip = insertTaSlip(bookId, date, pick(SLIPS_ON_DISCOVER));
-  pushChatNote(`（在你日记本「${dayLabel(date)}」那一页，看到一张不是自己写的字条）`, {
-    kind: 'diary_discover',
-    day: dayLabel(date),
-  });
-  return slip;
+  queueTaSlip(bookId, date, 'discover', randMs(10, 48));
 }
 
 /** 撬锁被察觉：TA 会知道，但先不点破（只在聊天里留一句动静） */
@@ -919,15 +1002,22 @@ function clamp01(v: unknown): number {
 }
 
 /**
- * 纸条贴在纸页上的默认落点（2026-11-16）：这一页第 n 张 → 略微错开。
- * 连夹两三张不会全叠在正中，也不会掉到页脚外面。
+ * 便签贴在纸页上的默认落点（2026-11-16）：这一页第 n 张 → 换一个位置。
+ *
+ * 纸改成**方方的小块**之后不能再用原来那套 ±0.13 的小偏移 —— 方纸占纸面大，
+ * 偏移太小两张就压在一起了，所以改成六个固定落点轮流用。
  * **与前端 `slipSpot()` 同一套公式**，两边改要一起改。
  */
 function slipSpot(n: number): { x: number; y: number } {
-  return {
-    x: clamp01(0.5 + ((n % 3) - 1) * 0.13),
-    y: clamp01(0.58 + ((n % 4) - 1) * 0.1),
-  };
+  const spots = [
+    { x: 0.5, y: 0.6 },
+    { x: 0.26, y: 0.32 },
+    { x: 0.74, y: 0.34 },
+    { x: 0.27, y: 0.8 },
+    { x: 0.73, y: 0.82 },
+    { x: 0.5, y: 0.33 },
+  ];
+  return spots[n % spots.length] as { x: number; y: number };
 }
 
 /** 缩放：0.4 ~ 3 倍 */

@@ -88,8 +88,8 @@ export function DlogLeaf({
   const collageW = box.w - PAD_X * 2 + 6;
 
   /**
-   * 页眉右上那行小字：写了几个时刻 / 贴了几张 / 夹了几张。
-   * 纸条 2026-11-16 起浮在纸面上（`SlipLayer`），空页也可能只夹着一张纸条。
+   * 页眉右上那行小字：写了几个时刻 / 贴了几张 / 便签几张。
+   * 便签 2026-11-16 起浮在纸面上（`SlipLayer`），空页也可能只贴着一张便签。
    */
   const marks =
     entries.length > 0
@@ -97,7 +97,7 @@ export function DlogLeaf({
       : stickers.length > 0 || slips.length > 0
         ? [
             stickers.length > 0 ? `贴了 ${stickers.length} 张` : '',
-            slips.length > 0 ? `夹了 ${slips.length} 张` : '',
+            slips.length > 0 ? `便签 ${slips.length} 张` : '',
           ]
             .filter(Boolean)
             .join(' · ')
@@ -144,26 +144,31 @@ export function DlogLeaf({
         {/* 正文：固定高的窗口，写太多就在页内滚 */}
         <div className="relative shrink-0" style={{ height: contentH }}>
           {entries.length === 0 ? (
-            /* 空页：夹着纸条时提示贴着页眉，别被压在纸条底下 */
-            <div
-              className={`flex h-full flex-col px-3 ${slips.length > 0 ? 'pt-3' : 'justify-center py-2'}`}
-            >
+            /* 空页：**贴着便签时不再写「这天还空着」** —— 方形便签占地方，
+               那句话会被两张纸切成半截，看着像排版坏了。便签本身就是这页的内容，
+               点纸面空白处照样能写。 */
+            <div className="flex h-full flex-col px-3">
               <button
                 type="button"
                 onClick={canWrite ? onCompose : undefined}
                 data-testid="diary-leaf-empty"
-                className={`flex flex-col items-center justify-center gap-2 px-5 text-center ${
-                  slips.length > 0 ? 'py-1' : 'py-6'
-                }`}
+                data-empty-hint={slips.length === 0 ? 'text' : 'hidden'}
+                className="flex flex-1 flex-col items-center justify-center gap-2 px-5 py-2 text-center"
               >
-                <span className="text-[15px] tracking-[0.4em] text-ink/15">· · ·</span>
-                <span className="text-[11px] leading-5 text-ink/35" style={{ fontFamily: HAND_FONT }}>
-                  {canWrite
-                    ? stickers.length > 0 || slips.length > 0
-                      ? '这天还空着，点一下写点什么'
-                      : '这天还是空白的，点一下就能写'
-                    : '这天没有留下字迹'}
-                </span>
+                {slips.length === 0 ? (
+                  <>
+                    <span className="text-[15px] tracking-[0.4em] text-ink/15">· · ·</span>
+                    <span className="text-[11px] leading-5 text-ink/35" style={{ fontFamily: HAND_FONT }}>
+                      {canWrite
+                        ? stickers.length > 0
+                          ? '这天还空着，点一下写点什么'
+                          : '这天还是空白的，点一下就能写'
+                        : '这天没有留下字迹'}
+                    </span>
+                  </>
+                ) : (
+                  <span className="sr-only">{canWrite ? '点一下写点什么' : '这天没有留下字迹'}</span>
+                )}
               </button>
             </div>
           ) : (

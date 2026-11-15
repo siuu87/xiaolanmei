@@ -58,7 +58,7 @@ export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
             {byTa ? 'FROM TA' : slip ? 'SLIP' : 'NEW SLIP'}
           </div>
           <div className="mt-0.5 truncate text-sm font-medium text-foreground">
-            {byTa ? '他留的纸条' : slip ? '改这张纸条' : '夹一张小纸条'} · {dotted(date)}
+            {byTa ? '他留的便签' : slip ? '改这张便签' : '贴一张便签'} · {dotted(date)}
           </div>
         </div>
         {!byTa && (
@@ -70,19 +70,26 @@ export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
             className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-xs font-medium text-primary-foreground transition enabled:hover:opacity-90 disabled:opacity-40"
           >
             <Check className="h-3.5 w-3.5" />
-            夹进去
+            贴上
           </button>
         )}
       </header>
 
       <div className="flex flex-1 flex-col justify-center px-5 pb-6">
-        {/* 纸条本体：稍微歪一点，像真夹在页间 */}
+        {/* 纸条本体：稍微歪一点，像真夹在页间。他的条是**方方的一小块纸**，
+            跟纸上那张一样方；我自己的要写字，留长条 */}
         <div
-          className="-rotate-[1.2deg] rounded-[3px] p-1 shadow-[0_16px_34px_-18px_rgba(0,0,0,0.5)]"
+          className={`-rotate-[1.2deg] rounded-[3px] p-1 shadow-[0_16px_34px_-18px_rgba(0,0,0,0.5)] ${
+            byTa ? 'mx-auto aspect-square w-[78%] max-w-[300px]' : ''
+          }`}
           style={{ background: color }}
           data-testid="diary-slip-paper"
         >
-          <div className="relative rounded-[2px] px-4 pb-4 pt-5">
+          <div
+            className={`relative rounded-[2px] px-4 pb-4 pt-5 ${
+              byTa ? 'flex h-full flex-col justify-center' : ''
+            }`}
+          >
             {/* 顶部胶带 */}
             <span
               aria-hidden
@@ -139,7 +146,7 @@ export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
         <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
           {byTa
             ? '这是他贴在这页上的，你只能看'
-            : '夹好的纸条可以拖到纸上任何位置，再点一下就回到这里改'}
+            : '贴好的便签可以拖到纸上任何位置，点一下回来改'}
         </p>
       </div>
 
@@ -159,7 +166,7 @@ export function SlipEditor({ slip, date, onSave, onDelete, onClose }: Props) {
             className="flex h-8 items-center gap-1 rounded-full px-3 text-[11px] font-medium text-rose-500 transition hover:bg-rose-500/10"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            {confirmDel ? '再点一次，撕掉这张' : '撕掉这张纸条'}
+            {confirmDel ? '再点一次，撕掉这张' : '撕掉这张便签'}
           </button>
         </footer>
       )}

@@ -71,6 +71,33 @@ interface DiaryState {
 }
 
 /** 日记 store：书架 + 日记条目 + 小纸条，本地乐观更新 + 写穿后端，刷新不丢。 */
+/** 上次见过的「他的便签」id（跨刷新记着，否则提示等于没有） */
+const TA_SEEN_KEY = 'diary-seen-ta-slips';
+
+/**
+ * 找出一张**刚浮现**的他的便签（跟上次比多出来的那张），顺手更新基准。
+ *
+ * 只在有基准时才提示：第一次进日记本不能一上来就报「多了五张」。
+ */
+function freshTaSlips(slips: DiarySlip[]): DiarySlip | undefined {
+  const taSlips = slips.filter((s) => s.author === 'ta');
+  let baseline: string[] | null = null;
+  try {
+    const raw = localStorage.getItem(TA_SEEN_KEY);
+    baseline = raw ? (JSON.parse(raw) as string[]) : null;
+  } catch {
+    baseline = null;
+  }
+  try {
+    localStorage.setItem(TA_SEEN_KEY, JSON.stringify(taSlips.map((s) => s.id).slice(-60)));
+  } catch {
+    // 隐私模式写不了就算了，大不了不提示
+  }
+  if (!baseline) return undefined;
+  const seen = new Set(baseline);
+  return taSlips.find((s) => !seen.has(s.id));
+}
+
 export const useDiaryStore = create<DiaryState>((set, get) => ({
   entries: [],
   books: [],
@@ -89,7 +116,29 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
         listDiaryStickers(),
         listDiaryPageLocks(),
       ]);
-      set({ entries, books, slips, stickers, pageLocks, loaded: true });
+      // 他的便签是**到点才浮现**的（后端 `reveal_at`）：跟上次见过的比，
+      // 如果多了一张他的条，轻轻提一句 —— 不然那张纸会安安静静躺在某一页里，
+      // 翻不到就永远不知道他回过。
+      //
+      // 基准放 localStorage 而不是内存：刷新一次就忘掉的话，提示等于没有。
+      // 第一次打开（没有基准）只记录、不提示，免得一进来就报「多了 5 张」。
+      const fresh = freshTaSlips(slips);
+      set({
+        entries,
+        books,
+        slips,
+        stickers,
+        pageLocks,
+        loaded: true,
+        ...(fresh
+          ? {
+              slipNotice: {
+                text: `有张他的便签落下来了 · ${Number(fresh.date.split('-')[1])} 月 ${Number(fresh.date.split('-')[2])} 日`,
+                at: Date.now(),
+              },
+            }
+          : {}),
+      });
     } catch {
       set({ loaded: true });
     }
@@ -137,21 +186,9 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   addSlip: (s) => {
     const slip: DiarySlip = { ...s, id: newId(), author: 'me' };
     set((st) => ({ slips: [...st.slips, slip] }));
-    // 两条路会带回他的一张条：
-    //   ① 潜入被发现（`discovered`）—— 他贴回来说「你进来了」；
-    //   ② 他本来就会翻我的日记（`seen`）—— 看到了你夹的这张，在旁边回一句。
-    void createDiarySlip(slip)
-      .then((r) => {
-        if (!r?.taSlip) return;
-        set((st) => ({
-          slips: st.slips.some((x) => x.id === r.taSlip!.id) ? st.slips : [...st.slips, r.taSlip!],
-          slipNotice: {
-            text: r.discovered ? '他发现了——在旁边贴了一张纸条' : '他看到了你夹的这张纸条',
-            at: Date.now(),
-          },
-        }));
-      })
-      .catch(() => {});
+    // 他会不会回、什么时候回都不在这里发生（2026-11-16）：
+    // 他的条埋在 6~36 小时之后才浮现，所以存下我这张就只管存，不当场塞一张他的进来。
+    void createDiarySlip(slip).catch(() => {});
   },
 
   mergeSlip: (slip) => {
@@ -162,18 +199,18 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
 
   clearSlipNotice: () => set({ slipNotice: null }),
 
+  /**
+   * 翻到某页时问一句「他来过吗」（2026-11-16 改）。
+   * 他真来过的话，条会埋在 2~18 小时之后才浮现，所以这个请求现在纯粹是
+   * 「掷一次他今天会不会路过的骰子」：当下拿不到东西，也不该当场提示。
+   */
   askTaNote: async (bookId, date) => {
     try {
-      const r = await claimTaDiaryNote({ bookId, date });
-      if (!r?.slip) return null;
-      set((st) => ({
-        slips: st.slips.some((x) => x.id === r.slip!.id) ? st.slips : [...st.slips, r.slip!],
-        slipNotice: { text: '这页多了一张他留的纸条', at: Date.now() },
-      }));
-      return r.slip;
+      await claimTaDiaryNote({ bookId, date });
     } catch {
-      return null;
+      // 掷骰子失败就算了，下一页再掷
     }
+    return null;
   },
 
   sneakPage: async (bookId, date, tries) => {

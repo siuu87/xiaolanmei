@@ -48,18 +48,31 @@ export interface DiarySlip {
    */
   x?: number | null;
   y?: number | null;
+  /**
+   * TA 的条什么时候才浮现（2026-11-16）：后端写库时定在未来，到点之前不下发，
+   * 所以前端拿到的都是「该出现」的条。这个字段只在验收时看时间用。
+   */
+  revealAt?: number | null;
   createdAt?: number;
 }
 
 /**
- * 纸条默认落点：这一页第 n 张 → 略微错开（连夹两三张不会全叠在正中）。
+ * 便签默认落点：这一页第 n 张 → 换一个位置（连贴几张不会叠成一摞）。
+ *
+ * 纸改成**方方的小块**之后不能用原来那套小偏移 —— 方纸占地方大，偏移太小就压住了，
+ * 所以改成六个固定落点轮流用。
  * **与后端 `slipSpot()` 同一套公式**，两边改要一起改。
  */
 export function slipSpot(n: number): { x: number; y: number } {
-  return {
-    x: 0.5 + ((n % 3) - 1) * 0.13,
-    y: 0.58 + ((n % 4) - 1) * 0.1,
-  };
+  const spots = [
+    { x: 0.5, y: 0.6 },
+    { x: 0.26, y: 0.32 },
+    { x: 0.74, y: 0.34 },
+    { x: 0.27, y: 0.8 },
+    { x: 0.73, y: 0.82 },
+    { x: 0.5, y: 0.33 },
+  ];
+  return spots[n % spots.length] as { x: number; y: number };
 }
 
 /** TA 塞进来的纸条默认用的纸色（与后端 TA_SLIP_COLOR 一致） */

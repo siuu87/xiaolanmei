@@ -266,6 +266,13 @@ export const diarySlips = sqliteTable('diary_slips', {
    */
   x: real('x'),
   y: real('y'),
+  /**
+   * 什么时候才让这张条出现（2026-11-16「他的条不会马上来」）：
+   * TA 塞的条写库时把时间定在未来，到点之前读接口一律不下发 ——
+   * 所以他可能是半天后才回你、两天后才翻到这一页，不是秒回。
+   * 空 = 立刻可见（我自己夹的条都是空）。
+   */
+  revealAt: integer('reveal_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

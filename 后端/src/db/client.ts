@@ -271,6 +271,7 @@ CREATE TABLE IF NOT EXISTS diary_slips (
   author TEXT NOT NULL DEFAULT 'me',
   x REAL,
   y REAL,
+  reveal_at INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -1005,6 +1006,11 @@ export function initDatabase(): void {
   }
   if (!diarySlipCols.some((c) => c.name === 'y')) {
     sqlite.exec(`ALTER TABLE diary_slips ADD COLUMN y REAL`);
+  }
+  // 幂等迁移（2026-11-16「他的条不会马上来」）：补 reveal_at —— 到点之前不下发，
+  // 老条全为 NULL = 一直可见，行为不变
+  if (!diarySlipCols.some((c) => c.name === 'reveal_at')) {
+    sqlite.exec(`ALTER TABLE diary_slips ADD COLUMN reveal_at INTEGER`);
   }
   const diaryLockCols = sqlite.prepare(`PRAGMA table_info(diary_page_locks)`).all() as { name: string }[];
   if (!diaryLockCols.some((c) => c.name === 'sneaked_at')) {

@@ -34,21 +34,21 @@ export function SlipLayer({ slips, w, h, onMove, onOpen }: Props) {
   const drag = useRef<{ id: string; moved: boolean; sx: number; sy: number } | null>(null);
 
   /**
-   * 纸条宽度：纸张的六成。比贴纸大得多，太宽就没地方「贴」了 ——
-   * 横向最多只能挪到两边留出一半纸宽的位置，再窄一点反而更自由。
+   * 便签尺寸：**方方的一小块**（2026-11-16）。
+   *
+   * 原来是纸张六成宽的长条，压在纸上像「又一段正文」；改成正方形小纸片之后
+   * 才像真的一张便利贴 —— 一页贴两三张也不至于把字全挡住。
+   * 用纸宽的 34% 定边长，窄屏也不会小到看不清。
    */
-  const width = Math.max(140, Math.min(240, Math.round(w * 0.6)));
-  /** 露出来的高度：大约六行手写字，再多就点开看 */
-  const CLIP_H = Math.max(96, Math.round(h * 0.22));
-
-  /**
-   * 拖动范围：横向**一定**夹在纸内 —— 纸条比贴纸大，出了纸边字就被裁掉一半，
-   * 那是坏体验，不是「贴出边」的感觉。纵向放宽一点（12%~90%），
-   * 压在页眉日期上、贴到页脚边上都随它。
-   */
-  const halfW = (width / 2 + 4) / w;
-  const clampX = (v: number) => Math.min(1 - halfW, Math.max(halfW, v));
-  const clampY = (v: number) => Math.min(0.9, Math.max(0.12, v));
+  const size = Math.max(100, Math.min(132, Math.round(w * 0.3)));
+  /** 方纸在纸页上的半宽 / 半高（比例）：拖到哪儿都别让纸片跑出纸外 */
+  const halfW = (size / 2 + 4) / w;
+  const halfH = (size / 2 + 4) / h;
+  /** 纸页比便签还小时（极端窄屏）half 会超过 0.5，夹在正中就行 */
+  const clamp = (v: number, half: number) =>
+    half >= 0.5 ? 0.5 : Math.min(1 - half, Math.max(half, v));
+  const clampX = (v: number) => clamp(v, halfW);
+  const clampY = (v: number) => clamp(v, halfH);
 
   const startDrag = (e: React.PointerEvent, s: DiarySlip) => {
     e.stopPropagation();
@@ -133,29 +133,37 @@ export function SlipLayer({ slips, w, h, onMove, onOpen }: Props) {
             style={{
               left: `${x * 100}%`,
               top: `${y * 100}%`,
-              width,
-              transform: `translate(-50%, -50%) rotate(${byTa ? 0.9 : -1.2}deg)`,
+              width: size,
+              height: size,
+              transform: `translate(-50%, -50%) rotate(${byTa ? 1.6 : -2.2}deg)`,
               touchAction: 'none',
               zIndex: 12 + i,
             }}
           >
-            {/* 胶带：压在纸条上沿，一眼看出是「贴」上去的 */}
+            {/* 胶带：压在便签上沿，一眼看出是「贴」上去的 */}
             <span
               aria-hidden
-              className="pointer-events-none absolute left-1/2 -top-2 h-3.5 w-10 -translate-x-1/2 -rotate-2 bg-white/55 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
+              className="pointer-events-none absolute left-1/2 -top-1.5 h-3 w-8 -translate-x-1/2 -rotate-2 bg-white/55 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
             />
             <div
-              className="px-2.5 py-2 shadow-[0_8px_16px_-10px_rgba(0,0,0,0.55)]"
+              className="flex h-full flex-col px-2 py-1.5 shadow-[0_7px_14px_-9px_rgba(0,0,0,0.55)]"
               style={{ background: s.color }}
             >
               {byTa && (
-                <span className="mb-0.5 block text-[8px] leading-none tracking-[0.1em] text-[#3b3830]/45">
+                <span className="mb-0.5 block shrink-0 text-[7px] leading-none tracking-[0.12em] text-[#3b3830]/45">
                   他留的
                 </span>
               )}
               <p
-                className="overflow-hidden whitespace-pre-wrap text-[11px] text-[#3b3830]"
-                style={{ fontFamily: HAND_FONT, lineHeight: '17px', maxHeight: CLIP_H }}
+                className="overflow-hidden whitespace-pre-wrap text-[10px] text-[#3b3830]"
+                style={{
+                  fontFamily: HAND_FONT,
+                  lineHeight: '15px',
+                  // 方纸就那么大：写满了在纸上裁掉，点开才看全文
+                  display: '-webkit-box',
+                  WebkitLineClamp: byTa ? 5 : 6,
+                  WebkitBoxOrient: 'vertical',
+                }}
               >
                 {s.content}
               </p>

@@ -31,13 +31,11 @@ export const deleteDiaryBook = (id: string) =>
 // ---- 小纸条（夹在 TA 的日记里）----
 export const listDiarySlips = () => request<DiarySlip[]>('/api/diary/slips');
 export const createDiarySlip = (slip: DiarySlip) =>
-  request<{ id: string; discovered?: boolean; seen?: boolean; taSlip?: DiarySlip | null }>(
-    '/api/diary/slips',
-    {
-      method: 'POST',
-      body: JSON.stringify(slip),
-    },
-  );
+  // 他会不会回、什么时候回都不在响应里（条埋在十几小时之后才浮现），只回我自己这张的 id
+  request<{ id: string; createdAt: number }>('/api/diary/slips', {
+    method: 'POST',
+    body: JSON.stringify(slip),
+  });
 export const patchDiarySlip = (
   id: string,
   patch: Partial<Pick<DiarySlip, 'date' | 'content' | 'color' | 'x' | 'y'>>,
