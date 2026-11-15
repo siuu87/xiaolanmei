@@ -13,18 +13,19 @@
     tools.append(food.TOOL_DEF); ... await food.tool_dispatch(args)
 """
 from __future__ import annotations
-import asyncio, hashlib, hmac, json, os, random, re, sqlite3, time, uuid
+import asyncio, base64, hashlib, hmac, json, os, random, re, sqlite3, time, uuid
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import FileResponse
-from app import llm
+from app import diet as dietmod, llm
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get('FOOD_DATA_DIR') or (ROOT / 'data'))
 RDB = DATA_DIR / 'recipes.db'
 FDB = DATA_DIR / 'food.db'
 IMG_DIR = DATA_DIR / 'recipe_img'
+PHOTO_DIR = DATA_DIR / 'photos'  # 用户自己拍的饭菜照片
 router = APIRouter()
 
 CUISINES = ['中餐', '日料', '韩餐', '西餐', '东南亚', '南亚中东']
@@ -44,6 +45,7 @@ def _env_token_check(token: str) -> bool:
 
 check_token = _env_token_check   # 嵌进别的程序时换成那边的校验: food.check_token = fn
 llm_complete = llm.complete      # 估热量用的模型: async (system, user) -> str
+llm_vision = llm.complete_vision  # 看照片用的模型: async (system, user, images) -> str
 
 
 def _require_auth(authorization: str = Header(default='')) -> None:
@@ -65,6 +67,7 @@ CREATE TABLE IF NOT EXISTS foods(id INTEGER PRIMARY KEY, name TEXT NOT NULL, kca
 CREATE INDEX IF NOT EXISTS ix_foods_name ON foods(name);
 '''
 _schema_ok = False
+_photo_col = False  # meals.photo 有没有迁移过
 
 
 def _rdb() -> sqlite3.Connection:
@@ -79,19 +82,29 @@ def _rdb() -> sqlite3.Connection:
 
 
 def _fdb() -> sqlite3.Connection:
+    global _photo_col
     FDB.parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(FDB, timeout=10)
     c.row_factory = sqlite3.Row
     c.executescript('''
     CREATE TABLE IF NOT EXISTS meals(id TEXT PRIMARY KEY, dt TEXT, d TEXT, slot TEXT, name TEXT, cuisine TEXT,
-      rating TEXT, note TEXT, portion TEXT, kcal REAL, kcal_src TEXT, recipe_id INTEGER, source TEXT, created TEXT);
+      rating TEXT, note TEXT, portion TEXT, kcal REAL, kcal_src TEXT, recipe_id INTEGER, source TEXT, created TEXT, photo TEXT);
     CREATE INDEX IF NOT EXISTS ix_meals_d ON meals(d);
     CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT);
     CREATE TABLE IF NOT EXISTS kcal_cache(key TEXT PRIMARY KEY, name TEXT, portion TEXT, kcal REAL, protein REAL, fat REAL, carb REAL, note TEXT, src TEXT, created TEXT);
     CREATE TABLE IF NOT EXISTS dish_images(key TEXT PRIMARY KEY, path TEXT, src TEXT, created TEXT);
     CREATE TABLE IF NOT EXISTS day_scores(d TEXT PRIMARY KEY, score INTEGER, comment TEXT, by TEXT, created TEXT);
     CREATE TABLE IF NOT EXISTS favorites(recipe_id INTEGER PRIMARY KEY, created TEXT);
+    CREATE TABLE IF NOT EXISTS recipe_links(id TEXT PRIMARY KEY, recipe_id INTEGER, platform TEXT, url TEXT, title TEXT, created TEXT);
+    CREATE INDEX IF NOT EXISTS ix_links_rid ON recipe_links(recipe_id);
+    CREATE TABLE IF NOT EXISTS diet_subs(k TEXT PRIMARY KEY, sub TEXT, created TEXT);
     ''')
+    if not _photo_col:  # 老库: meals 里还没有 photo 这一列
+        cols = {r['name'] for r in c.execute('PRAGMA table_info(meals)')}
+        if 'photo' not in cols:
+            c.execute('ALTER TABLE meals ADD COLUMN photo TEXT')
+            c.commit()
+        _photo_col = True
     return c
 
 
@@ -170,18 +183,61 @@ def _clean_dish(name: str) -> str:
     return '' if s in _GENERIC_TERMS or len(s) < 2 else s
 
 
+# ---------- 忌口（条目从聊天主站读，这里不维护任何食物名） ----------
+_diet_mem = {'at': 0.0, 'profile': None}
+_DIET_TTL = 60.0     # 主站正常时一分钟刷新一次
+_diet_down = 0.0     # 主站没开时安静一会儿，别每张卡片都去等一次超时
+
+
+async def diet_profile() -> dict:
+    """当前生效的忌口 / 过敏源。
+
+    主站连得上就用它的、并往本地存一份；连不上就用本地存的（主站从没设过就是空档案，
+    卡片上什么都不会标）。档案为空是正常状态，不是错误。
+    """
+    global _diet_down
+    if _diet_mem['profile'] is not None and time.time() - _diet_mem['at'] < _DIET_TTL:
+        return _diet_mem['profile']
+    c = _fdb()
+    try:
+        prof = None
+        if time.time() >= _diet_down:
+            prof = await dietmod.fetch_profile()
+            if prof is None:
+                _diet_down = time.time() + 120
+        if prof is not None:
+            _set_setting(c, 'diet_profile', prof)
+            c.commit()
+        else:
+            prof = _setting(c, 'diet_profile') or {}
+        prof = {'dislikes': [str(x) for x in (prof.get('dislikes') or []) if str(x).strip()],
+                'allergies': [str(x) for x in (prof.get('allergies') or []) if str(x).strip()]}
+        _diet_mem['profile'] = prof
+        _diet_mem['at'] = time.time()
+        return prof
+    finally:
+        c.close()
+
+
 # ---------- 菜谱 ----------
-def _card(r) -> dict:
+def _card(r, prof=None) -> dict:
     img = r['image'] or ''
-    return {'id': r['id'], 'name': r['name'], 'dish': r['dish'] or '', 'cuisine': r['cuisine'] or '', 'region': r['region'] or '',
-            'kinds': _j(r['kinds'], []), 'tags': _j(r['tags'], []), 'score': r['score'], 'src': r['src'],
-            'image': ('/food-img/' + img) if img else '', 'image_src': r['image_src'] or ''}
+    d = {'id': r['id'], 'name': r['name'], 'dish': r['dish'] or '', 'cuisine': r['cuisine'] or '', 'region': r['region'] or '',
+         'kinds': _j(r['kinds'], []), 'tags': _j(r['tags'], []), 'score': r['score'], 'src': r['src'],
+         'image': ('/food-img/' + img) if img else '', 'image_src': r['image_src'] or ''}
+    if prof:
+        ings = _j(r['ingredients'], []) if 'ingredients' in r.keys() else []
+        d['diet'] = dietmod.hits(dietmod.texts_of(d['name'], d['dish'], ings), prof)
+    return d
 
 
-def _full(r) -> dict:
-    d = _card(r)
+def _full(r, prof=None) -> dict:
+    d = _card(r, prof)
     d.update({'descr': r['descr'] or '', 'ingredients': _j(r['ingredients'], []), 'steps': _j(r['steps'], []),
               'step_images': [[('/food-img/' + x) for x in L] for L in _j(r['step_images'], [])], 'author': r['author'] or ''})
+    if prof:
+        # 每条食材单独标一遍，详情页里好高亮到具体那一行
+        d['diet_rows'] = [dietmod.hits([x], prof) for x in d['ingredients']]
     return d
 
 
@@ -213,16 +269,21 @@ def search_recipes(q: str = '', cuisine: str = '', region: str = '', kind: str =
     return {'items': [_card(r) for r in rows[:limit]], 'more': more, 'page': page}
 
 
-def get_recipe(rid: int) -> dict | None:
+def get_recipe(rid: int, prof=None) -> dict | None:
     c = _rdb()
     r = c.execute('SELECT * FROM recipes WHERE id=?', (rid,)).fetchone()
-    return _full(r) if r else None
+    return _full(r, prof) if r else None
 
 
-def random_recipes(cuisine: str = '', kind: str = '', n: int = 8, seed_q: str = '') -> list[dict]:
-    """转盘候选: 优先带图或有正经菜名(dish)且分数高的, 不够再放宽。"""
+def random_recipes(cuisine: str = '', kind: str = '', n: int = 8, seed_q: str = '', prof=None) -> list[dict]:
+    """随机抽几道: 优先带图或有正经菜名(dish)且分数高的, 不够再放宽。
+
+    候选池取得比要的多（每一档至少 10 条），最后洗牌取前 n —— 抽一道的时候
+    「换一个」才不会连着刷出同一样。
+    """
     c = _rdb()
     n = max(1, min(int(n or 8), 16))
+    want = max(n * 2, 10)
     base, args = [], []
     if cuisine:
         base.append('cuisine=?'); args.append(cuisine)
@@ -231,17 +292,17 @@ def random_recipes(cuisine: str = '', kind: str = '', n: int = 8, seed_q: str = 
     if seed_q:
         base.append('(name LIKE ? OR dish LIKE ? OR ingredients LIKE ?)'); args += [f'%{seed_q}%'] * 3
     out, seen = [], set()
-    for extra in ["(image!='' OR src='htc')", "dish!='' AND score>=6", "score>=6", "1=1"]:
-        if len(out) >= n:
+    for extra in ["image!=''", "dish!='' AND score>=6", "score>=6", "1=1"]:
+        if len(out) >= want:
             break
         w = ' AND '.join(base + [extra])
-        rows = c.execute(f'SELECT {CARD_COLS} FROM recipes WHERE {w} ORDER BY RANDOM() LIMIT ?', args + [n * 2]).fetchall()
+        rows = c.execute(f'SELECT {CARD_COLS}, ingredients FROM recipes WHERE {w} ORDER BY RANDOM() LIMIT ?', args + [want]).fetchall()
         for r in rows:
             key = (r['dish'] or _clean_dish(r['name']) or r['name'])
             if key in seen:
                 continue
-            seen.add(key); out.append(_card(r))
-            if len(out) >= n:
+            seen.add(key); out.append(_card(r, prof))
+            if len(out) >= want:
                 break
     random.shuffle(out)
     return out[:n]
@@ -249,20 +310,32 @@ def random_recipes(cuisine: str = '', kind: str = '', n: int = 8, seed_q: str = 
 
 # ---------- 图: 本地没有就去维基百科找一张存下来 ----------
 _img_locks: dict[str, asyncio.Lock] = {}
+# 维基在有些网络下整站连不上(http=000)。连不上时别每道菜都去试一遍, 记个时间, 6 小时内直接跳过
+_wiki_down_until = 0.0
+WIKI_COOLDOWN = 6 * 3600
 
 
-async def _wiki_lookup(term: str) -> str:
-    """返回一张图的 URL, 找不到给空串。只认中文维基词条的首图(词条名对得上才算), 不去 Commons 全文搜——搜出来的常常不是这道菜。"""
+async def _wiki_lookup(term: str) -> str | None:
+    """返回一张图的 URL。三种结果要分清:
+    - 拿到 URL: 有图
+    - '': 维基上确实没这个说法/没首图 —— 可以放心缓存「没图」, 一个月内不用再问
+    - None: 压根连不上(网络不通/超时) —— 不能缓存, 也不该让用户等, 直接跳过
+    """
+    global _wiki_down_until
+    if time.time() < _wiki_down_until:
+        return None
     import httpx
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=6.0), headers={'User-Agent': UA}, follow_redirects=True) as cl:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=4.0), headers={'User-Agent': UA}, follow_redirects=True) as cl:
             r = await cl.get('https://zh.wikipedia.org/w/api.php', params={'action': 'query', 'prop': 'pageimages', 'titles': term, 'pithumbsize': 800, 'format': 'json', 'redirects': 1, 'converttitles': 1})
+            r.raise_for_status()
             for p in (r.json().get('query') or {}).get('pages', {}).values():
                 th = (p.get('thumbnail') or {}).get('source')
                 if th and not (p.get('pageimage') or '').lower().endswith('.svg'):
                     return th
     except Exception:
-        pass
+        _wiki_down_until = time.time() + WIKI_COOLDOWN
+        return None
     return ''
 
 
@@ -317,6 +390,8 @@ async def ensure_image(rid: int) -> dict:
         lock = _img_locks.setdefault(t, asyncio.Lock())
         async with lock:
             url = await _wiki_lookup(t)
+            if url is None:  # 连不上维基, 这次就算了, 别把「没图」记进缓存
+                return {'id': rid, 'image': '', 'image_src': '', 'offline': True}
             path = ''
             if url:
                 try:
@@ -331,6 +406,96 @@ async def ensure_image(rid: int) -> dict:
             c.execute("UPDATE recipes SET image=?, image_src=? WHERE id=? OR (dish=? AND image='')", (path, 'Wikipedia', rid, t)); c.commit()
             return {'id': rid, 'image': '/food-img/' + path, 'image_src': 'Wikipedia'}
     return {'id': rid, 'image': '', 'image_src': ''}
+
+
+# ---------- 外部链接: 跳到平台搜 + 存自己贴的 ----------
+# 只做「跳过去搜」和「存用户自己贴的链接」, 不抓平台内容:
+# 小红书/抖音没有开放搜索接口, B 站接口带风控(实测第二次就 412), 抓下来还涉及版权。
+PLATFORMS = (
+    ('xhs', '小红书', ('xiaohongshu.com', 'xhslink.com')),
+    ('bili', 'B站', ('bilibili.com', 'b23.tv')),
+    ('dy', '抖音', ('douyin.com', 'iesdouyin.com')),
+)
+PLAT_LABEL = {k: v for k, v, _ in PLATFORMS}
+
+
+def _host(url: str) -> str:
+    m = re.match(r'https?://([^/?#]+)', url or '')
+    return (m.group(1) if m else '').lower().split(':')[0]
+
+
+def _platform_of(url: str) -> str:
+    h = _host(url)
+    for k, _label, doms in PLATFORMS:
+        if any(h == d or h.endswith('.' + d) for d in doms):
+            return k
+    return 'web'
+
+
+def _norm_url(text: str) -> str:
+    """用户多是整段分享文案粘过来, 从里面挑出第一个链接; 没写协议的补 https://。"""
+    s = (text or '').strip()
+    m = re.search(r'https?://[^\s，,；;、）)】」\'"]+', s)
+    if m:
+        u = m.group(0).rstrip('。.,;；')
+    else:
+        if not re.match(r'^(?:[a-z0-9-]+\.)+[a-z]{2,}(?::\d+)?(?:/\S*)?$', s, re.I):
+            raise HTTPException(400, '这不像一个链接')
+        u = 'https://' + s
+    if len(u) > 500:
+        raise HTTPException(400, '链接太长了')
+    if not _host(u):
+        raise HTTPException(400, '这不像一个链接')
+    return u
+
+
+def search_links(recipe: dict) -> list[dict]:
+    """这道菜去各平台搜什么: 优先用正经菜名(dish), 没有再收拾一下标题。"""
+    from urllib.parse import quote
+    term = (recipe.get('dish') or _clean_dish(recipe.get('name') or '') or recipe.get('name') or '').strip()[:20]
+    if not term:
+        return []
+    q = quote(term)
+    return [
+        {'platform': 'bili', 'label': 'B站', 'url': f'https://search.bilibili.com/all?keyword={q}'},
+        {'platform': 'xhs', 'label': '小红书', 'url': f'https://www.xiaohongshu.com/search_result?keyword={q}&type=51'},
+        {'platform': 'dy', 'label': '抖音', 'url': f'https://www.douyin.com/search/{q}'},
+    ]
+
+
+def _short_url(u: str) -> str:
+    """没有标题时列表里显示什么: 去掉协议, 超长截断。短链光看域名分不出是哪条, 带上路径尾段。"""
+    s = re.sub(r'^https?://', '', u or '')
+    s = s.rstrip('/')
+    return s if len(s) <= 42 else s[:40] + '…'
+
+
+def list_links(rid: int) -> list[dict]:
+    f = _fdb()
+    rows = f.execute('SELECT id,platform,url,title,created FROM recipe_links WHERE recipe_id=? ORDER BY created DESC, rowid DESC LIMIT 50', (rid,)).fetchall()
+    return [{'id': r['id'], 'platform': r['platform'], 'label': PLAT_LABEL.get(r['platform'], '网页'),
+             'url': r['url'], 'title': r['title'] or '', 'host': _host(r['url']), 'shown': _short_url(r['url']),
+             'created': r['created'] or ''} for r in rows]
+
+
+def add_link(rid: int, raw: str, title: str = '') -> dict:
+    if not _rdb().execute('SELECT 1 FROM recipes WHERE id=?', (rid,)).fetchone():
+        raise HTTPException(404, '没有这道菜')
+    url = _norm_url(raw)
+    f = _fdb()
+    if f.execute('SELECT 1 FROM recipe_links WHERE recipe_id=? AND url=?', (rid, url)).fetchone():
+        return {'ok': True, 'dup': True, 'items': list_links(rid)}
+    f.execute('INSERT INTO recipe_links(id,recipe_id,platform,url,title,created) VALUES(?,?,?,?,?,?)',
+              (str(uuid.uuid4())[:8], rid, _platform_of(url), url, (title or '').strip()[:80], datetime.now().isoformat(timespec='seconds')))
+    f.commit()
+    return {'ok': True, 'items': list_links(rid)}
+
+
+def del_link(rid: int, lid: str) -> dict:
+    f = _fdb()
+    f.execute('DELETE FROM recipe_links WHERE recipe_id=? AND id=?', (rid, lid))
+    f.commit()
+    return {'ok': True, 'items': list_links(rid)}
 
 
 # ---------- 热量 ----------
@@ -366,6 +531,8 @@ async def estimate_kcal(name: str, portion: str = '') -> dict:
         txt = await llm_complete(sys_p, f'吃的: {name}' + (f'\n份量: {portion}' if portion else ''))
     except llm.NotConfigured:
         raise HTTPException(503, '没有配置估算用的模型 (见 .env.example 的 LLM_*)')
+    except llm.ModelError as e:
+        raise HTTPException(503, str(e))
     except Exception as e:
         raise HTTPException(502, f'估算模型出错: {type(e).__name__}')
     m = re.search(r'\{.*\}', txt, re.S)
@@ -383,6 +550,79 @@ async def estimate_kcal(name: str, portion: str = '') -> dict:
     f.execute('INSERT OR REPLACE INTO kcal_cache(key,name,portion,kcal,protein,fat,carb,note,src,created) VALUES(?,?,?,?,?,?,?,?,?,?)', row)
     f.commit()
     return {'name': name, 'portion': portion, 'kcal': kcal, 'protein': row[4], 'fat': row[5], 'carb': row[6], 'note': row[7], 'src': 'ai', 'cached': False}
+
+
+# ---------- 拍照估热量 ----------
+_PHOTO_MAGIC = {'jpg': b'\xff\xd8\xff', 'png': b'\x89PNG\r\n\x1a\n', 'webp': b'RIFF'}
+PHOTO_SYS = ('你在看一张用户刚拍的饭菜照片, 帮他算这餐多少热量。'
+             '只写照片里真能看出来的东西: 认不出是什么菜就别硬编, 宁可少列几样; 调料、油、看不见的配料只在 note 里提一句, 不要单列成一样。'
+             '份量按盘子里实际看到的估(一个小碗/一盘/半份/约 150g 这样), 不要按 100g 报。'
+             '热量以《中国食物成分表》为口径, 家常做法: 蒸米饭 117 kcal/100g, 馒头 233/100g, 鸡胸肉 133/100g 生重, 一个鸡蛋约 70, 一勺油约 90。'
+             '不要为了保险往高里估, 给最可能的那个数。'
+             '只输出一行 JSON, 不要别的字: {"items":[{"name":"菜名","portion":"看到的分量","kcal":整数,"protein":克,"fat":克,"carb":克,"note":"十几个字, 按什么估的"}],"note":"整体一句话"}。'
+             'items 最多 6 条, 按面积从多到少排; 实在认不出来就 {"items":[],"note":"看不清是什么"}。')
+
+
+def save_photo(data_url: str) -> str:
+    """把前端压好的 data URL 落盘, 返回可以直接放进 <img src> 的地址。"""
+    m = re.match(r'^data:image/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$', str(data_url or ''), re.I)
+    if not m:
+        raise HTTPException(400, '图片格式不认识, 要 data:image/jpeg;base64,... 这种')
+    ext = 'jpg' if m.group(1).lower() in ('jpeg', 'jpg') else m.group(1).lower()
+    b64 = re.sub(r'\s+', '', m.group(2))
+    if len(b64) > 12_000_000:
+        raise HTTPException(413, '图片太大了, 压到 6MB 以内再传')
+    try:
+        raw = base64.b64decode(b64, validate=True)
+    except Exception:
+        raise HTTPException(400, '图片数据坏了')
+    if len(raw) < 64 or not raw.startswith(_PHOTO_MAGIC[ext]):
+        raise HTTPException(400, '这不像一张图片')
+    PHOTO_DIR.mkdir(parents=True, exist_ok=True)
+    fn = datetime.now().strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:8] + '.' + ext
+    (PHOTO_DIR / fn).write_bytes(raw)
+    return '/food-img/photo/' + fn
+
+
+async def recognize_photo(data_url: str, hint: str = '') -> dict:
+    """看照片 -> 列出里面有什么 -> 各自的热量。认不出来就是空列表, 让用户自己填。"""
+    photo = save_photo(data_url)
+    ask = '这餐吃了什么? 帮我把每样的热量估出来。' + (f'\n用户补充: {hint[:60]}' if hint else '')
+    try:
+        txt = await llm_vision(PHOTO_SYS, ask, [data_url])
+    except llm.NotConfigured:
+        raise HTTPException(503, '没有配置看图的模型 (见 .env 的 LLM_BASE_URL / LLM_MODEL, 也可以单独设 VISION_MODEL)')
+    except llm.ModelError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        raise HTTPException(502, f'看图的模型出错了: {type(e).__name__}')
+    m = re.search(r'\{.*\}', txt or '', re.S)
+    try:
+        d = json.loads(m.group(0)) if m else {}
+    except Exception:
+        raise HTTPException(502, '模型没给出能用的结果: ' + (txt or '')[:80])
+
+    def _f(x, cap=5000.0):
+        try:
+            v = float(x)
+            return v if 0 <= v <= cap else None
+        except Exception:
+            return None
+
+    items = []
+    for it in (d.get('items') or [])[:6]:
+        if not isinstance(it, dict):
+            continue
+        nm = str(it.get('name') or '').strip()[:30]
+        kcal = _f(it.get('kcal'))
+        if not nm or kcal is None:
+            continue  # 没名字或没数的就不往页面上塞
+        items.append({'name': nm, 'portion': str(it.get('portion') or '').strip()[:30], 'kcal': round(kcal),
+                      'protein': _f(it.get('protein'), 500), 'fat': _f(it.get('fat'), 500), 'carb': _f(it.get('carb'), 500),
+                      'note': str(it.get('note') or '').strip()[:60]})
+    return {'ok': bool(items), 'photo': photo, 'items': items,
+            'total': round(sum(x['kcal'] for x in items)) if items else 0,
+            'note': str(d.get('note') or '').strip()[:80]}
 
 
 # ---------- 目标 ----------
@@ -414,7 +654,7 @@ def targets(c: sqlite3.Connection | None = None) -> dict:
 def _row(r) -> dict:
     return {'id': r['id'], 'dt': r['dt'], 'date': r['d'], 'slot': r['slot'] or '', 'name': r['name'], 'cuisine': r['cuisine'] or '',
             'rating': r['rating'] or '', 'note': r['note'] or '', 'portion': r['portion'] or '', 'kcal': r['kcal'], 'kcal_src': r['kcal_src'] or '',
-            'recipe_id': r['recipe_id'], 'source': r['source'] or 'user'}
+            'recipe_id': r['recipe_id'], 'source': r['source'] or 'user', 'photo': (r['photo'] if 'photo' in r.keys() else '') or ''}
 
 
 def _guess_slot(t: datetime) -> str:
@@ -428,7 +668,7 @@ def _guess_slot(t: datetime) -> str:
 
 
 def add_meal(name: str, cuisine: str = '', slot: str = '', rating: str = '', note: str = '', portion: str = '', kcal=None, kcal_src: str = '',
-             date_s: str = '', time_s: str = '', recipe_id=None, source: str = 'user') -> dict:
+             date_s: str = '', time_s: str = '', recipe_id=None, source: str = 'user', photo: str = '') -> dict:
     name = (name or '').strip()[:60]
     if not name:
         raise HTTPException(400, '吃了什么总得写一个')
@@ -451,8 +691,9 @@ def add_meal(name: str, cuisine: str = '', slot: str = '', rating: str = '', not
         kcal_v = None
     row = (str(uuid.uuid4())[:8], t.isoformat(timespec='minutes'), d.isoformat(), slot, name, cuisine, rating, (note or '').strip()[:300],
            (portion or '').strip()[:30], kcal_v, (kcal_src or ('manual' if kcal_v is not None else ''))[:10],
-           int(recipe_id) if recipe_id else None, source, now.isoformat(timespec='seconds'))
-    c.execute('INSERT INTO meals(id,dt,d,slot,name,cuisine,rating,note,portion,kcal,kcal_src,recipe_id,source,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', row)
+           int(recipe_id) if recipe_id else None, source, now.isoformat(timespec='seconds'),
+           photo if re.fullmatch(r'/food-img/photo/[A-Za-z0-9_.-]{3,80}', str(photo or '')) else '')
+    c.execute('INSERT INTO meals(id,dt,d,slot,name,cuisine,rating,note,portion,kcal,kcal_src,recipe_id,source,created,photo) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', row)
     c.commit()
     return _row(c.execute('SELECT * FROM meals WHERE id=?', (row[0],)).fetchone())
 
@@ -579,18 +820,88 @@ def api_recipes(q: str = '', cuisine: str = '', region: str = '', kind: str = ''
 
 
 @router.get('/api/food/recipe/{rid}', dependencies=[Depends(_require_auth)])
-def api_recipe(rid: int) -> dict:
-    r = get_recipe(rid)
+async def api_recipe(rid: int) -> dict:
+    prof = await diet_profile()
+    r = get_recipe(rid, prof)
     if not r:
         raise HTTPException(404, '没有这道菜')
     f = _fdb()
     r['fav'] = bool(f.execute('SELECT 1 FROM favorites WHERE recipe_id=?', (rid,)).fetchone())
+    r['links'] = list_links(rid)
+    r['search'] = search_links(r)
     return r
 
 
+@router.get('/api/food/links/{rid}', dependencies=[Depends(_require_auth)])
+def api_links(rid: int) -> dict:
+    r = get_recipe(rid)
+    if not r:
+        raise HTTPException(404, '没有这道菜')
+    return {'items': list_links(rid), 'search': search_links(r)}
+
+
+@router.post('/api/food/links/{rid}', dependencies=[Depends(_require_auth)])
+def api_link_add(rid: int, body: dict) -> dict:
+    return add_link(rid, str(body.get('url') or ''), str(body.get('title') or ''))
+
+
+@router.delete('/api/food/links/{rid}/{lid}', dependencies=[Depends(_require_auth)])
+def api_link_del(rid: int, lid: str) -> dict:
+    return del_link(rid, lid)
+
+
 @router.get('/api/food/random', dependencies=[Depends(_require_auth)])
-def api_random(cuisine: str = '', kind: str = '', n: int = 8, q: str = '') -> dict:
-    return {'items': random_recipes(cuisine, kind, n, (q or '').strip()[:20])}
+async def api_random(cuisine: str = '', kind: str = '', n: int = 8, q: str = '') -> dict:
+    """随机抽几道。含过敏源的整道跳过（重抽几次），忌口不跳过、只做标注。"""
+    prof = await diet_profile()
+    n = max(1, min(int(n or 8), 16))
+    items: list[dict] = []
+    for _ in range(5):
+        items = random_recipes(cuisine, kind, n, (q or '').strip()[:20], prof)
+        if not prof.get('allergies'):
+            break
+        items = [x for x in items if not any(h['level'] == 'allergy' for h in (x.get('diet') or []))]
+        if items:
+            break
+    return {'items': items}
+
+
+@router.get('/api/food/diet', dependencies=[Depends(_require_auth)])
+async def api_diet() -> dict:
+    prof = await diet_profile()
+    return {'dislikes': prof['dislikes'], 'allergies': prof['allergies'],
+            'on': not dietmod.is_empty(prof), 'from': dietmod.CHAT_BASE}
+
+
+@router.post('/api/food/diet/sub', dependencies=[Depends(_require_auth)])
+async def api_diet_sub(body: dict) -> dict:
+    """这道菜里命中忌口的那几样, 换成什么。按 (菜 + 命中项) 缓存, 同一样不重复问模型。"""
+    rid = int(body.get('id') or 0)
+    prof = await diet_profile()
+    if not rid or dietmod.is_empty(prof):
+        return {'subs': {}, 'hits': []}
+    r = get_recipe(rid, prof)
+    if not r:
+        raise HTTPException(404, '没有这道菜')
+    hits = r.get('diet') or []
+    if not hits:
+        return {'subs': {}, 'hits': []}
+    key = f"{rid}|" + ','.join(sorted(h['name'] for h in hits))
+    f = _fdb()
+    row = f.execute('SELECT sub FROM diet_subs WHERE k=?', (key,)).fetchone()
+    if row and row['sub']:
+        try:
+            cached = json.loads(row['sub'])
+            if isinstance(cached, dict) and cached:
+                return {'subs': cached, 'hits': hits, 'cached': True}
+        except Exception:
+            pass
+    subs, err = await dietmod.suggest(r['name'], r['cuisine'], r['ingredients'], hits)
+    if subs:
+        f.execute('INSERT INTO diet_subs(k,sub,created) VALUES(?,?,?) ON CONFLICT(k) DO UPDATE SET sub=excluded.sub, created=excluded.created',
+                  (key, json.dumps(subs, ensure_ascii=False), datetime.now().isoformat(timespec='seconds')))
+        f.commit()
+    return {'subs': subs, 'hits': hits, 'error': err}
 
 
 @router.get('/api/food/image', dependencies=[Depends(_require_auth)])
@@ -643,6 +954,12 @@ async def api_estimate(body: dict) -> dict:
     return await estimate_kcal(str(body.get('name') or ''), str(body.get('portion') or ''))
 
 
+@router.post('/api/food/photo', dependencies=[Depends(_require_auth)])
+async def api_photo(body: dict) -> dict:
+    """拍一张交给模型: 返回图里每样吃的 + 各自热量, 前端拿结果去填记一餐的面板。"""
+    return await recognize_photo(str(body.get('image') or ''), str(body.get('hint') or ''))
+
+
 @router.get('/api/food/meals', dependencies=[Depends(_require_auth)])
 def api_meals(range: str = 'day', date: str = '') -> dict:
     return summarize(range if range in ('day', 'week', 'month', 'year') else 'day', _parse_date(date))
@@ -657,7 +974,7 @@ def api_card(date: str = '') -> dict:
 def api_meal_add(body: dict) -> dict:
     e = add_meal(body.get('name') or '', body.get('cuisine') or '', body.get('slot') or '', body.get('rating') or '', body.get('note') or '',
                  body.get('portion') or '', body.get('kcal'), body.get('kcal_src') or '', body.get('date') or '', body.get('time') or '',
-                 body.get('recipe_id'), 'user')
+                 body.get('recipe_id'), 'user', body.get('photo') or '')
     return {'ok': True, 'entry': e}
 
 
@@ -720,9 +1037,9 @@ def api_settings_save(body: dict) -> dict:
 
 @router.get('/food-img/{sub}/{fn}')
 def food_img(sub: str, fn: str):
-    if sub not in ('htc', 'wiki') or not re.fullmatch(r'[A-Za-z0-9_.-]{3,80}', fn):
+    if sub not in ('htc', 'wiki', 'photo') or not re.fullmatch(r'[A-Za-z0-9_.-]{3,80}', fn):
         raise HTTPException(404, 'no')
-    p = IMG_DIR / sub / fn
+    p = (PHOTO_DIR if sub == 'photo' else IMG_DIR / sub) / fn
     if not p.is_file():
         raise HTTPException(404, 'no')
     return FileResponse(p, headers={'Cache-Control': 'public, max-age=2592000'})
@@ -737,11 +1054,13 @@ TOOL_DEF = {"type": "function", "function": {
                     "log_view 看用户吃了什么: range day/week/month, date 可选, 按餐次列出(一餐=同一餐次里的几样菜), 带热量合计和目标; "
                     "log_add 帮用户记一样吃的: name 一样菜(必填, 一餐有好几样就调几次, 同一个 slot 自动归到同一餐), cuisine 用「小食谱分类」里的, slot 早餐/午餐/晚餐/加餐/夜宵(不填按时间猜), rating 好吃/一般/难吃, note 吃后感, portion 份量, kcal 热量(用户没说就按食物成分表口径估一个最可能的数, 按一人份, 别往高里估; 估不出就不填), date 补记过去的日子; "
                     "kcal 查热量(name): 先查食物成分表(每100克)和之前估过的, 没有就自己估; target 看用户的每日热量目标; "
+                    "links 给用户找这道菜的视频/图文(id): 返回 B站/小红书/抖音 的搜索链接和用户自己存的链接, 用户说想看别人怎么做、要视频要教程时用; "
+                    "这些是搜索地址不是具体视频, 原样给出, 不要改写成视频标题或作者(你没看过那个视频); "
                     "score 给某天的饮食打分(date, score 1-10, comment 一两句): 用户发饮食卡来让你打分时, 回复里说完后调一次把分记到日历上。"
                     "打分和建议看的是均衡、多样、有没有好好吃饭, 目标是个区间不是上限, 绝不是吃得越少分越高; 明显没吃够要提醒用户多吃点。"
                     "用户自己也在页面记, 记之前先 log_view 当天别重复; 删改让用户去页面点那一餐。"),
     "parameters": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["search", "recipe", "random", "log_view", "log_add", "kcal", "target", "score"]},
+        "action": {"type": "string", "enum": ["search", "recipe", "random", "log_view", "log_add", "kcal", "target", "score", "links"]},
         "q": {"type": "string"}, "ing": {"type": "boolean"}, "cuisine": {"type": "string"}, "kind": {"type": "string"},
         "id": {"type": "integer"}, "n": {"type": "integer"},
         "range": {"type": "string", "enum": ["day", "week", "month"]}, "date": {"type": "string", "description": "YYYY-MM-DD"},
@@ -825,6 +1144,21 @@ async def tool_dispatch(args: dict) -> str:
             if not t['kcal']:
                 return '用户还没设每日热量目标(小食谱页面右上角可以设)。'
             return f"每日目标 {t['kcal']} kcal" + (f" (基础代谢 {t['bmr']}, 维持 {t['tdee']}, 按身高体重算的)" if t['method'] == 'calc' else ' (用户自己定的数)')
+        if action == 'links':
+            rid = int(args.get('id') or 0)
+            r = get_recipe(rid)
+            if not r:
+                return '没有这个 id 的菜, 先用 search 找。'
+            ss = search_links(r)
+            if not ss:
+                return '这道菜没有能拿来做关键词的菜名。'
+            out = [f"《{r['name']}》去这些平台搜就有做法和视频:"]
+            out += [f"{s['label']}: {s['url']}" for s in ss]
+            ls = list_links(rid)
+            if ls:
+                out.append('用户自己存过的: ' + ' / '.join(f"{x['label']} {x['title'] or x['shown']} {x['url']}" for x in ls[:8]))
+            out.append('这些是搜索地址, 原样给用户就行; 别把链接改写成具体视频标题或作者, 你没看过那个视频。')
+            return '\n'.join(out)
         if action == 'score':
             try:
                 d = _parse_date(args.get('date') or '')

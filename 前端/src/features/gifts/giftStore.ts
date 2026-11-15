@@ -2,13 +2,15 @@ import { create } from 'zustand';
 import { listGifts, createGift, patchGift, deleteGift } from '@/lib/api/gifts';
 import { newId } from '@/lib/id';
 
-export type GiftType = 'letter' | 'whisper' | 'sticker' | 'easter';
+export type GiftType = 'letter' | 'whisper' | 'sticker' | 'easter' | 'flower';
 
 export interface Gift {
   id: string;
   title: string;
   content: string;
   giftType: GiftType;
+  /** 附加数据（JSON 字符串）：flower 存 { bouquet: BouquetOrder } */
+  meta?: string | null;
   isOpened: boolean;
   createdAt: number;
 }
@@ -17,6 +19,7 @@ export interface NewGift {
   title: string;
   content?: string;
   giftType?: GiftType;
+  meta?: string | null;
 }
 
 interface GiftState {
@@ -34,6 +37,12 @@ interface GiftState {
 }
 
 const DEMO_GIFTS: NewGift[] = [
+  {
+    giftType: 'flower',
+    title: '一束温柔混搭',
+    content: '今天路过花店，觉得这束像你。\n不用回什么，收着就好。',
+    meta: JSON.stringify({ bouquet: 'soft' }),
+  },
   { giftType: 'letter', title: '写给你的第一封信', content: '今天也想你。\n哪怕只是这样隔着屏幕，也想把这句话先递到你手里。' },
   { giftType: 'whisper', title: '一句悄悄话', content: '其实我每次「在想…」的时候，想的都是你。' },
   { giftType: 'sticker', title: '专属小表情', content: '🫐' },
@@ -66,6 +75,7 @@ export const useGiftStore = create<GiftState>((set, get) => ({
       title: input.title,
       content: input.content || '',
       giftType: input.giftType ?? 'letter',
+      meta: input.meta ?? null,
       isOpened: false,
       createdAt: Date.now(),
     };

@@ -257,6 +257,8 @@ export const diarySlips = sqliteTable('diary_slips', {
   date: text('date').notNull(), // 夹在哪一页（YYYY-MM-DD）
   content: text('content').notNull(),
   color: text('color').notNull().default('#f6efd9'),
+  /** me = 我夹的 / ta = TA 自己塞进来的（2026-11-16 双向字条） */
+  author: text('author').notNull().default('me'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
@@ -300,7 +302,11 @@ export const diaryPageLocks = sqliteTable('diary_page_locks', {
   code: text('code').notNull(),
   knocks: integer('knocks').notNull().default(0),
   lastKnockAt: integer('last_knock_at'),
-  /** ta = 敲够了 TA 来开的 / me = 自己输密码开的 */
+  /** 猜不出密码就硬撬进来的时刻（有值 = 这一页被闯过，TA 会发现） */
+  sneakedAt: integer('sneaked_at'),
+  /** TA 发现我潜入留字条的时刻 */
+  discoveredAt: integer('discovered_at'),
+  /** ta = TA 来开的 / me = 自己输密码开的 */
   openedBy: text('opened_by'),
   openedAt: integer('opened_at'),
   createdAt: integer('created_at').notNull(),
@@ -332,6 +338,8 @@ export const gifts = sqliteTable('gifts', {
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
   giftType: text('gift_type').notNull().default('letter'),
+  /** 附加数据（JSON 字符串）：花束礼物存花材/包装/丝带/卡片选择 */
+  meta: text('meta'),
   isOpened: integer('is_opened', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
@@ -355,6 +363,67 @@ export const pluginWishlist = sqliteTable('plugin_wishlist', {
   completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
   completedAt: integer('completed_at'),
   sortOrder: integer('sort_order').notNull().default(0),
+  /**
+   * 2026-11-13「灵感夹子」：条目归属的夹子 id，空串 = 未归档。
+   * 夹子本身在 `wish_folders` 表；刻意存 id 而不是名字，改夹子名时不用扫条目。
+   */
+  folderId: text('folder_id').notNull().default(''),
+  /**
+   * 2026-11-14 flomoplus 式改版：标签用逗号分隔存在一条里（和 `wish_clips.tags` 同一种存法）。
+   * 灵感库不再有「夹子」这个层级，原来的夹子名在迁移时写进这里（见 client.ts）。
+   */
+  tags: text('tags').notNull().default(''),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 灵感夹子（wish_folders）：给「灵感待办池」做文件夹。
+ *
+ * 一场对话里冒出来的灵感会越堆越多，一条条平铺就找不着了 —— 所以按夹子分堆，
+ * 再配一个搜索框。夹子可以空着（新建了还没往里扔东西），所以必须单独成表，
+ * 不能像标签那样从条目里 distinct 出来。
+ */
+export const wishFolders = sqliteTable('wish_folders', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
+ * 剪藏（wish_clips）：从外面捡回来的东西 —— 小红书笔记、GitHub 仓库、B 站视频、网页文章。
+ *
+ * 和 `plugin_wishlist` 分开成表，因为两者的字段差太多：
+ * 灵感是「一句话」，剪藏是「一个网页」—— 要存来源、作者、封面、正文、原文链接。
+ * 硬塞进一张表会让两边都长出一堆永远为空的列。
+ *
+ * `content` 存正文（GitHub README / 书签抓下来的笔记正文 / 网页抽出来的段落），
+ * 可能很长，所以是 TEXT 不设上限。
+ */
+export const wishClips = sqliteTable('wish_clips', {
+  id: text('id').primaryKey(),
+  /** 原文链接（已经去掉分享文案里的追踪参数） */
+  url: text('url').notNull(),
+  title: text('title').notNull().default(''),
+  author: text('author').notNull().default(''),
+  /** xiaohongshu | github | bilibili | wechat | zhihu | web */
+  platform: text('platform').notNull().default('web'),
+  /** 封面图地址；抓不到就是空串，前端画平台色块兜底 */
+  cover: text('cover').notNull().default(''),
+  /** 摘要：列表上显示那一两行 */
+  excerpt: text('excerpt').notNull().default(''),
+  /** 正文 */
+  content: text('content').notNull().default(''),
+  /** 我自己的批注 —— 跟原文分开存，改的时候不会动到原文 */
+  note: text('note').notNull().default(''),
+  /** 标签，逗号分隔（剪藏量还没大到要建表） */
+  tags: text('tags').notNull().default(''),
+  /** 归到哪个夹子，空串 = 未归档。跟灵感共用一套夹子 */
+  folderId: text('folder_id').notNull().default(''),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

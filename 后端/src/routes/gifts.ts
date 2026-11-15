@@ -9,7 +9,7 @@ import { newId, now } from '../utils/id.js';
  * 礼物由哥哥（AI 伴侣）送出，这里只负责落库与读写；isOpened 记拆封态。
  */
 
-const GIFT_TYPES = ['letter', 'whisper', 'sticker', 'easter'] as const;
+const GIFT_TYPES = ['letter', 'whisper', 'sticker', 'easter', 'flower'] as const;
 type GiftType = (typeof GIFT_TYPES)[number];
 
 function toDTO(g: typeof gifts.$inferSelect) {
@@ -18,6 +18,8 @@ function toDTO(g: typeof gifts.$inferSelect) {
     title: g.title,
     content: g.content ?? '',
     giftType: (GIFT_TYPES.includes(g.giftType as GiftType) ? g.giftType : 'letter') as GiftType,
+    /** 附加数据：花束礼物是 { bouquet: {...} } 的 JSON 字符串，别的类型是 null */
+    meta: g.meta ?? null,
     isOpened: g.isOpened ?? false,
     createdAt: g.createdAt,
   };
@@ -41,6 +43,7 @@ export async function giftRoutes(app: FastifyInstance): Promise<void> {
       title?: string;
       content?: string;
       giftType?: string;
+      meta?: string | null;
     };
     const title = body.title?.trim();
     if (!title) {
@@ -58,6 +61,7 @@ export async function giftRoutes(app: FastifyInstance): Promise<void> {
         title,
         content: body.content || '',
         giftType,
+        meta: body.meta ? String(body.meta).slice(0, 4000) : null,
         isOpened: false,
         createdAt: ts,
         updatedAt: ts,
@@ -73,6 +77,7 @@ export async function giftRoutes(app: FastifyInstance): Promise<void> {
       content?: string;
       giftType?: string;
       isOpened?: boolean;
+      meta?: string | null;
     };
     const set: Record<string, unknown> = { updatedAt: now() };
     if (body.title !== undefined) set.title = body.title.trim();
@@ -81,6 +86,7 @@ export async function giftRoutes(app: FastifyInstance): Promise<void> {
       set.giftType = body.giftType;
     }
     if (body.isOpened !== undefined) set.isOpened = body.isOpened;
+    if (body.meta !== undefined) set.meta = body.meta ? String(body.meta).slice(0, 4000) : null;
 
     const result = db.update(gifts).set(set).where(eq(gifts.id, id)).run();
     if (result.changes === 0) {

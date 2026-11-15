@@ -102,12 +102,18 @@ export const searchMessages = (params: {
   q?: string;
   date?: string;
   hasImage?: boolean;
+  hasFile?: boolean;
+  hasLink?: boolean;
+  hasSticker?: boolean;
   conversationId?: string;
 }) => {
   const qs = new URLSearchParams();
   if (params.q) qs.set('q', params.q);
   if (params.date) qs.set('date', params.date);
   if (params.hasImage) qs.set('hasImage', 'true');
+  if (params.hasFile) qs.set('hasFile', 'true');
+  if (params.hasLink) qs.set('hasLink', 'true');
+  if (params.hasSticker) qs.set('hasSticker', 'true');
   if (params.conversationId) qs.set('conversationId', params.conversationId);
   return request<{ results: SearchResultDTO[] }>(`/api/search/messages?${qs.toString()}`);
 };

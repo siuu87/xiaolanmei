@@ -15,6 +15,7 @@ export function NotesPage() {
   const readIds = useNotesStore((s) => s.readIds);
   const load = useNotesStore((s) => s.load);
   const openLetter = useNotesStore((s) => s.openLetter);
+  const setLetterTheme = useNotesStore((s) => s.setLetterTheme);
 
   // 信由后端不定时抓取，这里只保证进来时是最新的
   useEffect(() => {
@@ -29,6 +30,7 @@ export function NotesPage() {
         readIds={readIds}
         onOpen={openLetter}
         maxLetters={30}
+        onSetTheme={(id, theme) => void setLetterTheme(id, theme)}
       />
     </PageShell>
   );

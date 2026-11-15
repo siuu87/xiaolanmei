@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useNotesStore } from './notesStore';
 import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme } from './notesData';
+import { letterParts, WaxSeal } from './LetterArt';
 
 /**
  * 信件弹窗（2026-11-11 重做，替代旧的拆信动画层）
@@ -17,13 +18,9 @@ import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme } from './notesData';
  * - 打开即已读；直达 `/letter/:id` 刷新也能拿到信。
  */
 
-const STAGE = '#FFFCF2';
-const PAPER = '#FFFDF7';
-const ENVELOPE_FRONT = '#FBF6EB';
-const ENVELOPE_BACK = '#F7EFDC';
+/* 颜色不再写死：全部跟着这封信的信封主题走（见 LetterArt 的配色表）。
+   原来这里钉死米白，换了深蓝 / 牛皮信封后弹窗还是白的，一眼就串味。 */
 const BLUE = '#7EA3D1';
-const INK = '#3B3A36';
-const META = '#A39A86';
 /** 手写感用系统楷体，不引外部字体：断网也稳定，不需要改 tailwind 配置 */
 const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", serif';
 
@@ -148,6 +145,9 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
 
   const note = notes.find((n) => n.id === id) ?? null;
   const theme = normalizeLetterTheme(note?.letterTheme);
+  const parts = letterParts(theme);
+  // 深色纸上星星要亮一点，否则看不见
+  const starColor = theme === 'night' ? '#8FA6D8' : BLUE;
   // 长回信正文自带「—— 小蓝莓」落款，右下角就别再印一次名字
   const hasSignature = /^\s*[—–－-]{1,2}\s*.{1,12}\s*$/m.test(note?.content ?? '');
 
@@ -176,7 +176,7 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
         onClick={onClose}
         data-testid="letter-page-mask"
         className="absolute inset-0"
-        style={{ backgroundColor: STAGE }}
+        style={{ backgroundColor: parts.stage }}
       />
 
       {/* 背景浅星点 */}
@@ -185,7 +185,7 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
           <Star
             key={i}
             {...spec}
-            color="#C9D6E6"
+            color={theme === 'night' ? '#3E4A68' : '#C9D6E6'}
             className="absolute"
             style={{ left: x, top: y }}
           />
@@ -199,7 +199,7 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
         aria-label="收起这封信"
         data-testid="letter-page-close"
         className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full border px-3 py-2 text-[12px] font-medium transition active:scale-95"
-        style={{ backgroundColor: '#FFFFFF', borderColor: '#DCE6F2', color: BLUE }}
+        style={{ backgroundColor: parts.paperSolid, borderColor: parts.flapStroke, color: parts.metaSolid }}
       >
         <X size={14} />
         收起
@@ -222,16 +222,21 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
           viewBox="0 0 420 560"
           preserveAspectRatio="none"
         >
-          <rect x="0" y="196" width="420" height="364" fill={ENVELOPE_BACK} />
-          <path d="M0 196 L210 372 L420 196 Z" fill="#FFF7E4" stroke="#EADCC0" strokeWidth="1.2" />
-          <path d="M0 196 L210 372 L420 196" fill="none" stroke="#E3D2B0" strokeWidth="1.2" />
+          <rect x="0" y="196" width="420" height="364" fill={parts.envSolid} />
+          <path
+            d="M0 196 L210 372 L420 196 Z"
+            fill={parts.flapFill}
+            stroke={parts.flapStroke}
+            strokeWidth="1.2"
+          />
+          <path d="M0 196 L210 372 L420 196" fill="none" stroke={parts.flapStroke} strokeWidth="1.2" />
         </svg>
 
         {/* 信纸：固定尺寸。正文只在上方可见区里滚动，纸不会随字数变长 */}
         <div
           data-testid="letter-paper"
           className="absolute bottom-0 left-[8%] right-[8%] top-0 overflow-hidden"
-          style={{ backgroundColor: PAPER, border: '1px solid #EFE7D5' }}
+          style={{ backgroundColor: parts.paperSolid, border: `1px solid ${parts.flapStroke}66` }}
         >
           <div
             ref={bodyRef}
@@ -260,13 +265,13 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
                   fontSize: 15,
                   lineHeight: 2,
                   letterSpacing: '0.03em',
-                  color: INK,
+                  color: parts.inkSolid,
                 }}
               >
                 {note.content}
               </p>
             ) : (
-              <p className="mt-3 shrink-0 text-[13px]" style={{ fontFamily: HAND_FONT, color: META }}>
+              <p className="mt-3 shrink-0 text-[13px]" style={{ fontFamily: HAND_FONT, color: parts.metaSolid }}>
                 {loaded ? '这封信找不到了' : '取信中…'}
               </p>
             )}
@@ -275,7 +280,7 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
             {note && (
               <div
                 className="mt-auto flex shrink-0 flex-col items-end gap-1 pt-6"
-                style={{ fontFamily: HAND_FONT, fontSize: 11, color: META }}
+                style={{ fontFamily: HAND_FONT, fontSize: 11, color: parts.metaSolid }}
               >
                 <span>{formatNoteDate(note.createdAt)}</span>
                 <span>{hasSignature ? '深夜来信' : NOTE_AUTHOR}</span>
@@ -307,22 +312,30 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
           >
             <path
               d="M0 46 Q210 6 420 46 L420 246 L0 246 Z"
-              fill={ENVELOPE_FRONT}
-              stroke="#E6DAC2"
+              fill={parts.envSolid}
+              stroke={parts.flapStroke}
               strokeWidth="1.2"
             />
-            <path d="M0 246 L150 46" fill="none" stroke="#EADFC8" strokeWidth="1.2" />
-            <path d="M420 246 L270 46" fill="none" stroke="#EADFC8" strokeWidth="1.2" />
+            <path d="M0 246 L150 46" fill="none" stroke={parts.flapStroke} strokeWidth="1.2" opacity="0.7" />
+            <path d="M420 246 L270 46" fill="none" stroke={parts.flapStroke} strokeWidth="1.2" opacity="0.7" />
           </svg>
           {FRONT_STARS.map(({ x, y, ...spec }, i) => (
-            <Star key={i} {...spec} className="absolute" style={{ left: x, top: y }} />
+            <Star key={i} {...spec} color={starColor} className="absolute" style={{ left: x, top: y }} />
           ))}
+          {/* 撕开的火漆：蜡裂成两半，还黏在信封口上 —— 拆过的信该留这个痕迹 */}
+          <span
+            data-testid="letter-page-seal"
+            aria-hidden
+            className="absolute left-1/2 top-[-13px] -translate-x-1/2"
+          >
+            <WaxSeal parts={parts} size={46} cracked />
+          </span>
         </div>
       </motion.div>
 
       <span
         className="pointer-events-none absolute bottom-5 left-0 right-0 text-center text-[10px]"
-        style={{ color: '#B6AE9B', fontFamily: HAND_FONT }}
+        style={{ color: parts.metaSolid, fontFamily: HAND_FONT }}
       >
         轻点空白处收起
       </span>

@@ -196,7 +196,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     icon: Utensils,
     entries: [
       { to: '/food', label: '今天吃什么', icon: Utensils },
-      { to: '/wishlist', label: '灵感待办池', icon: Lightbulb },
+      { to: '/wishlist', label: '灵感库', icon: Lightbulb },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
       { to: '/gifts', label: '礼物盒', icon: Gift },
@@ -211,8 +211,8 @@ export function ModuleCards() {
   const closeDrawer = useShellStore((s) => s.closeDrawer);
   // 手风琴：同时只展开一个分组，点已展开的收起
   const [expanded, setExpanded] = useState<string | null>(null);
-  // 工具箱内部的子项（插件/工作区/…），独立于分组手风琴
-  const [toolboxSection, setToolboxSection] = useState<string | null>(null);
+  // 工具箱子项：点开后由 Drawer 在抽屉内下钻一层全宽渲染（不再卡中卡）
+  const openDrawerSection = useShellStore((s) => s.openDrawerSection);
   // 开源项目：有依赖可更新时在「开源项目」项旁亮红点
   const openSourceUpdates = useOpenSourceStore((s) => s.updatesCount);
 
@@ -288,7 +288,10 @@ export function ModuleCards() {
           );
         })}
 
-        {/* 工具箱：插件 / 工作区 / 技能，抽屉内展开成手风琴（不再弹独立面板）
+        {/* 工具箱：与其他分组**完全同一套** 2 列图标格。
+            2026-11-12 改版：原来这里再套一层「子项 → 面板」折叠，五个整页组件
+            各有自己的 h1 与内边距，卡中卡 + 九条相似行叠着，很难看。
+            现在点某项走 `openDrawerSection`，由 Drawer 下钻一层全宽渲染。
             「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签 */}
         <div className="paper-card overflow-hidden">
           <button
@@ -315,34 +318,31 @@ export function ModuleCards() {
                 transition={{ duration: 0.22, ease: 'easeOut' }}
                 className="overflow-hidden"
               >
-                <div className="space-y-2 border-t border-border p-2.5">
-                  {TOOLBOX_SECTIONS.map((s) => {
-                    const isOpen = toolboxSection === s.key;
-                    return (
-                      <div key={s.key} className="overflow-hidden rounded-xl border border-border bg-muted/30">
-                        <button
-                          type="button"
-                          onClick={() => setToolboxSection(isOpen ? null : s.key)}
-                          aria-expanded={isOpen}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-surface-2"
-                        >
-                          <s.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          <span className="text-[12px] font-medium text-foreground">{s.label}</span>
-                          {s.key === 'opensource' && openSourceUpdates > 0 && (
-                            <span
-                              aria-label={`${openSourceUpdates} 个项目有更新`}
-                              data-testid="opensource-dot"
-                              className="block h-[7px] w-[7px] shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]"
-                            />
-                          )}
-                          <ChevronDown
-                            className={cn('ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
+                <div className="grid grid-cols-2 gap-1.5 border-t border-border px-2.5 py-2.5">
+                  {TOOLBOX_SECTIONS.map((s) => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      onClick={() => openDrawerSection(s.key)}
+                      data-testid={`toolbox-entry-${s.key}`}
+                      className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
+                    >
+                      <s.icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex items-center gap-1.5 text-[12px] font-medium leading-tight text-foreground">
+                        {s.label}
+                        {s.key === 'opensource' && openSourceUpdates > 0 && (
+                          <span
+                            aria-label={`${openSourceUpdates} 个项目有更新`}
+                            data-testid="opensource-dot"
+                            className="block h-[7px] w-[7px] shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]"
                           />
-                        </button>
-                        {isOpen && <div className="border-t border-border p-3">{s.render()}</div>}
-                      </div>
-                    );
-                  })}
+                        )}
+                      </span>
+                      {s.hint && (
+                        <span className="text-[10px] leading-tight text-muted-foreground">{s.hint}</span>
+                      )}
+                    </button>
+                  ))}
                 </div>
               </motion.div>
             )}

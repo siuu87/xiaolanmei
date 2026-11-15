@@ -1,76 +1,77 @@
 import { cn } from '@/lib/utils';
-import { letterParts, type LetterTheme } from './LetterArt';
+import { letterParts, WaxSeal, type LetterTheme } from './LetterArt';
 
 /**
- * 信封零件（2026-10-20 新增）
+ * 信封零件（2026-11-13 重做：从「翻盖」改成「撕开」）
  *
- * 参考《恋与制作人》「心动邀约」的信封：一封信 = **一枚能看出形状的实体信封**，
- * 而不是一张带封面图的卡片。所以这里画的是真正的信封结构，四层从下往上叠：
+ * 用户的原话：「拆开的信件就保持拆开的样子，没拆开的就没有撕开的那个样子，
+ * 然后信封可以编辑不同颜色，火漆印章也是……」——参考的是撕信封的手工教程。
  *
- *   1. 背板   —— 信封的底（矩形，纸质渐变）
- *   2. 信纸   —— 夹在中间，平时藏在信封里，拆封时从口子里升出来
- *   3. 前面板 —— 遮住下半截，顶边是一个倒 V 缺口（露出信封口）
- *   4. 封盖   —— 就是那片三角（flap），**闭合**时盖住缺口、**拆封**时绕顶边向上翻开
+ * 所以这里只有两种形态，**不是动画的两帧，而是两个稳定状态**：
  *
- * 拆封动作 = 封盖翻开 + 信纸升高，两件事一起做才像「拆信」；
- * 只做其中一个都会像「弹出一张图」。
+ *   ● 未拆（opened=false）：完整信封。V 形封盖盖着上口，火漆完整压在封盖尖上，
+ *     信纸藏在里面，只在口子里隐约看到一点。
+ *   ● 已拆（opened=true）：**封盖已经被撕走了**。信封上沿留下一道不规则撕口，
+ *     撕口边缘有毛边和一小块残留的蜡（火漆跟着封盖被撕掉一半），
+ *     信纸从缺口里露出来一截。这个状态会一直保持——拆过的信不会自己长回去。
  *
- * 配色沿用 `LetterArt.tsx` 的 `LETTER_THEME_PARTS`（default 米白纸 / memorial 玫瑰金 /
- * night 深蓝星空），新增主题只改那张表。
+ * 撕口用 CSS `clipPath: polygon()` 剪出来（十几个抖动点，写死不随机，两端渲染一致）；
+ * 撕口那条深色毛边单独用 SVG 描，clip 之后还能看见纸的厚度。
+ *
+ * 父容器只管给宽高（**5:3** 横版长方形），内部全部按比例定位。
  */
 
-/** 火漆印裂开时的柔光色（inline box-shadow 用，跟主题走） */
-const SEAL_GLOW: Record<LetterTheme, string> = {
-  default: 'rgba(180,85,76,0.85)',
-  memorial: 'rgba(201,162,39,0.85)',
-  night: 'rgba(127,155,209,0.85)',
-};
+/**
+ * 撕口的抖动点（百分比对），从左上角一路走到中间、再走回右上角 ——
+ * **沿着信封口那条 V 线**，这才是"把封盖整片撕掉"的轨迹：
+ * 撕掉的就是那枚 V 形封盖，剩下一道带毛边的口子，纸从口子里露出来。
+ * 抖动幅度控制在 1~2%，再多就成雪山了。
+ */
+const TEAR_POINTS = [
+  [0, 3.2],
+  [6, 9],
+  [12, 12.4],
+  [18, 19.2],
+  [25, 22.8],
+  [31, 30.2],
+  [38, 36.2],
+  [44, 39.4],
+  [50, 45.2],
+  [56, 43.6],
+  [62, 35.6],
+  [69, 29.4],
+  [75, 23.6],
+  [82, 17.4],
+  [88, 12.8],
+  [94, 8.6],
+  [100, 3.6],
+] as const;
 
-/** 火漆印：封盖尖上那颗蜡封。拆封后跟着封盖走，所以由调用方决定露不露 */
+/** 已拆状态的裁剪轮廓：上沿是撕口，其余三边是直角 */
+const TORN_CLIP = `polygon(${TEAR_POINTS.map(([x, y]) => `${x}% ${y}%`).join(', ')}, 100% 100%, 0 100%)`;
+
+/** 撕口那条线（SVG 用，viewBox 100×60 与信封同比例） */
+const TEAR_LINE = TEAR_POINTS.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x} ${(y * 0.6).toFixed(2)}`).join(' ');
+
 export function EnvelopeSeal({
   theme = 'default',
   className,
-  glow = true,
-  /** 拆封动画：先裂一道光、蜡封微微抬起淡出，再随封盖掀开 */
-  cracking = false,
-  children = '🫐',
+  size = 22,
+  cracked = false,
 }: {
   theme?: LetterTheme;
   className?: string;
-  glow?: boolean;
-  cracking?: boolean;
-  children?: React.ReactNode;
+  size?: number;
+  cracked?: boolean;
 }) {
   const p = letterParts(theme);
   return (
     <span
-      aria-hidden
       data-testid="envelope-seal"
-      className={cn(
-        'pointer-events-none relative flex items-center justify-center rounded-full',
-        'shadow-[0_1px_2px_rgba(0,0,0,0.35)]',
-        p.seal,
-        glow && p.sealGlow,
-        className,
-      )}
-      style={{
-        transition: 'opacity 0.4s ease-out, box-shadow 0.22s ease-out',
-        opacity: cracking ? 0.45 : 1,
-        boxShadow: cracking ? `0 0 14px 3px ${SEAL_GLOW[theme]}` : undefined,
-      }}
+      aria-hidden
+      className={cn('pointer-events-none inline-flex items-center justify-center', className)}
     >
-      {/* 裂痕：拆封瞬间一道细线迅速出现（自带居中，不抢父级的 translate 定位） */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[16%] h-[68%] w-px bg-black/40"
-        style={{
-          transform: cracking ? 'translateX(-50%) scaleY(1)' : 'translateX(-50%) scaleY(0)',
-          transformOrigin: 'top center',
-          transition: 'transform 0.16s ease-out',
-          opacity: cracking ? 0.6 : 0,
-        }}
-      />
-      {children}
+      <WaxSeal parts={p} size={size} cracked={cracked} />
     </span>
   );
 }
@@ -82,45 +83,31 @@ function backOf(theme: LetterTheme): string {
       return 'bg-gradient-to-t from-[#f7e3db] to-[#fbeae3]';
     case 'night':
       return 'bg-gradient-to-t from-[#161d31] to-[#202840]';
+    case 'kraft':
+      return 'bg-gradient-to-t from-[#e2c8a2] to-[#eed9b8]';
+    case 'sage':
+      return 'bg-gradient-to-t from-[#dfe6d3] to-[#eef1e4]';
+    case 'lilac':
+      return 'bg-gradient-to-t from-[#e9dff4] to-[#f5eefb]';
     default:
       return 'bg-gradient-to-t from-[#e8ddc9] to-[#f3ecdd]';
   }
 }
 
-/**
- * 信封本体。`opened` 控制拆封：火漆裂开 → 封盖弹性翻开 → 信纸从口子里升出一小截，
- * 三段要连贯才像「亲手拆」。
- *
- * 父容器只管给宽高（**建议 5:3**，规整长方形），内部全部按比例定位。
- *
- * 2026-10-20 改长方形：原来封盖三角占了 52% 高、缺口深到中线，
- * 上半部看着是一整个大三角，整枚信封像「房子 / 五边形」而不是信封。
- * 现在缺口与封盖都收到 **45%**，剩下的 55% 是完整的矩形纸面，
- * 轮廓才是一个清爽的长方形。
- *
- * 2026-10-22 富版拆信编排：① `EnvelopeSeal` 接到 `cracking` 先裂一道光、蜡封微淡出；
- * ② 封盖改用回弹缓动 `cubic-bezier(0.34,1.56,0.64,1)` 并延迟 160ms（翻过头再回正）；
- * ③ 信纸 `delay-300` 在封盖之后才升。三段由 `opened` 一个状态驱动，靠 transition 延迟错开。
- *
- * `children` 是**信纸内容**（一般是正文摘要或空），不传就只画一枚封好的信封。
- */
 export function EnvelopeArt({
   theme = 'default',
   opened = false,
   seal = true,
-  sealClass = 'h-4 w-4 text-[8px]',
+  sealSize,
   ribbon = true,
-  /** 封盖掀开的角度。卡片里空间小，掀到底会顶出卡片被裁掉 → 卡片传的小一点 */
-  flapAngle = 150,
   className,
   children,
 }: {
   theme?: LetterTheme;
   opened?: boolean;
   seal?: boolean;
-  sealClass?: string;
+  sealSize?: number;
   ribbon?: boolean;
-  flapAngle?: number;
   className?: string;
   children?: React.ReactNode;
 }) {
@@ -133,139 +120,210 @@ export function EnvelopeArt({
       data-letter-theme={theme}
       className={cn('relative isolate', className)}
     >
-      {/*
-        ① 背板：这就是那枚**横版长方形信封**的本体 —— 一个完整的矩形纸面。
-        `rounded-[3px]` 只留一点点圆角（纸的切口），外圈 `ring` 是恋与制作人那道细描边，
-        两样一起把"长方形"的轮廓钉死，免得被上面的三角抢了注意力。
-      */}
+      {/* ============ 信封主体（已拆时上沿被撕掉一块） ============ */}
       <div
-        aria-hidden
-        data-testid="envelope-body"
-        className={cn(
-          'absolute inset-0 rounded-[3px] ring-1 ring-inset',
-          ringOf(theme),
-          p.envelope,
-          'shadow-[0_6px_16px_-6px_rgba(0,0,0,0.55)]',
-        )}
-      />
-
-      {/*
-        ② 信纸：只露出信封口那一小截，不能整张浮出来 ——
-           这是**卡片**，不是阅读器；整张露出来会盖住封盖翻开的动作，也会把卡片撑破。
-           阅读器里信纸是另一套（从弹窗底部抽出来）。
-      */}
-      <div
-        data-testid="envelope-paper-slot"
-          className={cn(
-          'absolute inset-x-[10%] top-[9%] h-[38%] overflow-hidden rounded-t-[2px]',
-          'transition-transform duration-[450ms] ease-out delay-300',
-          // 未读藏到缺口(45%)以下、已读升到缺口以上 —— 差值就是"露出一角"的量
-          opened ? 'translate-y-[6%]' : 'translate-y-[30%]',
-          p.paper,
-        )}
+        className="absolute inset-0"
+        style={{
+          clipPath: opened ? TORN_CLIP : undefined,
+          transition: 'clip-path .38s ease-out',
+        }}
       >
-        {children}
+        {/* ① 背板：完整的矩形纸面 */}
+        <div
+          aria-hidden
+          data-testid="envelope-body"
+          className={cn(
+            'absolute inset-0 rounded-[3px] ring-1 ring-inset',
+            ringOf(theme),
+            p.envelope,
+            'shadow-[0_6px_16px_-6px_rgba(0,0,0,0.5)]',
+          )}
+        />
+
+        {/* 纸纹：很淡的横向纤维，让平涂的色块像纸而不是塑料 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0 1px, transparent 1px 4px)',
+          }}
+        />
+
+        {/* ③ 前面板：顶边一道浅 V 缺口（到 45%），剩下 55% 是完整矩形纸面 */}
+        <svg
+          viewBox="0 0 100 60"
+          preserveAspectRatio="none"
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full"
+        >
+          <path d="M0 0 L50 27 L100 0 L100 60 L0 60 Z" fill={p.flapFill} />
+          <path
+            d="M0 0 L50 27 L100 0"
+            fill="none"
+            stroke={p.flapStroke}
+            strokeWidth="0.8"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+
+        {/* 丝带：信封下半截那条细带 */}
+        {ribbon && (
+          <span
+            aria-hidden
+            className={cn('pointer-events-none absolute inset-x-0 bottom-[26%] h-px', ribbonOf(theme))}
+          />
+        )}
       </div>
 
-      {/*
-        ③ 前面板：顶边一道浅 V 缺口（只到 45%）露出信封口，剩下 55% 是完整矩形纸面。
-        viewBox 100×60 = 5:3 的横版长方形。
-      */}
-      <svg
-        viewBox="0 0 100 60"
-        preserveAspectRatio="none"
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full"
-      >
-        <path d="M0 0 L50 27 L100 0 L100 60 L0 60 Z" fill={p.flapFill} />
-        <path
-          d="M0 0 L50 27 L100 0"
-          fill="none"
-          stroke={p.flapStroke}
-          strokeWidth="0.8"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-
-      {/* 丝带：信封下半截那条细带（心动邀约的装饰带） */}
-      {ribbon && (
-        <span
-          aria-hidden
-          className={cn('pointer-events-none absolute inset-x-0 bottom-[26%] h-px', ribbonOf(theme))}
-        />
-      )}
-
-      {/*
-        ④ 封盖：绕顶边向上翻。未拆 = 盖住信封口；已拆 = 立起来露出纸的背面。
-        翻上去那一面要给浅色（backOf），否则翻开会是一块深色，看着像封盖凭空消失了。
-      */}
+      {/* ============ 信封口里的那一层：内壁 + 信纸 ============
+          封着的时候被 V 形封盖整个盖住，撕开后才露出来。
+          形状剪成 V 三角（上边全宽、下尖在中间），正好对着撕口 ——
+          所以撕掉封盖后看到的不是卡片底色，而是信封里的纸。 */}
       <div
-        data-testid="envelope-flap"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[45%] [perspective:400px]"
+        aria-hidden={false}
+        data-testid="envelope-pocket"
+        className="pointer-events-none absolute inset-0"
+        style={{ clipPath: 'polygon(0 0, 100% 0, 50% 46%)' }}
       >
+        {/* 内壁：比信封深一档，纸和信封之间那道阴影 */}
         <div
-          className="h-full w-full"
+          className="absolute inset-0"
           style={{
-            transformOrigin: 'top center',
-            transformStyle: 'preserve-3d',
-            // 弹性翻开：回弹缓动（开头冲过一点再回正）+ 160ms 延迟，让火漆先裂、封盖再掀
-            transition: 'transform 0.62s cubic-bezier(0.34,1.56,0.64,1) 0.16s',
-            // 只翻到 flapAngle（默认 150°）：翻太多（180°）封盖会完全贴在信封背面看不见，
-            // 翻太少又还挡着信纸。150° 时它斜立在信封后上方，像被随手掀开的盖子。
-            transform: opened ? `rotateX(-${flapAngle}deg)` : 'rotateX(0deg)',
+            background: `linear-gradient(180deg, ${p.flapStroke} 0%, ${p.envSolid} 60%)`,
+            opacity: 0.9,
+          }}
+        />
+        {/* 信纸 */}
+        <div
+          data-testid="envelope-paper-slot"
+          className={cn('absolute inset-x-[7%] top-[1%] overflow-hidden rounded-t-[2px]', p.paper)}
+          style={{
+            height: opened ? '42%' : '38%',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.14)',
+            transition: 'height .45s ease-out',
           }}
         >
-          {/* 正面：V 形封盖 + 火漆（火漆压在尖端稍上，跟真实信封一样） */}
-          <div className="absolute inset-0 [backface-visibility:hidden]">
-            <svg
-              viewBox="0 0 100 27"
-              preserveAspectRatio="none"
-              aria-hidden
-              className="h-full w-full"
-            >
-              <path d="M0 0 L50 27 L100 0 Z" fill={p.flapFill} />
-              <path
-                d="M0 0 L50 27 L100 0"
-                fill="none"
-                stroke={p.flapStroke}
-                strokeWidth="0.8"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-            {seal && (
-              <EnvelopeSeal
-                theme={theme}
-                cracking={opened}
-                className={cn(
-                  'absolute left-1/2 top-[74%] -translate-x-1/2 -translate-y-1/2',
-                  sealClass,
-                )}
-              />
-            )}
-          </div>
-
-          {/* 背面：翻上去之后看到的是纸的背面 */}
-          <div
-            aria-hidden
-            className={cn('absolute inset-0 [backface-visibility:hidden]', backOf(theme))}
-            style={{ transform: 'rotateX(180deg)' }}
-          >
-            <svg
-              viewBox="0 0 100 27"
-              preserveAspectRatio="none"
-              className="h-full w-full"
-            >
-              <path
-                d="M0 0 L50 27 L100 0"
-                fill="none"
-                stroke={p.flapStroke}
-                strokeWidth="0.8"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-          </div>
+          {children}
         </div>
       </div>
+
+      {/* ============ 未拆时：V 形封盖盖着上口 ============ */}
+      {!opened && (
+        <div
+          data-testid="envelope-flap"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[45%] [perspective:400px]"
+        >
+          <div
+            className="h-full w-full"
+            style={{
+              transformOrigin: 'top center',
+              transformStyle: 'preserve-3d',
+              transition: 'transform 0.62s cubic-bezier(0.34,1.56,0.64,1) 0.16s',
+              transform: 'rotateX(0deg)',
+            }}
+          >
+            <div className="absolute inset-0 [backface-visibility:hidden]">
+              <svg viewBox="0 0 100 27" preserveAspectRatio="none" aria-hidden className="h-full w-full">
+                <path d="M0 0 L50 27 L100 0 Z" fill={p.flapFill} />
+                <path
+                  d="M0 0 L50 27 L100 0"
+                  fill="none"
+                  stroke={p.flapStroke}
+                  strokeWidth="0.8"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            </div>
+            <div
+              aria-hidden
+              className={cn('absolute inset-0 [backface-visibility:hidden]', backOf(theme))}
+              style={{ transform: 'rotateX(180deg)' }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ============ 撕口：已拆时上沿那道毛边 + 残留的蜡 ============ */}
+      {opened && (
+        <>
+          <svg
+            viewBox="0 0 100 60"
+            preserveAspectRatio="none"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+            data-testid="envelope-tear"
+          >
+            {/* 撕口的深色毛边：比信封深一档，看着有厚度 */}
+            <path
+              d={TEAR_LINE}
+              fill="none"
+              stroke={p.flapStroke}
+              strokeWidth="1.1"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              opacity="0.9"
+            />
+            {/* 毛边上的一点纤维：短小的浅色挑线 */}
+            <path
+              d="M14.6 8.1 l2.5 -1.7 M30.4 13.2 l2.4 -1.6 M60.8 13.8 l2.3 1.5 M81.2 8.8 l2.2 1.5"
+              fill="none"
+              stroke={p.paperSolid}
+              strokeWidth="0.9"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              opacity="0.75"
+            />
+          </svg>
+
+          {/* 残留的蜡：封盖被撕走时，火漆在信封上留了一小片 */}
+          <svg
+            aria-hidden
+            viewBox="0 0 100 60"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          >
+            <ellipse
+              cx="34.2"
+              cy="18.4"
+              rx="3.6"
+              ry="2.2"
+              fill={p.sealBase}
+              opacity="0.95"
+              transform="rotate(-19 34.2 18.4)"
+            />
+            <ellipse
+              cx="37.4"
+              cy="20.6"
+              rx="1.9"
+              ry="1.2"
+              fill={p.sealBase}
+              opacity="0.82"
+              transform="rotate(-14 37.4 20.6)"
+            />
+            <ellipse
+              cx="34.6"
+              cy="18.2"
+              rx="2.3"
+              ry="1.1"
+              fill={p.sealDark}
+              opacity="0.3"
+              transform="rotate(-19 34.6 18.2)"
+            />
+            <circle cx="30.2" cy="16.4" r="0.85" fill={p.sealBase} opacity="0.8" />
+            <circle cx="40.6" cy="21.8" r="0.6" fill={p.sealBase} opacity="0.62" />
+          </svg>
+        </>
+      )}
+
+      {/* ============ 火漆：未拆是完整一枚，已拆只剩撕口边那一小片（上面已画） ============ */}
+      {seal && !opened && (
+        <EnvelopeSeal
+          theme={theme}
+          size={sealSize ?? 22}
+          className="absolute left-1/2 top-[22.5%] -translate-x-1/2 -translate-y-1/2"
+        />
+      )}
     </div>
   );
 }
@@ -277,6 +335,12 @@ function ringOf(theme: LetterTheme): string {
       return 'ring-[#d9b53a]/45';
     case 'night':
       return 'ring-[#8fa6d8]/30';
+    case 'kraft':
+      return 'ring-[#8a6a44]/35';
+    case 'sage':
+      return 'ring-[#8a9b78]/40';
+    case 'lilac':
+      return 'ring-[#9b7fb8]/35';
     default:
       return 'ring-[#c9a227]/30';
   }
@@ -289,6 +353,12 @@ function ribbonOf(theme: LetterTheme): string {
       return 'bg-[#d9b53a]/40';
     case 'night':
       return 'bg-[#8fa6d8]/25';
+    case 'kraft':
+      return 'bg-[#8a6a44]/30';
+    case 'sage':
+      return 'bg-[#8a9b78]/35';
+    case 'lilac':
+      return 'bg-[#9b7fb8]/30';
     default:
       return 'bg-[#b99a4e]/30';
   }

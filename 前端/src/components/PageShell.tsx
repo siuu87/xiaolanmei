@@ -33,6 +33,11 @@ export interface PageShellProps {
   bodyClassName?: string;
   /** 根节点附加类名 */
   className?: string;
+  /**
+   * 只要壳（背景 / 暖光 / 宽度），不要内置顶栏 —— 给那些顶栏形态完全自己画的页面用
+   * （灵感库是 flomoplus 那种「圆形按钮 + 大字标题 + 筛选条」，塞不进统一的这一行）。
+   */
+  bare?: boolean;
   /** 根节点的 data-testid，默认 page-shell */
   testId?: string;
   children: ReactNode;
@@ -48,6 +53,7 @@ export function PageShell({
   size = 'md',
   bodyClassName,
   className,
+  bare,
   testId,
   children,
 }: PageShellProps) {
@@ -66,8 +72,12 @@ export function PageShell({
       />
 
       <div className={cn('relative mx-auto w-full', size === 'lg' ? 'max-w-2xl' : 'max-w-md')}>
-        {/* 统一顶栏：吸顶 + 实底色，和内容用一条发丝线分界 */}
-        <header
+        {bare ? (
+          <div className={cn('rise-in', bodyClassName)}>{children}</div>
+        ) : (
+          <>
+            {/* 统一顶栏：吸顶 + 实底色，和内容用一条发丝线分界 */}
+            <header
           data-testid="page-header"
           className="sticky top-0 z-20 border-b border-page-line bg-page-bg px-4 pb-2.5 pt-2.5"
         >
@@ -94,6 +104,8 @@ export function PageShell({
         </header>
 
         <div className={cn('rise-in px-4 pb-6 pt-4', bodyClassName)}>{children}</div>
+          </>
+        )}
       </div>
     </div>
   );

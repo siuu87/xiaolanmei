@@ -113,6 +113,21 @@ export default {
           bubble: 'hsl(var(--call-bubble))',
           hang: 'hsl(var(--call-hang))',
         },
+        // watch 一起看（设计稿 6:8）：固定深色沉浸页，不随主题换档，色值按设计稿精确还原
+        watch: {
+          bg: 'hsl(var(--watch-bg))',
+          surface: 'hsl(var(--watch-surface))',
+          capsule: 'hsl(var(--watch-capsule))',
+          track: 'hsl(var(--watch-track))',
+          fg: 'hsl(var(--watch-fg))',
+          meta: 'hsl(var(--watch-meta))',
+          dim: 'hsl(var(--watch-dim))',
+          gold: 'hsl(var(--watch-gold))',
+          'gold-soft': 'hsl(var(--watch-gold-soft))',
+          played: 'hsl(var(--watch-played))',
+          dot: 'hsl(var(--watch-dot))',
+          return: 'hsl(var(--watch-return))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

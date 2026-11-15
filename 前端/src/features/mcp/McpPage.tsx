@@ -56,7 +56,11 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 /** MCP 管理页（阶段 9）：多 MCP 的开关/配置/工具测试/调用记录 + 工具允许列表 */
-export function McpPage() {
+/**
+ * `headless`：抽屉下钻时用。标题由抽屉顶栏统一提供，
+ * 这里隐掉自带的大标题与内边距，避免「抽屉标题 + 页面 h1」两级重复。
+ */
+export function McpPage({ headless = false }: { headless?: boolean }) {
   const [servers, setServers] = useState<McpServerDTO[]>([]);
   const [calls, setCalls] = useState<ToolCallDTO[]>([]);
   const [allowList, setAllowList] = useState<string[]>([]);
@@ -177,13 +181,15 @@ export function McpPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">MCP 插件</h1>
-          <p className="mt-1 text-muted-foreground">统一插件机制：接入第三方能力（小游戏、工具等）。</p>
-        </div>
-        <Button onClick={startNew} size="sm">
+    <div className={headless ? 'space-y-4' : 'mx-auto max-w-3xl space-y-6 p-4 md:p-8'}>
+      <div className="flex items-center justify-between gap-3">
+        {!headless && (
+          <div>
+            <h1 className="text-2xl font-bold">MCP 插件</h1>
+            <p className="mt-1 text-muted-foreground">统一插件机制：接入第三方能力（小游戏、工具等）。</p>
+          </div>
+        )}
+        <Button onClick={startNew} size="sm" className={headless ? 'ml-auto' : undefined}>
           <Plus className="h-4 w-4" /> 添加服务器
         </Button>
       </div>

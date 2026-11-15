@@ -1,8 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Check, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatNoteDate, normalizeLetterTheme, type InspirationNote } from './notesData';
-import { letterParts } from './LetterArt';
+import { BottomSheet } from '@/components/BottomSheet';
+import {
+  LETTER_THEMES,
+  LETTER_THEME_LABEL,
+  formatNoteDate,
+  normalizeLetterTheme,
+  type InspirationNote,
+  type LetterTheme,
+} from './notesData';
+import { LETTER_THEME_PARTS, letterParts } from './LetterArt';
 import { EnvelopeArt } from './LetterEnvelope';
 
 /**
@@ -64,12 +73,15 @@ export function DailyLetterCard({
   unread,
   seq,
   onClick,
+  onPalette,
 }: {
   note: InspirationNote;
   unread: boolean;
   /** 第几封（1 = 最早那封） */
   seq?: number;
   onClick: () => void;
+  /** 点右上角那小枚调色按钮：换信封颜色（不传就不显示这个入口） */
+  onPalette?: () => void;
 }) {
   const title = useMemo(() => mailTitle(note), [note]);
   const mood = useMemo(() => mailMoodTag(note), [note]);
@@ -78,6 +90,7 @@ export function DailyLetterCard({
   const parts = letterParts(theme);
 
   return (
+    <div className="relative" data-testid="letter-card-wrap">
     <motion.button
       type="button"
       onClick={onClick}
@@ -138,17 +151,16 @@ export function DailyLetterCard({
           <EnvelopeArt
             theme={theme}
             opened={!unread}
-            flapAngle={88}
-            sealClass="h-5 w-5 text-[9px]"
+            sealSize={25}
             className="aspect-[5/3] w-full"
           >
             {/* 信封口里露出的那一小截：首句 */}
             <p
               data-testid="mail-summary"
               className={cn(
-                'px-2 pt-2 text-[8px] leading-[13px] tracking-[0.02em]',
+                'mx-auto max-w-full truncate px-1 pt-[3px] text-center text-[7.5px] leading-[11px] tracking-[0.02em]',
                 parts.ink,
-                'opacity-75',
+                'opacity-80',
               )}
             >
               {title}
@@ -177,6 +189,24 @@ export function DailyLetterCard({
         </div>
       </div>
     </motion.button>
+
+    {/* 换信封：压在卡片右上角，避免和整卡点击打架（它在外层，不嵌在 button 里） */}
+    {onPalette && (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onPalette();
+        }}
+        aria-label="换一个信封颜色"
+        title="换个信封"
+        data-testid="letter-palette-btn"
+        className="absolute right-1.5 top-[26px] z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border border-border/70 bg-card/85 text-muted-foreground shadow-sm transition hover:text-foreground active:scale-90"
+      >
+        <Palette className="h-[11px] w-[11px]" />
+      </button>
+    )}
+    </div>
   );
 }
 
@@ -194,15 +224,20 @@ export function LetterGrid({
   readIds,
   onOpen,
   maxLetters,
+  onSetTheme,
   emptyHint = '还没有来信，稍后再来看看吧',
 }: {
   notes: InspirationNote[];
   readIds: string[];
   onOpen: (id: string) => void;
   maxLetters?: number;
+  /** 换信封颜色：不传就不显示调色入口 */
+  onSetTheme?: (id: string, theme: LetterTheme) => void;
   emptyHint?: string;
 }) {
   const list = maxLetters ? notes.slice(0, maxLetters) : notes;
+  const [paletteFor, setPaletteFor] = useState<InspirationNote | null>(null);
+  const curTheme = normalizeLetterTheme(paletteFor?.letterTheme);
 
   if (list.length === 0) {
     return (
@@ -220,19 +255,81 @@ export function LetterGrid({
   const total = notes.length;
 
   return (
-    <div
-      data-testid="mail-grid"
-      className="grid grid-cols-2 gap-3"
-    >
-      {list.map((n, i) => (
-        <DailyLetterCard
-          key={n.id}
-          note={n}
-          unread={!readIds.includes(n.id)}
-          seq={total - i}
-          onClick={() => onOpen(n.id)}
-        />
-      ))}
-    </div>
+    <>
+      <div
+        data-testid="mail-grid"
+        className="grid grid-cols-2 gap-3"
+      >
+        {list.map((n, i) => (
+          <DailyLetterCard
+            key={n.id}
+            note={n}
+            unread={!readIds.includes(n.id)}
+            seq={total - i}
+            onClick={() => onOpen(n.id)}
+            onPalette={onSetTheme ? () => setPaletteFor(n) : undefined}
+          />
+        ))}
+      </div>
+
+      <BottomSheet
+        open={!!paletteFor}
+        onOpenChange={(v) => {
+          if (!v) setPaletteFor(null);
+        }}
+        title="换个信封"
+        testid="letter-palette-sheet"
+      >
+        <div className="px-4 pb-6 pt-1">
+          <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
+            同一封信换一层纸 —— 只改信封颜色，正文一个字都不动。
+          </p>
+          <div className="grid grid-cols-3 gap-2.5">
+            {LETTER_THEMES.map((t) => {
+              const p = LETTER_THEME_PARTS[t];
+              const on = t === curTheme;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  data-testid={`letter-theme-${t}`}
+                  onClick={() => {
+                    if (paletteFor && onSetTheme) onSetTheme(paletteFor.id, t);
+                    setPaletteFor(null);
+                  }}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-2.5 transition active:scale-95',
+                    on ? 'border-primary/60 bg-primary/5' : 'border-border bg-card hover:border-border/80',
+                  )}
+                >
+                  <span
+                    className="relative flex h-9 w-9 items-center justify-center rounded-[10px] shadow-[0_2px_6px_-2px_rgba(0,0,0,0.25)]"
+                    style={{ backgroundColor: p.envSolid, border: `1px solid ${p.flapStroke}` }}
+                  >
+                    {/* 小封盖 + 一枚小蜡：缩略图直接照着真信封画 */}
+                    <span
+                      className="absolute inset-x-0 top-0 h-[45%]"
+                      style={{
+                        background: p.flapFill,
+                        clipPath: 'polygon(0 0, 50% 100%, 100% 0)',
+                        borderBottom: `1px solid ${p.flapStroke}`,
+                      }}
+                    />
+                    <span
+                      className="absolute left-1/2 top-[38%] h-[9px] w-[9px] -translate-x-1/2 rounded-full"
+                      style={{ backgroundColor: p.sealBase }}
+                    />
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-foreground">
+                    {LETTER_THEME_LABEL[t]}
+                    {on && <Check className="h-3 w-3 text-primary" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </BottomSheet>
+    </>
   );
 }

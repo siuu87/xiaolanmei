@@ -107,6 +107,20 @@
     --call-bubble: 0 0% 17%;
     --call-hang: 0 70% 56%;
 
+    /* watch 一起看：固定深色沉浸页，不随主题切换（设计稿 6:8，色值按设计稿精确还原） */
+    --watch-bg: 220 14% 6%;
+    --watch-surface: 220 11% 13%;
+    --watch-capsule: 220 10% 14%;
+    --watch-track: 220 8% 17%;
+    --watch-fg: 210 8% 96%;
+    --watch-meta: 210 6% 54%;
+    --watch-dim: 215 6% 44%;
+    --watch-gold: 36 72% 62%;
+    --watch-gold-soft: 36 65% 92%;
+    --watch-played: 210 8% 80%;
+    --watch-dot: 210 8% 92%;
+    --watch-return: 220 10% 10%;
+
     /* ===== 覆盖层页面统一底：整页不透明，叠在常驻聊天底座之上 ===== */
     --page-bg: 210 6% 92%;
     --page-line: 210 7% 84%;
@@ -196,6 +210,20 @@
     --call-meta: 0 0% 52%;
     --call-bubble: 0 0% 17%;
     --call-hang: 0 70% 56%;
+
+    /* watch 一起看：固定深色沉浸页，不随主题切换（与浅色块同值） */
+    --watch-bg: 220 14% 6%;
+    --watch-surface: 220 11% 13%;
+    --watch-capsule: 220 10% 14%;
+    --watch-track: 220 8% 17%;
+    --watch-fg: 210 8% 96%;
+    --watch-meta: 210 6% 54%;
+    --watch-dim: 215 6% 44%;
+    --watch-gold: 36 72% 62%;
+    --watch-gold-soft: 36 65% 92%;
+    --watch-played: 210 8% 80%;
+    --watch-dot: 210 8% 92%;
+    --watch-return: 220 10% 10%;
 
     --page-bg: 210 8% 8%;
     --page-line: 210 6% 22%;
@@ -352,6 +380,58 @@
       transparent
     );
   }
+  /* 游戏屋：儿童房那种暖奶油底 + 点阵纸 */
+  .games-page {
+    --page-bg: 40 44% 96%;
+    --page-line: 36 26% 87%;
+  }
+  .dark .games-page {
+    --page-bg: 30 16% 8%;
+    --page-line: 30 11% 19%;
+  }
+  .games-dots {
+    background-image: radial-gradient(hsl(var(--page-line) / 0.7) 1px, transparent 1px);
+    background-size: 16px 16px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+    opacity: 0.55;
+  }
+  /* 礼物盒：整页偏暖的纸色底（其余页面仍是中性灰），顶栏一起跟着变，
+     否则顶栏与内容之间会出现一条冷暖分界线 */
+  .gift-page {
+    --page-bg: 34 46% 96%;
+    --page-line: 30 24% 87%;
+    --surface: 34 50% 97%;
+  }
+  .dark .gift-page {
+    --page-bg: 26 18% 8%;
+    --page-line: 26 12% 19%;
+    --surface: 26 15% 11%;
+  }
+  /* 灵感库（flomoplus 式，2026-11-14）：奶油纸底 + 近白卡片。
+     这页不用中性灰 —— 它的参照物是一本笔记册子，冷灰会立刻变成「后台管理」。
+     只覆盖本页（`.insp-page` 挂在 PageShell 根节点和三个整屏浮层上），
+     别提到 :root，否则全站跟着变。 */
+  .insp-page {
+    --page-bg: 36 38% 95%;
+    --page-line: 34 22% 87%;
+    --surface: 38 42% 97%;
+    --card: 40 50% 99.4%;
+    --border: 34 20% 87%;
+    --muted: 36 24% 92%;
+    --muted-foreground: 32 9% 44%;
+    --foreground: 28 12% 12%;
+  }
+  .dark .insp-page {
+    --page-bg: 26 13% 10%;
+    --page-line: 28 10% 19%;
+    --surface: 28 12% 13%;
+    --card: 28 11% 16%;
+    --border: 28 10% 20%;
+    --muted: 28 10% 17%;
+    --muted-foreground: 30 8% 62%;
+    --foreground: 34 18% 92%;
+  }
   /* 页面环境光：顶部一圈暖光，给留白一点呼吸 */
   .page-wash {
     background:
@@ -426,6 +506,37 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rise-in {
+    animation: none;
+  }
+}
+
+/* 搜索定位到某条消息：目标行泛光两下再淡出（仿微信跳转后的短暂高亮）。
+   走 --chat-accent 半透明，深浅两套主题各自适配，不写死颜色。 */
+@keyframes msg-focus {
+  0%,
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 hsl(var(--chat-accent) / 0);
+  }
+  18%,
+  68% {
+    background-color: hsl(var(--chat-accent) / 0.1);
+    box-shadow: 0 0 0 6px hsl(var(--chat-accent) / 0.06);
+  }
+  43%,
+  93% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 hsl(var(--chat-accent) / 0);
+  }
+}
+
+.msg-focus {
+  border-radius: 16px;
+  animation: msg-focus 1.9s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-focus {
     animation: none;
   }
 }
@@ -699,5 +810,92 @@
   right: -5px;
   background: hsl(var(--bubble-me));
   clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+/* ===== 剪藏详情里的正文 =====
+   GitHub README / 网页抽出来的段落都走这里。react-markdown 只输出语义标签，
+   不写这套规则的话标题和正文一样大，整段会糊成一片。 */
+.clip-md {
+  font-size: 13.5px;
+  line-height: 1.78;
+  color: hsl(var(--foreground) / 0.92);
+  overflow-wrap: anywhere;
+}
+.clip-md > :first-child {
+  margin-top: 0;
+}
+.clip-md h1,
+.clip-md h2,
+.clip-md h3,
+.clip-md h4 {
+  font-weight: 600;
+  line-height: 1.4;
+  color: hsl(var(--foreground));
+  margin: 1.15em 0 0.45em;
+}
+.clip-md h1 {
+  font-size: 17px;
+}
+.clip-md h2 {
+  font-size: 15.5px;
+}
+.clip-md h3 {
+  font-size: 14px;
+}
+.clip-md h4 {
+  font-size: 13.5px;
+}
+.clip-md p {
+  margin: 0.62em 0;
+}
+.clip-md ul,
+.clip-md ol {
+  margin: 0.62em 0;
+  padding-left: 1.3em;
+}
+.clip-md ul {
+  list-style: disc;
+}
+.clip-md ol {
+  list-style: decimal;
+}
+.clip-md li {
+  margin: 0.22em 0;
+}
+.clip-md a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.clip-md img {
+  max-width: 100%;
+  margin: 0.8em 0;
+  border-radius: 12px;
+}
+.clip-md blockquote {
+  margin: 0.8em 0;
+  padding-left: 0.8em;
+  border-left: 2px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+.clip-md hr {
+  margin: 1.2em 0;
+  border-color: hsl(var(--border));
+}
+.clip-md table {
+  width: 100%;
+  margin: 0.8em 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.clip-md th,
+.clip-md td {
+  border: 1px solid hsl(var(--border));
+  padding: 4px 6px;
+  text-align: left;
+}
+.clip-md strong {
+  font-weight: 600;
+  color: hsl(var(--foreground));
 }
 

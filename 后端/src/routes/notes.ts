@@ -13,8 +13,18 @@ import { getModelConfig, getAdapterConfig } from './stations.js';
  *   由前端决定用 AI 还是兜底文案，再 POST /notes 落库）。
  */
 
-/** 信封主题枚举：default 极简素雅 / memorial 纪念日 / night 深色磨砂星空 */
-export const LETTER_THEMES = ['default', 'memorial', 'night'] as const;
+/**
+ * 信封主题枚举（2026-11-13 由 3 套扩到 6 套，用户可以自己换信封颜色）：
+ * default 米白 / memorial 玫瑰 / night 深蓝 / kraft 牛皮 / sage 苔绿 / lilac 丁香
+ */
+export const LETTER_THEMES = [
+  'default',
+  'memorial',
+  'night',
+  'kraft',
+  'sage',
+  'lilac',
+] as const;
 export type LetterTheme = (typeof LETTER_THEMES)[number];
 
 function isLetterTheme(v: unknown): v is LetterTheme {

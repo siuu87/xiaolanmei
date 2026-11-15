@@ -31,6 +31,7 @@ import {
   Pause,
   Download,
   Quote,
+  BookmarkPlus,
   Radio,
   PhoneIncoming,
   PhoneMissed,
@@ -547,9 +548,23 @@ function CallRecordCard({
   );
 }
 
+/**
+ * 这条消息里「值得存进灵感库」的那段文字，空串 = 不该出现「记进灵感库」这一项。
+ *
+ * 踩过的坑：通话记录卡的 content 是「（通话 00:00）」这种壳子文案，贴图的 content 是 emoji，
+ * 纯图消息的 content 常是空的 —— 这些存进灵感库只会变成一条没意义的噪音，
+ * 所以在菜单层就挡掉，而不是让用户点了再报「这条是空的」。
+ */
+function libraryTextOf(m: ChatMessage): string {
+  if (m.call || m.sticker) return '';
+  const t = m.content.trim();
+  if (!t) return '';
+  if (/^（(通话|语音|图片|表情|文件|转账)[^）]*）$/.test(t)) return '';
+  return t.slice(0, 2000);
+}
+
 /** 气泡下方的时间戳：HH:MM */
-function fmtTime(ts?: number): string {
-  if (!ts) return '';
+function fmtTime(ts?: number): string {  if (!ts) return '';
   const d = new Date(ts);
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
@@ -706,6 +721,9 @@ export function ChatPage() {
   // 点名字直接进「心潮念」完整页（2026-10-20 起不再开旧的内心中枢抽屉）
   /** 多图堆叠卡片点开的大图查看器（整页、纯色不透明，遵守「点开=新页面」） */
   const [photoView, setPhotoView] = useState<{ urls: string[]; index: number } | null>(null);
+  /** 长按菜单里「记进灵感库」的轻提示（1.8s 自己消失，不做全局 toast 系统） */
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
   const openDrawer = useShellStore((s) => s.openDrawer);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const partnerName = useProfileStore((s) => s.partnerName);
@@ -1011,6 +1029,39 @@ export function ChatPage() {
       await navigator.clipboard.writeText(m.content);
     } catch {
       /* ignore */
+    }
+  };
+
+  /** 轻提示：1.8 秒自己消失；连点两次重置计时，不会叠出两条 */
+  const showFlash = (text: string) => {
+    setFlash(text);
+    if (flashTimer.current) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 1800);
+  };
+
+  /**
+   * 长按消息 →「记进灵感库」：把这条消息原样存成一条灵感（标签「聊天」）。
+   *
+   * 落点和 AI 在对话里自己调 `wishlist_add` 是同一个（`plugin_wishlist`），
+   * 所以进 /wishlist 就能看到、能改、能打标签。区别只是这一条是用户亲手挑的，
+   * 不依赖模型有没有理解「记一下」。
+   */
+  const saveToLibrary = async (text: string) => {
+    const content = text.trim().slice(0, 2000);
+    if (!content) {
+      showFlash('这条是空的，没什么可记');
+      return;
+    }
+    try {
+      const r = await fetch('/api/plugin-wishlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, tags: ['聊天'] }),
+      });
+      if (!r.ok) throw new Error('bad status');
+      showFlash('已记进灵感库');
+    } catch {
+      showFlash('没存上，稍后再试');
     }
   };
 
@@ -1433,6 +1484,19 @@ export function ChatPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-chat-bg text-foreground">
+      {/* 「已记进灵感库」的轻提示：portal 到 body、z 高于抽屉，免得被消息层盖住 */}
+      {flash &&
+        createPortal(
+          <div
+            data-testid="chat-flash"
+            className="pointer-events-none fixed inset-x-0 bottom-[96px] z-[1500] flex justify-center px-6"
+          >
+            <span className="animate-bb-pop rounded-full bg-foreground/90 px-3.5 py-1.5 text-[12px] font-medium text-background shadow-[0_8px_24px_-10px_hsl(var(--shadow-color)/0.55)]">
+              {flash}
+            </span>
+          </div>,
+          document.body,
+        )}
       {/* 顶栏（2026-11-09）：**悬浮置顶在聊天消息之上**，自身不带任何底色 / 遮罩，
           消息滚动时会从按钮与头像后面透出来。用 absolute 脱离文档流，消息区靠等高 pt 让开首屏。
           pointer-events-none + 各按钮 pointer-events-auto：空白处的点击照样能落到底下的气泡上。
@@ -1954,6 +2018,18 @@ export function ChatPage() {
                         void copyText(m);
                       }}
                     />
+                    {/* 用户自己挑一条存进灵感库（AI 也能自己记，见后端 wishlist_add）。
+                        通话卡 / 贴图 / 空消息不给入口 —— libraryTextOf 返回空串就整项不渲染 */}
+                    {libraryTextOf(m) ? (
+                      <MenuAction
+                        icon={<BookmarkPlus className="h-3.5 w-3.5" />}
+                        label="记进灵感库"
+                        onClick={() => {
+                          closeMenu();
+                          void saveToLibrary(m.content);
+                        }}
+                      />
+                    ) : null}
                     {m.role === 'user' ? (
                       <>
                         <MenuAction

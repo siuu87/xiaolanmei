@@ -268,6 +268,7 @@ CREATE TABLE IF NOT EXISTS diary_slips (
   date TEXT NOT NULL,
   content TEXT NOT NULL,
   color TEXT NOT NULL DEFAULT '#f6efd9',
+  author TEXT NOT NULL DEFAULT 'me',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -297,6 +298,8 @@ CREATE TABLE IF NOT EXISTS diary_page_locks (
   code TEXT NOT NULL,
   knocks INTEGER NOT NULL DEFAULT 0,
   last_knock_at INTEGER,
+  sneaked_at INTEGER,
+  discovered_at INTEGER,
   opened_by TEXT,
   opened_at INTEGER,
   created_at INTEGER NOT NULL,
@@ -304,6 +307,7 @@ CREATE TABLE IF NOT EXISTS diary_page_locks (
   deleted_at INTEGER
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_diary_page_locks_page ON diary_page_locks(book_id, date);
+
 
 CREATE TABLE IF NOT EXISTS diary_books (
   id TEXT PRIMARY KEY,
@@ -337,6 +341,7 @@ CREATE TABLE IF NOT EXISTS gifts (
   title TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
   gift_type TEXT NOT NULL DEFAULT 'letter',
+  meta TEXT,
   is_opened INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -350,12 +355,43 @@ CREATE TABLE IF NOT EXISTS plugin_wishlist (
   completed INTEGER NOT NULL DEFAULT 0,
   completed_at INTEGER,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  folder_id TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER,
   -- ↓ 遗留列：仅旧数据回填用（三态 kind + done），新代码读写 is_todo / completed
   kind TEXT,
-  done INTEGER
+  done INTEGER,
+  -- 2026-11-14：标签（逗号分隔）。灵感库改成 flomoplus 那种「标签 + 时间线」，
+  -- 夹子不再是层级，旧夹子名迁移时写进这一列
+  tags TEXT NOT NULL DEFAULT ''
+);
+
+-- 灵感夹子（2026-11-13）：条目堆多了就按夹子分堆，再配搜索框。
+CREATE TABLE IF NOT EXISTS wish_folders (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS wish_clips (
+  id TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  author TEXT NOT NULL DEFAULT '',
+  platform TEXT NOT NULL DEFAULT 'web',
+  cover TEXT NOT NULL DEFAULT '',
+  excerpt TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '',
+  folder_id TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS memorials (
@@ -890,6 +926,37 @@ export function initDatabase(): void {
   if (!wishCols.some((c) => c.name === 'completed_at')) {
     sqlite.exec(`ALTER TABLE plugin_wishlist ADD COLUMN completed_at INTEGER`);
   }
+  // 幂等迁移（2026-11-13）：灵感夹子 —— 条目补 folder_id，空串表示「未归档」
+  if (!wishCols.some((c) => c.name === 'folder_id')) {
+    sqlite.exec(`ALTER TABLE plugin_wishlist ADD COLUMN folder_id TEXT NOT NULL DEFAULT ''`);
+  }
+  // 幂等迁移（2026-11-14）：灵感库改 flomoplus 式「标签 + 时间线」，条目补 tags 列。
+  // 顺手把旧夹子名灌进去当标签 —— 夹子这个层级在界面上取消，但用户归过类的信息不能丢。
+  // 用 instr 拼 `,` 边界判断，重复执行不会灌两遍。
+  if (!wishCols.some((c) => c.name === 'tags')) {
+    sqlite.exec(`ALTER TABLE plugin_wishlist ADD COLUMN tags TEXT NOT NULL DEFAULT ''`);
+    try {
+      sqlite.exec(`
+        UPDATE plugin_wishlist
+           SET tags = (
+                 SELECT f.name FROM wish_folders f
+                  WHERE f.id = plugin_wishlist.folder_id AND f.deleted_at IS NULL
+               )
+         WHERE folder_id <> ''
+           AND EXISTS (
+                 SELECT 1 FROM wish_folders f
+                  WHERE f.id = plugin_wishlist.folder_id AND f.deleted_at IS NULL
+               )
+      `);
+    } catch {
+      /* 夹子表还没建好就先跳过，不影响主流程 */
+    }
+  }
+  // 幂等迁移（2026-11-13）：礼物补 meta 列（花束礼物存花材选择）
+  const giftCols = sqlite.prepare(`PRAGMA table_info(gifts)`).all() as { name: string }[];
+  if (!giftCols.some((c) => c.name === 'meta')) {
+    sqlite.exec(`ALTER TABLE gifts ADD COLUMN meta TEXT`);
+  }
   // 幂等迁移（2026-10-18）：信件（notes）补信封主题列 letter_theme
   const noteCols = sqlite.prepare(`PRAGMA table_info(notes)`).all() as { name: string }[];
   if (!noteCols.some((c) => c.name === 'letter_theme')) {
@@ -923,6 +990,19 @@ export function initDatabase(): void {
   }
   if (!diaryCols.some((c) => c.name === 'tags')) {
     sqlite.exec(`ALTER TABLE diaries ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'`);
+  }
+  // 幂等迁移（2026-11-16 双向字条）：diary_slips 补 author（me=我夹的 / ta=TA 塞进来的），
+  // 老记录全是我自己写的，默认 me；diary_page_locks 补「撬进来过 / 被发现过」两个时刻
+  const diarySlipCols = sqlite.prepare(`PRAGMA table_info(diary_slips)`).all() as { name: string }[];
+  if (!diarySlipCols.some((c) => c.name === 'author')) {
+    sqlite.exec(`ALTER TABLE diary_slips ADD COLUMN author TEXT NOT NULL DEFAULT 'me'`);
+  }
+  const diaryLockCols = sqlite.prepare(`PRAGMA table_info(diary_page_locks)`).all() as { name: string }[];
+  if (!diaryLockCols.some((c) => c.name === 'sneaked_at')) {
+    sqlite.exec(`ALTER TABLE diary_page_locks ADD COLUMN sneaked_at INTEGER`);
+  }
+  if (!diaryLockCols.some((c) => c.name === 'discovered_at')) {
+    sqlite.exec(`ALTER TABLE diary_page_locks ADD COLUMN discovered_at INTEGER`);
   }
   // 幂等迁移（2026-11-13 日记本上锁）：diary_books 补 locked / lock_code
   const diaryBookCols = sqlite.prepare(`PRAGMA table_info(diary_books)`).all() as { name: string }[];

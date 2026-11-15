@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { listNotes, createNote, deleteNote } from '@/lib/api/home';
+import { listNotes, createNote, deleteNote, patchNoteTheme } from '@/lib/api/home';
 import { newId } from '@/lib/id';
 import type { InspirationNote, LetterTheme } from './notesData';
 
@@ -14,6 +14,8 @@ interface NotesState {
   addNote: (content: string, letterTheme?: LetterTheme) => Promise<void>;
   removeNote: (id: string) => void;
   markRead: (id: string) => void;
+  /** 给某一封信换信封颜色：本地先换，再推后端；失败就退回原色 */
+  setLetterTheme: (id: string, theme: LetterTheme) => Promise<void>;
   openLetter: (id: string) => void;
   dismissLetter: () => void;
 }
@@ -88,6 +90,22 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const next = [id, ...cur];
     set({ readIds: next });
     saveReadIds(next);
+  },
+
+  setLetterTheme: async (id, theme) => {
+    const prev = get().notes.find((n) => n.id === id)?.letterTheme;
+    if (prev === theme) return;
+    set((s) => ({
+      notes: s.notes.map((n) => (n.id === id ? { ...n, letterTheme: theme } : n)),
+    }));
+    try {
+      await patchNoteTheme(id, theme);
+    } catch {
+      // 推不上去就退回原色，别让界面说谎
+      set((s) => ({
+        notes: s.notes.map((n) => (n.id === id ? { ...n, letterTheme: prev } : n)),
+      }));
+    }
   },
 
   openLetter: (id) => set({ openLetterId: id }),

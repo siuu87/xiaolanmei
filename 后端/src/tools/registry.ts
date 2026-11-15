@@ -217,7 +217,8 @@ const RAG_CATEGORIES = ['preference', 'agreement', 'experience', 'info', 'inspir
 const memoAdd: BuiltinTool = {
   name: 'memo_add',
   description:
-    '将对话中的重要信息写入双人共享备忘录。自动判断这条信息属于谁。当用户透露了偏好、约定、经历、计划、灵感等重要信息时调用。',
+    '把关于两个人的事实写进「共享备忘录」：偏好、忌口、约定、共同经历、身份信息、接下来的安排。自动判断这条信息属于谁。' +
+    '**边界**：如果用户是要「存个点子 / 链接 / 想做的东西」留着以后看，那不是备忘录，用 wishlist_add 写进灵感库。',
   parameters: {
     type: 'object',
     properties: {
@@ -226,7 +227,8 @@ const memoAdd: BuiltinTool = {
       category: {
         type: 'string',
         enum: ['preference', 'agreement', 'experience', 'info', 'inspiration', 'plan'],
-        description: '分类：preference 喜好/忌口、agreement 约定/承诺、experience 共同经历、info 事实信息、inspiration 灵感、plan 计划',
+        description:
+          '分类：preference 喜好/忌口、agreement 约定/承诺、experience 共同经历、info 事实信息、plan 计划；inspiration 仅用于历史数据，新的点子请走 wishlist_add',
       },
       fromWho: { type: 'string', description: '说话方的昵称（如「白起」），即这条信息的来源' },
       toWho: { type: 'string', description: '信息归属方（如「肆佑」），即这条信息描述的是谁' },
@@ -554,27 +556,64 @@ const PHONE_TOOLS: BuiltinTool[] = [
 ];
 
 /* ----------------------------------------------------------------------------
- * 灵感待办池 / 开源项目：让 AI 在对话里直接往这些清单写东西
- * （对应需求：灵感待办池可以 AI 自行添加；AI 还能对开源项目进行添加和更新）
+ * 灵感库 / 开源项目：让 AI 在对话里直接往这些清单写东西
+ * （对应需求：灵感库可以 AI 自行添加；AI 还能对开源项目进行添加和更新）
  * ------------------------------------------------------------------------- */
 
 const wishlistAdd: BuiltinTool = {
   name: 'wishlist_add',
   description:
-    '把对话中冒出的灵感或待办写进两人的「灵感待办池」（/wishlist）。当用户说「记一下」「提醒我」「以后想…」「帮我存个 todo」「这个想法不错」等时调用。默认存为灵感；若是明确的待办任务可传 isTodo=true。',
+    '把点子、灵感、想留着以后看的东西、或者待办写进两人的「灵感库」（前端 /wishlist 那一页，用户也可能叫它灵感池/灵感库）。' +
+    '**两种触发**：' +
+    '① 用户明确要求 ——「记一下」「记进灵感库」「帮我记住」「存个 todo」「这个先留着」—— 必记，不要反问他。' +
+    '② 你自己觉得值得留 —— 只有这些才记：具体的点子或设想、想做的项目/功能/东西、' +
+    '他或你提到的链接、「以后要去 / 想吃 / 想看 / 想买」这类明确的愿望、约好要一起做的事。' +
+    '**不记**：情绪和状态（累、烦、难过、开心）、吐槽、日常闲聊、已经在进行的事、以及你自己临时冒出来的想法。' +
+    '**克制**：一轮对话最多记一条；拿不准就不记 —— 库里多出一条噪音，比漏记更让人烦。' +
+    '**边界**：这里只放「想留着的点子 / 链接 / 想做的事」；偏好、忌口、约定、共同经历属于 memo_add，别混。' +
+    '默认存成灵感；明确是一件要去做的任务才传 isTodo=true。' +
+    '记完在回复里顺口带一句「记进灵感库了」就行，别写成汇报，也别重复这条的全文。' +
+    '用户提到分类（「放到旅行里」「算个功能想法」）就传 tags，它会变成灵感库顶部的标签。',
   parameters: {
     type: 'object',
     properties: {
-      content: { type: 'string', description: '要记录的内容（灵感或待办的文字）' },
+      content: {
+        type: 'string',
+        description: '内容原文。用户怎么说就怎么记，不要改写成总结，也不要加「用户说」这类前缀。',
+      },
       isTodo: { type: 'boolean', description: 'true=待办任务（可勾选完成），false/缺省=灵感（Inbox）' },
+      tags: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '标签（可选，最多 6 个），如 ["旅行"]、["想做的功能","App"]',
+      },
     },
     required: ['content'],
   },
   requiresConfirm: false,
   async execute(args) {
-    const content = String(args.content ?? '').trim();
+    const content = String(args.content ?? '').trim().slice(0, 2000);
     if (!content) return '错误：content 不能为空';
     const isTodo = args.isTodo === true;
+
+    /**
+     * 标签：2026-11-14 夹子（wish_folders）在界面上已下线，改成标签。
+     * 老调用可能还带 `folder`（schema 里已删，但模型偶尔会照着旧记忆传），
+     * 这里把它当标签收下 —— 别再建空夹子，不然库里会堆一批界面看不见的夹子。
+     */
+    const raw = Array.isArray(args.tags)
+      ? args.tags
+      : typeof args.tags === 'string'
+        ? String(args.tags).split(',')
+        : [];
+    const legacy = String(args.folder ?? '').trim();
+    const seen = new Set<string>();
+    [...raw.map((t) => String(t)), legacy].forEach((t) => {
+      const s = t.trim().replace(/,/g, '').slice(0, 24);
+      if (s) seen.add(s);
+    });
+    const tagStr = [...seen].slice(0, 6).join(',');
+
     const id = newId();
     const ts = now();
     const maxRow = db
@@ -590,11 +629,14 @@ const wishlistAdd: BuiltinTool = {
         completed: false,
         completedAt: null,
         sortOrder: maxRow + 10,
+        folderId: '',
+        tags: tagStr,
         createdAt: ts,
         updatedAt: ts,
       })
       .run();
-    return `已写进灵感待办池（${isTodo ? '待办' : '灵感'}）：${content}`;
+    const tagText = tagStr ? ` · 标签「${tagStr.replace(/,/g, '、')}」` : '';
+    return `已写进灵感库（${isTodo ? '待办' : '灵感'}${tagText}）：${content}`;
   },
 };
 

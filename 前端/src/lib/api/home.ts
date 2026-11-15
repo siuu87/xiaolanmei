@@ -76,7 +76,6 @@ export const unlockDiaryPage = (bookId: string, date: string) =>
     { method: 'DELETE' },
   );
 
-
 // ---- 待办 ----
 export const listTodos = () => request<Todo[]>('/api/todos');
 export const createTodo = (todo: Todo) =>
@@ -106,6 +105,12 @@ export const createNote = (note: InspirationNote) =>
   request<{ id: string }>('/api/notes', { method: 'POST', body: JSON.stringify(note) });
 export const deleteNote = (id: string) =>
   request<{ ok: true }>(`/api/notes/${id}`, { method: 'DELETE' });
+/** 给某一封信换信封颜色（只改 letterTheme，正文不动） */
+export const patchNoteTheme = (id: string, letterTheme: string) =>
+  request<{ ok: true }>(`/api/notes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ letterTheme }),
+  });
 export const generateNote = () => request<{ content: string }>('/api/notes/generate', { method: 'POST' });
 
 // ---- 课程表 ----

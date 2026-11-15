@@ -7,6 +7,9 @@ interface SearchQuery {
   q?: string;
   date?: string; // yyyy-mm-dd（本地时区当天）
   hasImage?: string; // 'true' | '1' 视为开启
+  hasFile?: string; // 有文件附件
+  hasLink?: string; // 正文含链接
+  hasSticker?: string; // 表情包消息
   conversationId?: string;
 }
 
@@ -43,18 +46,29 @@ export async function searchRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/search/messages', async (req) => {
-    const { q, date, hasImage, conversationId } = (req.query ?? {}) as SearchQuery;
+    const { q, date, hasImage, hasFile, hasLink, hasSticker, conversationId } =
+      (req.query ?? {}) as SearchQuery;
+    const flag = (v?: string) => v === 'true' || v === '1';
 
-    // 图片过滤：找出有图片附件（未删除）的消息 id；无任何图片附件时直接返回空。
-    let imageIds: string[] | null = null;
-    if (hasImage === 'true' || hasImage === '1') {
-      const imgRows = db
+    // 附件类过滤（图片 / 文件）：找出对应类型（未删除）的消息 id；一条都没有就直接空结果。
+    const attachIds = (type: string): string[] => {
+      const rows = db
         .select({ messageId: attachments.messageId, deletedAt: attachments.deletedAt })
         .from(attachments)
-        .where(eq(attachments.type, 'image'))
+        .where(eq(attachments.type, type))
         .all();
-      imageIds = imgRows.filter((r) => r.deletedAt == null).map((r) => r.messageId);
+      return rows.filter((r) => r.deletedAt == null).map((r) => r.messageId);
+    };
+
+    let imageIds: string[] | null = null;
+    if (flag(hasImage)) {
+      imageIds = attachIds('image');
       if (imageIds.length === 0) return { results: [] };
+    }
+    let fileIds: string[] | null = null;
+    if (flag(hasFile)) {
+      fileIds = attachIds('file');
+      if (fileIds.length === 0) return { results: [] };
     }
 
     const conds = [];
@@ -71,6 +85,11 @@ export async function searchRoutes(app: FastifyInstance): Promise<void> {
       }
     }
     if (imageIds) conds.push(inArray(messages.id, imageIds));
+    if (fileIds) conds.push(inArray(messages.id, fileIds));
+    if (flag(hasLink)) conds.push(like(messages.content, '%http%'));
+    // 表情包两种存法：内置 emoji（content=emoji、meta.sticker）/ 自定义贴图（content=[表情包]…）。
+    // 统一按 meta 里的 sticker 标记命中，两种都能搜到。
+    if (flag(hasSticker)) conds.push(like(messages.meta, '%"sticker"%'));
 
     const rows = conds.length
       ? db.select().from(messages).where(and(...conds)).all()

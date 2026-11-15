@@ -75,6 +75,8 @@ function toSlipDTO(s: typeof diarySlips.$inferSelect) {
     date: s.date,
     content: s.content,
     color: s.color,
+    // me = 我夹的 / ta = TA 塞进来的（前端用不同纸色和署名区分，TA 的不给改）
+    author: (s.author === 'ta' ? 'ta' : 'me') as 'me' | 'ta',
     createdAt: s.createdAt,
   };
 }

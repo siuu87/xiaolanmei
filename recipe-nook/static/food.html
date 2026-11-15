@@ -190,32 +190,81 @@ textarea.fld{min-height:64px;resize:vertical;line-height:1.5}
 .ings{display:flex;flex-wrap:wrap;gap:6px}
 .ings span{font-size:.8rem;background:var(--bg);border:1px solid var(--ln);border-radius:999px;padding:4px 10px}
 .ings span.sep{background:none;border:0;color:var(--mut);width:100%;padding:4px 0 0;font-size:.7rem}
+/* 命中忌口的食材: 琥珀=忌口, 红=过敏; 后面的 em 是模型给的替代 */
+.ings span.hit.dis{color:var(--ac);border-color:rgba(200,117,90,.5);background:rgba(200,117,90,.1)}
+.ings span.hit.alg{color:var(--red);border-color:rgba(184,87,78,.55);background:rgba(184,87,78,.1);font-weight:600}
+.ings span.hit em{font-style:normal;opacity:.85;margin-left:5px}
+.ings span.hit em::before{content:""}
 .steps{margin:0;padding:0;list-style:none;counter-reset:st}
 .steps li{position:relative;padding:8px 0 8px 34px;font-size:.9rem;line-height:1.7;border-bottom:1px dashed var(--ln)}
 .steps li:last-child{border:0}
 .steps li::before{counter-increment:st;content:counter(st);position:absolute;left:0;top:10px;width:24px;height:24px;border-radius:50%;background:var(--ac);color:#fff;font-size:.72rem;display:grid;place-items:center}
 .steps img{display:block;width:100%;border-radius:12px;margin-top:6px}
-.rfoot{font-size:.7rem;color:var(--mut);margin-top:14px;line-height:1.6}
-/* ---- 转盘 ---- */
-.wheel-box{position:relative;width:min(78vw,320px);margin:6px auto 10px;aspect-ratio:1}
-.wheel-box svg{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 24px rgba(0,0,0,.14))}
-.wheel-box .ptr{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:34px;height:34px;color:var(--ink);filter:drop-shadow(0 2px 3px rgba(0,0,0,.2));z-index:2}
-.wheel-box .hub{position:absolute;left:50%;top:50%;width:56px;height:56px;transform:translate(-50%,-50%);border-radius:50%;background:var(--sf);border:4px solid var(--ac);display:grid;place-items:center;z-index:2;box-shadow:0 4px 12px rgba(0,0,0,.15)}
-.wheel-box .hub svg{width:28px;height:28px;color:var(--ac);filter:none}
-#wheelG{transform-origin:50% 50%;transition:transform 4.6s cubic-bezier(.12,.78,.08,1)}
-.wheel-box.spinning #wheelG{}
-.prev{display:none;background:var(--bg);border:1px solid var(--ln);border-radius:18px;overflow:hidden;margin-top:6px;cursor:pointer}
-.prev.on{display:block;animation:pop .5s cubic-bezier(.3,1.5,.5,1)}
-@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
-.prev .im{aspect-ratio:16/9;background:var(--ph);position:relative;overflow:hidden;display:grid;place-items:center}
-.prev .im img{width:100%;height:100%;object-fit:cover;display:block}
-.prev .im .pw{width:60px;height:60px;opacity:.22;color:var(--ac)}
-.prev .im .ld{position:absolute;inset:0;display:grid;place-items:center;font-size:.76rem;color:var(--mut);background:var(--ph)}
-.prev .nm{font-size:1.1rem;font-weight:600;padding:10px 14px 2px}
-.prev .mt{font-size:.72rem;color:var(--mut);padding:0 14px 10px}
-.prev .acts{display:flex;gap:8px;padding:0 12px 12px}
-.prev .acts button{flex:1;border:0;border-radius:12px;padding:9px;font-size:.84rem;background:var(--sf);border:1px solid var(--ln)}
-.prev .acts button.main{background:var(--ac);color:#fff;border-color:var(--ac)}
+/* ---- 看别人怎么做 / 我的链接 ---- */
+.plat-row{display:flex;gap:8px}
+.plat{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--ln);background:var(--bg);border-radius:12px;padding:10px 4px;font-size:.82rem;color:var(--ink);text-decoration:none}
+.plat:active{background:var(--track)}
+.plat i{width:7px;height:7px;border-radius:50%;flex:none}
+.plat.bili i{background:#00A1D6}
+.plat.xhs i{background:#FF2442}
+.plat.dy i{background:#FE2C55}
+.lnks{display:flex;flex-direction:column;gap:6px}
+.lnk{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--ln);border-radius:12px;padding:8px 6px 8px 10px}
+.lnk .p{flex:none;font-size:.68rem;color:var(--mut);border:1px solid var(--ln);border-radius:999px;padding:1px 7px}
+.lnk .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem;color:var(--ink);text-decoration:none}
+.lnk .del{flex:none;border:0;background:none;color:var(--mut);font-size:16px;line-height:1;padding:0 4px}
+.lnk-add{display:flex;gap:8px;margin-top:8px}
+.lnk-add .fld{flex:1;min-width:0;font-size:.86rem}
+.lnk-add button{flex:none;border:0;border-radius:12px;padding:0 16px;background:var(--ac);color:#fff;font-size:.86rem}
+/* ---- 拍一张 ---- */
+.ph{display:flex;align-items:center;gap:10px;margin:10px 0 2px;flex-wrap:wrap}
+.ph-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--ac);background:var(--sf);color:var(--ac);border-radius:13px;padding:9px 13px;font-size:.84rem;font-weight:500}
+.ph-btn:disabled{opacity:.55}
+.ph-btn .ic{font-size:15px;line-height:1}
+.ph .hint{flex:1;min-width:130px;margin:0}
+.ph-shot{position:relative;margin:10px 0 2px}
+.ph-shot img{width:100%;height:138px;object-fit:cover;border-radius:14px;display:block;background:var(--ph)}
+.ph-shot .x2{position:absolute;right:7px;top:7px;border:0;border-radius:50%;width:26px;height:26px;background:rgba(0,0,0,.55);color:#fff;font-size:13px;line-height:1;display:grid;place-items:center}
+.ph-sum{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 1px;font-size:.74rem;color:var(--mut)}
+.ph-sum b{color:var(--ink);font-size:.92rem}
+.ph-card{display:flex;align-items:center;gap:9px;border:1px solid var(--ln);border-radius:12px;padding:8px 10px;margin-top:6px;background:var(--bg)}
+.ph-card.on{border-color:var(--ac);background:var(--sf)}
+.ph-card .nm{flex:1;min-width:0;font-size:.86rem;line-height:1.35}
+.ph-card .nm small{display:block;color:var(--mut);font-size:.68rem;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph-card .kc{flex:none;font-size:.82rem;font-weight:600}
+.ph-card .tk{flex:none;width:18px;height:18px;border-radius:50%;border:1px solid var(--ln);display:grid;place-items:center;font-size:11px;color:transparent}
+.ph-card.on .tk{background:var(--ac);border-color:var(--ac);color:#fff}
+.ent .em img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+/* ---- 抽一道（原来是转盘，2026-11-13 按用户要求改成直接抽） ---- */
+#wheelCu{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:none}
+#wheelCu::-webkit-scrollbar{display:none}
+#wheelCu .chip{flex:none}
+/* 抽卡：一叠小卡，左右划（2026-11-13 第三版：翻牌 → 滑卡） */
+.deck{position:relative;height:min(52dvh,378px);margin-top:8px;touch-action:pan-y}
+.swc{position:absolute;inset:0;background:var(--sf);border:1px solid var(--ln);border-radius:20px;overflow:hidden;box-shadow:0 12px 26px rgba(70,45,25,.13),0 2px 6px rgba(70,45,25,.06);display:flex;flex-direction:column;transform-origin:50% 92%;transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;-webkit-user-select:none;user-select:none}
+.swc.top{cursor:grab}
+.swc-im{flex:1;min-height:0;background:var(--ph);position:relative;display:grid;place-items:center;overflow:hidden}
+.swc-im img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;-webkit-user-drag:none}
+.swc-im .pw{width:54px;height:54px;opacity:.2;color:var(--ac)}
+.swc-body{padding:11px 14px 13px;flex:none}
+.swc-nm{font-size:1.06rem;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swc-mt{font-size:.7rem;color:var(--mut);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swc-diet{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:7px}
+.swc-diet:empty{display:none}
+/* 划过一半时贴上去的判定条 */
+.deck-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;color:var(--mut);font-size:.84rem;line-height:1.7}
+.deck-empty button{border:1px solid var(--ln);background:var(--sf);color:var(--ink);border-radius:12px;padding:9px 20px;font-size:.88rem;flex:none}
+.deck-hint{text-align:center;font-size:.7rem;color:var(--mut);margin-top:14px;line-height:1.7;min-height:1.6em}
+/* 忌口 / 过敏标注: 琥珀色是忌口(能换), 红色是过敏(硬拦) */
+.dchip{font-size:.72rem;line-height:1.5;padding:2px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+.dchip.dis{color:var(--ac);border-color:rgba(200,117,90,.42);background:rgba(200,117,90,.1)}
+.dchip.alg{color:var(--red);border-color:rgba(184,87,78,.45);background:rgba(184,87,78,.1);font-weight:600}
+/* 设置里的「忌口与过敏」只读展示 */
+.diet-note{font-size:.76rem;color:var(--mut)}
+.diet-note .dl{font-size:.7rem;color:var(--mut);margin:8px 0 5px;letter-spacing:.04em}
+.diet-note .chips{gap:6px;flex-wrap:wrap}
+.diet-note .hint{margin:6px 0 0;line-height:1.7}
+.dsub{font-size:.72rem;color:var(--mut)}
 /* ---- 其他 ---- */
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translate(-50%,10px);background:var(--ink);color:var(--bg);font-size:.82rem;padding:8px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:all .25s;z-index:40;max-width:86vw;text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
@@ -232,7 +281,7 @@ svg text{font-family:inherit}
     <h1 class="dtitle">小<em>食谱</em><span class="hrt">♡</span><button class="gear" id="gear" aria-label="设置"><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></h1>
     <p class="dsub">今天吃点什么 · 记得明白</p>
   </div>
-  <button class="spin-cta" id="spinCta"><span><span class="big">纠结吃啥？转一下</span><span class="sm">选个菜系 · 转盘替你决定</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6L6 18"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></button>
+  <button class="spin-cta" id="spinCta"><span><span class="big">纠结吃啥？抽一道</span><span class="sm">选个菜系 · 随机替你决定</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><circle cx="8.6" cy="8.6" r="1.25" fill="currentColor" stroke="none"/><circle cx="15.4" cy="8.6" r="1.25" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/><circle cx="8.6" cy="15.4" r="1.25" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r="1.25" fill="currentColor" stroke="none"/></svg></button>
   <div class="sbar">
     <label class="in"><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input id="q" placeholder="搜菜名、标签…" enterkeyhint="search"></label>
     <button class="mode" id="modeIng">按食材</button>
@@ -279,6 +328,12 @@ svg text{font-family:inherit}
   <div class="sh-top"><h2 id="logTitle">记一餐</h2><button class="x" data-close="shLog">✕</button></div>
   <div class="lbl" style="margin-top:0">记到哪一餐</div><div class="chips" id="slotChips"></div>
   <div class="had" id="had"></div>
+  <div class="ph">
+    <button class="ph-btn" id="phBtn" type="button"><span class="ic">📷</span>拍一张，我来算</button>
+    <input type="file" id="phFile" accept="image/*" capture="environment" hidden>
+    <div class="hint">对着饭菜拍就行</div>
+  </div>
+  <div id="phPick"></div>
   <div class="lbl">吃了什么</div>
   <input class="fld" id="fName" placeholder="一样一样记, 比如 番茄炒蛋" maxlength="60">
   <div class="sugg" id="sugg"></div>
@@ -295,17 +350,12 @@ svg text{font-family:inherit}
 <!-- 菜谱详情 -->
 <div class="sh" id="shRec"><div class="ovl"></div><div class="sheet full" id="recSheet"></div></div>
 
-<!-- 转盘 -->
+<!-- 抽一道：一叠小卡，左右划 -->
 <div class="sh" id="shWheel"><div class="ovl"></div><div class="sheet">
   <div class="sh-top"><h2>今天吃啥</h2><button class="x" data-close="shWheel">✕</button></div>
   <div class="chips" id="wheelCu"></div>
-  <div class="wheel-box" id="wheelBox">
-    <svg class="ptr" viewBox="0 0 24 24"><path d="M12 22L4 8a8 8 0 1 1 16 0z" fill="currentColor"/><circle cx="12" cy="8" r="3" fill="var(--sf)"/></svg>
-    <svg viewBox="0 0 300 300"><g id="wheelG"></g></svg>
-    <div class="hub"><svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="14.8" rx="4.6" ry="3.7"/><ellipse cx="6.4" cy="9.7" rx="1.6" ry="2.1"/><ellipse cx="10.2" cy="7.7" rx="1.6" ry="2.1"/><ellipse cx="13.8" cy="7.7" rx="1.6" ry="2.1"/><ellipse cx="17.6" cy="9.7" rx="1.6" ry="2.1"/></svg></div>
-  </div>
-  <div class="btn-row" style="margin-top:4px"><button class="btn ghost" id="reroll">换一批</button><button class="btn" id="spinBtn">转！</button></div>
-  <div class="prev" id="prev"><div class="im" id="prevIm"></div><div class="nm" id="prevNm"></div><div class="mt" id="prevMt"></div><div class="acts"><button id="prevEat">就吃这个</button><button class="main" id="prevOpen">看做法</button></div></div>
+  <div class="deck" id="deck"></div>
+  <div class="deck-hint" id="deckHint">左右划都是跳过 · 点卡片看做法</div>
 </div></div>
 
 <!-- 设置 -->
@@ -324,6 +374,8 @@ svg text{font-family:inherit}
   <div class="lbl" style="margin-top:16px">记录用的分类</div>
   <div class="chips" id="catEdit"></div>
   <div class="two" style="margin-top:8px"><input class="fld" id="catNew" placeholder="加一个分类" maxlength="12"><button class="btn ghost" id="catAdd" style="flex:0 0 auto">加</button></div>
+  <div class="lbl" style="margin-top:18px">忌口与过敏<span style="font-weight:400;letter-spacing:0;margin-left:6px">来自聊天里的角色设定</span></div>
+  <div id="dietBox" class="diet-note"><span class="hint">读一下…</span></div>
   <div class="btn-row"><button class="btn" id="saveSet">保存</button></div>
 </div></div>
 
@@ -347,7 +399,7 @@ const CU2CAT={'中餐':'家常菜','日料':'日料','韩餐':'韩餐','西餐':
 let META={cuisines:[],kinds:[],log_cats:[],slots:[],ratings:[],target:{}};
 
 /* 按下去软一点、松手弹一下的果冻手感。宿主页面自己有一套的话, 地址后面加 ?nojelly 关掉这个 */
-if(!/[?&]nojelly/.test(location.search)&&window.Element&&Element.prototype.animate){document.addEventListener('pointerdown',e=>{const el=e.target.closest&&e.target.closest('button,.rc,.ent,.cal .c,.prev');if(!el)return;try{el.animate([{scale:'1'},{scale:'.93'}],{duration:160,fill:'forwards',easing:'ease-out'});const up=()=>{el.animate([{scale:'.93'},{scale:'1.06 .94'},{scale:'.97 1.03'},{scale:'1'}],{duration:520,easing:'cubic-bezier(.3,.7,.4,1)'});document.removeEventListener('pointerup',up);document.removeEventListener('pointercancel',up)};document.addEventListener('pointerup',up);document.addEventListener('pointercancel',up)}catch(err){}},true)}
+if(!/[?&]nojelly/.test(location.search)&&window.Element&&Element.prototype.animate){document.addEventListener('pointerdown',e=>{const el=e.target.closest&&e.target.closest('button,.rc,.ent,.cal .c');if(!el)return;try{el.animate([{scale:'1'},{scale:'.93'}],{duration:160,fill:'forwards',easing:'ease-out'});const up=()=>{el.animate([{scale:'.93'},{scale:'1.06 .94'},{scale:'.97 1.03'},{scale:'1'}],{duration:520,easing:'cubic-bezier(.3,.7,.4,1)'});document.removeEventListener('pointerup',up);document.removeEventListener('pointercancel',up)};document.addEventListener('pointerup',up);document.addEventListener('pointercancel',up)}catch(err){}},true)}
 
 /* ---- 面板开关 ---- */
 function openSh(id){$('#'+id).classList.add('open');document.body.style.overflow='hidden'}
@@ -366,7 +418,7 @@ function drawFilters(){pills($('#cuRow'),META.cuisines.concat(['收藏']),F.fav?
 $('#q').addEventListener('input',()=>{clearTimeout(qT);qT=setTimeout(()=>{F.q=$('#q').value.trim();F.page=0;search()},350)});
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(qT);F.q=$('#q').value.trim();F.page=0;search();$('#q').blur()}});
 $('#modeIng').onclick=()=>{F.ing=!F.ing;$('#modeIng').classList.toggle('on',F.ing);$('#q').placeholder=F.ing?'冰箱里有什么？如 鸡蛋 西红柿':'搜菜名、标签…';if(F.q){F.page=0;search()}};
-function cardHtml(x){const img=x.image?'<img loading="lazy" src="'+esc(x.image)+'" alt="">':PAW;const tag=x.cuisine?'<span class="tag">'+esc(x.cuisine+(x.region?'·'+x.region:''))+'</span>':'';const mt=[].concat(x.kinds||[]).concat(x.src==='htc'?['程序员做饭指南']:[]).slice(0,3).join(' · ');return '<div class="rc" data-id="'+x.id+'"><div class="im" style="'+(x.image?'':phStyle(x.cuisine))+'">'+img+tag+'</div><div class="nm">'+esc(x.name)+'</div><div class="mt">'+esc(mt||(x.dish||''))+'</div></div>'}
+function cardHtml(x){const img=x.image?'<img loading="lazy" src="'+esc(x.image)+'" alt="">':PAW;const tag=x.cuisine?'<span class="tag">'+esc(x.cuisine+(x.region?'·'+x.region:''))+'</span>':'';const mt=[].concat(x.kinds||[]).slice(0,3).join(' · ');return '<div class="rc" data-id="'+x.id+'"><div class="im" style="'+(x.image?'':phStyle(x.cuisine))+'">'+img+tag+'</div><div class="nm">'+esc(x.name)+'</div><div class="mt">'+esc(mt||(x.dish||''))+'</div></div>'}
 async function search(append){const g=$('#grid');if(!append){g.innerHTML='<div class="sk" style="height:150px"></div><div class="sk" style="height:150px"></div>';F.page=0}$('#more').style.display='none';$('#gridEmpty').style.display='none';
   try{let d;if(F.fav){d=await api('/api/food/favs');d.more=false}else{const p=new URLSearchParams({q:F.q,cuisine:F.cu,kind:F.kd,ing:F.ing?1:0,page:F.page,limit:24});d=await api('/api/food/recipes?'+p)}
     const h=d.items.map(cardHtml).join('');if(append)g.insertAdjacentHTML('beforeend',h);else g.innerHTML=h;
@@ -378,6 +430,9 @@ function fillImages(items){const gen=++imgGen;const todo=items.filter(x=>!x.imag
   const worker=async()=>{while(i<todo.length&&gen===imgGen){const id=todo[i++];try{const d=await api('/api/food/image?id='+id);if(gen!==imgGen)return;if(d.image)putImage(id,d.image)}catch(e){}}};
   for(let k=0;k<3;k++)worker()}
 function putImage(id,src){document.querySelectorAll('.rc[data-id="'+id+'"] .im').forEach(im=>{const tag=im.querySelector('.tag');im.style.cssText='';im.innerHTML='<img loading="lazy" src="'+esc(src)+'" alt="">'+(tag?tag.outerHTML:'')})}
+function renderLinks(items){const box=$('#lnkList');if(!box)return;
+  box.innerHTML=(items&&items.length)?items.map(x=>'<div class="lnk"><span class="p">'+esc(x.label)+'</span><a class="t" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">'+esc(x.title||x.shown||x.url)+'</a><button class="del" data-lid="'+esc(x.id)+'" title="删掉">×</button></div>').join('')
+    :'<div class="hint">还没有。刷到好的做法把链接贴这儿，下次点开就能回去。</div>'}
 $('#grid').addEventListener('click',e=>{const c=e.target.closest('.rc');if(c)openRecipe(+c.dataset.id)});
 
 /* ---- 详情 ---- */
@@ -385,18 +440,41 @@ let REC=null;
 async function openRecipe(id){const box=$('#recSheet');box.innerHTML='<div class="hero"><button class="back" data-close="shRec">‹</button></div><div class="sk" style="height:28px;width:60%"></div><div class="sk" style="margin-top:10px;height:80px"></div>';box.scrollTop=0;openSh('shRec');box.querySelector('.back').onclick=()=>closeSh('shRec');
   try{const r=await api('/api/food/recipe/'+id);REC=r;renderRecipe(r);if(!r.image){api('/api/food/image?id='+id).then(d=>{if(d.image)putImage(id,d.image);if(d.image&&REC&&REC.id===id){REC.image=d.image;REC.image_src=d.image_src;const h=$('#recSheet .hero');if(h){h.querySelector('.pw')&&h.querySelector('.pw').remove();h.insertAdjacentHTML('afterbegin','<img src="'+esc(d.image)+'" alt="">');h.insertAdjacentHTML('beforeend','<span class="src">图·'+esc(d.image_src)+'</span>')}}}).catch(()=>{})}}
   catch(e){box.innerHTML='<div class="hero"><button class="back">‹</button></div><div class="empty">打不开: '+esc(e.message)+'</div>';box.querySelector('.back').onclick=()=>closeSh('shRec')}}
-function renderRecipe(r){const box=$('#recSheet');const ings=r.ingredients.map(x=>x.startsWith('— ')?'<span class="sep">'+esc(x.replace(/—/g,'').trim())+'</span>':'<span>'+esc(x)+'</span>').join('');
+function renderRecipe(r){const box=$('#recSheet');const ings=r.ingredients.map((x,i)=>{const hit=((r.diet_rows||[])[i]||[])[0];
+    if(x.startsWith('— '))return '<span class="sep">'+esc(x.replace(/—/g,'').trim())+'</span>';
+    return hit?'<span class="hit '+(hit.level==='allergy'?'alg':'dis')+'" data-dn="'+esc(hit.name)+'">'+esc(x)+'</span>':'<span>'+esc(x)+'</span>'}).join('');
   const steps=r.steps.map((s,i)=>'<li>'+esc(s)+((r.step_images[i]||[]).map(u=>'<img loading="lazy" src="'+esc(u)+'" alt="">').join(''))+'</li>').join('');
   const meta=[r.cuisine,r.region].concat(r.kinds||[]).concat((r.tags||[]).filter(t=>t&&!(r.kinds||[]).includes(t)).slice(0,4)).filter(Boolean).map(t=>'<span>'+esc(t)+'</span>').join('');
   box.innerHTML='<div class="hero" style="'+(r.image?'':phStyle(r.cuisine))+'">'+(r.image?'<img src="'+esc(r.image)+'" alt="">':PAW)+'<button class="back">‹</button><button class="fav'+(r.fav?' on':'')+'" id="favBtn">'+(r.fav?'♥':'♡')+'</button>'+(r.image_src?'<span class="src">图·'+esc(r.image_src)+'</span>':'')+'</div>'
     +'<h1 class="rtitle">'+esc(r.name)+'</h1><div class="rmeta">'+meta+'</div>'+(r.descr?'<p class="rdesc">'+esc(r.descr)+'</p>':'')
     +'<div class="lbl">食材</div><div class="ings">'+ings+'</div><div class="lbl" style="margin-top:14px">步骤</div><ol class="steps">'+steps+'</ol>'
-    +'<div class="rfoot">来源: '+(r.src==='htc'?'程序员做饭指南 (HowToCook)':'下厨房公开语料')+(r.author?' · '+esc(r.author):'')+' · 菜谱 #'+r.id+'</div>'
+    +'<div class="lbl" style="margin-top:16px">看别人怎么做</div><div class="plat-row">'+(r.search||[]).map(s=>'<a class="plat '+s.platform+'" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><i></i>'+esc(s.label)+'</a>').join('')+'</div>'
+    +'<div class="hint">点了跳到 App 里搜「'+esc(r.dish||r.name)+'」，视频和实拍图在那边</div>'
+    +'<div class="lbl">我的链接</div><div class="lnks" id="lnkList"></div>'
+    +'<div class="lnk-add"><input class="fld" id="lnkIn" placeholder="贴个小红书 / B站 / 抖音链接"><button id="lnkAdd">存</button></div>'
     +'<div class="btn-row"><button class="btn ghost" id="askBtn">让 AI 教我做</button><button class="btn" id="eatBtn">就吃这个, 记一餐</button></div>';
   box.querySelector('.back').onclick=()=>closeSh('shRec');
   $('#favBtn').onclick=async()=>{const on=!REC.fav;try{await api('/api/food/fav/'+REC.id,{method:'POST',body:JSON.stringify({on})});REC.fav=on;$('#favBtn').classList.toggle('on',on);$('#favBtn').textContent=on?'♥':'♡';toast(on?'收藏了':'取消收藏');if(F.fav)search()}catch(e){toast(e.message)}};
   $('#eatBtn').onclick=()=>{closeSh('shRec');openLog(null,{name:r.dish&&r.dish.length<=12?r.dish:r.name,cuisine:CU2CAT[r.cuisine]||'',recipe_id:r.id})};
-  $('#askBtn').onclick=()=>sendToChat('我想做《'+r.name+'》(菜谱 #'+r.id+'), 你用 food 工具看看做法, 一步步教我吧～')}
+  $('#askBtn').onclick=()=>sendToChat('我想做《'+r.name+'》(菜谱 #'+r.id+'), 你用 food 工具看看做法, 一步步教我吧～');
+  if((r.diet||[]).length)fillSubs(r);
+  renderLinks(r.links||[]);
+  $('#lnkAdd').onclick=async()=>{const v=$('#lnkIn').value.trim();if(!v)return;const b=$('#lnkAdd');b.disabled=true;try{const d=await api('/api/food/links/'+r.id,{method:'POST',body:JSON.stringify({url:v})});$('#lnkIn').value='';renderLinks(d.items||[]);toast(d.dup?'这个链接之前就存过了':'存好了')}catch(e){toast(e.message)}finally{b.disabled=false}};
+  $('#lnkIn').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#lnkAdd').click()}};
+  $('#lnkList').onclick=async e=>{const b=e.target.closest('.del');if(!b)return;e.preventDefault();try{const d=await api('/api/food/links/'+r.id+'/'+b.dataset.lid,{method:'DELETE'});renderLinks(d.items||[]);toast('删掉了')}catch(err){toast(err.message)}}}
+
+/* 食材行上的替代：命中忌口的那几行后面补一句「→ 芹菜」。模型给了才补，没给就只是标个颜色 */
+async function fillSubs(r){
+  try{
+    const d=await api('/api/food/diet/sub',{method:'POST',body:JSON.stringify({id:r.id})});
+    const subs=d.subs||{};
+    if(!REC||REC.id!==r.id)return;
+    $('#recSheet').querySelectorAll('.ings span.hit').forEach(el=>{
+      const s=subs[el.dataset.dn];
+      if(s&&!el.querySelector('em')){const em=document.createElement('em');em.textContent='→ '+s;el.appendChild(em)}
+    });
+  }catch(e){}
+}
 
 /* ---- 发到聊天 ----
    嵌在聊天页面的 iframe 里时, 宿主实现 window.foodNookSend(text) 就能接住(同源);
@@ -408,26 +486,128 @@ function sendToChat(text){const copy=()=>{try{navigator.clipboard.writeText(text
     p.postMessage({type:'recipe-nook:send',text},new URLSearchParams(location.search).get('parent_origin')||'*');toast(copy()?'发给外层页面了(也复制了一份)':'发给外层页面了');return}}catch(e){}
   toast(copy()?'这里没连着聊天, 已复制, 去聊天框粘贴':'复制失败')}
 
-/* ================= 转盘 ================= */
-let W={cu:'',items:[],busy:false,turn:0,hit:null};
-function wheelCuChips(){const box=$('#wheelCu');box.innerHTML='';[''].concat(META.cuisines).forEach(v=>{const b=document.createElement('button');b.className='chip'+(W.cu===v?' on':'');b.textContent=v||'随便';b.onclick=()=>{if(W.busy)return;W.cu=v;wheelCuChips();loadWheel()};box.appendChild(b)})}
-async function loadWheel(){if(W.busy)return;$('#prev').classList.remove('on');const g=$('#wheelG');g.style.transition='none';g.style.transform='rotate(0deg)';W.turn=0;void g.getBoundingClientRect();g.style.transition='';
-  try{const d=await api('/api/food/random?n=8&cuisine='+encodeURIComponent(W.cu));W.items=d.items;drawWheel()}catch(e){toast(e.message)}}
-function drawWheel(){const n=W.items.length||8,seg=360/n,R=150,g=$('#wheelG');let h='';const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);
-  for(let i=0;i<n;i++){const a0=(i*seg-90)*Math.PI/180,a1=((i+1)*seg-90)*Math.PI/180;const x0=150+R*Math.cos(a0),y0=150+R*Math.sin(a0),x1=150+R*Math.cos(a1),y1=150+R*Math.sin(a1);const hue=CU_HUE[(W.items[i]||{}).cuisine]||25;const fill=dark?'hsl('+hue+' 30% '+(i%2?'24%':'30%')+')':'hsl('+hue+' '+(i%2?'55%':'45%')+' '+(i%2?'86%':'92%')+')';
-    h+='<path d="M150 150L'+x0.toFixed(1)+' '+y0.toFixed(1)+'A'+R+' '+R+' 0 0 1 '+x1.toFixed(1)+' '+y1.toFixed(1)+'Z" fill="'+fill+'" stroke="var(--sf)" stroke-width="2"/>';
-    const am=(i+.5)*seg-90;const nm=((W.items[i]||{}).dish||(W.items[i]||{}).name||'…');const t=nm.length>6?nm.slice(0,6)+'…':nm;
-    h+='<text x="150" y="150" transform="rotate('+am+' 150 150) translate(96 0)" text-anchor="middle" dominant-baseline="middle" font-size="12.5" fill="var(--ink)">'+esc(t)+'</text>'}
-  g.innerHTML=h}
-function spin(){if(W.busy||!W.items.length)return;W.busy=true;$('#prev').classList.remove('on');$('#spinBtn').disabled=true;const n=W.items.length,seg=360/n,i=Math.floor(Math.random()*n);const jitter=(Math.random()-.5)*seg*.6;const target=360-((i+.5)*seg+jitter);W.turn+=360*(5+Math.floor(Math.random()*3))+((target-(W.turn%360))+360)%360;const g=$('#wheelG');g.style.transform='rotate('+W.turn+'deg)';
-  setTimeout(()=>{W.busy=false;$('#spinBtn').disabled=false;W.hit=W.items[i];showPrev(W.hit);try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}},4700)}
-async function showPrev(x){const p=$('#prev');$('#prevNm').textContent=x.name;$('#prevMt').textContent=[x.cuisine,x.region].concat(x.kinds||[]).filter(Boolean).join(' · ')||(x.dish||'');const im=$('#prevIm');im.style.cssText=x.image?'':phStyle(x.cuisine);im.innerHTML=x.image?'<img src="'+esc(x.image)+'" alt="">':PAW+'<div class="ld">找图中…</div>';p.classList.add('on');p.scrollIntoView({behavior:'smooth',block:'nearest'});
-  if(!x.image){try{const d=await api('/api/food/image?id='+x.id);if(W.hit&&W.hit.id===x.id){if(d.image){x.image=d.image;im.style.cssText='';im.innerHTML='<img src="'+esc(d.image)+'" alt="">'}else{im.innerHTML=PAW}}}catch(e){im.innerHTML=PAW}}}
-$('#prev').onclick=e=>{if(e.target.closest('button'))return;if(W.hit)openRecipe(W.hit.id)};
-$('#prevOpen').onclick=()=>{if(W.hit)openRecipe(W.hit.id)};
-$('#prevEat').onclick=()=>{if(!W.hit)return;closeSh('shWheel');openLog(null,{name:W.hit.dish&&W.hit.dish.length<=12?W.hit.dish:W.hit.name,cuisine:CU2CAT[W.hit.cuisine]||'',recipe_id:W.hit.id})};
-$('#spinBtn').onclick=spin;$('#reroll').onclick=loadWheel;
-$('#spinCta').onclick=()=>{openSh('shWheel');wheelCuChips();if(!W.items.length)loadWheel()};
+/* ================= 抽一道：一叠小卡，左右划 ================= */
+let W={cu:'',loading:false};
+let SW={items:[],i:0,noticeTimer:null};
+const DECK_HINT='左右划都是跳过 · 点卡片看做法';
+
+function wheelCuChips(){const box=$('#wheelCu');box.innerHTML='';[''].concat(META.cuisines).forEach(v=>{const b=document.createElement('button');b.className='chip'+(W.cu===v?' on':'');b.textContent=v||'随便';b.onclick=()=>{if(W.loading)return;W.cu=v;wheelCuChips();deal()};box.appendChild(b)})}
+function dchip(h){return '<span class="dchip '+(h.level==='allergy'?'alg':'dis')+'">含 '+esc(h.name)+'</span>'}
+function hint(text,tmp){const el=$('#deckHint');if(!el)return;el.textContent=text;clearTimeout(SW.noticeTimer);if(tmp)SW.noticeTimer=setTimeout(()=>{el.textContent=DECK_HINT},1800)}
+/* 一张卡：图 + 菜名 + 菜系类型 + 忌口（替代说法等模型算完再补） */
+function cardHtml(x){
+  const mt=[x.cuisine,x.region].concat(x.kinds||[]).filter(Boolean).join(' · ')||(x.dish||'');
+  return '<div class="swc-im"'+(x.image?'':' style="'+phStyle(x.cuisine)+'"')+'>'+(x.image?'<img src="'+esc(x.image)+'" alt="">':PAW)+'</div>'
+    +'<div class="swc-body"><div class="swc-nm">'+esc(x.name)+'</div><div class="swc-mt">'+esc(mt)+'</div>'
+    +'<div class="swc-diet">'+(x.diet||[]).map(dchip).join('')+'</div></div>';
+}
+function setDepth(el,d){el.style.zIndex=20-d;el.style.transform=d?('translateY('+(d*11)+'px) scale('+(1-d*.06)+')'):'';el.classList.toggle('top',d===0)}
+function newCard(idx){const el=document.createElement('div');el.className='swc';el.dataset.idx=idx;el.innerHTML=cardHtml(SW.items[idx]);return el}
+
+function renderDeck(){
+  const deck=$('#deck');deck.innerHTML='';
+  const rest=SW.items.slice(SW.i,SW.i+3);
+  if(!rest.length){
+    deck.innerHTML='<div class="deck-empty"><div>这一批看完了</div><button id="dealMore">再抽一批</button></div>';
+    $('#dealMore').onclick=deal;
+    hint('换个菜系，或者再抽一批');return;
+  }
+  for(let d=rest.length-1;d>=0;d--){const el=newCard(SW.i+d);deck.appendChild(el);setDepth(el,d)}
+  hint(DECK_HINT);
+  const x=SW.items[SW.i],top=deck.querySelector('.swc.top');
+  if(top){ensureImg(x,top);ensureSubs(x,top)}
+}
+async function deal(){
+  if(W.loading)return;W.loading=true;
+  const deck=$('#deck');deck.innerHTML='<div class="deck-empty">正在翻菜谱…</div>';
+  try{
+    const d=await api('/api/food/random?n=8&cuisine='+encodeURIComponent(W.cu));
+    const items=(d.items||[]).filter(x=>!(x.diet||[]).some(h=>h.level==='allergy'));
+    if(!items.length){deck.innerHTML='<div class="deck-empty"><div>这个菜系里没抽到</div><div>换个菜系试试</div></div>';return}
+    SW.items=items;SW.i=0;renderDeck();
+  }catch(e){deck.innerHTML='<div class="deck-empty">'+esc(e.message)+'</div>'}
+  finally{W.loading=false}
+}
+function ensureImg(x,el){
+  if(!x||x.image)return;
+  api('/api/food/image?id='+x.id).then(d=>{
+    if(!d.image)return;x.image=d.image;
+    const im=el.querySelector('.swc-im');
+    if(im){im.style.cssText='';im.innerHTML='<img src="'+esc(d.image)+'" alt="">'}
+  }).catch(()=>{});
+}
+function ensureSubs(x,el){
+  const hits=(x&&x.diet)||[];if(!hits.length)return;
+  api('/api/food/diet/sub',{method:'POST',body:JSON.stringify({id:x.id})}).then(d=>{
+    const subs=d.subs||{};if(!Object.keys(subs).length)return;
+    const box=el.querySelector('.swc-diet');if(!box)return;
+    box.innerHTML=hits.map(h=>dchip(h)+(subs[h.name]?'<span class="dsub">→ '+esc(subs[h.name])+'</span>':'')).join('');
+  }).catch(()=>{});
+}
+/* 上面那张滑走了：把它摘掉，剩下几张整体上提，再从库底补一张 */
+function advance(gone){
+  const deck=$('#deck');
+  const dead=gone||deck.querySelector('.swc.top');
+  if(dead&&dead.parentNode===deck)dead.remove();
+  SW.i++;
+  const cards=[...deck.querySelectorAll('.swc')];
+  cards.forEach((el,k)=>{el.dataset.idx=SW.i+k;setDepth(el,k)});
+  for(let k=cards.length;k<3;k++){
+    const idx=SW.i+k;
+    if(idx>=SW.items.length)break;
+    const el=newCard(idx);deck.appendChild(el);setDepth(el,k);
+  }
+  const top=deck.querySelector('.swc.top');
+  if(!top){renderDeck();return}
+  ensureImg(SW.items[SW.i],top);ensureSubs(SW.items[SW.i],top);
+}
+function fly(dir,el){
+  const card=el||$('#deck').querySelector('.swc.top');
+  if(!card||W.loading)return;
+  const x=SW.items[+(card.dataset.idx||SW.i)];
+  card.style.transition='transform .34s cubic-bezier(.3,.7,.4,1),opacity .34s';
+  card.style.transform='translate('+(dir*560)+'px,'+(-dir*14)+'px) rotate('+(dir*20)+'deg)';
+  card.style.opacity='0';card.classList.remove('top');
+  try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}
+  if(x)hint('跳过 · '+x.name,true);
+  setTimeout(()=>advance(card),230);
+}
+function openCard(el){
+  const x=SW.items[+(el.dataset.idx||SW.i)];
+  if(!x)return;
+  closeSh('shWheel');openRecipe(x.id);
+}
+
+(function bindSwipe(){
+  const deck=$('#deck');let g=null;
+  /* 拖动时卡片随着远离中心慢慢变淡 —— 给一点「要滑走了」的手感，不带任何评价 */
+  const fade=(el,dx)=>{el.style.opacity=String(1-Math.min(.35,Math.abs(dx)/700))};
+  deck.addEventListener('pointerdown',e=>{
+    const el=deck.querySelector('.swc.top');
+    if(!el||W.loading)return;
+    g={el,x0:e.clientX,y0:e.clientY,t0:Date.now(),dx:0,dy:0,moved:false};
+    el.style.transition='none';
+    try{el.setPointerCapture(e.pointerId)}catch(err){}
+  });
+  deck.addEventListener('pointermove',e=>{
+    if(!g)return;
+    const dx=e.clientX-g.x0,dy=e.clientY-g.y0;
+    g.dx=dx;g.dy=dy;if(Math.abs(dx)>4||Math.abs(dy)>4)g.moved=true;
+    g.el.style.transform='translate('+dx+'px,'+(dy*.4)+'px) rotate('+(dx/18)+'deg)';
+    fade(g.el,dx);
+  });
+  const end=()=>{
+    if(!g)return;
+    const {el,dx,dy,t0,moved}=g;g=null;
+    el.style.transition='transform .28s cubic-bezier(.2,.8,.3,1)';
+    if(!moved&&Date.now()-t0<420){el.style.opacity='';el.style.transform='';openCard(el);return}
+    if(Math.abs(dx)>88){fly(dx>0?1:-1,el);return}
+    el.style.opacity='';el.style.transform='';
+  };
+  deck.addEventListener('pointerup',end);
+  deck.addEventListener('pointercancel',end);
+})();
+$('#spinCta').onclick=()=>{openSh('shWheel');wheelCuChips();deal()};
 
 /* ================= 记一餐 ================= */
 let LD=new Date(), DAY=null;
@@ -446,7 +626,7 @@ function renderDay(s){const tot=s.kcal_total,tg=s.target;const pr=$('#ringPr'),C
   $('#sendCard').disabled=!s.entries.length}
 function scoreHtml(sc){return '<div class="score-box"><div class="sc"><b>'+sc.score+'</b><small>AI 打的 /10</small></div><div class="tx">'+(sc.comment?esc(sc.comment):'没留话')+'</div></div>'}
 function groupHtml(g){return '<div class="mg"><div class="mg-h"><span class="sl">'+(SLOT_E[g.slot]||'🍽')+' '+esc(g.slot)+'</span><span class="tm">'+esc(g.time)+'</span><span class="kc"><b>'+g.kcal+'</b> kcal'+(g.unknown?' · '+g.unknown+' 样没算':'')+'</span><button class="ad" data-slot="'+esc(g.slot)+'">＋ 加一道</button></div>'+g.items.map(entHtml).join('')+'</div>'}
-function entHtml(e){const t2=[e.cuisine,e.portion,e.note?'「'+e.note+'」':'',e.source&&e.source!=='user'?'AI 记的':''].filter(Boolean).join(' · ');return '<div class="ent" data-id="'+e.id+'"><div class="em">'+(RATE_E[e.rating]||'🍽')+'</div><div class="mid"><div class="t1">'+esc(e.name)+'</div><div class="t2">'+esc(t2)+'</div></div><div class="amt">'+(e.kcal!=null?Math.round(e.kcal):'?')+'<small>kcal'+(e.kcal_src==='ai'?'·估':e.kcal_src==='table'?'·表':'')+'</small></div></div>'}
+function entHtml(e){const t2=[e.cuisine,e.portion,e.note?'「'+e.note+'」':'',e.source&&e.source!=='user'?'AI 记的':''].filter(Boolean).join(' · ');const src=e.kcal_src==='photo'?'·拍照':e.kcal_src==='ai'?'·估':e.kcal_src==='table'?'·表':'';return '<div class="ent" data-id="'+e.id+'"><div class="em">'+(e.photo?'<img src="'+esc(e.photo)+'" alt="">':(RATE_E[e.rating]||'🍽'))+'</div><div class="mid"><div class="t1">'+esc(e.name)+'</div><div class="t2">'+esc(t2)+'</div></div><div class="amt">'+(e.kcal!=null?Math.round(e.kcal):'?')+'<small>kcal'+src+'</small></div></div>'}
 $('#lList').addEventListener('click',e=>{if(e.target.closest('.ad'))return;const r=e.target.closest('.ent');if(!r||!DAY)return;const en=DAY.entries.find(x=>x.id===r.dataset.id);if(en)openLog(en)});
 $('#lPrev').onclick=()=>{LD.setDate(LD.getDate()-1);loadDay()};$('#lNext').onclick=()=>{LD.setDate(LD.getDate()+1);loadDay()};$('#lToday').onclick=()=>{LD=new Date();loadDay()};
 $('#sendCard').onclick=async()=>{try{const d=await api('/api/food/card?date='+iso(LD));sendToChat(d.text)}catch(e){toast(e.message)}};
@@ -464,6 +644,7 @@ function drawHad(){const box=$('#had');const d=$('#fDate').value||iso(LD);let da
 function guessSlot(d){const h=d.getHours()+d.getMinutes()/60;return h<4?'夜宵':h<10.5?'早餐':h<14.5?'午餐':h<17?'加餐':h<21.5?'晚餐':'夜宵'}
 function openLog(en,pre){pre=pre||{};const now=new Date();E={id:en?en.id:null,slot:en?en.slot:(pre.slot||guessSlot(iso(LD)===iso(now)?now:new Date(LD.getFullYear(),LD.getMonth(),LD.getDate(),12))),cat:en?en.cuisine:(pre.cuisine||localStorage.getItem('food_cat')||''),rate:en?en.rating:'',recipe_id:en?en.recipe_id:(pre.recipe_id||null),kcal_src:en?en.kcal_src:'',per100:null};
   $('#logTitle').textContent=en?'改一改':'记一餐';$('#fName').value=en?en.name:(pre.name||'');$('#fPortion').value=en?en.portion:'';$('#fKcal').value=en&&en.kcal!=null?Math.round(en.kcal):'';$('#fNote').value=en?en.note:'';$('#kcalHint').textContent='';$('#sugg').innerHTML='';
+  phReset();
   $('#fDate').value=en?en.date:iso(LD);$('#fTime').value=en?(en.dt||'').slice(11,16):(iso(LD)===iso(now)?hm(now):'12:00');
   $('#delMeal').style.display=en?'':'none';$('#saveMore').style.display=en?'none':'';$('#saveMeal').textContent=en?'改好了':'记好了';drawLogChips();openSh('shLog');if(!en&&!pre.name)setTimeout(()=>$('#fName').focus(),300);if(pre.name)lookupKcal(pre.name,true)}
 $('#fab').onclick=()=>openLog(null);
@@ -480,7 +661,54 @@ $('#estBtn').onclick=async()=>{const nm=$('#fName').value.trim();if(!nm){toast('
   try{const d=await api('/api/food/estimate',{method:'POST',body:JSON.stringify({name:nm,portion:$('#fPortion').value.trim()})});$('#fKcal').value=Math.round(d.kcal);E.kcal_src='ai';$('#kcalHint').textContent='估的: '+(d.note||'')+(d.protein!=null?' · 蛋白 '+d.protein+'g 脂肪 '+d.fat+'g 碳水 '+d.carb+'g':'')+(d.cached?' (之前估过)':'');$('#sugg').innerHTML=''}
   catch(e){toast('估不出来: '+e.message)}$('#estBtn').disabled=false;$('#estBtn').textContent='估一下'};
 $('#fKcal').addEventListener('input',()=>{E.kcal_src='manual';E.per100=null});
-async function saveMeal(more){const body={name:$('#fName').value.trim(),slot:E.slot,cuisine:E.cat,rating:E.rate,note:$('#fNote').value.trim(),portion:$('#fPortion').value.trim(),kcal:$('#fKcal').value===''?null:+$('#fKcal').value,kcal_src:$('#fKcal').value===''?'':(E.kcal_src||'manual'),date:$('#fDate').value,time:$('#fTime').value,recipe_id:E.recipe_id};
+
+/* ---- 拍一张, 让模型看这是什么、多少热量 ---- */
+let PH={photo:'',items:[],sel:[]};
+function phReset(){PH={photo:'',items:[],sel:[]};const box=$('#phPick');if(box)box.innerHTML=''}
+function phShrink(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(new Error('读不了这张图'));
+  fr.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error('这不是一张能打开的图片'));
+    im.onload=()=>{const M=1024;let w=im.naturalWidth||640,h=im.naturalHeight||480;if(Math.max(w,h)>M){const k=M/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k)}
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);
+      try{res(cv.toDataURL('image/jpeg',.82))}catch(err){rej(new Error('图片转换失败'))}};
+    im.src=fr.result};fr.readAsDataURL(file)})}
+function phSum(){return PH.sel.reduce((a,i)=>a+((PH.items[i]||{}).kcal||0),0)}
+function phDrawPick(d){
+  const box=$('#phPick');
+  if(d)PH.note=d.note||'';
+  if(!PH.items.length){box.innerHTML='<div class="hint">这张里没认出是什么。拍近一点、光线亮一点, 或者直接在下面写菜名。</div>';return}
+  const one=PH.items.length===1;
+  box.innerHTML='<div class="ph-shot"><img src="'+esc(PH.photo)+'" alt=""><button class="x2" id="phDrop" title="不要了">✕</button></div>'
+    +'<div class="ph-sum"><span>共 <b>'+phSum()+'</b> kcal · '+PH.sel.length+' 样</span><span>'+(one?'已填在下面':'点一下选中或去掉')+'</span></div>'
+    +PH.items.map((x,i)=>'<div class="ph-card'+(PH.sel.includes(i)?' on':'')+'" data-i="'+i+'"><div class="nm">'+esc(x.name)
+      +(x.portion||x.note?'<small>'+esc([x.portion,x.note].filter(Boolean).join(' · '))+'</small>':'')+'</div><div class="kc">'+x.kcal+'</div><div class="tk">✓</div></div>').join('')
+    +(PH.note?'<div class="hint">'+esc(PH.note)+'</div>':'')
+    +(one?'<div class="hint">按这张图填好了, 不对就在下面直接改, 然后点「记好了」</div>'
+        :'<div class="btn-row" style="margin-top:10px"><button class="btn ghost" id="phFill">填进这一样</button><button class="btn" id="phAll">都记上</button></div>');
+  box.querySelectorAll('.ph-card').forEach(c=>c.onclick=()=>{const i=+c.dataset.i;const k=PH.sel.indexOf(i);if(k>=0)PH.sel.splice(k,1);else PH.sel.push(i);phDrawPick(null)});
+  $('#phDrop').onclick=()=>{phReset();$('#fName').focus()};
+  if($('#phFill'))$('#phFill').onclick=()=>{const i=PH.sel.length?PH.sel[0]:0;const x=PH.items[i];if(!x)return;
+    $('#fName').value=x.name;$('#fPortion').value=x.portion||'';$('#fKcal').value=x.kcal;E.kcal_src='photo';
+    $('#kcalHint').textContent='按照片估的'+(x.note?' · '+x.note:'')+' · 不对就直接改';
+    $('#sugg').innerHTML='';toast('填好了, 改完点记好了')};
+  if($('#phAll'))$('#phAll').onclick=phSaveAll}
+async function phSaveAll(){const sel=PH.sel.slice().sort((a,b)=>a-b).map(i=>PH.items[i]).filter(Boolean);
+  if(!sel.length){toast('一样都没选');return}
+  const btn=$('#phAll');btn.disabled=true;btn.textContent='记着…';
+  try{for(const x of sel){await api('/api/food/meal',{method:'POST',body:JSON.stringify({name:x.name,slot:E.slot,cuisine:E.cat,note:x.note||'',portion:x.portion||'',
+      kcal:x.kcal,kcal_src:'photo',date:$('#fDate').value,time:$('#fTime').value,photo:PH.photo})})}
+    hadCache={};phReset();closeSh('shLog');toast('记上了 '+sel.length+' 样');if(document.body.dataset.tab!=='log')showTab('log');else loadDay();
+  }catch(e){toast(e.message)}
+  btn.disabled=false;btn.textContent='都记上'}
+$('#phBtn').onclick=()=>$('#phFile').click();
+$('#phFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;
+  const btn=$('#phBtn');btn.disabled=true;btn.innerHTML='<span class="ic">📷</span>看着呢…';
+  try{const dataUrl=await phShrink(f);const d=await api('/api/food/photo',{method:'POST',body:JSON.stringify({image:dataUrl})});
+    PH.photo=d.photo||'';PH.items=d.items||[];PH.sel=PH.items.map((_,i)=>i);phDrawPick(d);
+    if(PH.items.length===1){$('#fName').value=PH.items[0].name;$('#fPortion').value=PH.items[0].portion||'';$('#fKcal').value=PH.items[0].kcal;E.kcal_src='photo';
+      $('#kcalHint').textContent='按照片估的'+(PH.items[0].note?' · '+PH.items[0].note:'')+' · 不对就直接改';$('#sugg').innerHTML=''}
+  }catch(err){toast(err.message||'没看成')}
+  btn.disabled=false;btn.innerHTML='<span class="ic">📷</span>拍一张，我来算';e.target.value=''};
+async function saveMeal(more){const body={name:$('#fName').value.trim(),slot:E.slot,cuisine:E.cat,rating:E.rate,note:$('#fNote').value.trim(),portion:$('#fPortion').value.trim(),kcal:$('#fKcal').value===''?null:+$('#fKcal').value,kcal_src:$('#fKcal').value===''?'':(E.kcal_src||'manual'),date:$('#fDate').value,time:$('#fTime').value,recipe_id:E.recipe_id,photo:E.id?'':PH.photo};
   if(!body.name){toast('吃了什么总得写一个');return}
   try{if(E.id)await api('/api/food/meal/'+E.id,{method:'PATCH',body:JSON.stringify(body)});else await api('/api/food/meal',{method:'POST',body:JSON.stringify(body)});if(E.cat)localStorage.setItem('food_cat',E.cat);hadCache={};
     if(body.date&&body.date!==iso(LD)){LD=new Date(body.date+'T12:00:00')}
@@ -529,7 +757,14 @@ $$('#tgSeg button').forEach(b=>b.onclick=()=>{SET.method=b.dataset.m;$$('#tgSeg 
 function drawCatEdit(){$('#catEdit').innerHTML=SET.cats.map((c,i)=>'<button class="chip x" data-i="'+i+'">'+esc(c)+' ✕</button>').join('');$$('#catEdit .chip').forEach(b=>b.onclick=()=>{SET.cats.splice(+b.dataset.i,1);drawCatEdit()})}
 $('#catAdd').onclick=()=>{const v=$('#catNew').value.trim();if(!v)return;if(!SET.cats.includes(v))SET.cats.push(v);$('#catNew').value='';drawCatEdit()};
 $('#gear').onclick=()=>{const t=META.target||{},d=t.detail||{};SET.method=t.method||'fixed';SET.cats=(META.log_cats||[]).slice();$$('#tgSeg button').forEach(x=>x.classList.toggle('on',x.dataset.m===SET.method));$('#tgFixed').style.display=SET.method==='fixed'?'':'none';$('#tgCalc').style.display=SET.method==='calc'?'':'none';
-  $('#tKcal').value=SET.method==='fixed'&&t.kcal?t.kcal:'';$('#tH').value=d.height||'';$('#tW').value=d.weight||'';$('#tA').value=d.age||'';setChips('tSex',d.sex||'f');setChips('tAct',d.activity||'light');setChips('tGoal',d.goal||'keep');drawCatEdit();openSh('shSet')};
+  $('#tKcal').value=SET.method==='fixed'&&t.kcal?t.kcal:'';$('#tH').value=d.height||'';$('#tW').value=d.weight||'';$('#tA').value=d.age||'';setChips('tSex',d.sex||'f');setChips('tAct',d.activity||'light');setChips('tGoal',d.goal||'keep');drawCatEdit();loadDietNote();openSh('shSet')};
+/* 忌口是只读的 —— 条目在聊天页的角色设定里维护, 这里只是让你知道抽卡时会不会标 */
+async function loadDietNote(){const box=$('#dietBox');if(!box)return;
+  try{const d=await api('/api/food/diet');const dis=d.dislikes||[],alg=d.allergies||[];
+    if(!dis.length&&!alg.length){box.innerHTML='<span class="hint">还没设。去聊天页的「角色设定」里填「忌口」和「过敏源」，之后抽到的菜会自动标出含什么、能换成什么。</span>';return}
+    box.innerHTML=(alg.length?'<div class="dl">过敏 · 硬拦，抽到会提醒换一道</div><div class="chips">'+alg.map(x=>'<span class="dchip alg">'+esc(x)+'</span>').join('')+'</div>':'')
+      +(dis.length?'<div class="dl">忌口 · 能换就换</div><div class="chips">'+dis.map(x=>'<span class="dchip dis">'+esc(x)+'</span>').join('')+'</div>':'');
+  }catch(e){box.innerHTML='<span class="hint">读不到忌口（聊天主站没连上）</span>'}}
 $('#gear2').onclick=()=>$('#gear').click();
 $('#rtN').onclick=()=>{if(!(META.target&&META.target.kcal))$('#gear').click()};
 $('#saveSet').onclick=async()=>{const target={method:SET.method};if(SET.method==='fixed')target.kcal=$('#tKcal').value;else{target.height=$('#tH').value;target.weight=$('#tW').value;target.age=$('#tA').value;target.sex=($('#tSex .chip.on')||{}).dataset?.v||'f';target.activity=($('#tAct .chip.on')||{}).dataset?.v||'light';target.goal=($('#tGoal .chip.on')||{}).dataset?.v||'keep'}
@@ -538,7 +773,7 @@ $('#saveSet').onclick=async()=>{const target={method:SET.method};if(SET.method==
 /* ================= 启动 ================= */
 (async function(){try{META=await api('/api/food/meta')}catch(e){toast('连不上: '+e.message)}drawFilters();search();
   /* 宿主可以发: {type:'recipe-nook:theme', theme:'dark'|'light'|''} 跟着换深浅色; {type:'recipe-nook:shown'} 页面重新露出来时刷新当天 */
-  window.addEventListener('message',ev=>{const d=ev.data||{};if(d.type==='recipe-nook:theme'){if(d.theme)document.documentElement.dataset.theme=d.theme;else delete document.documentElement.dataset.theme;if(W.items.length)drawWheel()}
+  window.addEventListener('message',ev=>{const d=ev.data||{};if(d.type==='recipe-nook:theme'){if(d.theme)document.documentElement.dataset.theme=d.theme;else delete document.documentElement.dataset.theme}
     if(d.type==='recipe-nook:shown'){if(document.body.dataset.tab==='log')loadDay()}})})();
 </script>
 </body>

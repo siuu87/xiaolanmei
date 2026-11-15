@@ -1,19 +1,41 @@
 /**
  * 信封主题（`letter_theme`）：同一封信换个主题 = 换一套信封 / 信纸 / 火漆配色。
- * - `default`  极简素雅：米白纸 + 浅褐信封 + 暗红火漆
- * - `memorial` 纪念日：暖玫瑰金 + 金箔火漆
+ * - `default`  米白纸 + 浅褐信封 + 暗红火漆
+ * - `memorial` 玫瑰：暖玫瑰金 + 金箔火漆
  * - `night`    深色磨砂星空：深蓝紫纸 + 银蓝火漆
+ * - `kraft`    牛皮纸：牛皮信封 + 米黄纸 + 深棕火漆（最像真邮局的那套）
+ * - `sage`     苔绿：鼠尾草信封 + 米白纸 + 陶土火漆
+ * - `lilac`    丁香：淡紫信封 + 奶白纸 + 紫红火漆
  *
  * 枚举放在**数据层**（而不是 LetterArt）是因为它属于信件实体的一个字段，
  * 后端 `/api/notes` 就返回它；LetterArt 只负责「主题 → 配色」的映射。
  */
-export type LetterTheme = 'default' | 'memorial' | 'night';
+export type LetterTheme = 'default' | 'memorial' | 'night' | 'kraft' | 'sage' | 'lilac';
 
-export const LETTER_THEMES: LetterTheme[] = ['default', 'memorial', 'night'];
+export const LETTER_THEMES: LetterTheme[] = [
+  'default',
+  'memorial',
+  'night',
+  'kraft',
+  'sage',
+  'lilac',
+];
+
+/** 换信封时给用户看的名字（色块用 LetterArt 里的 envelope 渐变） */
+export const LETTER_THEME_LABEL: Record<LetterTheme, string> = {
+  default: '米白',
+  memorial: '玫瑰',
+  night: '深蓝',
+  kraft: '牛皮',
+  sage: '苔绿',
+  lilac: '丁香',
+};
 
 /** 库里/接口若给了枚举外的脏值，一律兜底成 default，不至于渲染出半成品 */
 export function normalizeLetterTheme(v: unknown): LetterTheme {
-  return v === 'memorial' || v === 'night' ? v : 'default';
+  return typeof v === 'string' && (LETTER_THEMES as string[]).includes(v)
+    ? (v as LetterTheme)
+    : 'default';
 }
 
 /** 一条 AI 灵感便签 */

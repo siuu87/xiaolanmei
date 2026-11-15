@@ -70,7 +70,8 @@ function StatCard({
   );
 }
 
-export function DevicePage() {
+/** `headless`：抽屉下钻时用，标题由抽屉顶栏提供，隐掉自带的 h1 与页面内边距。 */
+export function DevicePage({ headless = false }: { headless?: boolean }) {
   const [link, setLink] = useState<DeviceLinkDTO | null>(null);
   const [snap, setSnap] = useState<DeviceSnapshotDTO | null>(null);
   const [url, setUrl] = useState('');
@@ -181,16 +182,18 @@ export function DevicePage() {
   const reached = !!snap?.reached;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Smartphone className="h-5 w-5" /> 手机感知
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          接入 LoverConnect，让白起知道你手机的电量、步数、天气和纪念日。
-          只读、只走本机回环，令牌不会离开这台电脑。
-        </p>
-      </div>
+    <div className={headless ? 'space-y-4' : 'mx-auto max-w-3xl space-y-6 p-4 md:p-8'}>
+      {!headless && (
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Smartphone className="h-5 w-5" /> 手机感知
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            接入 LoverConnect，让白起知道你手机的电量、步数、天气和纪念日。
+            只读、只走本机回环，令牌不会离开这台电脑。
+          </p>
+        </div>
+      )}
 
       {err && (
         <div
