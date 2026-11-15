@@ -1,27 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { DeckPage, DiaryBook, DiaryEntry } from './diaryData';
-import { dayKeyToDate, diaryDayKey, sortByTime } from './diaryData';
+import { dayKeyToDate, diaryDayKey } from './diaryData';
 import { useDiaryStore } from './diaryStore';
 import { BookDeck } from './BookDeck';
 import { BookLock } from './BookLock';
 import { BookSheet, type BookDraft } from './BookSheet';
 import { BookSwitcher } from './BookSwitcher';
+import { DlogBook } from './DlogBook';
 import { DlogCompose } from './DlogCompose';
-import { DlogDay } from './DlogDay';
-import { DlogHome } from './DlogHome';
+import { MonthJump } from './MonthJump';
 import { PageReader } from './PageReader';
 import { SlipEditor } from './SlipEditor';
 
 /**
- * 日记（2026-11-14 按 D·LOG 重做个人那两本）：
+ * 日记（2026-11-15 改成单页翻页本）：
  *
- *   月历首页（格子里是照片）→ 点某天 → 当天页（一条条「时刻」）→ ＋ 记这一刻
- *   顶部「我的日记 ⌄」换本；右上齿轮进本子设置（改名 / 换封皮 / 上锁）
+ *   一屏就是一页纸（一天），手指一划 / 点底部箭头翻页，纸绕左边书脊掀走。
+ *   顶栏「我的日记 ⌄」换本、日历翻到某一天、齿轮进本子设置。
  *
- * - 一天可以记很多条，每条带时刻 / 心情 / 标签，写新的不覆盖旧的
- * - 「TA 的日记」同样的照片流水账，但只能夹纸条，不能代写
- * - 情侣本沿用原来「一天一页、上下两半」的版本，下一步再按 DuoLog 改
+ * - 一天可以记很多条「时刻」（时间 / 心情 / 标签 / 照片），写新的不覆盖旧的
+ * - 「TA 的日记」同样一本，但只能夹纸条，不能代写
+ * - 情侣本仍沿用「一天一页、上下两半」的老书（BookDeck），下一步再并进来
  */
 export function DiaryPage() {
   const entries = useDiaryStore((s) => s.entries);
@@ -37,13 +37,15 @@ export function DiaryPage() {
   const today = todayISO();
 
   const [bookId, setBookId] = useState('');
-  /** 打开着哪一天（null = 月历首页） */
-  const [dayDate, setDayDate] = useState<string | null>(null);
+  /** 翻到哪一天（null = 今天） */
+  const [focusDate, setFocusDate] = useState<string | null>(null);
   /** 记录 / 改某一条 */
   const [compose, setCompose] = useState<{ date: string; entry?: DiaryEntry | null } | null>(null);
   const [switcher, setSwitcher] = useState(false);
   const [sheet, setSheet] = useState<{ book: DiaryBook | null } | null>(null);
   const [slipEditor, setSlipEditor] = useState<{ date: string } | null>(null);
+  /** 月历跳页 */
+  const [jump, setJump] = useState(false);
   /** 本次会话里解锁过 / 撬开过的本子 */
   const [unlocked, setUnlocked] = useState<string[]>([]);
   const [readerPage, setReaderPage] = useState<DeckPage | null>(null);
@@ -66,8 +68,11 @@ export function DiaryPage() {
     [entries, book?.id],
   );
 
-  /** 某一天的「时刻」 */
-  const entriesOf = (date: string) => sortByTime(bookEntries.filter((e) => e.date === date));
+  /** 这本夹着的纸条 */
+  const bookSlips = useMemo(
+    () => slips.filter((s) => (s.bookId || 'book-me') === (book?.id ?? 'book-me')),
+    [slips, book?.id],
+  );
 
   // 日历深链：?date=YYYY-M-D
   useEffect(() => {
@@ -75,10 +80,10 @@ export function DiaryPage() {
     const target = entries.find((d) => diaryDayKey(d) === dateParam);
     if (target) {
       setBookId(target.bookId || 'book-me');
-      setDayDate(target.date);
+      setFocusDate(target.date);
       return;
     }
-    setDayDate(dayKeyToDate(dateParam));
+    setFocusDate(dayKeyToDate(dateParam));
   }, [dateParam, newParam, entries, books]);
 
   // 日历深链：&new=1 直接记今天
@@ -86,7 +91,7 @@ export function DiaryPage() {
     if (!newParam || books.length === 0) return;
     const mine = books.find((b) => b.kind === 'me') ?? books[0];
     setBookId(mine.id);
-    setDayDate(today);
+    setFocusDate(today);
     setCompose({ date: today });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newParam, books.length]);
@@ -116,16 +121,16 @@ export function DiaryPage() {
 
   const canWrite = book.kind !== 'partner';
 
-  // 情侣本：仍然用原来的「一天一页」，等下一轮按 DuoLog 重做
+  // 情侣本：仍然用原来的「一天一页、上下两半」，下一步再并进书里
   if (book.kind === 'couple') {
     return (
       <div className="min-h-full bg-page-bg" data-testid="diary-page">
         <BookDeck
           book={book}
           entries={entries}
-          focusDate={dayDate}
+          focusDate={focusDate}
           startEditing={!!compose}
-          onClose={() => setDayDate(null)}
+          onClose={() => setFocusDate(null)}
           onOpenReader={(p) => setReaderPage(p)}
         />
         {readerPage && (
@@ -140,35 +145,39 @@ export function DiaryPage() {
     );
   }
 
+  const current = focusDate ?? today;
+
   return (
-    <div className="min-h-full bg-page-bg" data-testid="diary-page">
-      {dayDate ? (
-        <DlogDay
-          book={book}
-          date={dayDate}
-          entries={entriesOf(dayDate)}
-          slips={slips.filter((s) => (s.bookId || 'book-me') === book.id && s.date === dayDate)}
-          canWrite={canWrite}
-          today={today}
-          onBack={() => setDayDate(null)}
-          onChangeDate={(d) => setDayDate(d)}
-          onCompose={(d) => setCompose({ date: d })}
-          onEdit={(e) => setCompose({ date: e.date, entry: e })}
-          onDelete={(e) => useDiaryStore.getState().removeEntry(e.id)}
-          onSlip={() => setSlipEditor({ date: dayDate })}
-        />
-      ) : (
-        <DlogHome
-          book={book}
+    <div className="h-full bg-page-bg" data-testid="diary-page">
+      <DlogBook
+        key={book.id}
+        book={book}
+        entries={bookEntries}
+        slips={bookSlips}
+        today={today}
+        canWrite={canWrite}
+        focusDate={focusDate}
+        onDateChange={setFocusDate}
+        onCompose={(d) => setCompose({ date: d })}
+        onEdit={(e) => setCompose({ date: e.date, entry: e })}
+        onDelete={(e) => useDiaryStore.getState().removeEntry(e.id)}
+        onSlip={(d) => setSlipEditor({ date: d })}
+        onJump={() => setJump(true)}
+        onSwitchBook={() => setSwitcher(true)}
+        onSettings={() => setSheet({ book })}
+        onBack={() => navigate('/chat')}
+      />
+
+      {jump && (
+        <MonthJump
           entries={bookEntries}
           today={today}
-          onOpenDay={(d) => setDayDate(d)}
-          onCompose={(d) => setCompose({ date: d })}
-          onSwitchBook={() => setSwitcher(true)}
-          onSettings={() => setSheet({ book })}
-          onBack={() => navigate('/chat')}
-          canWrite={canWrite}
-          onSlip={(d) => setSlipEditor({ date: d })}
+          current={current}
+          onPick={(d) => {
+            setFocusDate(d);
+            setJump(false);
+          }}
+          onClose={() => setJump(false)}
         />
       )}
 
@@ -188,7 +197,7 @@ export function DiaryPage() {
           entries={entries}
           onPick={(b) => {
             setBookId(b.id);
-            setDayDate(null);
+            setFocusDate(null);
             setSwitcher(false);
           }}
           onAdd={() => {
@@ -247,6 +256,3 @@ export function todayISO(): string {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 }
-
-/** 供日历跳转把 dayKey 转回标准日期 */
-export { dayKeyToDate };
