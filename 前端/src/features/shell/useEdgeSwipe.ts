@@ -1,20 +1,32 @@
 /**
- * 屏幕左边缘右滑手势：唤出主抽屉。
+ * 屏幕右滑手势：唤出主抽屉。
  *
- * 只在「起点贴着左边缘」且「横向位移明显大于纵向」时才触发，
- * 避免和页面里的横向滚动（抽屉内的日期胶囊、片单卡片）打架。
+ * 2026-11-16 改成**整屏任意位置**起手（原来只认左边缘 28px，手机上基本划不中）。
+ * 为了不跟页面里的东西抢手势，起手点会先排掉三类目标：
+ *   1. 能横向滚动的容器（片单卡带、日期条…，scrollWidth 超出才认）；
+ *   2. 输入框 / 文本域 / 可编辑区（那里左右划是在选字）；
+ *   3. [data-no-drawer-swipe] 明确标记的块。
  *
  * 用 pointer 事件而不是 touch，桌面用鼠标拖也能触发，调试更方便；
  * 全程 passive 监听，不 preventDefault，不干扰页面本身的手势。
  */
 import { useEffect } from 'react';
 
-/** 触发区宽度：左边缘 28px 内按下才算 */
-const EDGE_WIDTH = 28;
 /** 判定为「右滑唤出」的最小水平位移 */
 const MIN_DX = 56;
 /** 纵向漂移超过这个比例就不算横向手势（避免斜着划误触） */
 const MAX_DY_RATIO = 0.6;
+
+/** 起手点是不是落在「自己能横着滚」的容器里——是的话这个手势归它 */
+function inHorizontalScroller(el: Element | null): boolean {
+  let n = el as HTMLElement | null;
+  while (n && n !== document.body && n !== document.documentElement) {
+    const s = getComputedStyle(n);
+    if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && n.scrollWidth > n.clientWidth + 4) return true;
+    n = n.parentElement;
+  }
+  return false;
+}
 
 export function useEdgeSwipe(onSwipe: () => void, enabled = true): void {
   useEffect(() => {
@@ -26,11 +38,17 @@ export function useEdgeSwipe(onSwipe: () => void, enabled = true): void {
     const onDown = (e: PointerEvent) => {
       // 多指 / 非主键不参与
       if (!e.isPrimary || e.button !== 0) return;
-      tracking = e.clientX <= EDGE_WIDTH;
-      if (tracking) {
-        startX = e.clientX;
-        startY = e.clientY;
+      const t = e.target as HTMLElement | null;
+      if (
+        t?.closest?.('[data-no-drawer-swipe], input, textarea, [contenteditable="true"]') ||
+        inHorizontalScroller(t)
+      ) {
+        tracking = false;
+        return;
       }
+      tracking = true;
+      startX = e.clientX;
+      startY = e.clientY;
     };
 
     const onUp = (e: PointerEvent) => {

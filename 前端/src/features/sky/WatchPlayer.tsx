@@ -9,34 +9,17 @@
  *  - 同步：房间状态走 watchRoomSync 的 transport（现为 BroadcastChannel，SSE 可平替）。
  *  - 房主控场，成员跟随；成员 ±15s 只做本地微调，不广播。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link2, X, Copy, ListVideo } from 'lucide-react';
+import { Link2, X, Copy, Maximize2, Minimize2 } from 'lucide-react';
 import { createTransport, makeRoomCode, type WatchTransport } from './watchRoomSync';
+import { WatchListStrip } from './WatchListStrip';
+import { useWatchListStore, type WatchItem } from './watchListStore';
+import { cn } from '@/lib/utils';
 
 const SOURCE_KEY = 'blueberry.watch.source.v1';
-const PLACEHOLDER_DURATION = 7110; // 01:58:30，占位片源的总时长
 const RATES = [1, 1.25, 1.5, 2, 0.75];
 const QUALITIES = ['1080P', '720P', '自动'];
-
-/** 幕：按进度分段，用于「上一幕 / 下一幕」和幕标题 */
-const ACTS = [
-  {
-    at: 0,
-    title: '第一幕 · 雨夜的车',
-    lines: ['路灯一盏盏往后退。', '她把额头贴在车窗上。', '收音机里放着很旧的歌。'],
-  },
-  {
-    at: 2370,
-    title: '第二幕 · 空荡的站台',
-    lines: ['列车晚点了四十分钟。', '他买了两罐热咖啡。', '广播念了一串陌生的地名。'],
-  },
-  {
-    at: 4740,
-    title: '第三幕 · 海边的房间',
-    lines: ['镜头从窗边慢慢推到床上。', '她翻了个身，灯还亮着。', '走廊尽头传来很轻的脚步声。'],
-  },
-];
 
 function fmt(sec: number): string {
   const t = Math.max(0, Math.floor(sec));
@@ -80,14 +63,21 @@ export function WatchPlayer({
   onOpenList: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  /** 银幕盒子：全屏 / 横屏就是把它塞进 Fullscreen，控件跟着一起浮上去 */
+  const screenBoxRef = useRef<HTMLDivElement>(null);
   const transportRef = useRef<WatchTransport | null>(null);
 
   const [source, setSource] = useState<Source | null>(() => readSource());
+  /** 现在挂在银幕上的那一部片单（2026-11-16：片单融进播放页后，片名从这儿来） */
+  const [currentItem, setCurrentItem] = useState<WatchItem | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState(2530); // 00:42:10，与设计稿一致
-  const [duration, setDuration] = useState(PLACEHOLDER_DURATION);
+  // 进度只跟着片源走：没有片源时 time/duration 都是 0，进度条不假装在放
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState(1);
   const [quality, setQuality] = useState('1080P');
+  /** 银幕全屏（横屏观看） */
+  const [fs, setFs] = useState(false);
 
   const [room, setRoom] = useState<string>('');
   const [isHost, setIsHost] = useState(false);
@@ -179,16 +169,9 @@ export function WatchPlayer({
     return () => window.clearInterval(id);
   }, [isHost, room, broadcast]);
 
-  /* --------------------------- 占位时钟 / 真实视频 --------------------------- */
-  useEffect(() => {
-    if (source) return; // 有真实片源时由 <video> 驱动
-    if (!playing) return;
-    const id = window.setInterval(() => {
-      setTime((t) => Math.min(duration, t + 0.25 * rate));
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [source, playing, rate, duration]);
-
+  /* ----------------------------- 真实片源驱动 ----------------------------- */
+  // 2026-11-16：删掉「占位时钟」——没有片源就不该有一条在走的假进度。
+  // 进度条的时长、播放位置一律由 <video> 的 duration / currentTime 喂。
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !source) return;
@@ -200,6 +183,7 @@ export function WatchPlayer({
   /* --------------------------------- 控制 --------------------------------- */
   const seek = useCallback(
     (next: number, notify = true) => {
+      if (!duration) return; // 没片源就没得拖
       const t = Math.max(0, Math.min(duration, next));
       setTime(t);
       const v = videoRef.current;
@@ -210,15 +194,71 @@ export function WatchPlayer({
   );
 
   const togglePlay = () => {
+    if (!source) {
+      setToast('先连接片源，进度才会跟着片子走');
+      window.setTimeout(() => setToast(''), 3200);
+      return;
+    }
     const next = !playing;
     setPlaying(next);
     broadcast({ playing: next, time });
   };
 
-  const jumpAct = (dir: -1 | 1) => {
-    const idx = ACTS.reduce((acc, a, i) => (time >= a.at ? i : acc), 0);
-    const target = ACTS[Math.max(0, Math.min(ACTS.length - 1, idx + dir))];
-    seek(target.at);
+  /** 片单上/下一部（原来的「上一幕/下一幕」——幕取消了，这两个键改成换片） */
+  const listItems = useWatchListStore((s) => s.items);
+  const pickItem = useCallback((item: WatchItem) => {
+    setCurrentItem(item);
+    setTime(0);
+    setPlaying(false);
+    const v = videoRef.current;
+    if (v) v.currentTime = 0;
+  }, []);
+  const pickSibling = (dir: -1 | 1) => {
+    const list = [...listItems].sort((a, b) => b.updatedAt - a.updatedAt);
+    if (!list.length) return;
+    const i = currentItem ? list.findIndex((x) => x.id === currentItem.id) : -1;
+    const next = list[Math.max(0, Math.min(list.length - 1, i + dir))] ?? list[0];
+    if (next) pickItem(next);
+  };
+
+  /* --------------------------- 横屏 / 全屏观看 --------------------------- */
+  useEffect(() => {
+    const onChange = () => setFs(document.fullscreenElement === screenBoxRef.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const el = screenBoxRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      await el.requestFullscreen();
+      // 横屏锁：桌面 / 部分浏览器不支持，锁不上就只做全屏，不报错
+      const o = screen.orientation as (ScreenOrientation & { lock?: (t: string) => Promise<void> }) | undefined;
+      try {
+        await o?.lock?.('landscape');
+      } catch {
+        /* iOS Safari 不支持 lock，全屏本身已经够用 */
+      }
+    } catch {
+      // iOS Safari 不让任意 div 进全屏（只有 <video> 有 webkitEnterFullscreen），
+      // 那就退回播放器自带的全屏：一样横过来铺满，只是控件换成系统的
+      const v = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+      if (v?.webkitEnterFullscreen && source) {
+        try {
+          v.webkitEnterFullscreen();
+          return;
+        } catch {
+          /* 还是不行就走下面那句提示 */
+        }
+      }
+      setToast('这台设备不允许全屏，可以手动把手机横过来');
+      window.setTimeout(() => setToast(''), 3200);
+    }
   };
 
   const cycleRate = () => {
@@ -258,7 +298,9 @@ export function WatchPlayer({
     if (!url) {
       setSource(null);
       writeSource(null);
-      setDuration(PLACEHOLDER_DURATION);
+      setDuration(0);
+      setTime(0);
+      setPlaying(false);
       setSourceOpen(false);
       setToast('已回到占位画面');
       window.setTimeout(() => setToast(''), 3000);
@@ -294,9 +336,10 @@ export function WatchPlayer({
   }, [sourceOpen]);
 
   /* -------------------------------- 派生值 -------------------------------- */
-  const act = useMemo(() => ACTS.reduce((acc, a) => (time >= a.at ? a : acc), ACTS[0]), [time]);
   const pct = duration > 0 ? Math.min(100, (time / duration) * 100) : 0;
   const synced = !!room;
+  /** 银幕下面写什么：片单标题优先，其次连进来的片源，都没有才叫「午夜场」 */
+  const filmTitle = currentItem?.title ?? source?.title ?? '午夜场';
   const socialText = synced
     ? `和 TA 一起看 · 他看到 ${fmt(peerTime ?? time)} · 同步中`
     : '和 TA 一起看 · 点「邀 TA」创建放映厅';
@@ -329,14 +372,17 @@ export function WatchPlayer({
           </button>
         </header>
 
-        {/* 银幕：有片源放 <video>，没片源显示占位画面 */}
-        <button
-          type="button"
-          onClick={() => {
-            setUrlDraft(source?.url ?? '');
-            setSourceOpen(true);
-          }}
-          className="relative mt-[26px] flex h-[230px] w-full shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-watch-surface text-left"
+        {/* 银幕：有片源放 <video>，没片源显示占位画面。
+            2026-11-16：整块就是全屏容器（`screenBoxRef`），点画面 = 播/暂停，
+            右下角那个角标进全屏 + 锁横屏。 */}
+        <div
+          ref={screenBoxRef}
+          data-testid="watch-screen"
+          onClick={togglePlay}
+          className={cn(
+            'relative mt-[26px] flex h-[230px] w-full shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-watch-surface text-left',
+            fs && 'mt-0 h-screen w-screen rounded-none bg-black',
+          )}
         >
           {source && (
             <video
@@ -351,6 +397,7 @@ export function WatchPlayer({
               onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
               onEnded={() => setPlaying(false)}
               onError={() => {
+                setDuration(0);
                 setToast('片源加载失败，请检查地址是否可直接播放');
                 window.setTimeout(() => setToast(''), 4000);
               }}
@@ -358,37 +405,106 @@ export function WatchPlayer({
           )}
           {!source && (
             <>
-              <span className="text-[18px] tracking-[0.08em] text-watch-fg">午夜场</span>
+              <span className="text-[18px] tracking-[0.08em] text-watch-fg">{filmTitle}</span>
               <span className="absolute bottom-[18px] left-0 w-full text-center text-[11px] text-watch-dim">
-                占位画面 · 点这里连接片源
+                还没有片源 · 点右上角那个链子填地址
               </span>
             </>
           )}
           {/* 银幕内时间（设计稿 y256，落在银幕下沿） */}
           <span className="absolute bottom-[8px] left-[14px] text-[11px] tabular-nums text-watch-meta">
-            {fmt(time)} / {fmt(duration)}
+            {fmt(time)} / {duration ? fmt(duration) : '--:--'}
           </span>
-        </button>
+          {/* 全屏 / 横屏 */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void toggleFullscreen();
+            }}
+            aria-label={fs ? '退出全屏' : '全屏观看'}
+            title={fs ? '退出全屏' : '全屏观看'}
+            data-testid="watch-fullscreen"
+            className="absolute bottom-[6px] right-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-black/35 text-watch-played transition hover:bg-black/55"
+          >
+            {fs ? <Minimize2 className="h-[13px] w-[13px]" /> : <Maximize2 className="h-[13px] w-[13px]" />}
+          </button>
+
+          {/* 全屏时浮在画面上的控制条：不然横过来以后就没手可按了 */}
+          {fs && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-5 pb-5 pt-10"
+            >
+              <div className="relative h-[10px]">
+                <div className="absolute inset-x-0 top-[3px] h-[4px] rounded-[2px] bg-white/25" />
+                <div
+                  className="absolute left-0 top-[3px] h-[4px] rounded-[2px] bg-watch-gold"
+                  style={{ width: `${pct}%` }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(1, Math.round(duration))}
+                  step={1}
+                  value={Math.min(time, Math.max(1, Math.round(duration)))}
+                  onChange={(e) => seek(Number(e.target.value))}
+                  disabled={!duration}
+                  aria-label="播放进度"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[11px] tabular-nums text-white/70">
+                <span>{fmt(time)} / {duration ? fmt(duration) : '--:--'}</span>
+                <span className="flex items-center gap-4">
+                  <button type="button" onClick={() => seek(time - 15, false)} className="text-[12px] text-white/85">
+                    -15
+                  </button>
+                  <button
+                    type="button"
+                    onClick={togglePlay}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-watch-gold text-[12px] text-watch-bg"
+                  >
+                    {playing ? '暂停' : '▶'}
+                  </button>
+                  <button type="button" onClick={() => seek(time + 15, false)} className="text-[12px] text-white/85">
+                    +15
+                  </button>
+                  <button type="button" onClick={() => void toggleFullscreen()} className="text-[12px] text-white/85">
+                    退出全屏
+                  </button>
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* 正在放映胶囊 */}
         <div className="mt-[22px] flex h-[22px] w-[96px] shrink-0 items-center justify-center rounded-[11px] bg-watch-capsule text-[11px] text-watch-gold">
           正在放映
         </div>
 
-        {/* 幕标题 + 三行画面 */}
-        <div className="mt-[66px] shrink-0">
-          <p className="text-[14px] text-watch-fg">{act.title}</p>
-          <div className="mt-[10px] space-y-0">
-            {act.lines.map((line, i) => (
-              <p key={line} className={`h-[24px] text-[13px] ${i === 1 ? 'text-watch-fg' : 'text-watch-dim'}`}>
-                {line}
-              </p>
-            ))}
-          </div>
+        {/* 放映框底下只写名字（2026-11-16 用户定：不要那三行「画面内容」） */}
+        <div className="mt-[12px] shrink-0">
+          <p
+            data-testid="watch-film-title"
+            className="truncate text-[17px] leading-tight tracking-[0.02em] text-watch-fg"
+          >
+            {filmTitle}
+          </p>
+          <p className="mt-1.5 text-[11px] text-watch-dim">
+            {currentItem
+              ? `${currentItem.category === 'movie' ? '影视' : currentItem.category === 'anime' ? '动漫' : '演出'} · ${
+                  currentItem.status === 'watched' ? '已经看过' : '准备看的'
+                }`
+              : source
+                ? '已连接片源'
+                : '片单里挑一部，或先连接片源'}
+          </p>
         </div>
 
-        {/* 进度条 */}
-        <div className="relative mt-[26px] h-[10px] shrink-0">
+        {/* 进度条：只跟片源走 —— 没片源时不可拖，右边写 --:-- */}
+        <div className={cn('relative mt-[22px] h-[10px] shrink-0', !duration && 'opacity-40')}>
           <div className="absolute left-[20px] right-[20px] top-[3px] h-[4px] rounded-[2px] bg-watch-track" />
           <div
             className="absolute left-[20px] top-[3px] h-[4px] rounded-[2px] bg-watch-played"
@@ -401,22 +517,23 @@ export function WatchPlayer({
           <input
             type="range"
             min={0}
-            max={Math.max(1, duration)}
+            max={Math.max(1, Math.round(duration))}
             step={1}
-            value={Math.min(time, duration)}
+            value={Math.min(time, Math.max(1, Math.round(duration)))}
             onChange={(e) => seek(Number(e.target.value))}
+            disabled={!duration}
             aria-label="播放进度"
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
           />
         </div>
         <div className="mt-[10px] flex shrink-0 justify-between text-[11px] tabular-nums text-watch-dim">
           <span>{fmt(time)}</span>
-          <span>{fmt(Math.max(0, duration - time))}</span>
+          <span>{duration ? fmt(duration) : '--:--'}</span>
         </div>
 
-        {/* 播放控制：« / -15 / 大圆 / +15 / » */}
-        <div className="mt-[30px] flex h-[64px] shrink-0 items-center justify-between">
-          <button type="button" onClick={() => jumpAct(-1)} aria-label="上一幕" className="w-[40px] text-[18px] text-watch-meta">
+        {/* 播放控制：« / -15 / 大圆 / +15 / »（« » 现在切片单上/下一部） */}
+        <div className="mt-[24px] flex h-[64px] shrink-0 items-center justify-between">
+          <button type="button" onClick={() => pickSibling(-1)} aria-label="上一部" className="w-[40px] text-[18px] text-watch-meta">
             «
           </button>
           <button type="button" onClick={() => seek(time - 15, false)} aria-label="后退15秒" className="w-[44px] text-[13px] text-watch-meta">
@@ -433,13 +550,22 @@ export function WatchPlayer({
           <button type="button" onClick={() => seek(time + 15, false)} aria-label="前进15秒" className="w-[44px] text-[13px] text-watch-meta">
             +15
           </button>
-          <button type="button" onClick={() => jumpAct(1)} aria-label="下一幕" className="w-[40px] text-[18px] text-watch-meta">
+          <button type="button" onClick={() => pickSibling(1)} aria-label="下一部" className="w-[40px] text-[18px] text-watch-meta">
             »
           </button>
         </div>
 
+        {/* 片单：直接铺在播放界面里（2026-11-16 融合），点一张就挂到银幕上 */}
+        <div className="mt-[26px]">
+          <WatchListStrip
+            currentId={currentItem?.id ?? null}
+            onPick={pickItem}
+            onManage={onOpenList}
+          />
+        </div>
+
         {/* 四胶囊 */}
-        <div className="mt-[56px] flex shrink-0 items-center justify-between gap-[6px]">
+        <div className="mt-[24px] flex shrink-0 items-center justify-between gap-[6px]">
           <button
             type="button"
             onClick={cycleRate}
@@ -471,19 +597,9 @@ export function WatchPlayer({
         </div>
 
         {/* 社交条 */}
-        <div className="mt-[30px] flex h-[36px] shrink-0 items-center justify-center rounded-[18px] bg-watch-capsule px-3 text-[11px] text-watch-gold">
+        <div className="mb-2 mt-[18px] flex h-[36px] shrink-0 items-center justify-center rounded-[18px] bg-watch-capsule px-3 text-[11px] text-watch-gold">
           <span className="truncate">{socialText}</span>
         </div>
-
-        {/* 片单入口：原电视机 + 片单管理收在这里，功能不丢 */}
-        <button
-          type="button"
-          onClick={onOpenList}
-          className="mt-auto flex shrink-0 items-center justify-center gap-2 pt-6 text-[11px] text-watch-dim transition hover:text-watch-fg"
-        >
-          <ListVideo className="h-[13px] w-[13px]" />
-          放映厅片单
-        </button>
       </div>
 
       {/* toast */}

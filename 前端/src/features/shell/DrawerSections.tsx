@@ -35,7 +35,7 @@ import { useShellStore } from '@/stores/shellStore';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
-import { MoodArcRow } from '@/features/home/MoodCard';
+import { GiftBoxCard } from '@/features/home/GiftBoxCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { TokenCard } from '@/features/home/TokenCard';
 import { LOVE_START, loveDays } from './loveDays';
@@ -133,7 +133,7 @@ export function DailyBoard() {
         <CalendarCard />
         <TodoCard />
         {/* Token 与信封平分空间（与首页一致，2026-11-04 用户定）：右列 信件卡(compact) 上 +
-            心情弧 下（心情在信件下面） */}
+            礼物盒 下（2026-11-16 换的：原来这里放心情三弧） */}
         <div className="grid grid-cols-2 gap-3">
           <div data-testid="token-capsule">
             <TokenCard />
@@ -141,7 +141,7 @@ export function DailyBoard() {
           <div className="min-w-0">
             <LetterInboxCard compact className="flex h-1/2 flex-col p-3" />
             <div className="flex h-1/2 min-h-0 items-center justify-center">
-              <MoodArcRow />
+              <GiftBoxCard />
             </div>
           </div>
         </div>
@@ -206,20 +206,89 @@ const MODULE_GROUPS: ModuleGroup[] = [
   },
 ];
 
-export function ModuleCards() {
+/**
+ * 单个模块分组卡（2026-11-16 从 ModuleCards 里拆出来）。
+ *
+ * 拆的理由：抽屉首页要把「together」这组提到每日看板前面，
+ * 而首页 /home 仍然整块按原顺序铺。同一个卡由两处复用，样式一行没动。
+ */
+function GroupCard({ group, open, onToggle }: { group: ModuleGroup; open: boolean; onToggle: () => void }) {
   const navigate = useNavigate();
   const closeDrawer = useShellStore((s) => s.closeDrawer);
-  // 手风琴：同时只展开一个分组，点已展开的收起
-  const [expanded, setExpanded] = useState<string | null>(null);
-  // 工具箱子项：点开后由 Drawer 在抽屉内下钻一层全宽渲染（不再卡中卡）
-  const openDrawerSection = useShellStore((s) => s.openDrawerSection);
-  // 开源项目：有依赖可更新时在「开源项目」项旁亮红点
-  const openSourceUpdates = useOpenSourceStore((s) => s.updatesCount);
-
+  // 只有一项的分组（如酒馆小手机）不再展开：直接点分组头进入
+  const direct = group.entries.length === 1;
   const go = (to: string) => {
     closeDrawer();
     navigate(to);
   };
+
+  return (
+    <div className="paper-card overflow-hidden">
+      {/* 分组头：尺寸和下面的「工具箱」按键完全一致；单项分组点击即进入 */}
+      <button
+        type="button"
+        onClick={() => (direct ? go(group.entries[0].to) : onToggle())}
+        aria-expanded={direct ? undefined : open}
+        data-testid={`module-group-${group.title}`}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-surface-2"
+      >
+        <group.icon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-[12px] font-medium text-foreground">{group.title}</span>
+        {/* 单项分组（酒馆）点击即进，不再写「进入」二字（2026-11-04 设计稿） */}
+        <span className="ml-auto text-[10px] text-muted-foreground">{direct ? '' : `${group.entries.length} 项`}</span>
+        {direct ? (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronDown
+            className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+          />
+        )}
+      </button>
+
+      {/* 扩展条：点开才展开（单项分组不渲染） */}
+      {!direct && (
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-2 gap-1.5 border-t border-border px-2.5 py-2.5">
+                {group.entries.map((e) => (
+                  <button
+                    key={e.to + e.label}
+                    type="button"
+                    onClick={() => go(e.to)}
+                    className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
+                  >
+                    <e.icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-[12px] font-medium leading-tight text-foreground">{e.label}</span>
+                    {e.hint && <span className="text-[10px] leading-tight text-muted-foreground">{e.hint}</span>}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+/** 抽屉 / 首页都能单独摆的一个分组（自己管展开状态） */
+export function ModuleGroupCard({ title }: { title: string }) {
+  const [open, setOpen] = useState(false);
+  const group = MODULE_GROUPS.find((g) => g.title === title);
+  if (!group) return null;
+  return <GroupCard group={group} open={open} onToggle={() => setOpen((v) => !v)} />;
+}
+
+export function ModuleCards() {
+  // 手风琴：同时只展开一个分组，点已展开的收起
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
     <section className="px-4 pb-3">
@@ -228,128 +297,96 @@ export function ModuleCards() {
         <span className="h-px flex-1 bg-border/70" aria-hidden />
       </div>
       <div className="space-y-2.5">
-        {MODULE_GROUPS.map((g) => {
-          const open = expanded === g.title;
-          // 只有一项的分组（如酒馆小手机）不再展开：直接点分组头进入
-          const direct = g.entries.length === 1;
-          return (
-            <div key={g.title} className="paper-card overflow-hidden">
-              {/* 分组头：尺寸和下面的「工具箱」按键完全一致；单项分组点击即进入 */}
-              <button
-                type="button"
-                onClick={() => (direct ? go(g.entries[0].to) : setExpanded(open ? null : g.title))}
-                aria-expanded={direct ? undefined : open}
-                data-testid={`module-group-${g.title}`}
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-surface-2"
-              >
-                <g.icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-[12px] font-medium text-foreground">{g.title}</span>
-                {/* 单项分组（酒馆）点击即进，不再写「进入」二字（2026-11-04 设计稿） */}
-                <span className="ml-auto text-[10px] text-muted-foreground">{direct ? '' : `${g.entries.length} 项`}</span>
-                {direct ? (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                ) : (
-                  <ChevronDown
-                    className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
-                  />
-                )}
-              </button>
-
-              {/* 扩展条：点开才展开（单项分组不渲染） */}
-              {!direct && (
-                <AnimatePresence initial={false}>
-                  {open && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.22, ease: 'easeOut' }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid grid-cols-2 gap-1.5 border-t border-border px-2.5 py-2.5">
-                        {g.entries.map((e) => (
-                          <button
-                            key={e.to + e.label}
-                            type="button"
-                            onClick={() => go(e.to)}
-                            className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
-                          >
-                            <e.icon className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-[12px] font-medium leading-tight text-foreground">{e.label}</span>
-                            {e.hint && <span className="text-[10px] leading-tight text-muted-foreground">{e.hint}</span>}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              )}
-            </div>
-          );
-        })}
+        {MODULE_GROUPS.map((g) => (
+          <GroupCard
+            key={g.title}
+            group={g}
+            open={expanded === g.title}
+            onToggle={() => setExpanded(expanded === g.title ? null : g.title)}
+          />
+        ))}
 
         {/* 工具箱：与其他分组**完全同一套** 2 列图标格。
             2026-11-12 改版：原来这里再套一层「子项 → 面板」折叠，五个整页组件
             各有自己的 h1 与内边距，卡中卡 + 九条相似行叠着，很难看。
             现在点某项走 `openDrawerSection`，由 Drawer 下钻一层全宽渲染。
-            「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签 */}
-        <div className="paper-card overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setExpanded(expanded === 'toolbox' ? null : 'toolbox')}
-            aria-expanded={expanded === 'toolbox'}
-            data-testid="module-group-toolbox"
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-surface-2"
-          >
-            <Puzzle className="h-4 w-4 text-muted-foreground" />
-            <span className="text-[12px] font-medium text-foreground">工具箱</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">{TOOLBOX_SECTIONS.length} 项</span>
-            <ChevronDown
-              className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', expanded === 'toolbox' && 'rotate-180')}
-            />
-          </button>
-
-          <AnimatePresence initial={false}>
-            {expanded === 'toolbox' && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: 'easeOut' }}
-                className="overflow-hidden"
-              >
-                <div className="grid grid-cols-2 gap-1.5 border-t border-border px-2.5 py-2.5">
-                  {TOOLBOX_SECTIONS.map((s) => (
-                    <button
-                      key={s.key}
-                      type="button"
-                      onClick={() => openDrawerSection(s.key)}
-                      data-testid={`toolbox-entry-${s.key}`}
-                      className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
-                    >
-                      <s.icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="flex items-center gap-1.5 text-[12px] font-medium leading-tight text-foreground">
-                        {s.label}
-                        {s.key === 'opensource' && openSourceUpdates > 0 && (
-                          <span
-                            aria-label={`${openSourceUpdates} 个项目有更新`}
-                            data-testid="opensource-dot"
-                            className="block h-[7px] w-[7px] shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]"
-                          />
-                        )}
-                      </span>
-                      {s.hint && (
-                        <span className="text-[10px] leading-tight text-muted-foreground">{s.hint}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            「角色」2026-10-15 移到点头像打开的 ProfileEditor → 「角色设定」页签
+            2026-11-16：抽成 ToolboxCard，抽屉可以把它摆到最后 */}
+        <ToolboxCard
+          open={expanded === 'toolbox'}
+          onToggle={() => setExpanded(expanded === 'toolbox' ? null : 'toolbox')}
+        />
       </div>
     </section>
+  );
+}
+
+/**
+ * 工具箱卡（2026-11-16 从 ModuleCards 里抽出来）
+ *
+ * 与其他分组**完全同一套** 2 列图标格；点某项走 `openDrawerSection`，
+ * 由 Drawer 下钻一层全宽渲染（不再卡中卡）。
+ */
+export function ToolboxCard({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const openDrawerSection = useShellStore((s) => s.openDrawerSection);
+  const openSourceUpdates = useOpenSourceStore((s) => s.updatesCount);
+
+  return (
+    <div className="paper-card overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        data-testid="module-group-toolbox"
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition hover:bg-surface-2"
+      >
+        <Puzzle className="h-4 w-4 text-muted-foreground" />
+        <span className="text-[12px] font-medium text-foreground">工具箱</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{TOOLBOX_SECTIONS.length} 项</span>
+        <ChevronDown
+          className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-2 gap-1.5 border-t border-border px-2.5 py-2.5">
+              {TOOLBOX_SECTIONS.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => openDrawerSection(s.key)}
+                  data-testid={`toolbox-entry-${s.key}`}
+                  className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
+                >
+                  <s.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex items-center gap-1.5 text-[12px] font-medium leading-tight text-foreground">
+                    {s.label}
+                    {s.key === 'opensource' && openSourceUpdates > 0 && (
+                      <span
+                        aria-label={`${openSourceUpdates} 个项目有更新`}
+                        data-testid="opensource-dot"
+                        className="block h-[7px] w-[7px] shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.75)]"
+                      />
+                    )}
+                  </span>
+                  {s.hint && (
+                    <span className="text-[10px] leading-tight text-muted-foreground">{s.hint}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

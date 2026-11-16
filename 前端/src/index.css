@@ -598,6 +598,17 @@
   }
 }
 
+/* 横向卡带（放映片单）用：一条滚动条横在深色银幕下面很扎眼，干脆整条藏掉，
+   手势 / 拖拽照样能滑。两套写法都给，Chrome 与 Firefox 一致。 */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* ===== 播放器极细进度条（跟随主题） ===== */
 .player-range {
   -webkit-appearance: none;

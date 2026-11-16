@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Settings2 } from 'lucide-react';
 import { AvatarContent } from '@/components/AvatarContent';
-import { MoodArcRow } from './MoodCard';
+import { GiftBoxCard } from './GiftBoxCard';
 import { CalendarCard } from './CalendarCard';
 import { TodoCard } from './TodoCard';
 import { TokenCard } from './TokenCard';
@@ -127,7 +127,7 @@ export function HomePage() {
           <TodoCard />
 
           {/* Token 与信封：平分空间（2026-11-04 用户定：token 别太宽），右列 信件卡(compact) 上 +
-              心情弧 下，信件高度精确占 Token 卡 1/2 */}
+              礼物盒 下（2026-11-16 换的：原来这里放心情三弧），信件高度精确占 Token 卡 1/2 */}
           <div className="grid grid-cols-2 gap-3">
             <div data-testid="token-capsule">
               <TokenCard />
@@ -135,7 +135,7 @@ export function HomePage() {
             <div className="min-w-0">
               <LetterInboxCard compact className="flex h-1/2 flex-col p-3" />
               <div className="flex h-1/2 min-h-0 items-center justify-center">
-                <MoodArcRow />
+                <GiftBoxCard />
               </div>
             </div>
           </div>

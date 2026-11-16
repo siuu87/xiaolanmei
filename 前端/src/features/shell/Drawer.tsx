@@ -10,13 +10,13 @@
  * 2026-11-12：工具箱在下钻。点工具箱子项不跳路由，而是在本抽屉里换一层
  * （顶栏返回 + 内容全宽），返回键/Esc 都退回抽屉主视图，再按一次才关抽屉。
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, X } from 'lucide-react';
 import { useShellStore } from '@/stores/shellStore';
 import { cn } from '@/lib/utils';
 import { AppearanceSection } from '@/features/settings/AppearanceSection';
-import { ProfileHeader, DailyBoard, ModuleCards, StickyFooter } from './DrawerSections';
+import { ProfileHeader, DailyBoard, ModuleGroupCard, ToolboxCard, StickyFooter } from './DrawerSections';
 import { LifeCard } from '@/features/home/LifeCard';
 import { useSwipeToClose } from './useEdgeSwipe';
 import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
@@ -28,6 +28,8 @@ export function Drawer() {
   const closeDrawer = useShellStore((s) => s.closeDrawer);
   const appearanceOpen = useShellStore((s) => s.appearanceOpen);
   const closeAppearance = useShellStore((s) => s.closeAppearance);
+  /** 抽屉重排后工具箱搬到最下面，展开状态由抽屉自己拿着 */
+  const [toolboxOpen, setToolboxOpen] = useState(false);
 
   // 当前下钻的工具箱子项（null = 抽屉主视图）
   const section = drawerSection ? TOOLBOX_SECTIONS.find((s) => s.key === drawerSection) : undefined;
@@ -53,13 +55,17 @@ export function Drawer() {
       <AnimatePresence>
         {open && (
           <div className="fixed inset-0 z-[1200] md:hidden" data-testid="main-drawer">
-            {/* 背板：纯色不透明，底下的页面不透出来 */}
+            {/* 背板：纯色不透明，底下的页面不透出来。
+                2026-11-16 修「打开时闪一下」：原来背板 0.18s 就完全不透明，
+                而面板要 500ms 才滑到位 —— 于是面板还没盖上来，整屏先被纯色刷了一遍，
+                看着就像闪一下。现在背板和面板同一套 spring 一起从左边推进来，
+                面板到哪，遮罩才盖到哪。 */}
             <motion.div
               className="absolute inset-0 bg-background"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              initial={{ opacity: 0, x: '-18%' }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: '-8%' }}
+              transition={{ type: 'spring', stiffness: 470, damping: 34, mass: 0.7 }}
               onClick={closeDrawer}
             />
             {/* 面板 */}
@@ -68,7 +74,7 @@ export function Drawer() {
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.9 }}
+              transition={{ type: 'spring', stiffness: 470, damping: 34, mass: 0.7 }}
             >
               <div aria-hidden className="page-wash pointer-events-none absolute inset-x-0 top-0 h-56" />
               {/* 抽屉主视图：下钻时**只隐藏不卸载** —— 分组的展开状态、滚动位置、
@@ -92,9 +98,41 @@ export function Drawer() {
                   className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 pr-1.5"
                 >
                   <ProfileHeader />
+
+                  {/* 2026-11-16 重排（用户：生活和 together 打乱一下，只调顺序样式不动）：
+                      together 提到最前 —— 它是「两个人的」入口，比日历更像这抽屉的主题；
+                      跟着才是日常看板，再把「生活」卡挪上来贴着它（两块都是过日子的事）；
+                      酒馆 / 生活小趣味 / 工具箱压到最后。 */}
+                  <section className="px-4 pb-3">
+                    <div className="mb-2.5 flex items-center gap-2 px-0.5">
+                      <span className="eyebrow">一起 · Together</span>
+                      <span className="h-px flex-1 bg-border/70" aria-hidden />
+                    </div>
+                    <ModuleGroupCard title="together" />
+                  </section>
+
                   <DailyBoard />
-                  <ModuleCards />
-                  <LifeCard />
+                  {/* LifeCard 自己没有左右内边距（它原先是跟在首页的 px-4 容器里），
+                      放进抽屉得补一层，不然标题「生活」贴着抽屉边被切掉半个字 */}
+                  <div className="px-4">
+                    <LifeCard />
+                  </div>
+
+                  {/* 剩下的模块 + 工具箱 */}
+                  <section className="px-4 pb-3">
+                    <div className="mb-2.5 flex items-center gap-2 px-0.5">
+                      <span className="eyebrow">还有 · More</span>
+                      <span className="h-px flex-1 bg-border/70" aria-hidden />
+                    </div>
+                    <div className="space-y-2.5">
+                      <ModuleGroupCard title="酒馆小手机" />
+                      <ModuleGroupCard title="生活小趣味" />
+                      <ToolboxCard
+                        open={toolboxOpen}
+                        onToggle={() => setToolboxOpen((v) => !v)}
+                      />
+                    </div>
+                  </section>
                 </div>
 
                 {/* 底部固定快捷栏 */}
