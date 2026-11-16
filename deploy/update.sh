@@ -81,7 +81,13 @@ if [ -x "$NODE_ROOT/bin/node" ]; then
   ln -sf "$NODE_ROOT/bin/npm" /usr/local/bin/npm
   ln -sf "$NODE_ROOT/bin/npx" /usr/local/bin/npx
 fi
-command -v node >/dev/null 2>&1 || die "找不到 node，先跑 vps-install-lite.sh"
+# systemd 不认 PATH，ExecStart 必须是绝对路径；不同机器的 node 装在哪儿都不一样，
+# 所以这里探一次真身（之前硬写 /usr/local/lib/node24 时，旧机器上服务起不来、日志还是空的）
+NODE_BIN=$(command -v node 2>/dev/null || true)
+[ -n "${NODE_BIN:-}" ] || die "找不到 node，先跑 vps-install-lite.sh"
+NODE_BIN=$(readlink -f "$NODE_BIN" 2>/dev/null || echo "$NODE_BIN")
+[ -x "$NODE_BIN" ] || die "node 路径不可执行：$NODE_BIN"
+echo "node：$NODE_BIN（$(node -v)）"
 node -v | grep -q '^v24' || die "Node 版本是 $(node -v)，必须是 v24（better-sqlite3 只按 24 编译）"
 if ! command -v gcc >/dev/null 2>&1; then
   echo "补装编译工具（better-sqlite3 兜底）"
@@ -112,7 +118,7 @@ Type=simple
 WorkingDirectory=$APP_DIR/后端
 Environment=NODE_ENV=production
 Environment=PORT=$PORT
-ExecStart=$NODE_ROOT/bin/node $APP_DIR/后端/node_modules/tsx/dist/cli.mjs src/server.ts
+ExecStart=$NODE_BIN $APP_DIR/后端/node_modules/tsx/dist/cli.mjs src/server.ts
 Restart=always
 RestartSec=3
 StandardOutput=append:/var/log/xiaolanmei.log
@@ -126,8 +132,15 @@ systemctl enable xiaolanmei >/dev/null 2>&1
 systemctl restart xiaolanmei
 sleep 5
 if ! systemctl is-active --quiet xiaolanmei; then
-  tail -20 /var/log/xiaolanmei.log
-  die "服务没起来（上面是日志尾部）"
+  echo "--- systemd 状态 ---"
+  systemctl status xiaolanmei --no-pager -l 2>&1 | tail -14
+  echo "--- journal（systemd 侧） ---"
+  journalctl -u xiaolanmei -n 20 --no-pager 2>/dev/null | tail -20
+  echo "--- 应用日志 ---"
+  tail -20 /var/log/xiaolanmei.log 2>/dev/null
+  echo "--- 前台手动试跑 10 秒（真报错都在这里） ---"
+  ( cd "$APP_DIR/后端" && PORT=$PORT timeout 10 "$NODE_BIN" node_modules/tsx/dist/cli.mjs src/server.ts 2>&1 | tail -25 )
+  die "服务没起来（上面是真报错，整段发我）"
 fi
 
 echo "--- 健康检查 ---"
