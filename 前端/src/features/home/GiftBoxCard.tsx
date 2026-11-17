@@ -1,12 +1,9 @@
 /**
- * 礼物盒小卡（2026-11-17 二十改：🎁 emoji 扁平礼盒外壳 + 🎀 蝴蝶结）
+ * 礼物盒小卡（2026-11-17 二十四改：去外侧圆弧，礼盒铺满卡位）
  *
- * 接替原来「心情三弧」占的那半格，点一下直接进 `/gifts`（礼物盒页面）。
+ * 用户：「外面那个礼物盒组件不要外侧的圆弧」——撤掉卡片的圆角外框和底衬，
+ * 礼盒本体直接铺满整个半格：盖沿全宽、盒身直角（rx 2），点一下直接进 /gifts。
  *
- * 用户：「这个外壳改一下」→ 选「🎁 emoji 礼盒风」——外壳也从缎面雪花改成
- * Twemoji 🎁 那种扁平卡通礼盒：纯色盒身 + 顶上一条盖沿（比盒身宽一点、
- * 盖沿下一条盖缝线），去掉雪花珍珠这些装饰；缎带十字和 🎀 蝴蝶结（Twemoji
- * U+1F380 路径换色，见下）保持不动，结心锚定在缎带交点上。
  * 颜色全部走 CSS 变量（浅色/深色各一套），自动换主题。
  */
 import { useNavigate } from 'react-router-dom';
@@ -23,8 +20,8 @@ const EMOJI_SCALE = 1.6;
 /** 缎带宽度：细缎带 */
 const RIBBON_W = 9;
 
-/** 盖沿的几何：比盒身左右各宽 2，高 26，顶角几乎方（🎁 emoji 的盖子形状） */
-const LID = { x0: 2, x1: 238, y0: 2, h: 26, rx: 4 };
+/** 盖沿的几何：全宽、高 26，顶角几乎方（直角礼盒） */
+const LID = { x0: 0, x1: 240, y0: 0, h: 26, rx: 2 };
 /** 盖缝线（盖沿底边下的一条深色细线） */
 const LID_SEAM_Y = LID.y0 + LID.h;
 
@@ -33,7 +30,7 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
   const rx0 = CENTER.x - RIBBON_W / 2;
   const ry0 = CENTER.y - RIBBON_W / 2;
 
-  // 盖沿：顶上两角圆、底边平
+  // 盖沿：顶上两角几乎直角、底边平
   const lidPath = `M${LID.x0 + LID.rx} ${LID.y0} H${LID.x1 - LID.rx} Q${LID.x1} ${LID.y0} ${LID.x1} ${LID.y0 + LID.rx} V${LID.y0 + LID.h} H${LID.x0} V${LID.y0 + LID.rx} Q${LID.x0} ${LID.y0} ${LID.x0 + LID.rx} ${LID.y0} Z`;
 
   return (
@@ -43,18 +40,14 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
       data-testid="gift-box-card"
       aria-label="打开礼物盒"
       title="礼物盒"
-      className={`group relative flex aspect-[172/68] max-h-full w-full items-end justify-center overflow-hidden rounded-[20px] border border-[#C6D9EA] transition active:scale-[0.98] hover:border-[#A9C8E2]
+      className={`group relative flex aspect-[172/68] max-h-full w-full items-end justify-center overflow-hidden
         [--gb-lid:#FFFFFF] [--gb-body:#F1F7FB] [--gb-edge:#C9D9E9]
         [--gb-rib1:#A6C6E0] [--gb-rib2:#C9DEF0] [--gb-rib3:#F2F8FD]
         [--gb-bow1:#8FB3D4] [--gb-bow3:#EAF4FC] [--gb-bow0:#7AA0C4]
-        dark:border-[#46516B] dark:hover:border-[#5D6B8C]
         dark:[--gb-lid:#47526B] dark:[--gb-body:#39435A] dark:[--gb-edge:#28304A]
         dark:[--gb-rib1:#6E95B8] dark:[--gb-rib2:#8FB6D9] dark:[--gb-rib3:#D6E8F6]
         dark:[--gb-bow1:#5D87AD] dark:[--gb-bow3:#C6DEF2] dark:[--gb-bow0:#4C739A] ${className}`}
     >
-      {/* 底色：礼盒后面的一层雾面（深色 = 夜蓝） */}
-      <div className="absolute inset-0 bg-[#E7F0F7] dark:bg-[#2E3648]" />
-
       <svg viewBox="0 0 240 100" preserveAspectRatio="xMidYMid meet" aria-hidden className="absolute inset-0 h-full w-full">
         <defs>
           {/* 竖缎带：沿带宽方向的高光（中线亮、两边暗） */}
@@ -75,10 +68,10 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
           </linearGradient>
         </defs>
 
-        {/* ============ 🎁 扁平礼盒：纯色盒身 + 盖沿 + 盖缝线 ============ */}
-        {/* 盒身（方正的：小圆角） */}
-        <rect x="4" y="4" width="232" height="92" rx="5" style={{ fill: 'var(--gb-body, #F1F7FB)' }} />
-        {/* 盖沿（比盒身宽一点，顶角圆、底边平） */}
+        {/* ============ 直角礼盒铺满卡位：盒身 + 盖沿 + 盖缝线 ============ */}
+        {/* 盒身（盖沿以下一直到卡位底边，直角 rx 2） */}
+        <rect x="0" y={LID_SEAM_Y} width="240" height={100 - LID_SEAM_Y} rx="2" style={{ fill: 'var(--gb-body, #F1F7FB)' }} />
+        {/* 盖沿（全宽） */}
         <path d={lidPath} style={{ fill: 'var(--gb-lid, #FFFFFF)' }} />
         {/* 盖缝线（盖沿底边） */}
         <rect x={LID.x0} y={LID_SEAM_Y} width={LID.x1 - LID.x0} height="2.6"
@@ -86,14 +79,14 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
 
         {/* ============ 浅蓝缎带十字：交会点在左上角（中线一道亮光 = 缎面） ============ */}
         {/* 竖条 */}
-        <rect x={rx0} y="3" width={RIBBON_W} height="94" fill="url(#gb-rib-v)" />
+        <rect x={rx0} y="0" width={RIBBON_W} height="100" fill="url(#gb-rib-v)" />
         {/* 横条（压在竖条上面，交叉处自然分层） */}
-        <rect x="3" y={ry0} width="234" height={RIBBON_W} fill="url(#gb-rib-h)" />
+        <rect x="0" y={ry0} width="240" height={RIBBON_W} fill="url(#gb-rib-h)" />
         {/* 带身边缘一道细暗线（缎带卷边的立体感） */}
-        <rect x={rx0} y="3" width="1.2" height="94" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
-        <rect x={rx0 + RIBBON_W - 1.2} y="3" width="1.2" height="94" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
-        <rect x="3" y={ry0} width="234" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
-        <rect x="3" y={ry0 + RIBBON_W - 1.2} width="234" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
+        <rect x={rx0} y="0" width="1.2" height="100" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
+        <rect x={rx0 + RIBBON_W - 1.2} y="0" width="1.2" height="100" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
+        <rect x="0" y={ry0} width="240" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
+        <rect x="0" y={ry0 + RIBBON_W - 1.2} width="240" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
 
         {/* ============ 🎀 emoji 同款蝴蝶结（Twemoji 路径换色），结心锚定交点（hover 轻轻歪一下） ============ */}
         <g

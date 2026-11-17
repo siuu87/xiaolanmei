@@ -69,16 +69,66 @@ function bouquetName(o: BouquetOrder): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* 封着的礼盒                                                          */
+/* 封着的礼盒（2026-11-17 二十五改：统一用「开盖礼盒」——用户从 5 个      */
+/* 样式候选里挑了 ④：盖子斜倚在盒沿，内容物探头，未拆就有惊喜感）          */
+/*   花束 → 三支小花探头；表情 → 自己的 emoji 探头；其余 → 星星碎屑探头   */
 /* ------------------------------------------------------------------ */
 function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) {
   const meta = TINT[gift.giftType];
   const Icon = meta.icon;
   const isFlower = gift.giftType === 'flower';
-  /** 🎀 结心锚在盖缝线上方（twemoji 36×36 里结心在 17.5,9.5） */
-  const BOW_S = 1.15;
-  const bowTx = 60 - 17.5 * BOW_S;
-  const bowTy = 10 - 9.5 * BOW_S;
+  /** 表情礼物：拆开前就让自己的 emoji 从盒口探出头 */
+  const stickerEmoji =
+    gift.giftType === 'sticker' && gift.content && gift.content.length <= 4 ? gift.content : null;
+
+  /** 🎀 结：cx/cy 是结心落点，s 是缩放（Twemoji 36×36 里结心在 17.5,9.5） */
+  const bow = (cx: number, cy: number, s: number) => (
+    <g transform={`translate(${cx - 17.5 * s} ${cy - 9.5 * s}) scale(${s})`}>
+      <path d={BOW_MAIN} fill={meta.ribbon} />
+      <path d={BOW_DARK} fill={meta.bowDark} />
+      <path d={BOW_KNOT} fill="#FFFFFF" opacity="0.85" />
+    </g>
+  );
+
+  /** 四角星碎屑（开盖盒的内容物光点） */
+  const sparkle = (cx: number, cy: number, s: number, c: string) => (
+    <path
+      transform={`translate(${cx} ${cy}) scale(${s})`}
+      d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z"
+      fill={c}
+    />
+  );
+
+  /** 花束探头：三支小花从盒口冒出来（cx 是花束中心，默认偏左避开斜倚的盖子） */
+  const flowerPeek = (top: number, cx = 40) => (
+    <g>
+      <g stroke="#9BAE86" strokeWidth="1.1" fill="none" strokeLinecap="round">
+        <path d={`M${cx} ${top + 4}C${cx} ${top - 1} ${cx - 6} ${top - 4} ${cx - 11} ${top - 7}`} />
+        <path d={`M${cx} ${top + 4}C${cx} ${top - 1} ${cx} ${top - 4} ${cx} ${top - 9.5}`} />
+        <path d={`M${cx} ${top + 4}C${cx} ${top - 1} ${cx + 6} ${top - 4} ${cx + 11} ${top - 6.5}`} />
+      </g>
+      {[
+        { x: cx - 11, y: top - 8, c: '#E8B4B8' },
+        { x: cx, y: top - 10.5, c: '#BBA9D8' },
+        { x: cx + 11, y: top - 7.4, c: '#9DB8D8' },
+      ].map((f, i) => (
+        <g key={i} transform={`translate(${f.x} ${f.y})`}>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <ellipse
+              key={a}
+              cx={Math.cos((a * Math.PI) / 180) * 3}
+              cy={Math.sin((a * Math.PI) / 180) * 3}
+              rx="2.8"
+              ry="2.8"
+              fill={f.c}
+            />
+          ))}
+          <circle r="1.6" fill="#F6E7C2" />
+        </g>
+      ))}
+    </g>
+  );
+
   return (
     <motion.button
       type="button"
@@ -92,52 +142,35 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
     >
       <span className="relative block h-[86px] w-full">
         <svg viewBox="0 0 120 86" preserveAspectRatio="xMidYMid meet" aria-hidden className="absolute inset-0 h-full w-full overflow-visible">
-          {/* 花束礼物：盒盖后面先探出三支花，一眼能看出「这里面是花」 */}
-          {isFlower && (
-            <g stroke="#9BAE86" strokeWidth="1.1" fill="none" strokeLinecap="round">
-              <path d="M60 18C60 13 54 10 49 7" />
-              <path d="M60 18C60 13 60 10 60 4.5" />
-              <path d="M60 18C60 13 66 10 71 7.5" />
+          {/* 盒口探头的内容物（先画，下半截被盒身盖住 = 从盒里冒出来；偏左避开斜倚的盖子） */}
+          {isFlower ? (
+            flowerPeek(38, 38)
+          ) : stickerEmoji ? (
+            <text x="40" y="40" textAnchor="middle" fontSize="24" role="img">
+              {stickerEmoji}
+            </text>
+          ) : (
+            <g>
+              {sparkle(32, 25, 1.5, '#F2C98A')}
+              {sparkle(48, 19, 1.1, '#E8B4B8')}
+              {sparkle(42, 29, 1.2, '#BBA9D8')}
+              <circle cx="36" cy="33" r="1.8" fill="#FFFFFF" opacity="0.8" />
+              <circle cx="48" cy="30" r="1.5" fill="#FFFFFF" opacity="0.8" />
             </g>
           )}
-          {isFlower &&
-            [
-              { x: 49, y: 6, c: '#E8B4B8' },
-              { x: 60, y: 3.5, c: '#BBA9D8' },
-              { x: 71, y: 6.6, c: '#9DB8D8' },
-            ].map((f, i) => (
-              <g key={i} transform={`translate(${f.x} ${f.y})`}>
-                {[0, 72, 144, 216, 288].map((a) => (
-                  <ellipse
-                    key={a}
-                    cx={Math.cos((a * Math.PI) / 180) * 3}
-                    cy={Math.sin((a * Math.PI) / 180) * 3}
-                    rx="2.8"
-                    ry="2.8"
-                    fill={f.c}
-                  />
-                ))}
-                <circle r="1.6" fill="#F6E7C2" />
-              </g>
-            ))}
-
-          {/* 🎁 扁平礼盒：盒身 + 盖沿 + 盖缝线（和首页礼盒卡同一画风） */}
-          <rect x="3" y="14" width="114" height="70" rx="4" fill={meta.boxBody} />
-          <path d="M4 0 H116 Q119 0 119 3 V16 H1 V3 Q1 0 4 0 Z" fill={meta.boxLid} />
-          <rect x="1" y="16" width="118" height="1.8" fill="rgba(107,74,50,.18)" />
-          {/* 竖缎带：从盖沿一直垂到盒底 */}
-          <rect x="56.5" y="0" width="7" height="84" fill={meta.ribbon} />
-
-          {/* 🎀 蝴蝶结（Twemoji 路径换色），结心压在盖缝上 */}
-          <g transform={`translate(${bowTx} ${bowTy}) scale(${BOW_S})`}>
-            <path d={BOW_MAIN} fill={meta.ribbon} />
-            <path d={BOW_DARK} fill={meta.bowDark} />
-            <path d={BOW_KNOT} fill="#FFFFFF" opacity="0.85" />
+          {/* 盒身（矮，口是开的） */}
+          <rect x="10" y="36" width="100" height="50" rx="4" fill={meta.boxBody} />
+          <rect x="10" y="36" width="100" height="6" rx="3" fill="rgba(107,74,50,.12)" />
+          {/* 盖子（斜着靠在盒沿） */}
+          <g transform="rotate(-13 100 34)">
+            <rect x="58" y="10" width="80" height="19" rx="4" fill={meta.boxLid} />
+            <rect x="58" y="27" width="80" height="2" fill="rgba(107,74,50,.15)" />
+            {bow(100, 19.5, 0.7)}
           </g>
         </svg>
-        {/* 类型小图标：垂尾下面，淡淡的 */}
-        <span className="absolute inset-x-0 bottom-[8px] flex items-center justify-center">
-          <Icon className="h-4 w-4 text-[#6B4A32]/40" />
+        {/* 类型小图标：右下角，淡淡的 */}
+        <span className="absolute bottom-[6px] right-1">
+          <Icon className="h-3.5 w-3.5 text-[#6B4A32]/40" />
         </span>
       </span>
 
