@@ -1,68 +1,37 @@
 /**
- * 礼物盒小卡（2026-11-17 七改：几何照实拍照片重排 —— @泡椒鱼泡 的奶油白礼盒）
+ * 礼物盒小卡（2026-11-17 八改：俯视图）
  *
  * 接替原来「心情三弧」占的那半格，点一下直接进 `/gifts`（礼物盒页面）。
  *
- * 五改被说「奇怪」：顶面画成平行四边形、远端朝屏幕下方走，盒子像往下滑；
- * 六改矫枉过正变成楔形。照片里真正的方位是：**长轴往右上方后退** ——
- * 近端（打蝴蝶结那头）在左下，远端在右上、屏幕上更高；宽长面朝左下对着观众，
- * 右端一条窄暗面收尾。这版按这个方位排：
- *   - 顶面 A(前左) B(前右) C(后右) D(后左)：前棱长、后棱略短（轻透视），
- *     两条长棱都往右上升；侧面往下 DROP，左右两条竖棱垂直；
- *   - 丝带垂直于长轴绕盒：顶面一段 + 宽面一段垂下（一直垂到盒底棱，
- *     跟「绕到盒子底下」一个意思）；蕾丝条贴两侧；
- *   - 蝴蝶结骑在顶面丝带靠前缘处，两条燕尾垂带搭在宽面上、收在盒底棱之上；
- *   - 小水钻撒在顶面右半边（照片同款：星 + 碎钻心 + 银粒）。
- * 丝带/蕾丝位置全从 A/B/C/D 插值推出，挪位置不用重算坐标。
+ * 七改的斜视立体盒被评「可爱但这个位置要俯视图」——首页这格空间又扁又小，
+ * 立体构图撑不满还费眼神，俯视才是对的：**盒盖正对着观众**。
+ * - 整张卡 ≈ 盒盖：奶油白圆角矩形盖满卡片，四周留一点底色当「桌面」；
+ * - 盖沿一圈内缩线（盒盖和盒身的分缝），里面再贴一圈蕾丝花边；
+ * - **蓝波点丝带十字交在正中**：一竖一横，交点正中央；
+ * - **胖蝴蝶结骑在交点上**（两个圆滚滚的环 + 中心结），hover 放大歪一下；
+ * - 小水钻撒在四个象限（四芒星 + 碎钻心 + 银粒）。
+ * 配色沿用实拍照片那套：奶油白盒身 + 蓝底白波点丝带 + 浅蓝蕾丝纹底。
  */
 import { useNavigate } from 'react-router-dom';
 
-/** 盒面高（竖棱长度） */
-const DROP = 36;
+/** 卡内坐标（viewBox 240×100）。盖沿内缩线与蕾丝圈距边的距离 */
+const LID_INSET = 6;
+const LACE_INSET = 10;
 
-/**
- * 顶面四角：A 前左（近端）、B 前右、C 后右（远端）、D 后左。
- * 长棱几乎平行、只往右缓升（远端比近端高一点，照片的机位）；宽度方向往后上收。
- */
-const A = { x: 40, y: 50 };
-const B = { x: 196, y: 38 };
-const C = { x: 218, y: 24 };
-const D = { x: 62, y: 34 };
+/** 中心点：丝带十字与蝴蝶结的交点 */
+const CENTER = { x: 120, y: 50 };
 
-/** 前棱 / 后棱上的等比插值点（s ∈ 0~1，从近端到远端） */
-const onFront = (s: number) => ({ x: A.x + (B.x - A.x) * s, y: A.y + (B.y - A.y) * s });
-const onBack = (s: number) => ({ x: D.x + (C.x - D.x) * s, y: D.y + (C.y - D.y) * s });
+/** 丝带宽度（十字两条） */
+const RIBBON_W = 13;
 
-/** 顶面上的一根横带（丝带或蕾丝）：s0~s1 之间，前后棱各取两点连成条 */
-function topBand(s0: number, s1: number) {
-  const f0 = onFront(s0);
-  const f1 = onFront(s1);
-  const b1 = onBack(s1);
-  const b0 = onBack(s0);
-  const r = (p: { x: number; y: number }) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-  return `M${r(f0)} L${r(f1)} L${r(b1)} L${r(b0)} Z`;
-}
-
-/** 宽侧面（前长面）上的一根竖带：从前棱 s0~s1 两点垂直垂下 DROP */
-function frontBand(s0: number, s1: number) {
-  const f0 = onFront(s0);
-  const f1 = onFront(s1);
-  const r = (p: { x: number; y: number }, dy = 0) => `${p.x.toFixed(1)} ${(p.y + dy).toFixed(1)}`;
-  return `M${r(f0)} L${r(f1)} L${r(f1, DROP)} L${r(f0, DROP)} Z`;
-}
-
-/** 丝带骑缝：宽 0.16，蕾丝各 0.08 贴两侧 */
-const RIBBON = { a: 0.18, b: 0.34 };
-const LACE_L = { a: 0.1, b: 0.18 };
-const LACE_R = { a: 0.34, b: 0.42 };
-
-/** 蝴蝶结落点：顶面丝带靠前缘处（略压前棱，环不探出后棱） */
-const BOW = { x: 84, y: 45 };
+/** 蝴蝶结落点（=交点） */
+const BOW = { x: 120, y: 50 };
 
 export function GiftBoxCard({ className = '' }: { className?: string }) {
   const navigate = useNavigate();
-  const tailL = 'M76 45 C70 55 67 65 69 77 L75 70 L79 74 C78 63 80 52 86 46 Z';
-  const tailR = 'M91 46 C97 55 100 65 100 76 L94 70 L89 74 C90 62 86 51 83 45 Z';
+
+  // 蕾丝圈（贴着盖沿内侧）
+  const laceRect = { x: LACE_INSET, y: LACE_INSET, w: 240 - LACE_INSET * 2, h: 100 - LACE_INSET * 2 };
 
   return (
     <button
@@ -73,7 +42,7 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
       title="礼物盒"
       className={`group relative flex aspect-[172/68] max-h-full w-full items-end justify-center overflow-hidden rounded-[20px] border border-[#C6D9EA] transition active:scale-[0.98] hover:border-[#A9C8E2] dark:border-[#46516B] dark:hover:border-[#5D6B8C] ${className}`}
     >
-      {/* 底色：照片右侧那种浅蓝蕾丝纹（白花暗纹），奶油盒身压在上面才跳得出来 */}
+      {/* 底色：浅蓝蕾丝纹（白花暗纹），当「桌面」，奶油盒盖压在上面才跳得出来 */}
       <div className="absolute inset-0 bg-[#E7F0F7] dark:bg-[#2E3648]" />
       <div
         aria-hidden
@@ -89,114 +58,92 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
 
       <svg viewBox="0 0 240 100" preserveAspectRatio="xMidYMid meet" aria-hidden className="absolute inset-0 h-full w-full">
         <defs>
-          {/* 丝带波点：白点两粒错开，铺满所有丝带面 */}
+          {/* 丝带波点：白点两粒错开 */}
           <pattern id="gb-dots" width="11" height="11" patternUnits="userSpaceOnUse">
             <circle cx="3" cy="3" r="1.7" fill="#fff" opacity="0.85" />
             <circle cx="8.5" cy="8.5" r="1.7" fill="#fff" opacity="0.85" />
           </pattern>
-          {/* 蕾丝边的小孔：沿条身排的小圆点，远看就是蕾丝 */}
+          {/* 蕾丝花边：沿圈排的小孔 */}
           <pattern id="gb-lace" width="7" height="6" patternUnits="userSpaceOnUse">
             <circle cx="3.5" cy="3" r="1" fill="#fff" opacity="0.9" />
           </pattern>
         </defs>
 
-        {/* 桌面软阴影（对准盒子重心） */}
-        <ellipse cx="128" cy="88" rx="95" ry="6" className="fill-black/15 dark:fill-black/40" />
+        {/* ============ 盒盖：奶油白圆角矩形盖满卡片（俯视） ============ */}
+        <rect x="3" y="3" width="234" height="94" rx="16" className="fill-[#FBF5E7] dark:fill-[#EFE7D3]" />
+        {/* 盖沿内缝阴影（盖和盒身的分缝，压出一点厚度感） */}
+        <rect x={LID_INSET} y={LID_INSET} width={240 - LID_INSET * 2} height={100 - LID_INSET * 2} rx="13"
+          fill="none" className="stroke-[#E3D8BD] dark:stroke-[#D6C8A4]" strokeWidth="1.6" />
+        <rect x={LID_INSET + 1.5} y={LID_INSET + 1.5} width={240 - (LID_INSET + 1.5) * 2} height={100 - (LID_INSET + 1.5) * 2} rx="12"
+          fill="none" stroke="#fff" strokeWidth="1" opacity="0.7" />
 
-        {/* ============ 顶面（最亮）：A B C D，往右上后退 ============ */}
-        <path
-          d={`M${A.x} ${A.y} L${B.x} ${B.y} L${C.x} ${C.y} L${D.x} ${D.y} Z`}
-          className="fill-[#FBF5E7] dark:fill-[#EFE7D3]"
-        />
-        {/* 顶面蕾丝 + 丝带 */}
-        <g>
-          <path d={topBand(LACE_L.a, LACE_L.b)} fill="#fff" opacity="0.85" />
-          <path d={topBand(LACE_L.a, LACE_L.b)} fill="url(#gb-lace)" />
-          <path d={topBand(LACE_R.a, LACE_R.b)} fill="#fff" opacity="0.85" />
-          <path d={topBand(LACE_R.a, LACE_R.b)} fill="url(#gb-lace)" />
-          <path d={topBand(RIBBON.a, RIBBON.b)} className="fill-[#AECBE4] dark:fill-[#8FB6D9]" />
-          <path d={topBand(RIBBON.a, RIBBON.b)} fill="url(#gb-dots)" />
-        </g>
+        {/* ============ 蕾丝花边圈（贴着盖沿内侧） ============ */}
+        <rect x={laceRect.x} y={laceRect.y} width={laceRect.w} height={laceRect.h} rx="11"
+          fill="none" stroke="#fff" strokeWidth="3.4" opacity="0.85" />
+        <rect x={laceRect.x} y={laceRect.y} width={laceRect.w} height={laceRect.h} rx="11"
+          fill="none" stroke="url(#gb-lace)" strokeWidth="3.4" />
 
-        {/* ============ 宽侧面（朝左下的大面）：A B B2 A2 ============ */}
+        {/* ============ 蓝波点丝带十字：交在正中央 ============ */}
+        {/* 竖条 */}
+        <rect x={CENTER.x - RIBBON_W / 2} y="3" width={RIBBON_W} height="94" className="fill-[#AECBE4] dark:fill-[#8FB6D9]" />
+        <rect x={CENTER.x - RIBBON_W / 2} y="3" width={RIBBON_W} height="94" fill="url(#gb-dots)" />
+        {/* 横条 */}
+        <rect x="3" y={CENTER.y - RIBBON_W / 2} width="234" height={RIBBON_W} className="fill-[#A3C1DB] dark:fill-[#84ACD0]" />
+        <rect x="3" y={CENTER.y - RIBBON_W / 2} width="234" height={RIBBON_W} fill="url(#gb-dots)" />
+        {/* 丝带两侧细高光（缎面感） */}
+        <rect x={CENTER.x - RIBBON_W / 2 + 1.5} y="3" width="1.2" height="94" fill="#fff" opacity="0.35" />
+        <rect x="3" y={CENTER.y - RIBBON_W / 2 + 1.5} width="234" height="1.2" fill="#fff" opacity="0.35" />
+
+        {/* ============ 小水钻：四芒星 ×2 + 碎钻心 + 银粒，撒在四个象限 ============ */}
         <g>
           <path
-            d={`M${A.x} ${A.y} L${B.x} ${B.y} L${B.x} ${B.y + DROP} L${A.x} ${A.y + DROP} Z`}
-            className="fill-[#EFE6D2] dark:fill-[#DFD3B8]"
+            d="M76 26 C76.6 29.8 77.9 31.1 81.7 31.7 C77.9 32.3 76.6 33.6 76 37.4 C75.4 33.6 74.1 32.3 70.3 31.7 C74.1 31.1 75.4 29.8 76 26 Z"
+            fill="#fff" opacity="0.95"
           />
-          <path d={frontBand(LACE_L.a, LACE_L.b)} fill="#fff" opacity="0.85" />
-          <path d={frontBand(LACE_L.a, LACE_L.b)} fill="url(#gb-lace)" />
-          <path d={frontBand(LACE_R.a, LACE_R.b)} fill="#fff" opacity="0.85" />
-          <path d={frontBand(LACE_R.a, LACE_R.b)} fill="url(#gb-lace)" />
-          <path d={frontBand(RIBBON.a, RIBBON.b)} className="fill-[#A3C1DB] dark:fill-[#84ACD0]" />
-          <path d={frontBand(RIBBON.a, RIBBON.b)} fill="url(#gb-dots)" />
+          <path
+            d="M165 63 C165.5 66 166.6 67.1 169.6 67.6 C166.6 68.1 165.5 69.2 165 72.2 C164.5 69.2 163.4 68.1 160.4 67.6 C163.4 67.1 164.5 66 165 63 Z"
+            fill="#fff" opacity="0.8"
+          />
+          <path
+            d="M163 26.5 C160.9 24.8 160.2 23.2 161.2 22 162 21.1 163 21.5 163 22.4 163 21.5 164 21.1 164.8 22 165.8 23.2 165.1 24.8 163 26.5 Z"
+            fill="#DCE8F2" opacity="0.9"
+          />
+          <g fill="#EDF3F8">
+            <circle cx="52" cy="66" r="1.4" />
+            <circle cx="188" cy="30" r="1.3" />
+            <circle cx="36" cy="36" r="1.1" />
+            <circle cx="206" cy="66" r="1.2" />
+          </g>
         </g>
 
-        {/* ============ 右端面（远端窄条，最暗）：B C C2 B2 ============ */}
-        <path
-          d={`M${B.x} ${B.y} L${C.x} ${C.y} L${C.x} ${C.y + DROP} L${B.x} ${B.y + DROP} Z`}
-          className="fill-[#E0D4BC] dark:fill-[#CDBF9F]"
-        />
-
-        {/* ============ 蝴蝶结垂带：燕尾剪口，颜色比丝带深一档（分得清层次），收在盒底棱之上 ============ */}
-        <g className="fill-[#9CBBD6] dark:fill-[#7BA6C9]">
-          <path d={tailL} />
-          <path d={tailR} />
-        </g>
-        <g fill="url(#gb-dots)">
-          <path d={tailL} />
-          <path d={tailR} />
-        </g>
-
-        {/* ============ 蝴蝶结本体：骑在顶面丝带上（hover 结放大歪一下） ============ */}
+        {/* ============ 胖蝴蝶结：骑在十字交点上（hover 放大歪一下） ============ */}
         <g
           className="transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110"
           style={{ transformOrigin: `${BOW.x}px ${BOW.y}px`, transformBox: 'view-box' }}
         >
-          <g transform={`translate(${BOW.x} ${BOW.y}) rotate(-5) scale(1.15)`}>
-            {/* 左右环：圆滚滚 */}
+          <g transform={`translate(${BOW.x} ${BOW.y})`}>
+            {/* 左右环：圆滚滚，比斜视版大一圈压住交点 */}
             <path
-              d="M-3.4 0 C-3.2 -6.4 -8.2 -9.8 -13.1 -8.4 -18.1 -7 -20 -1.3 -16.6 2.7 -13.4 6.4 -3.6 5.8 -3.4 0 Z"
+              d="M-3.8 0 C-3.6 -7.2 -9.2 -11 -14.8 -9.5 -20.5 -8 -22.6 -1.5 -18.8 3 -15 7.2 -4.1 6.6 -3.8 0 Z"
               className="fill-[#B4CFE6] dark:fill-[#96BCDD]"
             />
             <path
-              d="M3.4 0 C3.2 -6.4 8.2 -9.8 13.1 -8.4 18.1 -7 20 -1.3 16.6 2.7 13.4 6.4 3.6 5.8 3.4 0 Z"
+              d="M3.8 0 C3.6 -7.2 9.2 -11 14.8 -9.5 20.5 -8 22.6 -1.5 18.8 3 15 7.2 4.1 6.6 3.8 0 Z"
               className="fill-[#B4CFE6] dark:fill-[#96BCDD]"
             />
+            {/* 环内侧暗褶：软软一道，不再是尖刺 */}
+            <path d="M-8 -4.8 C-5.8 -6.2 -3.8 -6.7 -2.2 -6.4 -3.8 -4.2 -5.8 -3.3 -8 -4.8 Z" fill="#8FAECB" opacity="0.45" className="dark:fill-[#6E95B8]" />
+            <path d="M8 -4.8 C5.8 -6.2 3.8 -6.7 2.2 -6.4 3.8 -4.2 5.8 -3.3 8 -4.8 Z" fill="#8FAECB" opacity="0.45" className="dark:fill-[#6E95B8]" />
             {/* 环上的白波点 */}
             <g fill="#fff" opacity="0.85">
-              <circle cx="-12" cy="-4.5" r="1.4" />
-              <circle cx="-8" cy="1" r="1.2" />
-              <circle cx="12" cy="-4.5" r="1.4" />
-              <circle cx="8" cy="1" r="1.2" />
+              <circle cx="-14" cy="-5" r="1.5" />
+              <circle cx="-9" cy="1.5" r="1.3" />
+              <circle cx="14" cy="-5" r="1.5" />
+              <circle cx="9" cy="1.5" r="1.3" />
             </g>
-            {/* 中心结：大一点，压住两环交汇处 */}
-            <circle cx="0" cy="-0.6" r="5.2" className="fill-[#AECBE4] dark:fill-[#8FB6D9]" />
-            <circle cx="-1.6" cy="-2.2" r="1.5" fill="#fff" opacity="0.7" />
-          </g>
-        </g>
-
-        {/* ============ 小水钻点缀：四芒星 + 小爱心 + 银粒（撒在顶面右半边） ============ */}
-        <g>
-          <path
-            d="M150 31.5 C150.5 34.8 151.7 36 155 36.5 C151.7 37 150.5 38.2 150 41.5 C149.5 38.2 148.3 37 145 36.5 C148.3 36 149.5 32.8 150 31.5 Z"
-            fill="#fff" opacity="0.95"
-          />
-          <path
-            d="M170 27.5 C170.4 30 171.4 31 173.9 31.4 C171.4 31.8 170.4 32.8 170 35.3 C169.6 32.8 168.6 31.8 166.1 31.4 C168.6 31 169.6 30 170 27.5 Z"
-            fill="#fff" opacity="0.7"
-          />
-          {/* 小爱心（照片那种碎钻心） */}
-          <path
-            d="M128 40.5 C125.6 38.5 124.8 36.6 125.9 35.2 126.8 34.1 128 34.6 128 35.7 128 34.6 129.2 34.1 130.1 35.2 131.2 36.6 130.4 38.5 128 40.5 Z"
-            fill="#DCE8F2" opacity="0.9"
-          />
-          {/* 银粒碎钻 */}
-          <g fill="#EDF3F8">
-            <circle cx="112" cy="33" r="1.4" />
-            <circle cx="178" cy="36" r="1.2" />
-            <circle cx="100" cy="62" r="1.3" />
-            <circle cx="55" cy="72" r="1.2" />
+            {/* 中心结：胖圆，压住两环交汇 */}
+            <circle cx="0" cy="-0.5" r="5.8" className="fill-[#AECBE4] dark:fill-[#8FB6D9]" />
+            <circle cx="-1.8" cy="-2.4" r="1.7" fill="#fff" opacity="0.7" />
           </g>
         </g>
       </svg>
