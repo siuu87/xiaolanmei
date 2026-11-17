@@ -7,18 +7,31 @@ import { newId, now } from '../utils/id.js';
 /**
  * 礼物盒路由（2026-10-22 新增）：礼物 CRUD + 拆封态持久化。
  * 礼物由哥哥（AI 伴侣）送出，这里只负责落库与读写；isOpened 记拆封态。
+ * 2026-11-17：只留「实物礼物」——letter/whisper 退役（信在 notes、悄悄话在日记），
+ * 旧数据启动时已迁成 object；这里再兜一层 DTO 映射。
  */
 
-const GIFT_TYPES = ['letter', 'whisper', 'sticker', 'easter', 'flower'] as const;
+const GIFT_TYPES = ['flower', 'object', 'sticker', 'easter'] as const;
 type GiftType = (typeof GIFT_TYPES)[number];
+
+/** 旧类型 → 新类型：letter/whisper 都当小摆件（标题和文字内容原样保留） */
+const LEGACY_TYPE_MAP: Record<string, GiftType> = { letter: 'object', whisper: 'object' };
+
+function normalizeType(raw: unknown): GiftType {
+  if (typeof raw === 'string') {
+    if ((GIFT_TYPES as readonly string[]).includes(raw)) return raw as GiftType;
+    if (LEGACY_TYPE_MAP[raw]) return LEGACY_TYPE_MAP[raw];
+  }
+  return 'flower';
+}
 
 function toDTO(g: typeof gifts.$inferSelect) {
   return {
     id: g.id,
     title: g.title,
     content: g.content ?? '',
-    giftType: (GIFT_TYPES.includes(g.giftType as GiftType) ? g.giftType : 'letter') as GiftType,
-    /** 附加数据：花束礼物是 { bouquet: {...} } 的 JSON 字符串，别的类型是 null */
+    giftType: normalizeType(g.giftType),
+    /** 附加数据：花束礼物是 { bouquet: {...} }、小摆件是 { model: 'star-jar' | ... } 的 JSON 字符串 */
     meta: g.meta ?? null,
     isOpened: g.isOpened ?? false,
     createdAt: g.createdAt,
@@ -52,9 +65,7 @@ export async function giftRoutes(app: FastifyInstance): Promise<void> {
     }
     const id = body.id?.trim() || newId();
     const ts = now();
-    const giftType = GIFT_TYPES.includes(body.giftType as GiftType)
-      ? (body.giftType as GiftType)
-      : 'letter';
+    const giftType = normalizeType(body.giftType);
     db.insert(gifts)
       .values({
         id,
@@ -82,9 +93,7 @@ export async function giftRoutes(app: FastifyInstance): Promise<void> {
     const set: Record<string, unknown> = { updatedAt: now() };
     if (body.title !== undefined) set.title = body.title.trim();
     if (body.content !== undefined) set.content = body.content;
-    if (body.giftType !== undefined && GIFT_TYPES.includes(body.giftType as GiftType)) {
-      set.giftType = body.giftType;
-    }
+    if (body.giftType !== undefined) set.giftType = normalizeType(body.giftType);
     if (body.isOpened !== undefined) set.isOpened = body.isOpened;
     if (body.meta !== undefined) set.meta = body.meta ? String(body.meta).slice(0, 4000) : null;
 

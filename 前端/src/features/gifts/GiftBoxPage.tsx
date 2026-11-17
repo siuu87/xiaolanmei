@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Heart, Mail, Smile, Sparkles, Flower2, Plus, X, type LucideIcon } from 'lucide-react';
+import { Smile, Sparkles, Flower2, Plus, X, Gift as GiftIcon, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/PageShell';
 import { BottomSheet } from '@/components/BottomSheet';
@@ -13,15 +13,15 @@ import {
   type BouquetOrder,
 } from './bouquetModel';
 import { BouquetView } from './BouquetView';
+import { CHARM_PRESETS, CharmView, charmModelOf, type CharmModelId } from './CharmView';
 
 /**
  * 礼物盒（2026-11-13 改版：从冷调玻璃盒改成「暖光的纸盒 + 木架」）
  *
- * 用户：「我希望改的温馨一点，可以送花送什么的，要有渲染的实物」。
- * 所以：
- * - 底色、盒子、缎带全换成暖色纸与木头，不再是一片冷黑玻璃；
- * - 新增 **flower** 礼物：拆开是一束 three.js 渲的低多边形花，能拖着转；
- * - 拆过的礼物摆在一条木架子上，而不是丢进一个网格里。
+ * 2026-11-17 收敛（用户：「只要礼物，比如花束、css的建模，或者是什么别的，
+ * 信件已经有了，悄悄话也可以在日记里」）：
+ * - letter（信）/ whisper（悄悄话）撤出礼物盒（信在信盒、悄悄话在日记）；
+ * - 新增 object（SVG 小摆件：星星罐/月亮夜灯/雪花球/小蛋糕），拆开是建模实物。
  */
 
 const TINT: Record<
@@ -29,8 +29,7 @@ const TINT: Record<
   { label: string; icon: LucideIcon; boxBody: string; boxLid: string; ribbon: string; bowDark: string }
 > = {
   flower: { label: '花束', icon: Flower2, boxBody: '#F3DFC4', boxLid: '#FAEEDA', ribbon: '#B4736E', bowDark: '#96544F' },
-  letter: { label: '信', icon: Mail, boxBody: '#EFDFC3', boxLid: '#F7EDDB', ribbon: '#8A6850', bowDark: '#6E5039' },
-  whisper: { label: '悄悄话', icon: Heart, boxBody: '#F5DBD6', boxLid: '#FBE9E6', ribbon: '#B5656B', bowDark: '#94484F' },
+  object: { label: '小摆件', icon: GiftIcon, boxBody: '#E6DFD3', boxLid: '#F1EBE1', ribbon: '#8A7B66', bowDark: '#6E6252' },
   sticker: { label: '表情', icon: Smile, boxBody: '#F3E3B4', boxLid: '#FAF0CF', ribbon: '#C08A4A', bowDark: '#9C6B33' },
   easter: { label: '彩蛋', icon: Sparkles, boxBody: '#DCE5CE', boxLid: '#EAF0DF', ribbon: '#7D9270', bowDark: '#61755A' },
 };
@@ -198,6 +197,9 @@ function UnboxOverlay({
   onSwap: (presetId: string) => void;
 }) {
   const isFlower = gift.giftType === 'flower';
+  const isCharm = gift.giftType === 'object';
+  const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
+  const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
   const [order, setOrder] = useState<BouquetOrder>(() => resolveOrder(gift));
   const presetId = useMemo(
     () => BOUQUET_PRESETS.find((p) => JSON.stringify(p.order) === JSON.stringify(order))?.id,
@@ -279,6 +281,28 @@ function UnboxOverlay({
             </p>
           </div>
         </>
+      ) : isCharm && charm ? (
+        <div className="mt-4 flex flex-col items-center">
+          <div className="relative w-full max-w-[380px]">
+            {/* 桌上的光：跟花束同款的一圈暖光 */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-12 bottom-3 h-12 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(200,150,100,0.2),transparent_70%)]"
+            />
+            <CharmView model={charm} className="relative h-[42vh] min-h-[260px] w-full" />
+          </div>
+          <p className="mt-1 text-center text-[11px] tracking-[0.2em] text-[#A08A6E] dark:text-[#8C7A64]">
+            {charmName}
+          </p>
+          <h2 className="mt-1 text-center font-letter text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
+            {gift.title}
+          </h2>
+          {gift.content && (
+            <p className="mt-2 whitespace-pre-wrap text-center text-[13px] leading-7 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
+              {gift.content}
+            </p>
+          )}
+        </div>
       ) : (
         <>
           <div className="mt-8 flex flex-col items-center">
@@ -332,6 +356,9 @@ function UnboxOverlay({
 /* ------------------------------------------------------------------ */
 function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void }) {
   const isFlower = gift.giftType === 'flower';
+  const isCharm = gift.giftType === 'object';
+  const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
+  const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
   const order = useMemo(() => resolveOrder(gift), [gift]);
   return (
     <motion.div
@@ -352,6 +379,11 @@ function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void })
         <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[420px]">
           <BouquetView order={order} className="h-[50vh] min-h-[280px] w-full" />
           <p className="text-center text-[11px] tracking-[0.2em] text-[#A08A6E]">{bouquetName(order)}</p>
+        </div>
+      ) : charm ? (
+        <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[380px]">
+          <CharmView model={charm} className="h-[44vh] min-h-[260px] w-full" />
+          <p className="text-center text-[11px] tracking-[0.2em] text-[#A08A6E]">{charmName}</p>
         </div>
       ) : null}
       <div
@@ -448,11 +480,11 @@ export function GiftBoxPage() {
             <button
               type="button"
               onClick={() => setSending(true)}
-              data-testid="gift-send-flower"
+              data-testid="gift-send-open"
               className="flex items-center gap-1 rounded-full bg-[#B4736E]/10 px-2.5 py-1 text-[11px] text-[#A05F5A] transition active:scale-95 dark:bg-[#B4736E]/20 dark:text-[#E0B4B0]"
             >
               <Plus className="h-3 w-3" />
-              送一束花
+              送礼物
             </button>
           </div>
           {unopened.length === 0 ? (
@@ -512,17 +544,18 @@ export function GiftBoxPage() {
         {reading && <GiftReaderLayer key={reading.id} gift={reading} onClose={() => setReading(null)} />}
       </AnimatePresence>
 
-      {/* 送一束花：挑一套预设，直接落成一份未拆礼物 */}
+      {/* 送礼物：花束 / 小摆件两个区，挑中一个直接落成一份未拆礼物 */}
       <BottomSheet
         open={sending}
         onOpenChange={setSending}
-        title="送一束花"
+        title="送礼物"
         testid="gift-send-sheet"
       >
         <div className="px-4 pb-6 pt-1">
           <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
-            挑一束。送出去会先躺在「未拆开的」里，等对方自己拆。
+            挑一件。送出去会先躺在「未拆开的」里，等对方自己拆。
           </p>
+          <p className="mb-1.5 text-[11px] tracking-[0.18em] text-[#A08A6E] dark:text-[#8C7A64]">花束</p>
           <div className="space-y-2">
             {BOUQUET_PRESETS.map((p) => (
               <button
@@ -542,6 +575,34 @@ export function GiftBoxPage() {
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#B4736E]/12">
                   <Flower2 className="h-4 w-4 text-[#B4736E]" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-foreground">{p.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mb-1.5 mt-4 text-[11px] tracking-[0.18em] text-[#A08A6E] dark:text-[#8C7A64]">小摆件</p>
+          <div className="space-y-2">
+            {CHARM_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                data-testid={`gift-send-charm-${p.id}`}
+                onClick={() => {
+                  addGift({
+                    giftType: 'object',
+                    title: p.name,
+                    content: p.desc,
+                    meta: JSON.stringify({ model: p.id }),
+                  });
+                  setSending(false);
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8A7B66]/12">
+                  <CharmView model={p.id as CharmModelId} className="h-8 w-8" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] text-foreground">{p.name}</span>

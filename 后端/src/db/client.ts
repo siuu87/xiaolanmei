@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS gifts (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
-  gift_type TEXT NOT NULL DEFAULT 'letter',
+  gift_type TEXT NOT NULL DEFAULT 'flower',
   meta TEXT,
   is_opened INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
@@ -960,6 +960,13 @@ export function initDatabase(): void {
   if (!giftCols.some((c) => c.name === 'meta')) {
     sqlite.exec(`ALTER TABLE gifts ADD COLUMN meta TEXT`);
   }
+  /**
+   * 幂等迁移（2026-11-17）：礼物只留「实物礼物」——信件去信盒（已有 notes）、
+   * 悄悄话去日记，这两类旧礼物整体转成 object（SVG 小摆件），文字内容原样保留。
+   */
+  sqlite.exec(
+    `UPDATE gifts SET gift_type='object' WHERE gift_type IN ('letter','whisper')`,
+  );
   // 幂等迁移（2026-10-18）：信件（notes）补信封主题列 letter_theme
   const noteCols = sqlite.prepare(`PRAGMA table_info(notes)`).all() as { name: string }[];
   if (!noteCols.some((c) => c.name === 'letter_theme')) {

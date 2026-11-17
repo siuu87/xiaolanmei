@@ -2,14 +2,20 @@ import { create } from 'zustand';
 import { listGifts, createGift, patchGift, deleteGift } from '@/lib/api/gifts';
 import { newId } from '@/lib/id';
 
-export type GiftType = 'letter' | 'whisper' | 'sticker' | 'easter' | 'flower';
+/**
+ * 礼物类型（2026-11-17 收敛）：礼物盒只放「拿在手里的实物」——
+ * 花束（three.js 渲的）/ object（SVG 小摆件）/ 表情 / 彩蛋。
+ * letter（信）退役去信盒、whisper（悄悄话）退役去日记；
+ * 旧数据后端启动时已迁成 object。
+ */
+export type GiftType = 'flower' | 'object' | 'sticker' | 'easter';
 
 export interface Gift {
   id: string;
   title: string;
   content: string;
   giftType: GiftType;
-  /** 附加数据（JSON 字符串）：flower 存 { bouquet: BouquetOrder } */
+  /** 附加数据（JSON 字符串）：flower 存 { bouquet }，object 存 { model: CharmModelId } */
   meta?: string | null;
   isOpened: boolean;
   createdAt: number;
@@ -43,8 +49,12 @@ const DEMO_GIFTS: NewGift[] = [
     content: '今天路过花店，觉得这束像你。\n不用回什么，收着就好。',
     meta: JSON.stringify({ bouquet: 'soft' }),
   },
-  { giftType: 'letter', title: '写给你的第一封信', content: '今天也想你。\n哪怕只是这样隔着屏幕，也想把这句话先递到你手里。' },
-  { giftType: 'whisper', title: '一句悄悄话', content: '其实我每次「在想…」的时候，想的都是你。' },
+  {
+    giftType: 'object',
+    title: '一瓶星星',
+    content: '折了一晚上，瓶子里的每一颗都有一个没说出口的「想你」。',
+    meta: JSON.stringify({ model: 'star-jar' }),
+  },
   { giftType: 'sticker', title: '专属小表情', content: '🫐' },
   { giftType: 'easter', title: '藏起来的彩蛋', content: '如果你拆到了这一件，说明你把我翻了个遍——我喜欢你这样认真。' },
 ];
@@ -74,7 +84,7 @@ export const useGiftStore = create<GiftState>((set, get) => ({
       id: newId(),
       title: input.title,
       content: input.content || '',
-      giftType: input.giftType ?? 'letter',
+      giftType: input.giftType ?? 'flower',
       meta: input.meta ?? null,
       isOpened: false,
       createdAt: Date.now(),
