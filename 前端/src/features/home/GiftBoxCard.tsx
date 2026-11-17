@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 const CENTER = { x: 72, y: 32 };
 
 /** 丝带宽度（十字两条） */
-const RIBBON_W = 14;
+const RIBBON_W = 16;
 
 /** 蝴蝶结落点（=丝带十字交点，同 CENTER） */
 const BOW = CENTER;
@@ -44,17 +44,16 @@ function snowflakePath(cx: number, cy: number, r: number): string {
   return d;
 }
 
-/** 面上的雪花：避开丝带十字与蝴蝶结区域（交点偏左上） */
+/** 面上的雪花：避开丝带十字与蝴蝶结区域（结占住左上角一大片） */
 const SNOWS: Array<{ cx: number; cy: number; r: number; o: number }> = [
-  { cx: 44, cy: 74, r: 6, o: 0.85 },
-  { cx: 96, cy: 76, r: 5, o: 0.75 },
   { cx: 186, cy: 28, r: 6.5, o: 0.85 },
   { cx: 168, cy: 74, r: 9, o: 0.9 },
-  { cx: 30, cy: 50, r: 4.5, o: 0.7 },
-  { cx: 206, cy: 50, r: 4, o: 0.7 },
   { cx: 142, cy: 20, r: 4, o: 0.7 },
-  { cx: 112, cy: 44, r: 4, o: 0.6 },
-  { cx: 22, cy: 20, r: 3.5, o: 0.6 },
+  { cx: 206, cy: 50, r: 4, o: 0.7 },
+  { cx: 132, cy: 56, r: 4.5, o: 0.7 },
+  { cx: 128, cy: 82, r: 4, o: 0.7 },
+  { cx: 112, cy: 16, r: 4, o: 0.65 },
+  { cx: 104, cy: 40, r: 3.5, o: 0.6 },
 ];
 
 export function GiftBoxCard({ className = '' }: { className?: string }) {
@@ -115,7 +114,7 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
             <stop offset="1" style={{ stopColor: 'var(--gb-rib1, #A6C6E0)' }} />
           </linearGradient>
           {/* 蝴蝶结缎面：蓝底明显（照片里结和丝带是一色的蓝），中线一道亮光 */}
-          <linearGradient id="gb-bow" x1="90" y1="30" x2="150" y2="70" gradientUnits="userSpaceOnUse">
+          <linearGradient id="gb-bow" x1="40" y1="12" x2="106" y2="80" gradientUnits="userSpaceOnUse">
             <stop offset="0" style={{ stopColor: 'var(--gb-rib1, #A6C6E0)' }} />
             <stop offset="0.3" style={{ stopColor: 'var(--gb-rib2, #C9DEF0)' }} />
             <stop offset="0.5" style={{ stopColor: 'var(--gb-rib3, #F2F8FD)' }} />
@@ -141,12 +140,12 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
         {/* 珍珠（小圆点带一点偏心高光） */}
         <g>
           {[
-            { cx: 48, cy: 46, r: 2.4 },
-            { cx: 100, cy: 24, r: 2 },
-            { cx: 152, cy: 30, r: 2.2 },
+            { cx: 150, cy: 44, r: 2.4 },
+            { cx: 126, cy: 18, r: 2 },
+            { cx: 152, cy: 84, r: 2.2 },
             { cx: 196, cy: 68, r: 2.4 },
-            { cx: 112, cy: 76, r: 2 },
-            { cx: 66, cy: 80, r: 1.7 },
+            { cx: 118, cy: 60, r: 2 },
+            { cx: 226, cy: 44, r: 1.7 },
             { cx: 210, cy: 22, r: 1.7 },
           ].map((p, i) => (
             <g key={i}>
@@ -167,45 +166,47 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
         <rect x="3" y={ry0} width="234" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
         <rect x="3" y={ry0 + RIBBON_W - 1.2} width="234" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
 
-        {/* ============ 大缎面蝴蝶结：骑在十字交点上（hover 放大歪一下） ============ */}
+        {/* ============ 大缎面蝴蝶结：照照片的大结——四层环 + 两条长飘尾，占住左上角 ============ */}
         <g
-          className="transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110"
+          className="transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105"
           style={{ transformOrigin: `${BOW.x}px ${BOW.y}px`, transformBox: 'view-box' }}
         >
           <g transform={`translate(${BOW.x} ${BOW.y})`}>
-            {/* 两条垂尾：从结上飘下来，斜切口收尾（照片同款） */}
+            {/* 长飘尾 ×2：加宽加长，从结底下飘下来（在环后面），斜切口收尾 */}
             <path
-              d="M-3 3 C-9 11 -15 17 -21 28 L-13.5 24.5 L-9 30 C-6 20 -1.5 12 3 5 Z"
+              d="M-4 4 C-15 14 -24 26 -28 44 L-17 37 L-11 46 C-10 31 -4 18 3 8 Z"
               fill="url(#gb-bow)"
             />
+            <path d="M-4 4 C-13 13 -20 24 -24 38 L-18 33 C-14 24 -8 15 -1 7 Z"
+              style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.3" />
             <path
-              d="M3 4 C7 12 10 19 12 30 L6.5 25.5 L2.5 29.5 C3 20 1.5 12 -1.5 5 Z"
+              d="M4 5 C17 18 27 32 31 56 L20 46 L13 54 C13 37 6 20 -1 7 Z"
               fill="url(#gb-bow)"
-              opacity="0.92"
             />
-            {/* 垂尾内侧一道暗影（分出前后层次） */}
-            <path d="M-3 3 C-8 10 -13.5 16.5 -19 26 L-15.5 24 C-11 16.5 -6.5 10 -1 4.5 Z"
-              style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.35" />
+            <path d="M4 5 C14 15 22 28 27 47 L21 42 C15 30 8 18 0 8 Z"
+              style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.3" />
 
-            {/* 外环 ×2：圆滚滚立起来（不是扁贴纸），缎面渐变 */}
+            {/* 上层大环 ×2：立起来占住两侧（照片的多层环里最大的一对） */}
             <path
-              d="M-4 -1 C-5 -10 -12 -17.5 -21 -15.5 C-30 -13.5 -33 -4 -27 3.5 C-21 10 -8 8.5 -4 -1 Z"
+              d="M-3.5 -3 C-7 -13 -17 -20 -28 -16 C-39 -12 -40 0 -30 5 C-20 9.5 -8 6 -3.5 -1 Z"
               fill="url(#gb-bow)"
             />
             <path
-              d="M4 -1 C5 -10 12 -17.5 21 -15.5 C30 -13.5 33 -4 27 3.5 C21 10 8 8.5 4 -1 Z"
+              d="M3.5 -3 C7 -13 17 -20 28 -16 C39 -12 40 0 30 5 C20 9.5 8 6 3.5 -1 Z"
               fill="url(#gb-bow)"
             />
-            {/* 环根处的柔和暗影（贴着结，分出环和结的层次；不刺不悬空） */}
+            {/* 上环的缎面高光弧（贴环内上缘，短而淡） */}
+            <g fill="none" stroke="#fff" strokeLinecap="round" opacity="0.6">
+              <path d="M-30 -13 C-24 -17 -17 -16.5 -12 -12" strokeWidth="1.5" />
+              <path d="M12 -12 C17 -16.5 24 -17 30 -13" strokeWidth="1.5" />
+            </g>
+
+            {/* 环根处的柔和暗影（贴着结，分层次） */}
             <path d="M-4 0 C-8 3 -14 3.5 -19 1 C-15 5 -8 5.5 -4 2 Z"
               style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.45" />
             <path d="M4 0 C8 3 14 3.5 19 1 C15 5 8 5.5 4 2 Z"
               style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.45" />
-            {/* 环内侧一道软暗褶（层次，不刺） */}
-            <path d="M-9.5 -8 C-6.5 -10 -4 -10.8 -2.2 -10.3 -4 -6.8 -6.8 -5.8 -9.5 -8 Z"
-              style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.4" />
-            <path d="M9.5 -8 C6.5 -10 4 -10.8 2.2 -10.3 4 -6.8 6.8 -5.8 9.5 -8 Z"
-              style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.4" />
+
             {/* 中心结：胖圆，压住所有环 */}
             <circle cx="0" cy="0" r="6.5" fill="url(#gb-bow)" />
             <circle cx="-2.2" cy="-2.6" r="1.9" fill="#fff" opacity="0.8" />
