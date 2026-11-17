@@ -17,8 +17,8 @@ const CENTER = { x: 58, y: 32 };
 /** Twemoji 🎀（viewBox 36×36）里结心的位置（三块路径的公共锚点，手工量的） */
 const EMOJI_KNOT = { x: 17.5, y: 9.5 };
 
-/** emoji 结的缩放：宽约 44px，和细缎带比例协调 */
-const EMOJI_SCALE = 1.35;
+/** emoji 结的缩放：宽约 53px，占住左上角 */
+const EMOJI_SCALE = 1.6;
 
 /** 缎带宽度：细缎带 */
 const RIBBON_W = 9;
