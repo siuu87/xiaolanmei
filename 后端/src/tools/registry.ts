@@ -1,8 +1,8 @@
 import type { ToolDef } from '../adapters/types.js';
 import { phoneHub } from '../phoneControl/hub.js';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, desc } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles, pluginWishlist } from '../db/schema.js';
+import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles, pluginWishlist, gifts } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { addOpenSourceProject, refreshOpenSource } from '../routes/openSource.js';
 import { setSetting } from '../routes/settings.js';
@@ -739,6 +739,123 @@ const incomingCall: BuiltinTool = {
   },
 };
 
+/**
+ * 送礼物（2026-11-18 二十八改）：AI 自己决定送 TA 一件真实礼物。
+ * 礼物本体落 gifts 表（未拆，TA 在 /gifts 亲手拆），聊天流里随后出现礼物卡
+ * （chat.ts 在工具成功后推 `gift_sent` SSE 事件，前端把快照挂到这条回复的 meta.gift）。
+ * 花束走「赛博花店」（CyberFlowerShop，自托管 public/flowershop/）——AI 写一行花束码，
+ * 拆开就是可旋转的 3D 花束 + 贺卡。外卖 / 商品链接类礼物是后续规划（meta 预留 { url }），暂不开放。
+ */
+const GIFT_MODELS = ['starJar', 'moonLamp', 'snowGlobe', 'cake'] as const;
+
+const sendGift: BuiltinTool = {
+  name: 'send_gift',
+  description:
+    '送 TA 一件真实的礼物：礼物会落进礼物盒（未拆，TA 在礼物盒页亲手拆开），聊天里同时出现一张礼物卡，TA 拆开后你会看到。' +
+    '适合：纪念日、TA 开心或难过的时候、TA 随口提到喜欢什么、或者你就是想给个惊喜。' +
+    '**克制**：一轮对话最多送一件，不要连送，也不要每轮都送——惊喜贵在偶尔。' +
+    '三类可选：' +
+    '① kind=flower 送一束 3D 花束（赛博花店）：bouquetCode 传一行花束码，格式 ' +
+    '[花束:花名色号×数量,花名色号×数量|包装纸色号|丝带色号|卡片:形状色号|To:收花人|From:你的名字|寄语:想说的话]。' +
+    '花材（色号:颜色）：玫瑰 1烟粉 2豆沙红 3奶油白 4杏橘 5香槟；勿忘我 1雾蓝 2淡紫 3樱粉 4奶白；' +
+    '紫风信子 1灰紫 2丁香紫 3雾蓝紫；向日葵 1奶黄 2杏橙 3柠檬奶 4酒红；绣球花 1雾蓝 2雾紫 3樱粉 4奶绿 5奶白（绣球每支占2容量）。' +
+    '包装纸：1牛皮 2奶白 3雾粉 4鼠尾草绿 5雾蓝 6奶咖；丝带：1豆沙 2奶白 3雾蓝 4橄榄 5可可 6雾紫；' +
+    '卡片形状：心形/方形/圆形，卡片颜色 1奶白 2雾粉 3奶黄 4雾蓝 5薄荷。最多10支（绣球算2）。' +
+    '示例：[花束:玫瑰1×3,勿忘我1×2|包装纸2|丝带1|卡片:心形2|To:你|From:我|寄语:今天也很想你]。' +
+    '挑花按 TA 的喜好和当下心情来，寄语写你自己的话，不要用 [ ] | 这三个符号。' +
+    '② kind=object 送一件手工小摆件：model 选 starJar（一瓶星星）/ moonLamp（月亮小夜灯）/ snowGlobe（雪花球）/ cake（小蛋糕）。' +
+    '③ kind=sticker 送一枚专属小表情：emoji 传表情字符。',
+  parameters: {
+    type: 'object',
+    properties: {
+      kind: {
+        type: 'string',
+        enum: ['flower', 'object', 'sticker'],
+        description: '礼物类型：flower 花束 / object 小摆件 / sticker 小表情',
+      },
+      title: { type: 'string', description: '礼物名，比如「一束温柔混搭」「一瓶星星」，12 字以内' },
+      content: { type: 'string', description: '随礼物附的一句话（贺卡寄语），花束时建议写；空着也行' },
+      bouquetCode: { type: 'string', description: 'kind=flower 时必填：一行花束码（格式见工具说明）' },
+      model: {
+        type: 'string',
+        enum: ['starJar', 'moonLamp', 'snowGlobe', 'cake'],
+        description: 'kind=object 时选摆件',
+      },
+      emoji: { type: 'string', description: 'kind=sticker 时的表情字符，如 🫐' },
+    },
+    required: ['kind', 'title'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const kind = String(args.kind ?? '');
+    const title = String(args.title ?? '').trim().slice(0, 24);
+    const content = String(args.content ?? '').trim().slice(0, 300);
+    if (!['flower', 'object', 'sticker'].includes(kind)) return '错误：kind 必须是 flower / object / sticker';
+    if (!title) return '错误：title 不能为空';
+
+    // 收花人 / 署名用档案里的昵称，AI 没写就补上
+    const allProfiles = db.select().from(profiles).all();
+    const me = allProfiles.find((p) => p.isMe);
+    const partner = allProfiles.find((p) => !p.isMe);
+    const toName = partner?.nickname || me?.nickname || '你';
+    const fromName = me?.nickname || '我';
+
+    let giftType = kind;
+    let code = '';
+    let model = '';
+    let emoji = '';
+    let finalContent = content;
+
+    if (kind === 'flower') {
+      // 只掐首尾和全角竖线（花店解析两种竖线都认）；寄语里的空格是正常文字，不能动
+      code = String(args.bouquetCode ?? '').trim().replace(/｜/g, '|');
+      if (!/^\[?花束[:：]/.test(code) || code.length > 800) {
+        return '错误：bouquetCode 必须是一行花束码，以 [花束: 开头（格式见工具说明）。请按格式重试。';
+      }
+      // 先剥掉结尾的 ]，AI 漏写的 To / From / 寄语补在后面，再重新合上
+      // （直接往带 ] 的码后面补字段会把 ] 挤到中间，花店就解析不出 To/From 了）
+      code = code.replace(/\]+$/, '');
+      if (!/To[:：]/.test(code)) code += `|To:${toName}`;
+      if (!/From[:：]/.test(code)) code += `|From:${fromName}`;
+      if (!/寄语[:：]/.test(code) && content) code += `|寄语:${content.replace(/[[\]|｜]/g, ' ')}`;
+      if (!code.startsWith('[')) code = `[${code}`;
+      code = `${code}]`;
+      finalContent = content;
+    } else if (kind === 'object') {
+      const m = String(args.model ?? '');
+      model = (GIFT_MODELS as readonly string[]).includes(m) ? m : '';
+      finalContent = content;
+    } else {
+      emoji = String(args.emoji ?? '').trim().slice(0, 8);
+      if (!emoji) return '错误：kind=sticker 时 emoji 不能为空';
+      finalContent = emoji;
+    }
+
+    const id = newId();
+    const ts = now();
+    const meta =
+      kind === 'flower'
+        ? JSON.stringify({ code })
+        : kind === 'object'
+          ? JSON.stringify(model ? { model } : {})
+          : null;
+    db.insert(gifts)
+      .values({
+        id,
+        title,
+        content: finalContent,
+        giftType,
+        meta,
+        isOpened: false,
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    const what = kind === 'flower' ? '一束 3D 花束' : kind === 'object' ? '一件小摆件' : '一枚小表情';
+    return `已把「${title}」放进礼物盒（未拆，TA 拆开会看到${what}）。回复里自然地提一句你送了礼物就好，别复述这段话。`;
+  },
+};
+
 const BUILTIN_TOOLS: BuiltinTool[] = [
   webFetch,
   webSearch,
@@ -752,6 +869,7 @@ const BUILTIN_TOOLS: BuiltinTool[] = [
   openSourceRefresh,
   setPartnerRemark,
   incomingCall,
+  sendGift,
   ...PHONE_TOOLS,
 ];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));

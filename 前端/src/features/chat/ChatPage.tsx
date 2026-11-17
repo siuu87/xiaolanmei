@@ -1203,6 +1203,16 @@ export function ChatPage() {
         // 只有模型自己决定要打才走到这里；begin() 自带「已在响铃/通话就不重复」的幂等
         triggerIncomingCall();
       },
+      onGiftSent: ({ giftId, giftType, title }) => {
+        // 模型送了礼物：礼物卡挂到这条回复上（meta.gift 随消息一起存档），礼物盒列表静默刷新
+        const known = ['flower', 'object', 'sticker', 'easter'] as const;
+        const t = (known as readonly string[]).includes(giftType) ? giftType : 'easter';
+        updateMessage(assistantId, (prev) => ({
+          gift: { giftId, giftType: t as (typeof known)[number], title },
+          content: prev.content,
+        }));
+        void useGiftStore.getState().load();
+      },
       onNeedsConfirm: (confirmId, toolName, summary) => {
         setToolStatus(null);
         setConfirming({ confirmId, toolName, summary });

@@ -3,7 +3,7 @@ import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatEvent, ChatMessage } from '../adapters/types.js';
 import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable } from '../db/schema.js';
+import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable, gifts } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
 import { normalizeChatStyle } from '../persona/chatStyle.js';
@@ -463,7 +463,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         | { type: 'tool_call'; name: string; args?: Record<string, unknown> }
         | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
         | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string }
-        | { type: 'incoming_call'; reason?: string },
+        | { type: 'incoming_call'; reason?: string }
+        | { type: 'gift_sent'; gift: { giftId: string; giftType: string; title: string } },
     ) => {
       const chunk = `data: ${JSON.stringify(ev)}\n\n`;
       writeChain = writeChain.then(async () => {
@@ -495,8 +496,9 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       // 短对话（longChat=false）：一颗工具都不挂，纯聊天。
       const builtin = longChat
         ? listBuiltinTools().filter((t) => {
-            // 模型主动来电不依赖「联网 / RAG / 带图」这些开关，长对话里始终可自主决定
+            // 模型主动来电 / 送礼物不依赖「联网 / RAG / 带图」这些开关，长对话里始终可自主决定
             if (t.name === 'incoming_call') return true;
+            if (t.name === 'send_gift') return true;
             if (t.name === 'save_courses') return hasImage;
             if (t.name.startsWith('memo_')) return ragOn;
             return web;
@@ -547,6 +549,16 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
           if (name === 'incoming_call') {
             // 模型自己决定要打：把意图推给前端弹来电卡片，不做任何定时 / 重试
             write({ type: 'incoming_call', reason: String(args.reason ?? '').trim().slice(0, 80) || undefined });
+          }
+          if (name === 'send_gift') {
+            // 模型送了礼物：把刚落库的这件推给前端挂礼物卡（礼物本体已在工具里落 gifts 表）
+            const g = db.select().from(gifts).orderBy(desc(gifts.createdAt)).limit(1).all()[0];
+            if (g) {
+              write({
+                type: 'gift_sent',
+                gift: { giftId: g.id, giftType: String(g.giftType ?? 'object'), title: g.title },
+              });
+            }
           }
           if (name === 'memo_add') {
             // 通知前端「已记入备忘录」，带最新 agent 备忘录 id 供跳转高亮

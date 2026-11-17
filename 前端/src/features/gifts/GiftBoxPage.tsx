@@ -8,11 +8,9 @@ import { useGiftStore, type Gift } from './giftStore';
 import { patchGift } from '@/lib/api/gifts';
 import {
   BOUQUET_PRESETS,
-  BOUQUET_CATALOG,
-  normalizeOrder,
-  type BouquetOrder,
 } from './bouquetModel';
-import { BouquetView } from './BouquetView';
+import { flowerCodeOf, orderToCode } from './flowerCode';
+import { FlowerShopFrame } from './FlowerShopFrame';
 import { CHARM_PRESETS, CharmView, charmModelOf, type CharmModelId } from './CharmView';
 import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt';
 
@@ -25,33 +23,9 @@ import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt
  * - 新增 object（SVG 小摆件：星星罐/月亮夜灯/雪花球/小蛋糕），拆开是建模实物。
  * 2026-11-18 二十七改：封着礼盒改回**经典方礼盒**（GiftBoxArt.tsx 共用组件），
  * 点开走拆箱动画（盖子抖→飞走、礼物弹簧升起、星星迸开）。
+ * 2026-11-18 二十八改：花束礼物的渲染换成**赛博花店**（自托管 public/flowershop/，
+ * 花束码进 hash，见 flowerCode.ts）——花材/色号目录就是从这家店移植的，无缝接上。
  */
-
-/** meta 里读花束：可以是预设 id，也可以是完整 order；都没有就按 id 稳定挑一个 */
-function resolveOrder(gift: Gift): BouquetOrder {
-  let raw: unknown = null;
-  try {
-    raw = gift.meta ? JSON.parse(gift.meta) : null;
-  } catch {
-    raw = null;
-  }
-  const b = (raw as { bouquet?: unknown } | null)?.bouquet;
-  if (typeof b === 'string') {
-    const hit = BOUQUET_PRESETS.find((p) => p.id === b);
-    if (hit) return hit.order;
-  }
-  if (b && typeof b === 'object') return normalizeOrder(b as BouquetOrder);
-  // 没存：用 id 定一个，保证同一份礼物每次都长一样
-  let h = 0;
-  for (let i = 0; i < gift.id.length; i++) h = (h * 31 + gift.id.charCodeAt(i)) >>> 0;
-  return BOUQUET_PRESETS[h % BOUQUET_PRESETS.length].order;
-}
-
-/** 花束的简称：三种主花的名字拼起来 */
-function bouquetName(o: BouquetOrder): string {
-  const names = o.flowers.map((f) => BOUQUET_CATALOG.flowers[f.type].name);
-  return Array.from(new Set(names)).join(' · ');
-}
 
 /* ------------------------------------------------------------------ */
 /* 封着的礼盒（2026-11-18 二十七改：经典方礼盒——用户「变成方的，变成     */
@@ -153,15 +127,13 @@ function UnboxOverlay({
   const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
   const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
   const meta = TINT[gift.giftType];
-  const [order, setOrder] = useState<BouquetOrder>(() => resolveOrder(gift));
-  const presetId = useMemo(
-    () => BOUQUET_PRESETS.find((p) => JSON.stringify(p.order) === JSON.stringify(order))?.id,
-    [order],
-  );
+  /** 当前展示的花束码：初始取礼物存的（旧格式读取时转码），换一束时重算 */
+  const [code, setCode] = useState(() => flowerCodeOf(gift));
+  const [presetId, setPresetId] = useState<string | null>(null);
 
   /** 盒子里冒出来的实物 */
   const contentNode = isFlower ? (
-    <BouquetView order={order} className="h-[46vh] min-h-[280px] w-full" />
+    <FlowerShopFrame code={code} className="h-[46vh] min-h-[280px] w-full" />
   ) : charm ? (
     <CharmView model={charm} className="h-[44vh] min-h-[260px] w-full" />
   ) : gift.giftType === 'sticker' ? (
@@ -260,12 +232,12 @@ function UnboxOverlay({
         className="mx-auto -mt-2 w-full max-w-[420px]"
       >
         <p className="text-center text-[11px] tracking-[0.2em] text-[#A08A6E] dark:text-[#8C7A64]">
-          {isFlower ? bouquetName(order) : charm ? charmName : meta.label}
+          {charm ? charmName : meta.label}
         </p>
         <h2 className="mt-1 text-center font-letter text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
           {gift.title}
         </h2>
-        {gift.content && gift.giftType !== 'sticker' && (
+        {gift.content && gift.giftType !== 'sticker' && gift.giftType !== 'flower' && (
           <p className="mt-2 whitespace-pre-wrap text-center text-[13px] leading-7 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
             {gift.content}
           </p>
@@ -281,7 +253,8 @@ function UnboxOverlay({
                   type="button"
                   data-testid={`bouquet-preset-${p.id}`}
                   onClick={() => {
-                    setOrder(p.order);
+                    setPresetId(p.id);
+                    setCode(orderToCode(p.order, { to: '你', message: gift.content }));
                     onSwap(p.id);
                   }}
                   className={cn(
@@ -296,7 +269,7 @@ function UnboxOverlay({
               ))}
             </div>
             <p className="mt-2 text-center text-[10px] text-[#A08A6E]/80 dark:text-[#8C7A64]/80">
-              按住花束可以自己转
+              花束可以拖着转，贺卡上的字也在上面
             </p>
           </>
         )}
@@ -322,7 +295,7 @@ function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void })
   const isCharm = gift.giftType === 'object';
   const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
   const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
-  const order = useMemo(() => resolveOrder(gift), [gift]);
+  const code = useMemo(() => flowerCodeOf(gift), [gift]);
   return (
     <motion.div
       data-testid="gift-reader"
@@ -340,8 +313,7 @@ function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void })
       </div>
       {isFlower ? (
         <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[420px]">
-          <BouquetView order={order} className="h-[50vh] min-h-[280px] w-full" />
-          <p className="text-center text-[11px] tracking-[0.2em] text-[#A08A6E]">{bouquetName(order)}</p>
+          <FlowerShopFrame code={code} className="h-[52vh] min-h-[300px] w-full" />
         </div>
       ) : charm ? (
         <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[380px]">
