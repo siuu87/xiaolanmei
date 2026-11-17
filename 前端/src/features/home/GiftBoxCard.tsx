@@ -15,14 +15,14 @@
  */
 import { useNavigate } from 'react-router-dom';
 
-/** 中心点：丝带十字与蝴蝶结的交点 */
-const CENTER = { x: 120, y: 50 };
+/** 丝带十字交点（=蝴蝶结落点）：照照片偏在左上角，结骑在交点上 */
+const CENTER = { x: 72, y: 32 };
 
 /** 丝带宽度（十字两条） */
 const RIBBON_W = 14;
 
-/** 蝴蝶结落点（=交点） */
-const BOW = { x: 120, y: 50 };
+/** 蝴蝶结落点（=丝带十字交点，同 CENTER） */
+const BOW = CENTER;
 
 /** 雪花：六向辐条 + 每根 55% 处两根小枝，返回 stroke 用 path */
 function snowflakePath(cx: number, cy: number, r: number): string {
@@ -44,16 +44,17 @@ function snowflakePath(cx: number, cy: number, r: number): string {
   return d;
 }
 
-/** 面上的雪花：避开丝带十字与蝴蝶结区域 */
+/** 面上的雪花：避开丝带十字与蝴蝶结区域（交点偏左上） */
 const SNOWS: Array<{ cx: number; cy: number; r: number; o: number }> = [
-  { cx: 60, cy: 28, r: 8, o: 0.9 },
-  { cx: 90, cy: 74, r: 6, o: 0.75 },
+  { cx: 44, cy: 74, r: 6, o: 0.85 },
+  { cx: 96, cy: 76, r: 5, o: 0.75 },
   { cx: 186, cy: 28, r: 6.5, o: 0.85 },
   { cx: 168, cy: 74, r: 9, o: 0.9 },
-  { cx: 34, cy: 58, r: 4.5, o: 0.7 },
+  { cx: 30, cy: 50, r: 4.5, o: 0.7 },
   { cx: 206, cy: 50, r: 4, o: 0.7 },
   { cx: 142, cy: 20, r: 4, o: 0.7 },
-  { cx: 78, cy: 44, r: 4, o: 0.6 },
+  { cx: 112, cy: 44, r: 4, o: 0.6 },
+  { cx: 22, cy: 20, r: 3.5, o: 0.6 },
 ];
 
 export function GiftBoxCard({ className = '' }: { className?: string }) {
