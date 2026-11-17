@@ -1,24 +1,27 @@
 /**
- * 礼物盒小卡（2026-11-17 十六改：细缎带 + 端正的立体蝴蝶结）
+ * 礼物盒小卡（2026-11-17 十九改：🎀 emoji 同款蝴蝶结，换色贴上）
  *
  * 接替原来「心情三弧」占的那半格，点一下直接进 `/gifts`（礼物盒页面）。
  *
- * 用户：「细缎带的蝴蝶结」——细缎带（宽 9）配细缎带同款的结：
+ * 用户：「要 emoji 那个蝴蝶结，可以直接换色贴上去」——手画十几种都不对味，直接上
+ * Twemoji 🎀（U+1F380，CC-BY）的矢量路径，造型 1:1，填色换成主题蓝：
  *   - 盒盖：银白缎面（渐变光泽），雪花暗纹 + 珍珠碎钻撒面；
  *   - 缎带：浅蓝**细缎带**一竖一横，交会点在左上角，中线一道亮光；
- *   - 蝴蝶结**端正**趴在交点上（不旋转）：瘦长的立体环（下缘暗影 + 根部凹陷
- *     + 上缘高光）+ 小中心结（绕缠纹）+ 两条窄飘尾（根部亮尖端暗、燕尾剪口）；
+ *   - 蝴蝶结 = Twemoji 三块路径贴在交点上（结心锚定交点）：
+ *     主体 → `--gb-bow1`、暗部折痕 → `--gb-bow0`、中心结 → `--gb-bow3`；
  *   - hover 轻轻放大歪一下。
- * 颜色全部走 CSS 变量（浅色/深色各一套），渐变 stop 引用变量自动换主题。
+ * 颜色全部走 CSS 变量（浅色/深色各一套），自动换主题。
  */
 import { useNavigate } from 'react-router-dom';
 
 /** 缎带十字交点（=蝴蝶结落点）：左上角，偏左 */
 const CENTER = { x: 58, y: 32 };
 
-/** 蝴蝶结方向：细缎带配端正的结（不旋转、不缩放） */
-const BOW_ROTATE = 0;
-const BOW_SCALE = 1;
+/** Twemoji 🎀（viewBox 36×36）里结心的位置（三块路径的公共锚点，手工量的） */
+const EMOJI_KNOT = { x: 17.5, y: 9.5 };
+
+/** emoji 结的缩放：宽约 44px，和细缎带比例协调 */
+const EMOJI_SCALE = 1.35;
 
 /** 缎带宽度：细缎带 */
 const RIBBON_W = 9;
@@ -82,25 +85,6 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
             <stop offset="0.7" style={{ stopColor: 'var(--gb-rib2, #C9DEF0)' }} />
             <stop offset="1" style={{ stopColor: 'var(--gb-rib1, #A6C6E0)' }} />
           </linearGradient>
-          {/* 蝴蝶结缎面：专属的深一档蓝（和大环带分开，参考图里结明显比缎带深） */}
-          <linearGradient id="gb-bow" x1="-26" y1="-14" x2="26" y2="30" gradientUnits="userSpaceOnUse">
-            <stop offset="0" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
-            <stop offset="0.3" style={{ stopColor: 'var(--gb-bow2, #B7D3EA)' }} />
-            <stop offset="0.5" style={{ stopColor: 'var(--gb-bow3, #EAF4FC)' }} />
-            <stop offset="0.7" style={{ stopColor: 'var(--gb-bow2, #B7D3EA)' }} />
-            <stop offset="1" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
-          </linearGradient>
-          {/* 飘尾缎面 ×2：根部亮、尖端暗（垂坠的立体感） */}
-          <linearGradient id="gb-tail-l" x1="-1.5" y1="5" x2="-9.5" y2="36" gradientUnits="userSpaceOnUse">
-            <stop offset="0" style={{ stopColor: 'var(--gb-bow2, #B7D3EA)' }} />
-            <stop offset="0.55" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
-            <stop offset="1" style={{ stopColor: 'var(--gb-bow0, #7AA0C4)' }} />
-          </linearGradient>
-          <linearGradient id="gb-tail-r" x1="1.5" y1="5" x2="9.5" y2="36" gradientUnits="userSpaceOnUse">
-            <stop offset="0" style={{ stopColor: 'var(--gb-bow2, #B7D3EA)' }} />
-            <stop offset="0.55" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
-            <stop offset="1" style={{ stopColor: 'var(--gb-bow0, #7AA0C4)' }} />
-          </linearGradient>
         </defs>
 
         {/* ============ 盒盖：银白缎面圆角矩形占满卡片（俯视） ============ */}
@@ -155,65 +139,27 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
         <rect x="3" y={ry0} width="234" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
         <rect x="3" y={ry0 + RIBBON_W - 1.2} width="234" height="1.2" style={{ fill: 'var(--gb-rib1, #A6C6E0)' }} opacity="0.8" />
 
-        {/* ============ 参考图同款蝴蝶结：趴在十字交点上（hover 轻轻放大歪一下） ============ */}
+        {/* ============ 🎀 emoji 同款蝴蝶结（Twemoji 路径换色），结心锚定交点（hover 轻轻歪一下） ============ */}
         <g
           className="transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
           style={{ transformOrigin: `${CENTER.x}px ${CENTER.y}px`, transformBox: 'view-box' }}
         >
-          <g transform={`translate(${CENTER.x} ${CENTER.y}) rotate(${BOW_ROTATE}) scale(${BOW_SCALE})`}>
-            {/* 往下垂的飘尾 ×2：窄带子从结上垂下去、垂到盒面中下段，燕尾剪口；根部折影 + 尖端渐暗 */}
+          <g transform={`translate(${CENTER.x - EMOJI_KNOT.x * EMOJI_SCALE} ${CENTER.y - EMOJI_KNOT.y * EMOJI_SCALE}) scale(${EMOJI_SCALE})`}>
+            {/* 主体：双环 + 两条垂尾（Twemoji 1f380 第一块路径，#DD2E44 → 中蓝） */}
             <path
-              d="M-3 3.5 C-7 12 -10.5 24 -11.5 40 L-7 33.5 L-3.8 40 C-3 27 -1.2 15.5 1.5 6.5 Z"
-              fill="url(#gb-tail-l)"
+              style={{ fill: 'var(--gb-bow1, #8FB3D4)' }}
+              d="M19.281 6.392c0 .405-2.37.405-2.37 0 0-.9-14.911-9.899-14.911-2.7v13.499c0 2.487 3.476 1.947 7.193.361-1.429 3.525-4.498 9.68-7.05 13.934-.229.382-.178.868.124 1.194.303.325.783.415 1.181.215l5.258-2.629c.441.726.931 1.868 1.376 2.906.333.778.678 1.582 1.024 2.275.144.287.417.488.734.54.053.009.107.013.16.013.263 0 .518-.104.707-.293 1.42-1.419 3.429-8.395 4.793-14.093 1.364 5.698 3.373 12.674 4.793 14.093.188.189.444.293.707.293.053 0 .106-.004.16-.013.317-.052.591-.253.734-.54.347-.693.691-1.497 1.024-2.275.445-1.038.935-2.181 1.376-2.906l5.258 2.629c.398.198.879.111 1.181-.215.303-.326.352-.812.124-1.194-2.735-4.558-6.061-11.296-7.328-14.643C29.652 18.933 34 20.02 34 17.19V3.691c0-7.198-14.719 1.801-14.719 2.701z"
             />
-            <path d="M-3 3.5 C-6 10.5 -9 20.5 -10 33 L-7.2 31 C-6 21 -3.5 12.5 -0.5 6.8 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.3" />
+            {/* 暗部：环内侧折痕（#A0041E → 深蓝） */}
             <path
-              d="M3 3.5 C7 12 10.5 24 11.5 40 L7 33.5 L3.8 40 C3 27 1.2 15.5 -1.5 6.5 Z"
-              fill="url(#gb-tail-r)"
+              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }}
+              d="M2.114 17.869c1.177 3.199 11.468-1.787 14.86-5.179.31-.31.549-.602.758-.885-10.446.252-14.542 3.857-15.618 6.064zm16.482-6.068c.212.285.453.578.765.89 3.6 3.6 14.639 8.999 14.639 4.5v-.209c-1.671-2.199-6.037-5.022-15.404-5.181z"
             />
-            <path d="M3 3.5 C6 10.5 9 20.5 10 33 L7.2 31 C6 21 3.5 12.5 0.5 6.8 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.3" />
-
-            {/* 细缎带环 ×2：瘦长的缎面环 —— 底色 + 下缘暗影 + 根部凹陷 + 上缘高光 */}
+            {/* 中心结（#EA596E → 亮蓝） */}
             <path
-              d="M-3.5 -2.5 C-4.5 -8.5 -9.5 -14 -16.5 -13.8 C-24 -13.5 -27.8 -7.5 -25 -2 C-22.2 3.5 -10.5 4.2 -4.8 1.2 C-3.6 0.4 -3.2 -1 -3.5 -2.5 Z"
-              fill="url(#gb-bow)"
+              style={{ fill: 'var(--gb-bow3, #EAF4FC)' }}
+              d="M22 11.4c0 1.988-1.611 3.6-3.599 3.6h-1.802C14.611 15 13 13.388 13 11.4V7.6C13 5.612 14.611 4 16.599 4h1.802C20.389 4 22 5.612 22 7.6v3.8z"
             />
-            {/* 左环下缘暗影（缎面卷进去的暗部） */}
-            <path d="M-24.5 -1.5 C-21.5 3.2 -11 4.4 -5.5 1.4 C-10 4.6 -20.5 4 -23.2 0.2 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.4" />
-            {/* 左环根部凹陷（缎带折进结里的洞） */}
-            <ellipse cx="-10" cy="0.2" rx="3.2" ry="1.8" style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.4" transform="rotate(-15 -10 0.2)" />
-            <path
-              d="M3.5 -2.5 C4.5 -8.5 9.5 -14 16.5 -13.8 C24 -13.5 27.8 -7.5 25 -2 C22.2 3.5 10.5 4.2 4.8 1.2 C3.6 0.4 3.2 -1 3.5 -2.5 Z"
-              fill="url(#gb-bow)"
-            />
-            {/* 右环下缘暗影 */}
-            <path d="M24.5 -1.5 C21.5 3.2 11 4.4 5.5 1.4 C10 4.6 20.5 4 23.2 0.2 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.4" />
-            {/* 右环根部凹陷 */}
-            <ellipse cx="10" cy="0.2" rx="3.2" ry="1.8" style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.4" transform="rotate(15 10 0.2)" />
-            {/* 环上缘的立体高光（贴着环外上缘的亮面，填充式不悬空） */}
-            <g fill="none" stroke="#fff" strokeLinecap="round" opacity="0.55">
-              <path d="M-21.5 -11.5 C-17 -13.5 -12 -12.5 -8.5 -9.5" strokeWidth="1.6" />
-              <path d="M8.5 -9.5 C12 -12.5 17 -13.5 21.5 -11.5" strokeWidth="1.6" />
-            </g>
-
-            {/* 环根处的柔和暗影（贴着结，分层次） */}
-            <path d="M-3.5 -0.5 C-6 2 -10.5 2.5 -14.5 0.5 C-11 3.8 -6.5 3.8 -3.5 1 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.4" />
-            <path d="M3.5 -0.5 C6 2 10.5 2.5 14.5 0.5 C11 3.8 6.5 3.8 3.5 1 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.4" />
-
-            {/* 中心结：细缎带的收拢小结 —— 底色 + 左右绕缠暗部 + 中线高光 */}
-            <ellipse cx="0" cy="0" rx="4.6" ry="5.2" fill="url(#gb-bow)" />
-            <path d="M-3.4 -4.2 C-4.9 -1.5 -4.9 1.5 -3.4 4.2 C-4.3 1.5 -4.3 -1.5 -3.4 -4.2 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.5" />
-            <path d="M3.4 -4.2 C4.9 -1.5 4.9 1.5 3.4 4.2 C4.3 1.5 4.3 -1.5 3.4 -4.2 Z"
-              style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.5" />
-            <path d="M-0.9 -4.5 C-1.5 -1.5 -1.5 1.5 -0.9 4.5" fill="none" stroke="#fff" strokeWidth="1" opacity="0.55" strokeLinecap="round" />
-            <circle cx="-1.9" cy="-2.3" r="1.2" fill="#fff" opacity="0.8" />
           </g>
         </g>
       </svg>
