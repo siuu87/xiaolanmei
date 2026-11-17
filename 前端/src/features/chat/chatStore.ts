@@ -58,7 +58,7 @@ export interface ChatMessage {
 /** 聊天礼物卡里的礼物引用：礼物本体落 gifts 表（未拆），这里只存展示用的快照 */
 export interface ChatGift {
   giftId: string;
-  giftType: 'flower' | 'object' | 'sticker' | 'easter';
+  giftType: 'flower' | 'object' | 'sticker' | 'easter' | 'keepsake';
   title: string;
 }
 

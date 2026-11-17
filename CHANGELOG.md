@@ -7,7 +7,24 @@
 #
 #
 #
-### 2026-11-18（二十八改）花束接赛博花店 + AI 主动送礼
+#
+### 2026-11-18（二十九改）纪念品礼物：接 companion-keepsakes + AI 可送纪念品
+
+- 用户：「礼物还可以参考这个链接 https://github.com/Elisekaiu/companion-keepsakes」。 
+- **接「纪念品工坊」**（Elisekaiu · MIT，纯静态 3D，全站仅 1.2MB）：自托管到 `前端/public/keepsakes/`；
+  新增 `giftType: keepsake`——小小星球 🪐 / 记忆雪花球 🔮 / 护身符 🧿。礼物 meta 存**纪念品 AI 码**
+  `{ code: 'ai~<recipe>~half=all~…~from=~for=' }`，缺槽位工坊「交给星星」按种子随机补，同码永远同件；
+  `KeepsakeFrame.tsx` iframe 渲 `/keepsakes/index.html?embed=view#<码>`：首次是蜡封礼物页（按住拆开）
+  → 逐项揭晓（标着谁放下的）→ 3D 成品 + 铭牌；再打开直接成品（工坊 localStorage resume，键 ck.v1）。
+- **AI 送纪念品**：send_gift 加 kind=keepsake（recipe + keepsakeCode，工具描述带三类槽位菜单 +
+  示例码；码与 recipe 不一致 / 非 half=all 自动补正或打回）；顺手修正收花人方向（To=用户 From=AI，
+  上轮反了）；成功提示语按类型区分。
+- **面板**：/gifts 与聊天「送份礼物」各加「纪念品」区（三件随手抽，槽位全交给星星）。
+- 实拍 keepsake-01～06：礼盒紫系可辨 / iframe 蜡封到达页 / 拆开揭晓（银河天空+3D星球）/
+  成品（彩虹环纸鹤星球+铭牌）/ 阅读层直接成品 / 送面板纪念品区 / 深色整页；
+  同源 iframe 按钮 CDP 按住 1.2s 拆开成功（按钮先 scrollIntoView 再量坐标）；测试礼物拍完即删。
+
+## 2026-11-18（二十八改）花束接赛博花店 + AI 主动送礼
 
 - 用户：「那个花束我之前不是发你了一个花店的开源软件了吗，然后用这个；一般都是他送我，
   可以是惊喜，花束，建模送我的什么，还有可能是后续链接的外卖和商品」。

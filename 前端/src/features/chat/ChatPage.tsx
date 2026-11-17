@@ -83,8 +83,9 @@ import { BottomSheet } from '@/components/BottomSheet';
 import { useGiftStore, type NewGift } from '@/features/gifts/giftStore';
 import { BOUQUET_PRESETS } from '@/features/gifts/bouquetModel';
 import { CHARM_PRESETS, CharmView } from '@/features/gifts/CharmView';
+import { composeKeepsakeCode, KEEPSAKE_PRESETS, type KeepsakeRecipe } from '@/features/gifts/keepsakeCode';
 import { ClassicBoxArt, TINT } from '@/features/gifts/GiftBoxArt';
-import { Flower2 } from 'lucide-react';
+import { Flower2, Orbit } from 'lucide-react';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
@@ -2562,6 +2563,34 @@ export function ChatPage() {
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8A7B66]/12">
                   <CharmView model={p.id} className="h-8 w-8" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-foreground">{p.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mb-1.5 mt-4 text-[11px] tracking-[0.18em] text-muted-foreground/80">纪念品</p>
+          <div className="space-y-2">
+            {KEEPSAKE_PRESETS.map((p) => (
+              <button
+                key={p.recipe}
+                type="button"
+                data-testid={`chat-gift-keepsake-${p.recipe}`}
+                onClick={() => {
+                  setGiftSheetOpen(false);
+                  void sendGift({
+                    giftType: 'keepsake',
+                    title: p.name,
+                    content: '每个部分都交给星星来决定，拆开才知道它长什么样。',
+                    meta: JSON.stringify({ code: composeKeepsakeCode(p.recipe as KeepsakeRecipe) }),
+                  });
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7C6BA8]/12">
+                  <Orbit className="h-4 w-4 text-[#7C6BA8]" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] text-foreground">{p.name}</span>

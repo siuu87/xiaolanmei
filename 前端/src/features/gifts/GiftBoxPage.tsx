@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Flower2, Plus, X } from 'lucide-react';
+import { Flower2, Orbit, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/PageShell';
 import { BottomSheet } from '@/components/BottomSheet';
@@ -11,6 +11,8 @@ import {
 } from './bouquetModel';
 import { flowerCodeOf, orderToCode } from './flowerCode';
 import { FlowerShopFrame } from './FlowerShopFrame';
+import { keepsakeCodeOf, composeKeepsakeCode, KEEPSAKE_PRESETS, type KeepsakeRecipe } from './keepsakeCode';
+import { KeepsakeFrame } from './KeepsakeFrame';
 import { CHARM_PRESETS, CharmView, charmModelOf, type CharmModelId } from './CharmView';
 import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt';
 
@@ -124,6 +126,8 @@ function UnboxOverlay({
 }) {
   const isFlower = gift.giftType === 'flower';
   const isCharm = gift.giftType === 'object';
+  const isKeepsake = gift.giftType === 'keepsake';
+  const keepCode = isKeepsake ? keepsakeCodeOf(gift) : '';
   const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
   const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
   const meta = TINT[gift.giftType];
@@ -134,6 +138,8 @@ function UnboxOverlay({
   /** 盒子里冒出来的实物 */
   const contentNode = isFlower ? (
     <FlowerShopFrame code={code} className="h-[46vh] min-h-[280px] w-full" />
+  ) : isKeepsake ? (
+    <KeepsakeFrame code={keepCode} className="h-[46vh] min-h-[280px] w-full" />
   ) : charm ? (
     <CharmView model={charm} className="h-[44vh] min-h-[260px] w-full" />
   ) : gift.giftType === 'sticker' ? (
@@ -293,9 +299,11 @@ function UnboxOverlay({
 function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void }) {
   const isFlower = gift.giftType === 'flower';
   const isCharm = gift.giftType === 'object';
+  const isKeepsake = gift.giftType === 'keepsake';
   const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
   const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
   const code = useMemo(() => flowerCodeOf(gift), [gift]);
+  const keepCode = useMemo(() => (isKeepsake ? keepsakeCodeOf(gift) : ''), [gift, isKeepsake]);
   return (
     <motion.div
       data-testid="gift-reader"
@@ -314,6 +322,10 @@ function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void })
       {isFlower ? (
         <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[420px]">
           <FlowerShopFrame code={code} className="h-[52vh] min-h-[300px] w-full" />
+        </div>
+      ) : isKeepsake ? (
+        <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[420px]">
+          <KeepsakeFrame code={keepCode} className="h-[52vh] min-h-[300px] w-full" />
         </div>
       ) : charm ? (
         <div onClick={(e) => e.stopPropagation()} className="mx-auto w-full max-w-[380px]">
@@ -538,6 +550,34 @@ export function GiftBoxPage() {
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8A7B66]/12">
                   <CharmView model={p.id as CharmModelId} className="h-8 w-8" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-foreground">{p.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mb-1.5 mt-4 text-[11px] tracking-[0.18em] text-[#A08A6E] dark:text-[#8C7A64]">纪念品</p>
+          <div className="space-y-2">
+            {KEEPSAKE_PRESETS.map((p) => (
+              <button
+                key={p.recipe}
+                type="button"
+                data-testid={`gift-send-keepsake-${p.recipe}`}
+                onClick={() => {
+                  addGift({
+                    giftType: 'keepsake',
+                    title: p.name,
+                    content: '每个部分都交给星星来决定，拆开才知道它长什么样。',
+                    meta: JSON.stringify({ code: composeKeepsakeCode(p.recipe as KeepsakeRecipe) }),
+                  });
+                  setSending(false);
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7C6BA8]/12">
+                  <Orbit className="h-4 w-4 text-[#7C6BA8]" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[13px] text-foreground">{p.name}</span>

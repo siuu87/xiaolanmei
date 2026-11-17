@@ -764,14 +764,26 @@ const sendGift: BuiltinTool = {
     '示例：[花束:玫瑰1×3,勿忘我1×2|包装纸2|丝带1|卡片:心形2|To:你|From:我|寄语:今天也很想你]。' +
     '挑花按 TA 的喜好和当下心情来，寄语写你自己的话，不要用 [ ] | 这三个符号。' +
     '② kind=object 送一件手工小摆件：model 选 starJar（一瓶星星）/ moonLamp（月亮小夜灯）/ snowGlobe（雪花球）/ cake（小蛋糕）。' +
-    '③ kind=sticker 送一枚专属小表情：emoji 传表情字符。',
+    '③ kind=sticker 送一枚专属小表情：emoji 传表情字符。' +
+    '④ kind=keepsake 送一件纪念品（纪念品工坊）：recipe 选 planet1（小小星球）/ globe1（记忆雪花球）/ talisman1（护身符），' +
+    'keepsakeCode 传一行纪念品码：ai~<recipe>~half=all~<槽位=编号>…~name=<作品名>~from=你的名字~for=这件关于什么。' +
+    '槽位编号——planet1：land 1-11 地面 / water 1-9 水 / growth 1-10 生长 / dwelling 1-11 居所 / wonder 1-11 奇观（第二个写 wonder2）/' +
+    'sky 1-9 天空 / moon 1-9 月亮 / air 1-10 空中 / visitor 1-10 来访者，两句话 line_ground= 与 line_sky=；' +
+    'globe1：place 1-14 地点 / hour 1-8 时刻 / weather 1-11 天气 / base 1-9 底座 / glass 1-6 玻璃 / finish 1-9 装饰 / object 1-17 放进去的东西（第二个 object2），' +
+    '两句话 line_moment= 与 line_keepsake=，for= 关于哪个瞬间；' +
+    'talisman1：silk 1-7 丝袋 / motif 1-6 图案 / cord 1-6 绳 / metal 1-4 金属 / charm 1-9 吊坠 / bead1～bead6 各 1-31（同一串珠表，含十二个月生日石），' +
+    '两句话 line_silk=（祝福）与 line_metal=（承诺）。' +
+    '通用结尾：why=为什么送它 / wish=许的愿 / from=你的名字 / for=这件关于什么。' +
+    '缺的槽位工坊会「交给星星」按种子随机补齐，同一枚码永远渲出同一件；至少写 half=all 和 from。' +
+    '示例：ai~globe1~half=all~for=那天我们错过了末班车~place=4~hour=5~base=1~glass=1~finish=3~object=4~object2=6~name=末班车之后~line_keepsake=谢谢你陪我错过它~from=我。' +
+    '按 TA 最近的状态挑题材和槽位，剩下的交给星星。',
   parameters: {
     type: 'object',
     properties: {
       kind: {
         type: 'string',
-        enum: ['flower', 'object', 'sticker'],
-        description: '礼物类型：flower 花束 / object 小摆件 / sticker 小表情',
+        enum: ['flower', 'object', 'sticker', 'keepsake'],
+        description: '礼物类型：flower 花束 / object 小摆件 / sticker 小表情 / keepsake 纪念品（星球/雪花球/护身符）',
       },
       title: { type: 'string', description: '礼物名，比如「一束温柔混搭」「一瓶星星」，12 字以内' },
       content: { type: 'string', description: '随礼物附的一句话（贺卡寄语），花束时建议写；空着也行' },
@@ -782,6 +794,12 @@ const sendGift: BuiltinTool = {
         description: 'kind=object 时选摆件',
       },
       emoji: { type: 'string', description: 'kind=sticker 时的表情字符，如 🫐' },
+      recipe: {
+        type: 'string',
+        enum: ['planet1', 'globe1', 'talisman1'],
+        description: 'kind=keepsake 时必填：小小星球 planet1 / 记忆雪花球 globe1 / 护身符 talisman1',
+      },
+      keepsakeCode: { type: 'string', description: 'kind=keepsake 时传：一行纪念品码（格式见工具说明；槽位可以只写一部分）' },
     },
     required: ['kind', 'title'],
   },
@@ -790,15 +808,15 @@ const sendGift: BuiltinTool = {
     const kind = String(args.kind ?? '');
     const title = String(args.title ?? '').trim().slice(0, 24);
     const content = String(args.content ?? '').trim().slice(0, 300);
-    if (!['flower', 'object', 'sticker'].includes(kind)) return '错误：kind 必须是 flower / object / sticker';
+    if (!['flower', 'object', 'sticker', 'keepsake'].includes(kind)) return '错误：kind 必须是 flower / object / sticker / keepsake';
     if (!title) return '错误：title 不能为空';
 
-    // 收花人 / 署名用档案里的昵称，AI 没写就补上
+    // 收花人 / 署名：AI 送出，所以收花人是用户（me）、署名是 AI（partner）
     const allProfiles = db.select().from(profiles).all();
     const me = allProfiles.find((p) => p.isMe);
     const partner = allProfiles.find((p) => !p.isMe);
-    const toName = partner?.nickname || me?.nickname || '你';
-    const fromName = me?.nickname || '我';
+    const toName = me?.nickname || '你';
+    const fromName = partner?.nickname || '我';
 
     let giftType = kind;
     let code = '';
@@ -825,6 +843,31 @@ const sendGift: BuiltinTool = {
       const m = String(args.model ?? '');
       model = (GIFT_MODELS as readonly string[]).includes(m) ? m : '';
       finalContent = content;
+    } else if (kind === 'keepsake') {
+      const r = String(args.recipe ?? '');
+      if (!['planet1', 'globe1', 'talisman1'].includes(r)) {
+        return '错误：kind=keepsake 时 recipe 必须是 planet1 / globe1 / talisman1';
+      }
+      // 只掐空白（工坊按 ~ 分字段）；AI 给的码缺开头就替它补上
+      code = String(args.keepsakeCode ?? '').trim().replace(/\s+/g, '');
+      if (code && !/^ai~/i.test(code)) code = `ai~${r}~half=all~${code}`;
+      if (!code) code = `ai~${r}~half=all`;
+      if (!/^ai~(planet1|globe1|talisman1)~/i.test(code) || code.length > 900) {
+        return '错误：keepsakeCode 必须是一行纪念品码，以 ai~<recipe>~half=all~ 开头（格式见工具说明）。请按格式重试。';
+      }
+      // 码里的 recipe 和参数 recipe 不一致 → 让 AI 重发（工坊按码里的 recipe 渲，参数只是说明）
+      const codeRecipe = code.match(/^ai~([^~]+)~/i)?.[1]?.toLowerCase();
+      if (codeRecipe !== r) {
+        return `错误：keepsakeCode 里的纪念品种类（${codeRecipe}）和 recipe 参数（${r}）不一致，请用 recipe 对应的码重发。`;
+      }
+      // 不带 half=all / mode=gift 的码不算「它送我一件」，补上
+      if (!/half=(all|both|whole|gift)/i.test(code) && !/mode=gift/i.test(code)) {
+        code = code.replace(/^ai~[^~]+~/i, (m0) => `${m0}half=all~`);
+      }
+      if (!/(^|~)from=/i.test(code)) code += `~from=${fromName.replace(/[~|[\]]/g, ' ')}`;
+      if (!/(^|~)for=/i.test(code) && content) code += `~for=${content.replace(/[~|[\]]/g, ' ')}`;
+      giftType = 'keepsake';
+      finalContent = content;
     } else {
       emoji = String(args.emoji ?? '').trim().slice(0, 8);
       if (!emoji) return '错误：kind=sticker 时 emoji 不能为空';
@@ -836,9 +879,11 @@ const sendGift: BuiltinTool = {
     const meta =
       kind === 'flower'
         ? JSON.stringify({ code })
-        : kind === 'object'
-          ? JSON.stringify(model ? { model } : {})
-          : null;
+        : kind === 'keepsake'
+          ? JSON.stringify({ code })
+          : kind === 'object'
+            ? JSON.stringify(model ? { model } : {})
+            : null;
     db.insert(gifts)
       .values({
         id,
@@ -851,7 +896,14 @@ const sendGift: BuiltinTool = {
         updatedAt: ts,
       })
       .run();
-    const what = kind === 'flower' ? '一束 3D 花束' : kind === 'object' ? '一件小摆件' : '一枚小表情';
+    const what =
+      kind === 'flower'
+        ? '一束 3D 花束'
+        : kind === 'object'
+          ? '一件小摆件'
+          : kind === 'keepsake'
+            ? '一件纪念品（拆开后按住就能拆开它）'
+            : '一枚小表情';
     return `已把「${title}」放进礼物盒（未拆，TA 拆开会看到${what}）。回复里自然地提一句你送了礼物就好，别复述这段话。`;
   },
 };

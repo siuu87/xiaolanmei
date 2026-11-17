@@ -3,19 +3,20 @@ import { listGifts, createGift, patchGift, deleteGift } from '@/lib/api/gifts';
 import { newId } from '@/lib/id';
 
 /**
- * 礼物类型（2026-11-17 收敛）：礼物盒只放「拿在手里的实物」——
- * 花束（three.js 渲的）/ object（SVG 小摆件）/ 表情 / 彩蛋。
- * letter（信）退役去信盒、whisper（悄悄话）退役去日记；
- * 旧数据后端启动时已迁成 object。
+ * 礼物类型（2026-11-17 收敛；2026-11-18 加纪念品）：礼物盒只放「拿在手里的实物」——
+ * 花束（赛博花店渲的）/ object（SVG 小摆件）/ 表情 / 彩蛋 / keepsake（纪念品工坊的
+ * 小小星球 / 记忆雪花球 / 护身符，AI 或面板送的，meta 存 { code } 花束码同款思路）。
+ * letter（信）退役去信盒、whisper（悄悄话）退役去日记；旧数据后端启动时已迁成 object。
  */
-export type GiftType = 'flower' | 'object' | 'sticker' | 'easter';
+export type GiftType = 'flower' | 'object' | 'sticker' | 'easter' | 'keepsake';
 
 export interface Gift {
   id: string;
   title: string;
   content: string;
   giftType: GiftType;
-  /** 附加数据（JSON 字符串）：flower 存 { bouquet }，object 存 { model: CharmModelId } */
+  /** 附加数据（JSON 字符串）：flower 存 { code }（花束码）/ object 存 { model } /
+   *  keepsake 存 { code }（纪念品 AI 码 ai~recipe~half=all~…） */
   meta?: string | null;
   isOpened: boolean;
   createdAt: number;
