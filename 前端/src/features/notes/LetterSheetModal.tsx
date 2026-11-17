@@ -346,11 +346,18 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
       </motion.div>
 
       {/*
-        还没拆过的信：先给一层「按住往上撕」。撕完才把信纸交出来。
+        还没拆过的信：先给一层「拖住撕条往左一拉」（照界面之外的撕信封教程重做）。
+        撕完才把信纸交出来。
         z-[15] —— 压在信纸(z-10)上面，但让右上角「收起」(z-20) 露在上面，
         不想撕的人可以随时跳过。撕开层不铺满时正好接住整屏点击。
       */}
-      {tearing && note && <TearOpen theme={theme} onDone={() => setTearing(false)} />}
+      {tearing && note && (
+        <TearOpen
+          theme={theme}
+          dateText={formatNoteDate(note.createdAt)}
+          onDone={() => setTearing(false)}
+        />
+      )}
 
       <span
         className="pointer-events-none absolute bottom-5 left-0 right-0 text-center text-[10px]"
