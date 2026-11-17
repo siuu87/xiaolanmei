@@ -24,13 +24,24 @@ import { BouquetView } from './BouquetView';
  * - 拆过的礼物摆在一条木架子上，而不是丢进一个网格里。
  */
 
-const TINT: Record<GiftType, { label: string; icon: LucideIcon; box: string; ribbon: string }> = {
-  flower: { label: '花束', icon: Flower2, box: 'from-[#F6E2C8] to-[#E3BE95]', ribbon: '#B4736E' },
-  letter: { label: '信', icon: Mail, box: 'from-[#F3E6D2] to-[#DCC7A6]', ribbon: '#8A6850' },
-  whisper: { label: '悄悄话', icon: Heart, box: 'from-[#F8DFDC] to-[#E9B7B2]', ribbon: '#B5656B' },
-  sticker: { label: '表情', icon: Smile, box: 'from-[#FAEBC0] to-[#EBD08D]', ribbon: '#C08A4A' },
-  easter: { label: '彩蛋', icon: Sparkles, box: 'from-[#E2EBD8] to-[#C4D4B4]', ribbon: '#7D9270' },
+const TINT: Record<
+  GiftType,
+  { label: string; icon: LucideIcon; boxBody: string; boxLid: string; ribbon: string; bowDark: string }
+> = {
+  flower: { label: '花束', icon: Flower2, boxBody: '#F3DFC4', boxLid: '#FAEEDA', ribbon: '#B4736E', bowDark: '#96544F' },
+  letter: { label: '信', icon: Mail, boxBody: '#EFDFC3', boxLid: '#F7EDDB', ribbon: '#8A6850', bowDark: '#6E5039' },
+  whisper: { label: '悄悄话', icon: Heart, boxBody: '#F5DBD6', boxLid: '#FBE9E6', ribbon: '#B5656B', bowDark: '#94484F' },
+  sticker: { label: '表情', icon: Smile, boxBody: '#F3E3B4', boxLid: '#FAF0CF', ribbon: '#C08A4A', bowDark: '#9C6B33' },
+  easter: { label: '彩蛋', icon: Sparkles, boxBody: '#DCE5CE', boxLid: '#EAF0DF', ribbon: '#7D9270', bowDark: '#61755A' },
 };
+
+/** Twemoji 🎀 的三块路径（和首页礼盒卡同款，U+1F380，CC-BY），按礼物类型换色 */
+const BOW_MAIN =
+  'M19.281 6.392c0 .405-2.37.405-2.37 0 0-.9-14.911-9.899-14.911-2.7v13.499c0 2.487 3.476 1.947 7.193.361-1.429 3.525-4.498 9.68-7.05 13.934-.229.382-.178.868.124 1.194.303.325.783.415 1.181.215l5.258-2.629c.441.726.931 1.868 1.376 2.906.333.778.678 1.582 1.024 2.275.144.287.417.488.734.54.053.009.107.013.16.013.263 0 .518-.104.707-.293 1.42-1.419 3.429-8.395 4.793-14.093 1.364 5.698 3.373 12.674 4.793 14.093.188.189.444.293.707.293.053 0 .106-.004.16-.013.317-.052.591-.253.734-.54.347-.693.691-1.497 1.024-2.275.445-1.038.935-2.181 1.376-2.906l5.258 2.629c.398.198.879.111 1.181-.215.303-.326.352-.812.124-1.194-2.735-4.558-6.061-11.296-7.328-14.643C29.652 18.933 34 20.02 34 17.19V3.691c0-7.198-14.719 1.801-14.719 2.701z';
+const BOW_DARK =
+  'M2.114 17.869c1.177 3.199 11.468-1.787 14.86-5.179.31-.31.549-.602.758-.885-10.446.252-14.542 3.857-15.618 6.064zm16.482-6.068c.212.285.453.578.765.89 3.6 3.6 14.639 8.999 14.639 4.5v-.209c-1.671-2.199-6.037-5.022-15.404-5.181z';
+const BOW_KNOT =
+  'M22 11.4c0 1.988-1.611 3.6-3.599 3.6h-1.802C14.611 15 13 13.388 13 11.4V7.6C13 5.612 14.611 4 16.599 4h1.802C20.389 4 22 5.612 22 7.6v3.8z';
 
 /** meta 里读花束：可以是预设 id，也可以是完整 order；都没有就按 id 稳定挑一个 */
 function resolveOrder(gift: Gift): BouquetOrder {
@@ -65,6 +76,10 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
   const meta = TINT[gift.giftType];
   const Icon = meta.icon;
   const isFlower = gift.giftType === 'flower';
+  /** 🎀 结心锚在盖缝线上方（twemoji 36×36 里结心在 17.5,9.5） */
+  const BOW_S = 1.15;
+  const bowTx = 60 - 17.5 * BOW_S;
+  const bowTy = 10 - 9.5 * BOW_S;
   return (
     <motion.button
       type="button"
@@ -77,77 +92,53 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
       className="group relative flex w-full flex-col items-center gap-1.5"
     >
       <span className="relative block h-[86px] w-full">
-        {/* 花束礼物：盒子后面先探出三支花（茎 + 花头），一眼能看出「这里面是花」 */}
-        {isFlower && (
-          <span aria-hidden className="absolute inset-x-0 top-0 flex justify-center">
-            <svg width="56" height="20" viewBox="0 0 56 20" className="overflow-visible">
-              <g stroke="#9BAE86" strokeWidth="1.1" fill="none" strokeLinecap="round">
-                <path d="M28 20C28 15 22 12 17 9" />
-                <path d="M28 20C28 15 28 12 28 6.5" />
-                <path d="M28 20C28 15 34 12 39 9.5" />
-              </g>
-              {[
-                { x: 17, y: 8, c: '#E8B4B8' },
-                { x: 28, y: 5.5, c: '#BBA9D8' },
-                { x: 39, y: 8.6, c: '#9DB8D8' },
-              ].map((f, i) => (
-                <g key={i} transform={`translate(${f.x} ${f.y})`}>
-                  {[0, 72, 144, 216, 288].map((a) => (
-                    <ellipse
-                      key={a}
-                      cx={Math.cos((a * Math.PI) / 180) * 3}
-                      cy={Math.sin((a * Math.PI) / 180) * 3}
-                      rx="2.8"
-                      ry="2.8"
-                      fill={f.c}
-                    />
-                  ))}
-                  <circle r="1.6" fill="#F6E7C2" />
-                </g>
-              ))}
-            </svg>
-          </span>
-        )}
-
-        {/* 盒身 */}
-        <span
-          className={cn(
-            'absolute inset-x-1 bottom-0 top-[18px] overflow-hidden rounded-[10px] bg-gradient-to-b shadow-[0_6px_12px_-6px_rgba(110,70,40,.35)]',
-            meta.box,
+        <svg viewBox="0 0 120 86" preserveAspectRatio="xMidYMid meet" aria-hidden className="absolute inset-0 h-full w-full overflow-visible">
+          {/* 花束礼物：盒盖后面先探出三支花，一眼能看出「这里面是花」 */}
+          {isFlower && (
+            <g stroke="#9BAE86" strokeWidth="1.1" fill="none" strokeLinecap="round">
+              <path d="M60 18C60 13 54 10 49 7" />
+              <path d="M60 18C60 13 60 10 60 4.5" />
+              <path d="M60 18C60 13 66 10 71 7.5" />
+            </g>
           )}
-        >
-          {/* 盒盖 */}
-          <span className="absolute inset-x-0 top-0 h-[18px] bg-white/25" />
-          {/* 竖缎带 */}
-          <span
-            className="absolute inset-y-0 left-1/2 w-[7px] -translate-x-1/2 opacity-90"
-            style={{ backgroundColor: meta.ribbon }}
-          />
-          {/* 横缎带 */}
-          <span
-            className="absolute inset-x-0 top-[18px] h-[6px] opacity-80"
-            style={{ backgroundColor: meta.ribbon }}
-          />
-          <span className="absolute inset-0 flex items-center justify-center pt-3">
-            <Icon className="h-4 w-4 text-[#6B4A32]/45" />
-          </span>
-        </span>
+          {isFlower &&
+            [
+              { x: 49, y: 6, c: '#E8B4B8' },
+              { x: 60, y: 3.5, c: '#BBA9D8' },
+              { x: 71, y: 6.6, c: '#9DB8D8' },
+            ].map((f, i) => (
+              <g key={i} transform={`translate(${f.x} ${f.y})`}>
+                {[0, 72, 144, 216, 288].map((a) => (
+                  <ellipse
+                    key={a}
+                    cx={Math.cos((a * Math.PI) / 180) * 3}
+                    cy={Math.sin((a * Math.PI) / 180) * 3}
+                    rx="2.8"
+                    ry="2.8"
+                    fill={f.c}
+                  />
+                ))}
+                <circle r="1.6" fill="#F6E7C2" />
+              </g>
+            ))}
 
-        {/* 蝴蝶结 */}
-        <span aria-hidden className="absolute left-1/2 top-[14px] -translate-x-1/2">
-          <span className="relative block h-3 w-6">
-            <span
-              className="absolute left-0 top-0 h-3 w-3 rounded-full"
-              style={{ backgroundColor: meta.ribbon, opacity: 0.92 }}
-            />
-            <span
-              className="absolute right-0 top-0 h-3 w-3 rounded-full"
-              style={{ backgroundColor: meta.ribbon, opacity: 0.92 }}
-            />
-            <span
-              className="absolute left-1/2 top-1 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-white/70"
-            />
-          </span>
+          {/* 🎁 扁平礼盒：盒身 + 盖沿 + 盖缝线（和首页礼盒卡同一画风） */}
+          <rect x="3" y="14" width="114" height="70" rx="4" fill={meta.boxBody} />
+          <path d="M4 0 H116 Q119 0 119 3 V16 H1 V3 Q1 0 4 0 Z" fill={meta.boxLid} />
+          <rect x="1" y="16" width="118" height="1.8" fill="rgba(107,74,50,.18)" />
+          {/* 竖缎带：从盖沿一直垂到盒底 */}
+          <rect x="56.5" y="0" width="7" height="84" fill={meta.ribbon} />
+
+          {/* 🎀 蝴蝶结（Twemoji 路径换色），结心压在盖缝上 */}
+          <g transform={`translate(${bowTx} ${bowTy}) scale(${BOW_S})`}>
+            <path d={BOW_MAIN} fill={meta.ribbon} />
+            <path d={BOW_DARK} fill={meta.bowDark} />
+            <path d={BOW_KNOT} fill="#FFFFFF" opacity="0.85" />
+          </g>
+        </svg>
+        {/* 类型小图标：垂尾下面，淡淡的 */}
+        <span className="absolute inset-x-0 bottom-[8px] flex items-center justify-center">
+          <Icon className="h-4 w-4 text-[#6B4A32]/40" />
         </span>
       </span>
 
@@ -292,14 +283,19 @@ function UnboxOverlay({
         <>
           <div className="mt-8 flex flex-col items-center">
             <span
-              className={cn(
-                'flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-b shadow-[0_10px_24px_-12px_rgba(110,70,40,.5)]',
-                TINT[gift.giftType].box,
-              )}
+              className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[10px] shadow-[0_10px_24px_-12px_rgba(110,70,40,.5)]"
+              style={{ backgroundColor: TINT[gift.giftType].boxBody }}
             >
+              {/* 🎁 同款：顶上一条盖沿 + 盖缝线 */}
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-[26px]"
+                style={{ backgroundColor: TINT[gift.giftType].boxLid }}
+              />
+              <span aria-hidden className="absolute inset-x-0 top-[26px] h-[2px] bg-[rgba(107,74,50,.18)]" />
               {(() => {
                 const Icon = TINT[gift.giftType].icon;
-                return <Icon className="h-8 w-8 text-[#6B4A32]/55" />;
+                return <Icon className="relative h-8 w-8 text-[#6B4A32]/55" />;
               })()}
             </span>
             <p className="mt-4 text-[11px] tracking-[0.22em] text-[#A08A6E]">
