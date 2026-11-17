@@ -14,8 +14,12 @@
  */
 import { useNavigate } from 'react-router-dom';
 
-/** 缎带十字交点（=蝴蝶结落点）：左上角 */
-const CENTER = { x: 72, y: 32 };
+/** 缎带十字交点（=蝴蝶结落点）：左上角，偏左 */
+const CENTER = { x: 58, y: 32 };
+
+/** 蝴蝶结整体：向右转 45°，略缩一档防飘尾出卡片边 */
+const BOW_ROTATE = 45;
+const BOW_SCALE = 0.85;
 
 /** 缎带宽度（十字两条） */
 const RIBBON_W = 16;
@@ -146,7 +150,7 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
           className="transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
           style={{ transformOrigin: `${CENTER.x}px ${CENTER.y}px`, transformBox: 'view-box' }}
         >
-          <g transform={`translate(${CENTER.x} ${CENTER.y})`}>
+          <g transform={`translate(${CENTER.x} ${CENTER.y}) rotate(${BOW_ROTATE}) scale(${BOW_SCALE})`}>
             {/* 宽飘尾 ×2：V 字张开、粗壮流畅，燕尾剪口收尾（参考图同款） */}
             <path
               d="M-4 4 C-15 14 -24 26 -28 44 L-17 37 L-11 46 C-10 31 -4 18 3 8 Z"
