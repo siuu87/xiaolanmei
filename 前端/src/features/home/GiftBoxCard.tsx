@@ -23,8 +23,8 @@ const EMOJI_SCALE = 1.6;
 /** 缎带宽度：细缎带 */
 const RIBBON_W = 9;
 
-/** 盖沿的几何：比盒身左右各宽 2，高 26，顶角圆、底边平（🎁 emoji 的盖子形状） */
-const LID = { x0: 2, x1: 238, y0: 2, h: 26, rx: 12 };
+/** 盖沿的几何：比盒身左右各宽 2，高 26，顶角几乎方（🎁 emoji 的盖子形状） */
+const LID = { x0: 2, x1: 238, y0: 2, h: 26, rx: 4 };
 /** 盖缝线（盖沿底边下的一条深色细线） */
 const LID_SEAM_Y = LID.y0 + LID.h;
 
@@ -76,8 +76,8 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
         </defs>
 
         {/* ============ 🎁 扁平礼盒：纯色盒身 + 盖沿 + 盖缝线 ============ */}
-        {/* 盒身 */}
-        <rect x="4" y="4" width="232" height="92" rx="14" style={{ fill: 'var(--gb-body, #F1F7FB)' }} />
+        {/* 盒身（方正的：小圆角） */}
+        <rect x="4" y="4" width="232" height="92" rx="5" style={{ fill: 'var(--gb-body, #F1F7FB)' }} />
         {/* 盖沿（比盒身宽一点，顶角圆、底边平） */}
         <path d={lidPath} style={{ fill: 'var(--gb-lid, #FFFFFF)' }} />
         {/* 盖缝线（盖沿底边） */}
