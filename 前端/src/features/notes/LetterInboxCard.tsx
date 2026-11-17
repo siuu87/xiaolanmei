@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight, Heart, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShellStore } from '@/stores/shellStore';
 import { useNotesStore } from './notesStore';
-import { dateKey } from './notesData';
+import { dateKey, normalizeLetterTheme } from './notesData';
+import { letterParts } from './LetterArt';
 
 /** 短日期：2026.10.13 */
 function shortDate(ts: number): string {
@@ -24,6 +25,8 @@ function shortDate(ts: number): string {
  * - **点卡片 = 弹出一封信**（固定尺寸信纸弹窗），正文默认也在卡片里全展开。
  * - 换信控件（计数 + ‹ ›）固定在卡片**右下角**，正文区高度写死，
  *   所以它不会随来信长短上下跳；卡片上左右滑也能换信。
+ * - 紧凑版（首页/抽屉半格）2026-11-17 改**真信封**：信封纸打底、实心封盖、
+ *   侧折痕、邮票，火漆位是爱心键 —— 以前只有两根折线，设计稿点名「最不像信」。
  *
  * 手势坑（别删注释）：抽屉的「左滑关闭」在 window 上监听，这里必须打
  * `data-no-drawer-swipe` 把横向手势让给自己；滑动结束浏览器补的 click
@@ -107,6 +110,9 @@ export function LetterInboxCard({
   const seq = notes.length - i;
   const stamp = note ? note.createdAt : Date.now();
 
+  /** 紧凑版要画成**真信封**（2026-11-17 全套信封+撕）：颜色跟当前这封信的主题走 */
+  const parts = letterParts(normalizeLetterTheme(note?.letterTheme));
+
   return (
     <motion.div
       layout
@@ -118,11 +124,15 @@ export function LetterInboxCard({
       onPointerUp={onPointerUp}
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden rounded-[18px] border border-border bg-card p-3.5 text-card-foreground',
+        'relative overflow-hidden rounded-[18px] border p-3.5 text-card-foreground',
         'shadow-[0_8px_24px_-18px_hsl(var(--shadow-color)/0.28)] transition-colors duration-300',
-        'hover:border-primary/30',
         className,
       )}
+      style={
+        compact
+          ? { backgroundColor: parts.envSolid, borderColor: `${parts.flapStroke}66` }
+          : { borderColor: 'hsl(var(--border))' }
+      }
     >
       <span
         aria-hidden
@@ -178,28 +188,51 @@ export function LetterInboxCard({
 
       {compact ? (
         <>
-          {/* 一封信（2026-11-04 用户定：整卡就是信封，**上面什么都不写**）：
-              信封盖线从两上角折向中央铺满全卡，右上角邮票 = 全部来信入口；
-              有新信（今天的、还没看过）才盖旋转邮戳，看过 / 没信不盖。
-              翻信手势保留（左右滑换信），只是不再露出文字。 */}
+          {/* 一封信（2026-11-17 改**真信封**）：信封纸打底（跟这封信主题同色），
+              封盖从两上角实心折下来、盖沿带一道内缝阴影，底角两道侧折痕，
+              右上角一枚邮票。整卡不写字。翻信手势保留（左右滑换信）。
+              火漆位 = 爱心键（全部来信入口），新信时套一圈粉环。 */}
           <svg
             aria-hidden
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
-            className="pointer-events-none absolute inset-0 h-full w-full text-border/70"
+            className="pointer-events-none absolute inset-0 h-full w-full"
           >
+            {/* 封盖：实心 V */}
+            <path d="M0 0 L50 52 L100 0 Z" fill={parts.flapFill} />
             <path
               d="M0 0 L50 52 L100 0"
               fill="none"
-              stroke="currentColor"
+              stroke={parts.flapStroke}
               strokeWidth="1"
               vectorEffect="non-scaling-stroke"
+              opacity="0.85"
+            />
+            {/* 盖沿内缝：盖与身之间那道暗 */}
+            <path d="M0 0 L50 52 L100 0 L100 3.2 L50 55.6 L0 3.2 Z" fill={parts.flapStroke} opacity="0.16" />
+            {/* 底角侧折痕 */}
+            <path
+              d="M0 100 L41 57 M100 100 L59 57"
+              fill="none"
+              stroke={parts.flapStroke}
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+              opacity="0.3"
             />
           </svg>
 
-          {/* 爱心按键（2026-11-04 用户定）：压在信封盖线 V 形交点上（火漆封印位）＝全部来信入口。
-              **有新信（今天的、还没看过）＝实心爱心；看过 / 没信＝空心爱心**。
-              翻信左右滑手势保留（不可见），点卡片 = 弹出这封信。 */}
+          {/* 邮票（装饰）：右上角一小枚 */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-2.5 top-2.5 h-[24px] w-[19px] rounded-[2px]"
+            style={{
+              border: `1px dashed ${parts.flapStroke}99`,
+              backgroundColor: `${parts.paperSolid}66`,
+            }}
+          />
+
+          {/* 爱心按键 = 火漆：压在盖线 V 形交点上，**全部来信入口**。
+              新信（今天的、还没看过）套一圈粉环 + 爱心实心；看过 = 素蜡 + 空心。 */}
           <button
             type="button"
             data-testid="mail-all"
@@ -207,16 +240,19 @@ export function LetterInboxCard({
             onClick={goAll}
             aria-label={dotOn ? '今日有新信，查看全部来信' : '查看全部来信'}
             title="全部来信"
-            className={cn(
-              'absolute left-1/2 top-[52%] flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border shadow-[0_4px_12px_-6px_hsl(var(--shadow-color)/0.4)] transition-colors duration-300',
-              dotOn ? 'border-pink-400/70 bg-pink-400/15' : 'border-border bg-card',
-            )}
+            className="absolute left-1/2 top-[52%] flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-95"
+            style={{
+              backgroundColor: parts.sealBase,
+              boxShadow: dotOn
+                ? '0 0 0 2.5px rgba(244,63,94,0.45), 0 4px 10px -5px rgba(0,0,0,.5)'
+                : '0 4px 10px -5px rgba(0,0,0,.5)',
+            }}
           >
             <Heart
-              className={cn(
-                'h-4 w-4 transition-colors duration-300',
-                dotOn ? 'fill-pink-400 text-pink-400' : 'text-pink-400/60',
-              )}
+              className="h-4 w-4"
+              fill="#FFF6E8"
+              stroke="#FFF6E8"
+              opacity={dotOn ? 1 : 0.72}
             />
           </button>
         </>
