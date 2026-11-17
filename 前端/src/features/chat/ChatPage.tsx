@@ -36,6 +36,7 @@ import {
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
+  Gift,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,12 @@ import { useCallSession, triggerIncomingCall } from './callSession';
 import { callStatusWord, type CallKind } from '@/lib/api/calls';
 import { InAppBrowser } from './InAppBrowser';
 import { resolveSticker } from './stickers';
+import { BottomSheet } from '@/components/BottomSheet';
+import { useGiftStore, type NewGift } from '@/features/gifts/giftStore';
+import { BOUQUET_PRESETS } from '@/features/gifts/bouquetModel';
+import { CHARM_PRESETS, CharmView } from '@/features/gifts/CharmView';
+import { ClassicBoxArt, TINT } from '@/features/gifts/GiftBoxArt';
+import { Flower2 } from 'lucide-react';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
@@ -549,6 +556,47 @@ function CallRecordCard({
 }
 
 /**
+ * 礼物卡（2026-11-18）：聊天里送出的礼物。
+ * 一张小卡：左边一枚经典方礼盒（按礼物类型换色），右边「礼物 · 标题 / 拆开看看 · 时间」。
+ * 点一下进 /gifts 拆。礼物本体在送出时就落进礼物盒（未拆），这里只展示快照。
+ */
+function GiftMessageCard({
+  gift,
+  ts,
+  onClick,
+}: {
+  gift: NonNullable<ChatMessage['gift']>;
+  ts?: number;
+  onClick?: () => void;
+}) {
+  const tint = TINT[gift.giftType] ?? TINT.flower;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      data-testid="gift-message"
+      className="inline-flex min-w-[220px] items-center gap-3 rounded-[20px] bg-chat-ai px-3 py-2.5 text-left shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)] transition active:scale-[0.99]"
+    >
+      <span
+        className="flex h-11 w-14 shrink-0 items-center justify-center rounded-[12px]"
+        style={{ backgroundColor: `${tint.boxBody}` }}
+      >
+        <ClassicBoxArt colors={tint} className="h-9 w-12" />
+      </span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-[14px] font-medium text-chat-ai-fg">礼物 · {gift.title}</span>
+        <span className="truncate text-[12px] text-chat-meta">
+          拆开看看{ts ? ` · ${fmtTime(ts)}` : ''}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
  * 这条消息里「值得存进灵感库」的那段文字，空串 = 不该出现「记进灵感库」这一项。
  *
  * 踩过的坑：通话记录卡的 content 是「（通话 00:00）」这种壳子文案，贴图的 content 是 emoji，
@@ -556,7 +604,7 @@ function CallRecordCard({
  * 所以在菜单层就挡掉，而不是让用户点了再报「这条是空的」。
  */
 function libraryTextOf(m: ChatMessage): string {
-  if (m.call || m.sticker) return '';
+  if (m.call || m.sticker || m.gift) return '';
   const t = m.content.trim();
   if (!t) return '';
   if (/^（(通话|语音|图片|表情|文件|转账)[^）]*）$/.test(t)) return '';
@@ -768,6 +816,8 @@ export function ChatPage() {
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
+  /** 送礼物面板（2026-11-18：聊天里直接赠送，礼物本体落礼物盒、消息流落礼物卡） */
+  const [giftSheetOpen, setGiftSheetOpen] = useState(false);
 
   /** 语音识别（STT）：点麦克风说话，定稿直接发出去。不支持的浏览器点一下走降级提示。 */
   const stt = useSpeechRecognition({
@@ -1375,6 +1425,27 @@ export function ChatPage() {
     await produceReply('[表情包]', userMsg.id, [...base, toPayload(userMsg)]);
   };
 
+  // 在聊天里送礼物（2026-11-18）：礼物本体落礼物盒（未拆等拆），消息流落礼物卡，然后让对方接话
+  const sendGift = async (input: NewGift) => {
+    if (busy) return;
+    const conv = useChatStore.getState().conversation;
+    if (!conv) return;
+    const g = useGiftStore.getState().addGift(input);
+    const text = `[礼物] 送出一份「${input.title}」`;
+    const userMsg: ChatMessage = {
+      id: uid(),
+      role: 'user',
+      content: text,
+      parentId: conv.activeMessageId,
+      status: 'done',
+      gift: { giftId: g.id, giftType: g.giftType, title: g.title },
+      createdAt: Date.now(),
+    };
+    await appendMessage(userMsg);
+    const base = conv.activeMessageId ? pathTo(conv, conv.activeMessageId).map(toPayload) : [];
+    await produceReply(text, userMsg.id, [...base, toPayload(userMsg)]);
+  };
+
   // 重新生成：为该 assistant 建 sibling（同 parentId），旧回复保留。
   const regenerate = async (assistantMsg: ChatMessage) => {
     if (busy || !conversation) return;
@@ -1798,8 +1869,10 @@ export function ChatPage() {
                     above={m.quote ? <QuoteCard label={m.quote.label} /> : null}
                     below={m.inner ? <InnerNote text={m.inner} /> : null}
                   >
-                    {/* 通话记录卡：不是气泡，是一张卡 */}
-                    {m.call ? (
+                    {/* 礼物卡（2026-11-18）：不是气泡，是一张卡，点开去 /gifts 拆 */}
+                    {m.gift ? (
+                      <GiftMessageCard gift={m.gift} ts={m.createdAt} onClick={() => navigate('/gifts')} />
+                    ) : m.call ? (
                       <CallRecordCard
                         call={m.call}
                         ts={m.createdAt}
@@ -2369,8 +2442,7 @@ export function ChatPage() {
           <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
             {attachOpen ? (
               <div className="px-4 pb-3 pt-2">
-                {/* 5 列：严格对齐设计稿（表情包 / 通话 / 图片 / 拍照 / 文件）。
-                    礼物盒入口已删（2026-11-05：只留抽屉「生活小趣味」与 /gifts 路由）。 */}
+                {/* 6 列：表情包 / 通话 / 礼物 / 图片 / 拍照 / 文件 / 语音（礼物 2026-11-18 加回） */}
                 <div className="mx-auto grid w-full max-w-[430px] grid-cols-5 gap-x-2 gap-y-3" data-testid="attach-panel">
                   <AttachButton
                     icon={<Smile className="h-6 w-6" />}
@@ -2388,6 +2460,15 @@ export function ChatPage() {
                     onClick={() => {
                       setAttachOpen(false);
                       startCall('voice');
+                    }}
+                  />
+                  <AttachButton
+                    icon={<Gift className="h-6 w-6" />}
+                    label="礼物"
+                    testid="attach-gift"
+                    onClick={() => {
+                      setAttachOpen(false);
+                      setGiftSheetOpen(true);
                     }}
                   />
                   <AttachButton icon={<Image className="h-6 w-6" />} label="图片" onClick={() => fileRef.current?.click()} />
@@ -2416,6 +2497,71 @@ export function ChatPage() {
           </div>
         </div>
       )}
+
+      {/* 送礼物（2026-11-18）：挑花束 / 小摆件，送出去落进礼物盒（未拆）+ 聊天里一张礼物卡 */}
+      <BottomSheet open={giftSheetOpen} onOpenChange={setGiftSheetOpen} title="送份礼物" testid="chat-gift-sheet">
+        <div className="px-4 pb-6 pt-1">
+          <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
+            送出去会先躺在礼物盒的「未拆开的」里，聊天里也会有一张礼物卡，点开就能拆。
+          </p>
+          <p className="mb-1.5 text-[11px] tracking-[0.18em] text-muted-foreground/80">花束</p>
+          <div className="space-y-2">
+            {BOUQUET_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                data-testid={`chat-gift-${p.id}`}
+                onClick={() => {
+                  setGiftSheetOpen(false);
+                  void sendGift({
+                    giftType: 'flower',
+                    title: p.name,
+                    content: '这一束是照着你的样子挑的。',
+                    meta: JSON.stringify({ bouquet: p.id }),
+                  });
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#B4736E]/12">
+                  <Flower2 className="h-4 w-4 text-[#B4736E]" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-foreground">{p.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mb-1.5 mt-4 text-[11px] tracking-[0.18em] text-muted-foreground/80">小摆件</p>
+          <div className="space-y-2">
+            {CHARM_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                data-testid={`chat-gift-charm-${p.id}`}
+                onClick={() => {
+                  setGiftSheetOpen(false);
+                  void sendGift({
+                    giftType: 'object',
+                    title: p.name,
+                    content: p.desc,
+                    meta: JSON.stringify({ model: p.id }),
+                  });
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8A7B66]/12">
+                  <CharmView model={p.id} className="h-8 w-8" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] text-foreground">{p.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
 
       {/* 微信式全屏搜索（搜索页里能看通话记录；「再打一通」由这里发起） */}
       <SearchOverlay

@@ -34,8 +34,8 @@ interface GiftState {
   load: () => Promise<void>;
   /** 拆开礼物（置 isOpened=true 并落库） */
   openGift: (id: string) => void;
-  /** 哥哥送出一件新礼物（乐观更新 + 写穿后端） */
-  addGift: (input: NewGift) => void;
+  /** 哥哥送出一件新礼物（乐观更新 + 写穿后端），返回落库的那件（聊天赠送要用它的 id） */
+  addGift: (input: NewGift) => Gift;
   /** 把礼物从纪念架撤下（软删） */
   removeGift: (id: string) => void;
   /** 空库时塞几件演示礼物，便于第一次预览（可随时在页内删除） */
@@ -91,6 +91,7 @@ export const useGiftStore = create<GiftState>((set, get) => ({
     };
     set((s) => ({ gifts: [gift, ...s.gifts] }));
     void createGift(gift).catch(() => {});
+    return gift;
   },
 
   removeGift: (id) => {

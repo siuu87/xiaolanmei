@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Smile, Sparkles, Flower2, Plus, X, Gift as GiftIcon, type LucideIcon } from 'lucide-react';
+import { Flower2, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/PageShell';
 import { BottomSheet } from '@/components/BottomSheet';
-import { useGiftStore, type Gift, type GiftType } from './giftStore';
+import { useGiftStore, type Gift } from './giftStore';
 import { patchGift } from '@/lib/api/gifts';
 import {
   BOUQUET_PRESETS,
@@ -14,6 +14,7 @@ import {
 } from './bouquetModel';
 import { BouquetView } from './BouquetView';
 import { CHARM_PRESETS, CharmView, charmModelOf, type CharmModelId } from './CharmView';
+import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt';
 
 /**
  * 礼物盒（2026-11-13 改版：从冷调玻璃盒改成「暖光的纸盒 + 木架」）
@@ -22,25 +23,9 @@ import { CHARM_PRESETS, CharmView, charmModelOf, type CharmModelId } from './Cha
  * 信件已经有了，悄悄话也可以在日记里」）：
  * - letter（信）/ whisper（悄悄话）撤出礼物盒（信在信盒、悄悄话在日记）；
  * - 新增 object（SVG 小摆件：星星罐/月亮夜灯/雪花球/小蛋糕），拆开是建模实物。
+ * 2026-11-18 二十七改：封着礼盒改回**经典方礼盒**（GiftBoxArt.tsx 共用组件），
+ * 点开走拆箱动画（盖子抖→飞走、礼物弹簧升起、星星迸开）。
  */
-
-const TINT: Record<
-  GiftType,
-  { label: string; icon: LucideIcon; boxBody: string; boxLid: string; ribbon: string; bowDark: string }
-> = {
-  flower: { label: '花束', icon: Flower2, boxBody: '#F3DFC4', boxLid: '#FAEEDA', ribbon: '#B4736E', bowDark: '#96544F' },
-  object: { label: '小摆件', icon: GiftIcon, boxBody: '#E6DFD3', boxLid: '#F1EBE1', ribbon: '#8A7B66', bowDark: '#6E6252' },
-  sticker: { label: '表情', icon: Smile, boxBody: '#F3E3B4', boxLid: '#FAF0CF', ribbon: '#C08A4A', bowDark: '#9C6B33' },
-  easter: { label: '彩蛋', icon: Sparkles, boxBody: '#DCE5CE', boxLid: '#EAF0DF', ribbon: '#7D9270', bowDark: '#61755A' },
-};
-
-/** Twemoji 🎀 的三块路径（和首页礼盒卡同款，U+1F380，CC-BY），按礼物类型换色 */
-const BOW_MAIN =
-  'M19.281 6.392c0 .405-2.37.405-2.37 0 0-.9-14.911-9.899-14.911-2.7v13.499c0 2.487 3.476 1.947 7.193.361-1.429 3.525-4.498 9.68-7.05 13.934-.229.382-.178.868.124 1.194.303.325.783.415 1.181.215l5.258-2.629c.441.726.931 1.868 1.376 2.906.333.778.678 1.582 1.024 2.275.144.287.417.488.734.54.053.009.107.013.16.013.263 0 .518-.104.707-.293 1.42-1.419 3.429-8.395 4.793-14.093 1.364 5.698 3.373 12.674 4.793 14.093.188.189.444.293.707.293.053 0 .106-.004.16-.013.317-.052.591-.253.734-.54.347-.693.691-1.497 1.024-2.275.445-1.038.935-2.181 1.376-2.906l5.258 2.629c.398.198.879.111 1.181-.215.303-.326.352-.812.124-1.194-2.735-4.558-6.061-11.296-7.328-14.643C29.652 18.933 34 20.02 34 17.19V3.691c0-7.198-14.719 1.801-14.719 2.701z';
-const BOW_DARK =
-  'M2.114 17.869c1.177 3.199 11.468-1.787 14.86-5.179.31-.31.549-.602.758-.885-10.446.252-14.542 3.857-15.618 6.064zm16.482-6.068c.212.285.453.578.765.89 3.6 3.6 14.639 8.999 14.639 4.5v-.209c-1.671-2.199-6.037-5.022-15.404-5.181z';
-const BOW_KNOT =
-  'M22 11.4c0 1.988-1.611 3.6-3.599 3.6h-1.802C14.611 15 13 13.388 13 11.4V7.6C13 5.612 14.611 4 16.599 4h1.802C20.389 4 22 5.612 22 7.6v3.8z';
 
 /** meta 里读花束：可以是预设 id，也可以是完整 order；都没有就按 id 稳定挑一个 */
 function resolveOrder(gift: Gift): BouquetOrder {
@@ -69,57 +54,12 @@ function bouquetName(o: BouquetOrder): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* 封着的礼盒（2026-11-17 二十五改：统一用「开盖礼盒」——用户从 5 个      */
-/* 样式候选里挑了 ④：盖子斜倚在盒沿，内容物探头，未拆就有惊喜感）          */
-/*   花束 → 三支小花探头；表情 → 自己的 emoji 探头；其余 → 星星碎屑探头   */
+/* 封着的礼盒（2026-11-18 二十七改：经典方礼盒——用户「变成方的，变成     */
+/* 最经典的礼物盒样子」；点开走拆箱动画）                                 */
 /* ------------------------------------------------------------------ */
 function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) {
   const meta = TINT[gift.giftType];
   const Icon = meta.icon;
-  const isFlower = gift.giftType === 'flower';
-  /** 表情礼物：拆开前就让自己的 emoji 从盒口探出头 */
-  const stickerEmoji =
-    gift.giftType === 'sticker' && gift.content && gift.content.length <= 4 ? gift.content : null;
-
-  /** 四角星碎屑（开盖盒的内容物光点） */
-  const sparkle = (cx: number, cy: number, s: number, c: string) => (
-    <path
-      transform={`translate(${cx} ${cy}) scale(${s})`}
-      d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z"
-      fill={c}
-    />
-  );
-
-  /** 花束探头：三支小花从盒口冒出来（cx 是花束中心，默认偏左避开斜倚的盖子） */
-  const flowerPeek = (top: number, cx = 40) => (
-    <g>
-      <g stroke="#9BAE86" strokeWidth="1.1" fill="none" strokeLinecap="round">
-        <path d={`M${cx} ${top + 4}C${cx} ${top - 1} ${cx - 6} ${top - 4} ${cx - 11} ${top - 7}`} />
-        <path d={`M${cx} ${top + 4}C${cx} ${top - 1} ${cx} ${top - 4} ${cx} ${top - 9.5}`} />
-        <path d={`M${cx} ${top + 4}C${cx} ${top - 1} ${cx + 6} ${top - 4} ${cx + 11} ${top - 6.5}`} />
-      </g>
-      {[
-        { x: cx - 11, y: top - 8, c: '#E8B4B8' },
-        { x: cx, y: top - 10.5, c: '#BBA9D8' },
-        { x: cx + 11, y: top - 7.4, c: '#9DB8D8' },
-      ].map((f, i) => (
-        <g key={i} transform={`translate(${f.x} ${f.y})`}>
-          {[0, 72, 144, 216, 288].map((a) => (
-            <ellipse
-              key={a}
-              cx={Math.cos((a * Math.PI) / 180) * 3}
-              cy={Math.sin((a * Math.PI) / 180) * 3}
-              rx="2.8"
-              ry="2.8"
-              fill={f.c}
-            />
-          ))}
-          <circle r="1.6" fill="#F6E7C2" />
-        </g>
-      ))}
-    </g>
-  );
-
   return (
     <motion.button
       type="button"
@@ -132,45 +72,7 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
       className="group relative flex w-full flex-col items-center gap-1.5"
     >
       <span className="relative block h-[86px] w-full">
-        <svg viewBox="0 0 120 86" preserveAspectRatio="xMidYMid meet" aria-hidden className="absolute inset-0 h-full w-full overflow-visible">
-          {/* 盖子：向后翻开，下半截藏在盒子后面（铰接处被盒身挡住，不会像根浮着的棍子） */}
-          <g transform="rotate(-24 96 44)">
-            <rect x="28" y="28" width="88" height="16" rx="3" fill={meta.boxLid} />
-            <rect x="28" y="41" width="88" height="3" fill="rgba(107,74,50,.15)" />
-            <g transform={`translate(${100 - 17.5 * 0.62} ${32 - 9.5 * 0.62}) scale(0.62)`}>
-              <path d={BOW_MAIN} fill={meta.ribbon} />
-              <path d={BOW_DARK} fill={meta.bowDark} />
-              <path d={BOW_KNOT} fill="#FFFFFF" opacity="0.85" />
-            </g>
-          </g>
-          {/* 盒口内侧：看得见盒子里的暗面 */}
-          <rect x="18" y="34" width="84" height="8" rx="2" fill={meta.bowDark} opacity="0.35" />
-          {/* 内容物从盒口冒出来（中左，翻开盖子的另一侧） */}
-          {isFlower ? (
-            flowerPeek(40, 48)
-          ) : stickerEmoji ? (
-            <text x="48" y="46" textAnchor="middle" fontSize="24" role="img">
-              {stickerEmoji}
-            </text>
-          ) : (
-            <g>
-              {sparkle(36, 30, 1.5, '#F2C98A')}
-              {sparkle(54, 24, 1.1, '#E8B4B8')}
-              {sparkle(46, 32, 1.2, '#BBA9D8')}
-              <circle cx="40" cy="34" r="1.8" fill="#FFFFFF" opacity="0.8" />
-              <circle cx="52" cy="31" r="1.5" fill="#FFFFFF" opacity="0.8" />
-            </g>
-          )}
-          {/* 塞在盒口的纸丝（碎纸垫），把内容物的脚埋住 */}
-          <path
-            d="M18 41 Q23 33 28 41 Q33 33 38 41 Q43 33 48 41 Q53 33 58 41 Q63 33 68 41 Q73 33 78 41 Q83 33 88 41 Q93 33 98 41 L98 45 L18 45 Z"
-            fill="#FFF7EA"
-            opacity="0.9"
-          />
-          {/* 盒身前壁 + 正面竖缎带 */}
-          <rect x="18" y="40" width="84" height="44" rx="4" fill={meta.boxBody} />
-          <rect x="54" y="40" width="8" height="44" fill={meta.ribbon} opacity="0.85" />
-        </svg>
+        <ClassicBoxArt colors={meta} className="absolute inset-0 h-full w-full" />
         {/* 类型小图标：右下角，淡淡的 */}
         <span className="absolute bottom-[6px] right-1">
           <Icon className="h-3.5 w-3.5 text-[#6B4A32]/40" />
@@ -221,8 +123,22 @@ function Trinket({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* 拆封层：整屏暖色舞台（纯色不透明），花束在这里渲                       */
+/* 拆封层：整屏暖色舞台（纯色不透明）+ 拆箱动画                          */
+/*   2026-11-18 二十七改（用户「打开礼物要点击礼物盒之后出一个动画」）：   */
+/*   盖子先抖两下 → 整个飞走，礼物弹簧升起、星星迸开，文案随后浮现。       */
+/*   全部走 framer-motion 关键帧，无定时器。                              */
 /* ------------------------------------------------------------------ */
+
+/** 迸开的星星（位置相对舞台） */
+const UNBOX_SPARKS = [
+  { l: '24%', b: '46%', c: '#F2C98A' },
+  { l: '36%', b: '54%', c: '#E8B4B8' },
+  { l: '50%', b: '58%', c: '#F2C98A' },
+  { l: '63%', b: '52%', c: '#BBA9D8' },
+  { l: '74%', b: '44%', c: '#F2C98A' },
+  { l: '44%', b: '36%', c: '#E8B4B8' },
+];
+
 function UnboxOverlay({
   gift,
   onClose,
@@ -236,10 +152,26 @@ function UnboxOverlay({
   const isCharm = gift.giftType === 'object';
   const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
   const charmName = charm ? CHARM_PRESETS.find((p) => p.id === charm)?.name ?? '' : '';
+  const meta = TINT[gift.giftType];
   const [order, setOrder] = useState<BouquetOrder>(() => resolveOrder(gift));
   const presetId = useMemo(
     () => BOUQUET_PRESETS.find((p) => JSON.stringify(p.order) === JSON.stringify(order))?.id,
     [order],
+  );
+
+  /** 盒子里冒出来的实物 */
+  const contentNode = isFlower ? (
+    <BouquetView order={order} className="h-[46vh] min-h-[280px] w-full" />
+  ) : charm ? (
+    <CharmView model={charm} className="h-[44vh] min-h-[260px] w-full" />
+  ) : gift.giftType === 'sticker' ? (
+    <div className="flex h-[36vh] min-h-[220px] items-center justify-center">
+      <span className="text-[88px] leading-none">{gift.content}</span>
+    </div>
+  ) : (
+    <div className="flex h-[36vh] min-h-[220px] items-center justify-center">
+      <meta.icon className="h-[76px] w-[76px]" style={{ color: meta.ribbon }} />
+    </div>
   );
 
   return (
@@ -266,31 +198,82 @@ function UnboxOverlay({
         </button>
       </div>
 
-      {isFlower ? (
-        <>
-          <div className="relative mt-1 mx-auto w-full max-w-[420px]">
-            {/* 桌上的光：花束底下那一圈暖光，让它像真的摆在桌上 */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-6 bottom-6 h-16 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(200,150,100,0.22),transparent_70%)]"
-            />
-            <BouquetView order={order} className="h-[52vh] min-h-[300px] w-full" />
-          </div>
+      {/* ---- 拆箱动画舞台 ---- */}
+      <div className="relative mx-auto mt-1 w-full max-w-[420px]" data-testid="unbox-stage">
+        {/* 桌上的光 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-6 bottom-6 h-16 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(200,150,100,0.22),transparent_70%)]"
+        />
+        {/* 礼物实物：盖子飞走的同时弹簧升起 */}
+        <motion.div
+          className="relative"
+          initial={{ opacity: 0, y: 90, scale: 0.5 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.72, type: 'spring', stiffness: 110, damping: 15 }}
+        >
+          {contentNode}
+        </motion.div>
+        {/* 盒身：抖完之后往下沉、淡出 */}
+        <motion.div
+          className="pointer-events-none absolute left-1/2 -ml-[75px] w-[150px]"
+          style={{ bottom: '6%' }}
+          animate={{ opacity: [1, 1, 0], y: [0, 0, 30] }}
+          transition={{ delay: 0.7, duration: 0.55, times: [0, 0.35, 1], ease: 'easeIn' }}
+        >
+          <ClassicBoxBody colors={meta} className="w-full" />
+        </motion.div>
+        {/* 盖子：先抖两下（rotate 摆），然后整个飞走 */}
+        <motion.div
+          className="pointer-events-none absolute left-1/2 -ml-[75px] w-[150px]"
+          style={{ bottom: 'calc(6% + 97px)' }}
+          animate={{
+            rotate: [0, -3, 3, -2, 0, -9],
+            y: [0, 0, 0, 0, 0, -190],
+            opacity: [1, 1, 1, 1, 1, 0],
+          }}
+          transition={{ duration: 1.15, times: [0, 0.32, 0.48, 0.64, 0.76, 1], ease: 'easeIn' }}
+        >
+          <ClassicBoxLid colors={meta} className="w-full" />
+        </motion.div>
+        {/* 星星迸开 */}
+        {UNBOX_SPARKS.map((s, i) => (
+          <motion.span
+            key={i}
+            aria-hidden
+            className="pointer-events-none absolute text-[15px]"
+            style={{ left: s.l, bottom: s.b, color: s.c }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: [0, 1, 0], scale: [0, 1.3, 0.5], y: [0, -12, -22] }}
+            transition={{ delay: 0.85 + i * 0.05, duration: 0.6, ease: 'easeOut' }}
+          >
+            ✦
+          </motion.span>
+        ))}
+      </div>
 
-          <div className="mx-auto -mt-2 w-full max-w-[420px]">
-            <p className="text-center text-[11px] tracking-[0.2em] text-[#A08A6E] dark:text-[#8C7A64]">
-              {bouquetName(order)}
-            </p>
-            <h2 className="mt-1 text-center font-letter text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
-              {gift.title}
-            </h2>
-            {gift.content && (
-              <p className="mt-2 whitespace-pre-wrap text-center text-[13px] leading-7 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
-                {gift.content}
-              </p>
-            )}
+      {/* ---- 文案：动画结束后浮现 ---- */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.15, duration: 0.35 }}
+        className="mx-auto -mt-2 w-full max-w-[420px]"
+      >
+        <p className="text-center text-[11px] tracking-[0.2em] text-[#A08A6E] dark:text-[#8C7A64]">
+          {isFlower ? bouquetName(order) : charm ? charmName : meta.label}
+        </p>
+        <h2 className="mt-1 text-center font-letter text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
+          {gift.title}
+        </h2>
+        {gift.content && gift.giftType !== 'sticker' && (
+          <p className="mt-2 whitespace-pre-wrap text-center text-[13px] leading-7 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
+            {gift.content}
+          </p>
+        )}
 
-            {/* 换一束：只改这次的预览，不覆盖礼物本身的选择 */}
+        {/* 换一束：只改这次的预览，不覆盖礼物本身的选择 */}
+        {isFlower && (
+          <>
             <div className="mt-4 flex items-center justify-center gap-2">
               {BOUQUET_PRESETS.map((p) => (
                 <button
@@ -315,65 +298,9 @@ function UnboxOverlay({
             <p className="mt-2 text-center text-[10px] text-[#A08A6E]/80 dark:text-[#8C7A64]/80">
               按住花束可以自己转
             </p>
-          </div>
-        </>
-      ) : isCharm && charm ? (
-        <div className="mt-4 flex flex-col items-center">
-          <div className="relative w-full max-w-[380px]">
-            {/* 桌上的光：跟花束同款的一圈暖光 */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-12 bottom-3 h-12 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(200,150,100,0.2),transparent_70%)]"
-            />
-            <CharmView model={charm} className="relative h-[42vh] min-h-[260px] w-full" />
-          </div>
-          <p className="mt-1 text-center text-[11px] tracking-[0.2em] text-[#A08A6E] dark:text-[#8C7A64]">
-            {charmName}
-          </p>
-          <h2 className="mt-1 text-center font-letter text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
-            {gift.title}
-          </h2>
-          {gift.content && (
-            <p className="mt-2 whitespace-pre-wrap text-center text-[13px] leading-7 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
-              {gift.content}
-            </p>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="mt-8 flex flex-col items-center">
-            <span
-              className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[10px] shadow-[0_10px_24px_-12px_rgba(110,70,40,.5)]"
-              style={{ backgroundColor: TINT[gift.giftType].boxBody }}
-            >
-              {/* 🎁 同款：顶上一条盖沿 + 盖缝线 */}
-              <span
-                aria-hidden
-                className="absolute inset-x-0 top-0 h-[26px]"
-                style={{ backgroundColor: TINT[gift.giftType].boxLid }}
-              />
-              <span aria-hidden className="absolute inset-x-0 top-[26px] h-[2px] bg-[rgba(107,74,50,.18)]" />
-              {(() => {
-                const Icon = TINT[gift.giftType].icon;
-                return <Icon className="relative h-8 w-8 text-[#6B4A32]/55" />;
-              })()}
-            </span>
-            <p className="mt-4 text-[11px] tracking-[0.22em] text-[#A08A6E]">
-              {TINT[gift.giftType].label}
-            </p>
-            <h2 className="mt-1 text-center text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
-              {gift.title}
-            </h2>
-            {gift.giftType === 'sticker' ? (
-              <p className="mt-3 text-5xl leading-none">{gift.content}</p>
-            ) : (
-              <p className="mt-3 whitespace-pre-wrap text-center text-[13.5px] leading-8 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
-                {gift.content}
-              </p>
-            )}
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </motion.div>
 
       <button
         type="button"
