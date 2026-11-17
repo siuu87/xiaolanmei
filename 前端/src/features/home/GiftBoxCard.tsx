@@ -91,12 +91,12 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
             <stop offset="1" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
           </linearGradient>
           {/* 飘尾缎面 ×2：根部亮、尖端暗（垂坠的立体感） */}
-          <linearGradient id="gb-tail-l" x1="-2" y1="5" x2="-14" y2="28" gradientUnits="userSpaceOnUse">
+          <linearGradient id="gb-tail-l" x1="-1.5" y1="5" x2="-9.5" y2="36" gradientUnits="userSpaceOnUse">
             <stop offset="0" style={{ stopColor: 'var(--gb-bow2, #B7D3EA)' }} />
             <stop offset="0.55" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
             <stop offset="1" style={{ stopColor: 'var(--gb-bow0, #7AA0C4)' }} />
           </linearGradient>
-          <linearGradient id="gb-tail-r" x1="2" y1="5" x2="14" y2="28" gradientUnits="userSpaceOnUse">
+          <linearGradient id="gb-tail-r" x1="1.5" y1="5" x2="9.5" y2="36" gradientUnits="userSpaceOnUse">
             <stop offset="0" style={{ stopColor: 'var(--gb-bow2, #B7D3EA)' }} />
             <stop offset="0.55" style={{ stopColor: 'var(--gb-bow1, #8FB3D4)' }} />
             <stop offset="1" style={{ stopColor: 'var(--gb-bow0, #7AA0C4)' }} />
@@ -161,18 +161,18 @@ export function GiftBoxCard({ className = '' }: { className?: string }) {
           style={{ transformOrigin: `${CENTER.x}px ${CENTER.y}px`, transformBox: 'view-box' }}
         >
           <g transform={`translate(${CENTER.x} ${CENTER.y}) rotate(${BOW_ROTATE}) scale(${BOW_SCALE})`}>
-            {/* 细飘尾 ×2：窄窄一条 V 字垂下，燕尾剪口；根部折影 + 尖端渐暗（立体） */}
+            {/* 往下垂的飘尾 ×2：窄带子从结上垂下去、垂到盒面中下段，燕尾剪口；根部折影 + 尖端渐暗 */}
             <path
-              d="M-3.5 3.5 C-8.5 10 -13 17 -15.5 29.5 L-10.8 25.8 L-7.2 31 C-6.5 21 -3 12.5 1.8 6.5 Z"
+              d="M-3 3.5 C-7 12 -10.5 24 -11.5 40 L-7 33.5 L-3.8 40 C-3 27 -1.2 15.5 1.5 6.5 Z"
               fill="url(#gb-tail-l)"
             />
-            <path d="M-3.5 3.5 C-7.5 9 -11.5 15.5 -13.8 25 L-10.8 23.5 C-8.5 16.5 -5 10.5 -0.8 6.8 Z"
+            <path d="M-3 3.5 C-6 10.5 -9 20.5 -10 33 L-7.2 31 C-6 21 -3.5 12.5 -0.5 6.8 Z"
               style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.3" />
             <path
-              d="M3.5 3.5 C8.5 10 13 17 15.5 29.5 L10.8 25.8 L7.2 31 C6.5 21 3 12.5 -1.8 6.5 Z"
+              d="M3 3.5 C7 12 10.5 24 11.5 40 L7 33.5 L3.8 40 C3 27 1.2 15.5 -1.5 6.5 Z"
               fill="url(#gb-tail-r)"
             />
-            <path d="M3.5 3.5 C7.5 9 11.5 15.5 13.8 25 L10.8 23.5 C8.5 16.5 5 10.5 0.8 6.8 Z"
+            <path d="M3 3.5 C6 10.5 9 20.5 10 33 L7.2 31 C6 21 3.5 12.5 0.5 6.8 Z"
               style={{ fill: 'var(--gb-bow0, #7AA0C4)' }} opacity="0.3" />
 
             {/* 细缎带环 ×2：瘦长的缎面环 —— 底色 + 下缘暗影 + 根部凹陷 + 上缘高光 */}
