@@ -81,15 +81,6 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
   const stickerEmoji =
     gift.giftType === 'sticker' && gift.content && gift.content.length <= 4 ? gift.content : null;
 
-  /** 🎀 结：cx/cy 是结心落点，s 是缩放（Twemoji 36×36 里结心在 17.5,9.5） */
-  const bow = (cx: number, cy: number, s: number) => (
-    <g transform={`translate(${cx - 17.5 * s} ${cy - 9.5 * s}) scale(${s})`}>
-      <path d={BOW_MAIN} fill={meta.ribbon} />
-      <path d={BOW_DARK} fill={meta.bowDark} />
-      <path d={BOW_KNOT} fill="#FFFFFF" opacity="0.85" />
-    </g>
-  );
-
   /** 四角星碎屑（开盖盒的内容物光点） */
   const sparkle = (cx: number, cy: number, s: number, c: string) => (
     <path
@@ -142,31 +133,43 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
     >
       <span className="relative block h-[86px] w-full">
         <svg viewBox="0 0 120 86" preserveAspectRatio="xMidYMid meet" aria-hidden className="absolute inset-0 h-full w-full overflow-visible">
-          {/* 盒口探头的内容物（先画，下半截被盒身盖住 = 从盒里冒出来；偏左避开斜倚的盖子） */}
+          {/* 盖子：向后翻开，下半截藏在盒子后面（铰接处被盒身挡住，不会像根浮着的棍子） */}
+          <g transform="rotate(-24 96 44)">
+            <rect x="28" y="28" width="88" height="16" rx="3" fill={meta.boxLid} />
+            <rect x="28" y="41" width="88" height="3" fill="rgba(107,74,50,.15)" />
+            <g transform={`translate(${100 - 17.5 * 0.62} ${32 - 9.5 * 0.62}) scale(0.62)`}>
+              <path d={BOW_MAIN} fill={meta.ribbon} />
+              <path d={BOW_DARK} fill={meta.bowDark} />
+              <path d={BOW_KNOT} fill="#FFFFFF" opacity="0.85" />
+            </g>
+          </g>
+          {/* 盒口内侧：看得见盒子里的暗面 */}
+          <rect x="18" y="34" width="84" height="8" rx="2" fill={meta.bowDark} opacity="0.35" />
+          {/* 内容物从盒口冒出来（中左，翻开盖子的另一侧） */}
           {isFlower ? (
-            flowerPeek(38, 38)
+            flowerPeek(40, 48)
           ) : stickerEmoji ? (
-            <text x="40" y="40" textAnchor="middle" fontSize="24" role="img">
+            <text x="48" y="46" textAnchor="middle" fontSize="24" role="img">
               {stickerEmoji}
             </text>
           ) : (
             <g>
-              {sparkle(32, 25, 1.5, '#F2C98A')}
-              {sparkle(48, 19, 1.1, '#E8B4B8')}
-              {sparkle(42, 29, 1.2, '#BBA9D8')}
-              <circle cx="36" cy="33" r="1.8" fill="#FFFFFF" opacity="0.8" />
-              <circle cx="48" cy="30" r="1.5" fill="#FFFFFF" opacity="0.8" />
+              {sparkle(36, 30, 1.5, '#F2C98A')}
+              {sparkle(54, 24, 1.1, '#E8B4B8')}
+              {sparkle(46, 32, 1.2, '#BBA9D8')}
+              <circle cx="40" cy="34" r="1.8" fill="#FFFFFF" opacity="0.8" />
+              <circle cx="52" cy="31" r="1.5" fill="#FFFFFF" opacity="0.8" />
             </g>
           )}
-          {/* 盒身（矮，口是开的） */}
-          <rect x="10" y="36" width="100" height="50" rx="4" fill={meta.boxBody} />
-          <rect x="10" y="36" width="100" height="6" rx="3" fill="rgba(107,74,50,.12)" />
-          {/* 盖子（斜着靠在盒沿） */}
-          <g transform="rotate(-13 100 34)">
-            <rect x="58" y="10" width="80" height="19" rx="4" fill={meta.boxLid} />
-            <rect x="58" y="27" width="80" height="2" fill="rgba(107,74,50,.15)" />
-            {bow(100, 19.5, 0.7)}
-          </g>
+          {/* 塞在盒口的纸丝（碎纸垫），把内容物的脚埋住 */}
+          <path
+            d="M18 41 Q23 33 28 41 Q33 33 38 41 Q43 33 48 41 Q53 33 58 41 Q63 33 68 41 Q73 33 78 41 Q83 33 88 41 Q93 33 98 41 L98 45 L18 45 Z"
+            fill="#FFF7EA"
+            opacity="0.9"
+          />
+          {/* 盒身前壁 + 正面竖缎带 */}
+          <rect x="18" y="40" width="84" height="44" rx="4" fill={meta.boxBody} />
+          <rect x="54" y="40" width="8" height="44" fill={meta.ribbon} opacity="0.85" />
         </svg>
         {/* 类型小图标：右下角，淡淡的 */}
         <span className="absolute bottom-[6px] right-1">
