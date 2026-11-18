@@ -408,6 +408,17 @@ CREATE TABLE IF NOT EXISTS memorials (
   deleted_at INTEGER
 );
 
+-- 心动收藏（三十四改）：聊天长按收进来的句子
+CREATE TABLE IF NOT EXISTS moments (
+  id TEXT PRIMARY KEY,
+  content TEXT NOT NULL,
+  tag TEXT NOT NULL DEFAULT '',
+  pinned INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,

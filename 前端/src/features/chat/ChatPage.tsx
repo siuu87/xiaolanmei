@@ -32,6 +32,7 @@ import {
   Download,
   Quote,
   BookmarkPlus,
+  Heart,
   Radio,
   PhoneIncoming,
   PhoneMissed,
@@ -65,6 +66,7 @@ import { Markdown } from '@/components/Markdown';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CaptionView } from '@/components/VoiceCaption';
 import { useVoiceCaption } from '@/lib/caption/useVoiceCaption';
+import { useMomentsStore } from '@/features/moments/momentsStore';
 import { useSpeechRecognition } from '@/lib/useSpeechRecognition';
 import { SearchOverlay } from './SearchOverlay';
 import { HEALTH_TEXT, useModelHealth } from './modelHealth';
@@ -1090,6 +1092,9 @@ export function ChatPage() {
     flashTimer.current = window.setTimeout(() => setFlash(null), 1800);
   };
 
+  /** 「收进心动」用（三十四改）：写穿 momentsStore（本地乐观 + POST /api/moments） */
+  const addMoment = useMomentsStore((s) => s.addMoment);
+
   /**
    * 长按消息 →「记进灵感库」：把这条消息原样存成一条灵感（标签「聊天」）。
    *
@@ -1114,6 +1119,20 @@ export function ChatPage() {
     } catch {
       showFlash('没存上，稍后再试');
     }
+  };
+
+  /**
+   * 长按消息 →「收进心动」（三十四改）：把这句话收进 /moments 心动收藏。
+   * 与「记进灵感库」并列——灵感库是收纳想法的，心动是专门存「TA 说的好话」的。
+   */
+  const saveToMoments = (text: string) => {
+    const content = text.trim().slice(0, 2000);
+    if (!content) {
+      showFlash('这条是空的，没什么可收');
+      return;
+    }
+    addMoment(content);
+    showFlash('已收进心动');
   };
 
   // 生成回复：本地意图优先 → 模型流式。context 为模型所见线性历史（以 user 结尾）。
@@ -2111,6 +2130,17 @@ export function ChatPage() {
                         onClick={() => {
                           closeMenu();
                           void saveToLibrary(m.content);
+                        }}
+                      />
+                    ) : null}
+                    {/* 「收进心动」（三十四改）：同一套过滤（通话卡/贴图/空消息不给入口） */}
+                    {libraryTextOf(m) ? (
+                      <MenuAction
+                        icon={<Heart className="h-3.5 w-3.5" />}
+                        label="收进心动"
+                        onClick={() => {
+                          closeMenu();
+                          saveToMoments(m.content);
                         }}
                       />
                     ) : null}

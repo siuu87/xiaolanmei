@@ -467,6 +467,21 @@ export const memorials = sqliteTable('memorials', {
 });
 
 /**
+ * 心动收藏（2026-11-18 三十四改，参考小红书「Nid douillet」的 Feel 页）：
+ * 聊天里长按消息「收进心动」存下来的句子，/moments 页按日期分组翻。
+ * tag 预留情绪标签位（sweet / warm 那类），暂不透出 UI，先留空。
+ */
+export const moments = sqliteTable('moments', {
+  id: text('id').primaryKey(),
+  content: text('content').notNull(),
+  tag: text('tag').notNull().default(''),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
  * 灵感便签 / 深夜来信（阶段 7 收尾）：AI 每日一签，created_at 即生成时间戳(ms)。
  *
  * `letterTheme` = 信封主题（`default` 极简素雅 | `memorial` 纪念日 | `night` 深色磨砂星空），

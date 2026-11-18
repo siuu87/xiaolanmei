@@ -11,6 +11,7 @@ import { LifeCard } from './LifeCard';
 import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
 import { useNotesStore } from '@/features/notes/notesStore';
 import { loveDays, LOVE_START } from '@/features/shell/loveDays';
+import { MemorialRings } from './MemorialRings';
 
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -113,7 +114,10 @@ export function HomePage() {
           )}
         </header>
 
-        <div className="relative space-y-4">
+        {/* 纪念日圆环倒数排（三十四改）：今天反色高亮、快到的排前面，点进 /memorial */}
+        <MemorialRings />
+
+        <div className="relative mt-4 space-y-4">
           {/* DAILY：日历卡（全宽，选中日详情在左栏切换） */}
           <section>
             <div className="mb-2 flex items-center gap-2">

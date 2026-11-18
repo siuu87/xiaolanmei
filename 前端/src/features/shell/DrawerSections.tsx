@@ -197,6 +197,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     entries: [
       { to: '/food', label: '今天吃什么', icon: Utensils },
       { to: '/wishlist', label: '灵感库', icon: Lightbulb },
+      { to: '/moments', label: '心动收藏', hint: '聊天里收进来的句子', icon: Heart },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
       { to: '/gifts', label: '礼物盒', icon: Gift },

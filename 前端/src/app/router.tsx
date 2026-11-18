@@ -21,6 +21,7 @@ import { NotesPage } from '@/features/notes/NotesPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { MemoHomePage } from '@/features/memo/MemoHomePage';
 import { GiftBoxPage } from '@/features/gifts/GiftBoxPage';
+import { MomentsPage } from '@/features/moments/MomentsPage';
 import { MePage } from '@/features/me/MePage';
 import { GamesPage } from '@/features/games/GamesPage';
 import { GameEntry } from '@/features/games/GameEntry';
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       { path: 'gallery', element: <GalleryPage /> },
       { path: 'memorial', element: <MemorialPage /> },
       { path: 'wishlist', element: <WishlistPage /> },
+      { path: 'moments', element: <MomentsPage /> },
       { path: 'notes', element: <NotesPage /> },
       // 一封来信的独立阅读页：内容由 AppLayout 叠在侧边栏之上（这里渲染空）
       { path: 'letter/:id', element: <Noop /> },
