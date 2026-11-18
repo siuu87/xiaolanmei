@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Flower2, Orbit, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,8 @@ import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt
  * 2026-11-18 二十八改：花束礼物的渲染换成**赛博花店**（自托管 public/flowershop/，
  * 花束码进 hash，见 flowerCode.ts）——花材/色号目录就是从这家店移植的，无缝接上。
  * 2026-11-18 三十改：表情（sticker）退役（用户「不要表情」），旧数据后端迁成 easter。
+ * 2026-11-18 三十一改：纪念架改成**实物陈列**——小摆件 / 花束 / 纪念品直接摆实物，
+ * 点一下进阅读层看大图；iframe 进视口才挂载。
  */
 
 /* ------------------------------------------------------------------ */
@@ -64,35 +66,87 @@ function SealedBox({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
 }
 
 /* ------------------------------------------------------------------ */
-/* 木架上的摆件                                                        */
+/* 纪念架（2026-11-18 三十一改，用户「架子就是展示样子，我想直接看到     */
+/* 实物」）：不再摆圆牌图标，直接把实物摆上架子——                        */
+/*   小摆件 = CharmView SVG；花束 / 纪念品 = 对应 iframe 实物渲染        */
+/*   （进视口才挂载省性能，pointer-events 关掉：架子只展示，点一下       */
+/*   进阅读层看大图、拖转）；彩蛋没有实体建模，用大号类型图标。           */
 /* ------------------------------------------------------------------ */
-function Trinket({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) {
+
+/** 进视口才返回 seen=true（只触发一次，回滚不卸载） */
+function useInViewport<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || seen) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setSeen(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setSeen(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '240px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [seen]);
+  return [ref, seen] as const;
+}
+
+function ShelfItem({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) {
   const meta = TINT[gift.giftType];
+  const isFlower = gift.giftType === 'flower';
+  const isKeepsake = gift.giftType === 'keepsake';
+  const isCharm = gift.giftType === 'object';
+  const charm = isCharm ? charmModelOf(gift.id, gift.meta) : null;
+  const code = useMemo(() => flowerCodeOf(gift), [gift]);
+  const keepCode = useMemo(() => (isKeepsake ? keepsakeCodeOf(gift) : ''), [gift, isKeepsake]);
+  const [stageRef, seen] = useInViewport<HTMLSpanElement>();
   const Icon = meta.icon;
   return (
     <motion.button
       type="button"
-      data-testid="gift-trinket"
+      data-testid="gift-shelf-item"
       data-gift-type={gift.giftType}
       onClick={() => onOpen(gift)}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-      className="flex w-full flex-col items-center gap-1.5">
-      {/* 影子：让摆件像「放在」木架上，而不是浮在木架前 */}
-      <span aria-hidden className="relative block h-11 w-11">
-        <span
-          className="absolute inset-x-1.5 -bottom-1 h-2 rounded-[50%] bg-[#B08C63]/25 blur-[2px] dark:bg-black/40"
-        />
-        <span
-          className="relative flex h-11 w-11 items-center justify-center rounded-full border bg-white/80 shadow-[0_3px_8px_-4px_rgba(110,70,40,.45)] dark:bg-white/10"
-          style={{ borderColor: `${meta.ribbon}30` }}
-        >
-          <Icon className="h-4 w-4" style={{ color: meta.ribbon }} />
-        </span>
+      className="flex w-full flex-col items-center gap-1.5"
+    >
+      {/* 实物陈列位 */}
+      <span
+        ref={stageRef}
+        className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[14px] bg-white/50 shadow-[0_4px_10px_-6px_rgba(110,70,40,.4)] dark:bg-white/5"
+      >
+        {isFlower ? (
+          seen ? (
+            /* chromeless：注入 CSS 藏掉花店顶栏/提示字，只留 3D 花束本体；进阅读层可拖转 */
+            <FlowerShopFrame code={code} chromeless className="pointer-events-none h-32 w-full" />
+          ) : (
+            <Flower2 className="h-6 w-6 animate-pulse text-[#B4736E]/50" />
+          )
+        ) : isKeepsake ? (
+          seen ? (
+            /* 工坊按 localStorage resume：用户在阅读层拆过之后，架上直接是 3D 成品 */
+            <KeepsakeFrame code={keepCode} className="pointer-events-none h-32 w-full" />
+          ) : (
+            <Icon className="h-6 w-6 animate-pulse text-[#7C6BA8]/50" />
+          )
+        ) : isCharm && charm ? (
+          <CharmView model={charm} className="h-24 w-24" />
+        ) : (
+          <Icon className="h-12 w-12" style={{ color: meta.ribbon }} />
+        )}
       </span>
-      <span className="line-clamp-1 w-full text-center text-[10.5px] text-[#6B5340] dark:text-[#D9C6AE]">
+      <span className="line-clamp-1 w-full text-center text-[11px] text-[#6B5340] dark:text-[#D9C6AE]">
         {gift.title}
       </span>
     </motion.button>
@@ -454,11 +508,11 @@ export function GiftBoxPage() {
             </div>
           ) : (
             <div className="rounded-[14px] bg-gradient-to-b from-[#F3E3CC] to-[#E6CFAF] px-3 pb-2.5 pt-3 shadow-[0_10px_22px_-16px_rgba(110,70,40,.55)] dark:from-[#2A221A] dark:to-[#1F1913]">
-              <div className="grid grid-cols-4 gap-x-2 gap-y-3">
-                {opened.map((g) => (
-                  <Trinket key={g.id} gift={g} onOpen={handleOpen} />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+              {opened.map((g) => (
+                <ShelfItem key={g.id} gift={g} onOpen={handleOpen} />
+              ))}
+            </div>
               {/* 板面：木头的一条亮边 */}
               <div className="mt-2 h-1.5 rounded-full bg-[#C9A87C] shadow-[inset_0_1px_0_rgba(255,255,255,.5)] dark:bg-[#3A2F25]" />
             </div>

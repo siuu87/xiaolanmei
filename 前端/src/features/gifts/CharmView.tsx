@@ -262,7 +262,11 @@ const MODELS: Record<CharmModelId, (p: { uid: string }) => ReactElement> = {
 export function charmModelOf(id: string, meta?: string | null): CharmModelId {
   try {
     const m = (JSON.parse(meta ?? 'null') as { model?: unknown } | null)?.model;
-    if (typeof m === 'string' && m in MODELS) return m as CharmModelId;
+    if (typeof m === 'string') {
+      // 后端 / AI 存的是 camelCase（starJar），组件里是 kebab-case（star-jar）——两种写法都认
+      const key = m.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+      if (key in MODELS) return key as CharmModelId;
+    }
   } catch {
     /* meta 坏了就走 hash */
   }

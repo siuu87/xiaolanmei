@@ -8,6 +8,18 @@
 #
 #
 #
+### 2026-11-18（三十一改）纪念架实物陈列
+
+- 用户：「礼物的架子能不能就是展示样子，不要这样，我想直接看到实物」。
+- **纪念架改实物陈列**（GiftBoxPage ShelfItem 取代 Trinket 圆牌图标）：小摆件直接摆 CharmView
+  SVG 实物；花束直接嵌花店 iframe（新增 chromeless 模式——同源注入 CSS 藏掉花店顶栏 / 提示文字，
+  只留 3D 花束本体）；纪念品直接嵌工坊 iframe（工坊按 localStorage resume，用户拆过后架上直接
+  3D 成品）；彩蛋无实体建模保留大号图标。格子 4 列圆牌改 2 列实物陈列位，pointer-events 关掉：
+  架子只展示，点一下进阅读层看大图拖转。iframe 进视口才挂载（IntersectionObserver，省性能）。
+- **顺手修老 bug**（CharmView.charmModelOf）：AI / 后端存的小摆件 model 是 camelCase（starJar），
+  组件只认 kebab-case（star-jar），之前一直走 hash 随机——「一瓶星星」可能渲成蛋糕。现在两种写法都认。
+- 验证：tsc 通过；CDP 实拍 gift31 浅色整页——架上花束 / 星星罐 / 纪念品 / 彩蛋全为实物展示，
+  深色正常；测试礼物拍完即删。
 ### 2026-11-18（三十改）表情礼物退役
 
 - 用户：「不要表情」。礼物盒不再有 sticker（专属小表情）类，表情包聊天、日记贴纸不受影响。
