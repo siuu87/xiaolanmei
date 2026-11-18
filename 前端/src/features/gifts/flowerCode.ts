@@ -80,7 +80,7 @@ export function flowerCodeOf(gift: FlowerGiftLike): string {
   return orderToCode(BOUQUET_PRESETS[h % BOUQUET_PRESETS.length].order, opts);
 }
 
-/** 花束码 → 自托管花店地址（码放 hash，花店自己解析） */
-export function flowerShopSrc(code: string): string {
-  return `/flowershop/index.html#${encodeURIComponent(code)}`;
+/** 花束码 → 自托管花店地址（码放 hash，花店自己解析；bare=1 透明底，纪念架实物陈列用） */
+export function flowerShopSrc(code: string, bare = false): string {
+  return `/flowershop/index.html${bare ? '?bare=1' : ''}#${encodeURIComponent(code)}`;
 }

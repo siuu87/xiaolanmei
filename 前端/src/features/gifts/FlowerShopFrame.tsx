@@ -7,8 +7,9 @@ import { flowerShopSrc } from './flowerCode';
  * 渲染——花束码放 hash 里，点开就能旋转欣赏 3D 花束、读贺卡、存纪念图。
  * 拆封层和纪念架阅读层共用这一个组件。
  *
- * chromeless（2026-11-18 三十一改，纪念架实物陈列用）：同源 iframe 注入一段 CSS，
- * 把花店的顶栏 / 提示文字 / 品牌字 / 贺卡贴码截图弹层全藏掉，只留 3D 花束本体。
+ * chromeless（2026-11-18 三十一改，纪念架实物陈列用，用户「就要实物不要背景」）：
+ * URL 加 ?bare=1（花店画布透明、只渲花束本体），再同源注入 CSS 藏掉顶栏 / 提示字 /
+ * 品牌字 / 贺卡贴码截图弹层、把页面底色透掉——架子上就是一束没有背景的花。
  */
 export function FlowerShopFrame({
   code,
@@ -19,16 +20,17 @@ export function FlowerShopFrame({
   className?: string;
   chromeless?: boolean;
 }) {
-  const src = useMemo(() => flowerShopSrc(code), [code]);
+  const src = useMemo(() => flowerShopSrc(code, chromeless), [code, chromeless]);
   const ref = useRef<HTMLIFrameElement>(null);
-  /** 同源才拿得到 contentDocument；load 后注入样式，把花店 UI 藏干净 */
+  /** 同源才拿得到 contentDocument；load 后注入样式，把花店 UI 和底色藏干净 */
   const stripChrome = () => {
     if (!chromeless) return;
     const doc = ref.current?.contentDocument;
     if (!doc) return;
     const style = doc.createElement('style');
     style.textContent =
-      '.hint,.toolbar,.brand,#letter,#paste,#shot,#toast,#fatal{display:none!important}';
+      '.hint,.toolbar,.brand,#letter,#paste,#shot,#toast,#fatal{display:none!important}' +
+      'html,body{background:transparent!important}';
     doc.head.appendChild(style);
   };
   return (
@@ -38,7 +40,11 @@ export function FlowerShopFrame({
       title="一束花"
       data-testid="flower-shop-frame"
       onLoad={stripChrome}
-      className={`${className} rounded-[18px] border border-[#E9DAC4] bg-[#FBF7F0]`}
+      className={
+        chromeless
+          ? className
+          : `${className} rounded-[18px] border border-[#E9DAC4] bg-[#FBF7F0]`
+      }
     />
   );
 }

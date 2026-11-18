@@ -13,9 +13,11 @@
   // ---------- 渲染器 ----------
   THREE.ColorManagement.enabled = false; // 色板里的十六进制直接当最终颜色用
   var canvas = $('scene');
+  // bare=1（纪念架实物陈列）：画布透明，只渲花束本体，不带奶白底
+  var BARE = location.search.indexOf('bare=1') >= 0;
   var renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: false });
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: BARE });
   } catch (e) {
     $('fatal').textContent = '这个浏览器打不开 3D 花束（WebGL 不可用）。换 Chrome / Edge / Safari 试试？';
     $('fatal').classList.remove('hidden');
@@ -44,6 +46,7 @@
     rtNormal.depthTexture = new THREE.DepthTexture(w, h);
   }
   var post = new THREE.ShaderMaterial({
+    transparent: true,
     uniforms: {
       tColor: { value: null }, tNormal: { value: null }, tDepth: { value: null },
       res: { value: new THREE.Vector2(1, 1) }, px: { value: 1 },
@@ -72,11 +75,12 @@
       '    ne = max(ne, 1.0 - dot(n0, n));',
       '  }',
       '  float edge = max(smoothstep(0.02, 0.045, de), smoothstep(0.45, 0.8, ne));',
-      '  vec3 col = texture2D(tColor, vUv).rgb;',
+      '  vec4 tc = texture2D(tColor, vUv);',
+      '  vec3 col = tc.rgb;',
       '  col = mix(col, ink, edge * 0.88);',
       '  col += (hash(gl_FragCoord.xy + seed) - 0.5) * 0.028;',
       '  col *= mix(1.0 - 0.035 * vig, 1.0, smoothstep(0.85, 0.35, length(vUv - 0.5)));',
-      '  gl_FragColor = vec4(col, 1.0);',
+      '  gl_FragColor = vec4(col, tc.a);',
       '}'
     ].join('\n'),
     depthTest: false, depthWrite: false
@@ -93,7 +97,7 @@
     renderer.render(scene, camera);
     scene.overrideMaterial = null;
     renderer.setRenderTarget(rtColor);
-    renderer.setClearColor(BG, 1);
+    renderer.setClearColor(BG, BARE ? 0 : 1);
     renderer.clear();
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);

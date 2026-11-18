@@ -121,14 +121,10 @@ function ShelfItem({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
       transition={{ type: 'spring', stiffness: 300, damping: 24 }}
       className="flex w-full flex-col items-center gap-1.5"
     >
-      {/* 实物陈列位 */}
-      <span
-        ref={stageRef}
-        className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[14px] bg-white/50 shadow-[0_4px_10px_-6px_rgba(110,70,40,.4)] dark:bg-white/5"
-      >
+      {/* 实物陈列位（三十一改：就要实物不要背景——不加卡片底，直接浮在架子上） */}
+      <span ref={stageRef} className="relative flex h-32 w-full items-center justify-center">
         {isFlower ? (
           seen ? (
-            /* chromeless：注入 CSS 藏掉花店顶栏/提示字，只留 3D 花束本体；进阅读层可拖转 */
             <FlowerShopFrame code={code} chromeless className="pointer-events-none h-32 w-full" />
           ) : (
             <Flower2 className="h-6 w-6 animate-pulse text-[#B4736E]/50" />
@@ -136,7 +132,7 @@ function ShelfItem({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
         ) : isKeepsake ? (
           seen ? (
             /* 工坊按 localStorage resume：用户在阅读层拆过之后，架上直接是 3D 成品 */
-            <KeepsakeFrame code={keepCode} className="pointer-events-none h-32 w-full" />
+            <KeepsakeFrame code={keepCode} chromeless className="pointer-events-none h-32 w-full" />
           ) : (
             <Icon className="h-6 w-6 animate-pulse text-[#7C6BA8]/50" />
           )
