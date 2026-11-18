@@ -419,6 +419,19 @@ CREATE TABLE IF NOT EXISTS moments (
   deleted_at INTEGER
 );
 
+-- 小任务（三十五改）：TA 在聊天里下达的限时任务（灵动岛）
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  due_at INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  completed_at INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,

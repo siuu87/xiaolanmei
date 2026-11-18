@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import {
@@ -38,6 +38,7 @@ import {
   PhoneMissed,
   PhoneOutgoing,
   Gift,
+  Timer,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -93,6 +94,7 @@ import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
 import { useChatStyle, CHAT_STYLE_META, CHAT_STYLE_STORAGE_KEY } from '@/stores/chatStyleStore';
 import { useDietStore } from '@/features/diet/dietStore';
+import { useTasksStore } from './tasksStore';
 import { matchDietHits } from '@/features/diet/dietHits';
 import { DietHitBar } from '@/features/diet/DietBadge';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -600,6 +602,195 @@ function GiftMessageCard({
 }
 
 /**
+ * 任务卡（2026-11-18 三十五改，参考小红书「Nid douillet」的灵动岛指令卡）：
+ * AI 布置的限时小任务。状态以 tasksStore 为准（卡片只拿 taskId 对表），
+ * 待完成显示倒计时 + 完成/取消；迟到了显示「迟到了」；完成/取消后定格。
+ */
+function TaskMessageCard({ task }: { task: NonNullable<ChatMessage['task']> }) {
+  const item = useTasksStore((s) => s.items.find((t) => t.id === task.taskId));
+  const setStatus = useTasksStore((s) => s.setStatus);
+  const [, force] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    const t = window.setInterval(force, 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const status = item?.status ?? 'pending';
+  const dueAt = item?.dueAt ?? task.dueAt;
+  const late = status === 'pending' && Date.now() > dueAt;
+  const left = Math.max(0, dueAt - Date.now());
+  const hh = Math.floor(left / 3_600_000);
+  const mm = Math.floor((left % 3_600_000) / 60_000);
+  const countdown = hh > 0 ? `${hh} 小时 ${mm} 分` : `${mm} 分钟`;
+
+  const sub =
+    status === 'done'
+      ? '已完成 · 干得漂亮'
+      : status === 'cancelled'
+        ? '已取消'
+        : late
+          ? '迟到了，找 TA 说说吧'
+          : `还剩 ${countdown}`;
+
+  return (
+    <div
+      data-testid="task-message"
+      data-status={status}
+      className="inline-flex min-w-[220px] flex-col gap-2 rounded-[20px] bg-chat-ai px-3.5 py-3 text-left shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]"
+    >
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-chat-pill',
+            status === 'done' ? 'text-emerald-600' : status === 'cancelled' ? 'text-chat-meta' : 'text-chat-accent',
+          )}
+        >
+          {status === 'done' ? (
+            <Check className="h-4 w-4" />
+          ) : status === 'cancelled' ? (
+            <X className="h-4 w-4" />
+          ) : (
+            <Timer className="h-4 w-4" />
+          )}
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-[14px] font-medium text-chat-ai-fg">{task.title}</span>
+          <span className="truncate text-[12px] text-chat-meta">{sub}</span>
+        </span>
+      </div>
+      {task.note ? (
+        <p className="whitespace-pre-wrap border-t border-chat-line pt-2 text-[12.5px] leading-5 text-chat-meta">
+          {task.note}
+        </p>
+      ) : null}
+      {status === 'pending' ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setStatus(task.taskId, 'done');
+            }}
+            data-testid="task-done"
+            className="flex-1 rounded-full bg-chat-me py-1.5 text-[12.5px] text-chat-me-fg transition active:scale-[0.97]"
+          >
+            完成
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setStatus(task.taskId, 'cancelled');
+            }}
+            data-testid="task-cancel"
+            className="flex-1 rounded-full border border-chat-line py-1.5 text-[12.5px] text-chat-meta transition active:scale-[0.97]"
+          >
+            取消
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * 灵动岛（2026-11-18 三十五改，参考小红书「Nid douillet」）：聊天页顶栏正下方的一枚黑色浮条。
+ * 有未完成的小任务时亮起——收拢时只有「图标 + 倒计时」，点一下展开成完整任务条（标题/备注/完成/取消）。
+ * 展开收拢用 CSS 过渡（页面不引 framer）。多个待办取最近布置的一个，完成即收起。
+ */
+function TaskIsland() {
+  const items = useTasksStore((s) => s.items);
+  const setStatus = useTasksStore((s) => s.setStatus);
+  const [, force] = useReducer((x: number) => x + 1, 0);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const t = window.setInterval(force, 15_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const pending = items.filter((t) => t.status === 'pending');
+  const task = pending[0];
+  if (!task) return null;
+
+  const left = Math.max(0, task.dueAt - Date.now());
+  const late = Date.now() > task.dueAt;
+  const hh = Math.floor(left / 3_600_000);
+  const mm = Math.floor((left % 3_600_000) / 60_000);
+  const ss = Math.floor((left % 60_000) / 1000);
+  const countdown = hh > 0 ? `${hh}:${String(mm).padStart(2, '0')}` : `${mm}:${String(ss).padStart(2, '0')}`;
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[96px] z-40 flex justify-center px-6">
+      <div
+        data-testid="task-island"
+        data-open={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className={`pointer-events-auto flex items-center gap-2 overflow-hidden bg-foreground text-background shadow-[0_10px_28px_-12px_hsl(var(--shadow-color)/0.65)] transition-all duration-300 ${
+          open
+            ? 'w-[300px] max-w-[calc(100vw-48px)] flex-col items-stretch rounded-[20px] px-4 py-3'
+            : 'rounded-full px-3.5 py-2'
+        }`}
+      >
+        <span className="flex items-center gap-2">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${late ? 'bg-red-400' : 'animate-pulse bg-emerald-400'}`}
+            aria-hidden
+          />
+          <span className="whitespace-nowrap text-[12.5px] font-medium">
+            {open ? task.title : late ? '迟到了' : task.title}
+          </span>
+          {!open ? (
+            <span className="whitespace-nowrap text-[12.5px] tabular-nums opacity-80">
+              {late ? '已超时' : countdown}
+            </span>
+          ) : null}
+        </span>
+        {open ? (
+          <span className="flex flex-col gap-2.5 pt-0.5">
+            {task.note ? <span className="text-[12px] leading-5 opacity-70">{task.note}</span> : null}
+            <span className="text-[11.5px] tabular-nums opacity-60">
+              {late ? '已超时' : `剩余 ${countdown}`}
+            </span>
+            <span className="flex gap-2">
+              <button
+                type="button"
+                data-testid="island-done"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStatus(task.id, 'done');
+                  setOpen(false);
+                }}
+                className="flex-1 rounded-full bg-background py-1.5 text-[12.5px] font-medium text-foreground transition active:scale-[0.97]"
+              >
+                完成
+              </button>
+              <button
+                type="button"
+                data-testid="island-cancel"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStatus(task.id, 'cancelled');
+                  setOpen(false);
+                }}
+                className="flex-1 rounded-full border border-background/30 py-1.5 text-[12.5px] opacity-80 transition active:scale-[0.97]"
+              >
+                取消
+              </button>
+            </span>
+            {pending.length > 1 ? (
+              <span className="text-center text-[11px] opacity-50">还有 {pending.length - 1} 个任务</span>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
  * 这条消息里「值得存进灵感库」的那段文字，空串 = 不该出现「记进灵感库」这一项。
  *
  * 踩过的坑：通话记录卡的 content 是「（通话 00:00）」这种壳子文案，贴图的 content 是 emoji，
@@ -607,7 +798,7 @@ function GiftMessageCard({
  * 所以在菜单层就挡掉，而不是让用户点了再报「这条是空的」。
  */
 function libraryTextOf(m: ChatMessage): string {
-  if (m.call || m.sticker || m.gift) return '';
+  if (m.call || m.sticker || m.gift || m.task) return '';
   const t = m.content.trim();
   if (!t) return '';
   if (/^（(通话|语音|图片|表情|文件|转账)[^）]*）$/.test(t)) return '';
@@ -887,6 +1078,8 @@ export function ChatPage() {
   // 忌口 / 过敏档案：进聊天就取一次（人设或备忘录改了，重新进页面即生效）
   useEffect(() => {
     void useDietStore.getState().load();
+    // 小任务（三十五改）：灵动岛要有最新任务状态，进页面取一次
+    void useTasksStore.getState().load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1232,6 +1425,14 @@ export function ChatPage() {
           content: prev.content,
         }));
         void useGiftStore.getState().load();
+      },
+      onTaskSent: ({ taskId, title, note, dueAt }) => {
+        // 模型布置了小任务：任务卡挂到这条回复上（meta.task 随消息存档），灵动岛亮起
+        updateMessage(assistantId, (prev) => ({
+          task: { taskId, title, note, dueAt },
+          content: prev.content,
+        }));
+        useTasksStore.getState().upsert({ id: taskId, title, note, dueAt });
       },
       onNeedsConfirm: (confirmId, toolName, summary) => {
         setToolStatus(null);
@@ -1598,6 +1799,8 @@ export function ChatPage() {
           </div>,
           document.body,
         )}
+      {/* 灵动岛（三十五改）：有未完成小任务时亮在顶栏正下方，点开展开操作 */}
+      {isChatView && <TaskIsland />}
       {/* 顶栏（2026-11-09）：**悬浮置顶在聊天消息之上**，自身不带任何底色 / 遮罩，
           消息滚动时会从按钮与头像后面透出来。用 absolute 脱离文档流，消息区靠等高 pt 让开首屏。
           pointer-events-none + 各按钮 pointer-events-auto：空白处的点击照样能落到底下的气泡上。
@@ -1902,6 +2105,9 @@ export function ChatPage() {
                     {/* 礼物卡（2026-11-18）：不是气泡，是一张卡，点开去 /gifts 拆 */}
                     {m.gift ? (
                       <GiftMessageCard gift={m.gift} ts={m.createdAt} onClick={() => navigate('/gifts')} />
+                    ) : m.task ? (
+                      /* 任务卡（三十五改）：AI 布置的限时小任务，带倒计时和完成/取消 */
+                      <TaskMessageCard task={m.task} />
                     ) : m.call ? (
                       <CallRecordCard
                         call={m.call}

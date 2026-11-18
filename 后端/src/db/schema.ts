@@ -482,6 +482,24 @@ export const moments = sqliteTable('moments', {
 });
 
 /**
+ * 小任务（2026-11-18 三十五改，参考小红书「Nid douillet」的灵动岛指令卡）：
+ * TA 在聊天里下达的限时任务——「十分钟内回来哦」这种。AI 走 assign_task 工具落库，
+ * 前端聊天页顶部灵动岛浮条 + 消息流里的任务卡两处展示。status：
+ * pending 待完成 / done 已完成 / cancelled 已取消；过期不做状态机，前端按 dueAt 自己判「迟到了」。
+ */
+export const tasks = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  note: text('note').notNull().default(''),
+  dueAt: integer('due_at').notNull(),
+  status: text('status').notNull().default('pending'),
+  completedAt: integer('completed_at'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deletedAt: integer('deleted_at'),
+});
+
+/**
  * 灵感便签 / 深夜来信（阶段 7 收尾）：AI 每日一签，created_at 即生成时间戳(ms)。
  *
  * `letterTheme` = 信封主题（`default` 极简素雅 | `memorial` 纪念日 | `night` 深色磨砂星空），

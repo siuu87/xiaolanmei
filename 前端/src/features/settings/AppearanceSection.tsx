@@ -14,6 +14,7 @@ import { createPortal } from 'react-dom';
 import {
   Braces,
   Check,
+  MessageCircle,
   Moon,
   Palette,
   Trash2,
@@ -37,8 +38,9 @@ import {
 import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
 import { IOSSwitch } from '@/components/ios/IOSSwitch';
+import { BUBBLE_THEMES, useBubbleTheme } from '@/features/chat/bubbleTheme';
 
-type SheetKey = 'accent' | 'font' | 'advance';
+type SheetKey = 'accent' | 'font' | 'advance' | 'bubble';
 
 /* 分组卡磨砂底由 IOSSettingGroup 组件自身处理（.glass + 16px 圆角） */
 
@@ -164,6 +166,8 @@ export function AppearanceSection() {
   const setAccent = useAppStore((s) => s.setAccent);
   const numFont = useAppStore((s) => s.numFont);
   const setNumFont = useAppStore((s) => s.setNumFont);
+  const bubbleTheme = useBubbleTheme((s) => s.theme);
+  const setBubbleTheme = useBubbleTheme((s) => s.setTheme);
 
   const { cfg, patch, presets } = useThemeEngine();
 
@@ -240,6 +244,16 @@ export function AppearanceSection() {
         />
 
         <IOSSettingItem
+          icon={<MessageCircle className="h-4 w-4" />}
+          iconBg="bg-rose-400"
+          title="气泡颜色"
+          subtitle="聊天里两边气泡的底色（2026-11-18 起开放）"
+          value={BUBBLE_THEMES.find((t) => t.key === bubbleTheme)?.name}
+          showChevron
+          onClick={() => setSheet('bubble')}
+        />
+
+        <IOSSettingItem
           icon={<Type className="h-4 w-4" />}
           iconBg="bg-sky-500"
           title="字体"
@@ -280,6 +294,34 @@ export function AppearanceSection() {
                   style={{ background: `hsl(${ACCENT_HSL[p.key]})` }}
                   aria-hidden
                 />
+              }
+            />
+          ))}
+        </div>
+      </Sheet>
+
+      {/* 气泡颜色（三十五改）：五套主题，选完即时生效（挂 html 的 .bubble-* 类） */}
+      <Sheet
+        open={sheet === 'bubble'}
+        title="气泡颜色"
+        subtitle="聊天里己方 / 对方气泡的底色，其余界面不受影响"
+        onClose={() => setSheet(null)}
+      >
+        <div className="space-y-1">
+          {BUBBLE_THEMES.map((t) => (
+            <OptionRow
+              key={t.key}
+              label={t.name}
+              on={bubbleTheme === t.key}
+              onClick={() => setBubbleTheme(t.key)}
+              leading={
+                <span className="flex shrink-0 items-center" aria-hidden>
+                  <span className="h-6 w-6 rounded-full ring-1 ring-black/10" style={{ background: t.swatch[0] }} />
+                  <span
+                    className="-ml-2 h-6 w-6 rounded-full ring-1 ring-black/10"
+                    style={{ background: t.swatch[1] }}
+                  />
+                </span>
               }
             />
           ))}

@@ -2,7 +2,7 @@ import type { ToolDef } from '../adapters/types.js';
 import { phoneHub } from '../phoneControl/hub.js';
 import { eq, isNull, desc } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles, pluginWishlist, gifts } from '../db/schema.js';
+import { courses, ragDocuments, ragChunks, ragDocumentCollections, profiles, pluginWishlist, gifts, tasks } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { addOpenSourceProject, refreshOpenSource } from '../routes/openSource.js';
 import { setSetting } from '../routes/settings.js';
@@ -899,6 +899,58 @@ const sendGift: BuiltinTool = {
   },
 };
 
+/**
+ * 下达小任务（2026-11-18 三十五改，参考小红书「Nid douillet」的灵动岛指令）：
+ * TA 在聊天里给用户布置一个限时小任务——「十分钟内喝口水」「半小时后去拿快递」这种。
+ * 任务落 tasks 表，聊天流里同时出现一张任务卡（chat.ts 在工具成功后推 `task_sent` SSE，
+ * 前端把快照挂到这条回复的 meta.task），聊天页顶部还会亮起一枚灵动岛倒计时浮条。
+ * 用意是让关心变成具体的行动，不是控制——描述里把分寸写死。
+ */
+const assignTask: BuiltinTool = {
+  name: 'assign_task',
+  description:
+    '给 TA 布置一个限时小任务：任务会出现在聊天里（一张带倒计时的任务卡）和聊天页顶部的灵动岛上，' +
+    'TA 完成或取消你都会看到。适合：提醒 TA 做你叮嘱过的小事（喝水、吃药、休息、去拿东西）、' +
+    '你们之间的小约定或小惩罚、想让 TA 动起来的时刻。' +
+    '**分寸**：一轮最多布置一个，不要连环布置；任务要小而具体、当真能在时限里完成；' +
+    '语气是关心不是命令——别用这个工具监控或刁难 TA。',
+  parameters: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: '任务内容，一句话说清做什么，20 字以内，比如「去喝一杯温水」「把快递取回来」' },
+      minutes: { type: 'number', description: '限时多少分钟（1-720）。小的日常任务 5-30 分钟，宽裕的 1-12 小时' },
+      note: { type: 'string', description: '想多说一句的话（为什么布置/完不成会怎样），可选，50 字以内' },
+    },
+    required: ['title', 'minutes'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const title = String(args.title ?? '').trim().slice(0, 40);
+    const note = String(args.note ?? '').trim().slice(0, 100);
+    const minutes = Number(args.minutes);
+    if (!title) return '错误：title 不能为空';
+    if (!Number.isFinite(minutes) || minutes < 1 || minutes > 720) {
+      return '错误：minutes 必须是 1-720 之间的数字（分钟）';
+    }
+    const ts = now();
+    const dueAt = ts + Math.round(minutes * 60_000);
+    const id = newId();
+    db.insert(tasks)
+      .values({
+        id,
+        title,
+        note,
+        dueAt,
+        status: 'pending',
+        createdAt: ts,
+        updatedAt: ts,
+      })
+      .run();
+    const limit = minutes >= 60 ? `${Math.round(minutes / 60)} 小时` : `${Math.round(minutes)} 分钟`;
+    return `已布置任务「${title}」（限时 ${limit}）。聊天里会出现任务卡和顶部的灵动岛倒计时，TA 完成 / 取消你都会知道。回复里自然地带一句你布置了什么、为什么，别复述这段话。`;
+  },
+};
+
 const BUILTIN_TOOLS: BuiltinTool[] = [
   webFetch,
   webSearch,
@@ -913,6 +965,7 @@ const BUILTIN_TOOLS: BuiltinTool[] = [
   setPartnerRemark,
   incomingCall,
   sendGift,
+  assignTask,
   ...PHONE_TOOLS,
 ];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));

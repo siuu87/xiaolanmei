@@ -30,6 +30,7 @@ import { pluginWishlistRoutes } from './routes/pluginWishlist.js';
 import { wishClipRoutes } from './routes/wishClips.js';
 import { memorialRoutes } from './routes/memorials.js';
 import { momentRoutes } from './routes/moments.js';
+import { taskRoutes } from './routes/tasks.js';
 import { noteRoutes } from './routes/notes.js';
 import { periodRoutes } from './routes/period.js';
 import { moodRoutes } from './routes/moods.js';
@@ -109,6 +110,7 @@ async function main(): Promise<void> {
   await app.register(wishClipRoutes, { prefix: '/api' });
   await app.register(memorialRoutes, { prefix: '/api' });
   await app.register(momentRoutes, { prefix: '/api' });
+  await app.register(taskRoutes, { prefix: '/api' });
   await app.register(noteRoutes, { prefix: '/api' });
   await app.register(periodRoutes, { prefix: '/api' });
   await app.register(moodRoutes, { prefix: '/api' });

@@ -53,6 +53,8 @@ export interface ChatMessage {
   call?: ChatCall;
   /** 礼物卡（2026-11-18）：在聊天里送出的礼物；有值渲染成礼物卡而不是气泡 */
   gift?: ChatGift;
+  /** 任务卡（2026-11-18 三十五改）：AI 布置的限时小任务；有值渲染成任务卡而不是气泡 */
+  task?: ChatTask;
 }
 
 /** 聊天礼物卡里的礼物引用：礼物本体落 gifts 表（未拆），这里只存展示用的快照 */
@@ -60,6 +62,14 @@ export interface ChatGift {
   giftId: string;
   giftType: 'flower' | 'object' | 'easter' | 'keepsake';
   title: string;
+}
+
+/** 聊天任务卡里的任务引用：任务本体落 tasks 表（状态以 tasksStore 为准），这里存落卡时的快照 */
+export interface ChatTask {
+  taskId: string;
+  title: string;
+  note: string;
+  dueAt: number;
 }
 
 export interface Conversation {
@@ -85,6 +95,7 @@ interface MessageMeta {
   voiceMs?: number;
   call?: ChatCall;
   gift?: ChatGift;
+  task?: ChatTask;
 }
 
 /** 从消息 meta JSON 解析图片引用 + 贴图 + 思考链 + 参考图里的新形态 */
@@ -106,6 +117,10 @@ function parseMeta(meta?: string | null): Omit<ChatMessage, 'id' | 'role' | 'con
       obj.gift && typeof obj.gift === 'object' && typeof obj.gift.giftId === 'string'
         ? obj.gift
         : undefined;
+    const task =
+      obj.task && typeof obj.task === 'object' && typeof obj.task.taskId === 'string'
+        ? { taskId: obj.task.taskId, title: String(obj.task.title ?? ''), note: String(obj.task.note ?? ''), dueAt: Number(obj.task.dueAt) || 0 }
+        : undefined;
     return {
       images,
       sticker: typeof obj.sticker === 'string' ? obj.sticker : undefined,
@@ -115,6 +130,7 @@ function parseMeta(meta?: string | null): Omit<ChatMessage, 'id' | 'role' | 'con
       voiceMs: typeof obj.voiceMs === 'number' && obj.voiceMs > 0 ? obj.voiceMs : undefined,
       call,
       gift,
+      task,
     };
   } catch {
     return empty;
@@ -130,7 +146,7 @@ function serializeMeta(msg: Partial<ChatMessage>): string | null {
   const reasoning = msg.reasoning && msg.reasoning.trim() ? msg.reasoning : undefined;
   const inner = msg.inner && msg.inner.trim() ? msg.inner : undefined;
   const hasAny =
-    !!images || !!msg.sticker || !!reasoning || !!msg.quote || !!inner || !!msg.voiceMs || !!msg.call || !!msg.gift;
+    !!images || !!msg.sticker || !!reasoning || !!msg.quote || !!inner || !!msg.voiceMs || !!msg.call || !!msg.gift || !!msg.task;
   if (!hasAny) return null;
   return JSON.stringify({
     ...(images ? { images } : {}),
@@ -141,6 +157,7 @@ function serializeMeta(msg: Partial<ChatMessage>): string | null {
     ...(msg.voiceMs ? { voiceMs: msg.voiceMs } : {}),
     ...(msg.call ? { call: msg.call } : {}),
     ...(msg.gift ? { gift: msg.gift } : {}),
+    ...(msg.task ? { task: msg.task } : {}),
   } satisfies MessageMeta);
 }
 

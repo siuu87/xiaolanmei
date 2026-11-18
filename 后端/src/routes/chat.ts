@@ -3,7 +3,7 @@ import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatEvent, ChatMessage } from '../adapters/types.js';
 import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable, gifts } from '../db/schema.js';
+import { tokenUsage, courses, ragDocuments, periodRecords, messages as messagesTable, gifts, tasks } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 import { buildSystemPrompt } from './prompts.js';
 import { normalizeChatStyle } from '../persona/chatStyle.js';
@@ -464,7 +464,8 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
         | { type: 'needs_confirm'; confirmId: string; toolName: string; summary: string }
         | { type: 'memo_added'; id?: string; title: string; fromWho?: string; toWho?: string }
         | { type: 'incoming_call'; reason?: string }
-        | { type: 'gift_sent'; gift: { giftId: string; giftType: string; title: string } },
+        | { type: 'gift_sent'; gift: { giftId: string; giftType: string; title: string } }
+        | { type: 'task_sent'; task: { taskId: string; title: string; note: string; dueAt: number } },
     ) => {
       const chunk = `data: ${JSON.stringify(ev)}\n\n`;
       writeChain = writeChain.then(async () => {
@@ -499,6 +500,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
             // 模型主动来电 / 送礼物不依赖「联网 / RAG / 带图」这些开关，长对话里始终可自主决定
             if (t.name === 'incoming_call') return true;
             if (t.name === 'send_gift') return true;
+            if (t.name === 'assign_task') return true;
             if (t.name === 'save_courses') return hasImage;
             if (t.name.startsWith('memo_')) return ragOn;
             return web;
@@ -557,6 +559,16 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
               write({
                 type: 'gift_sent',
                 gift: { giftId: g.id, giftType: String(g.giftType ?? 'object'), title: g.title },
+              });
+            }
+          }
+          if (name === 'assign_task') {
+            // 模型布置了小任务：把刚落库的这条推给前端挂任务卡（灵动岛由前端 tasksStore 驱动）
+            const t = db.select().from(tasks).orderBy(desc(tasks.createdAt)).limit(1).all()[0];
+            if (t) {
+              write({
+                type: 'task_sent',
+                task: { taskId: t.id, title: t.title, note: t.note, dueAt: t.dueAt },
               });
             }
           }
