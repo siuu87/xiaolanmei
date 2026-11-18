@@ -1206,7 +1206,7 @@ export function ChatPage() {
       },
       onGiftSent: ({ giftId, giftType, title }) => {
         // 模型送了礼物：礼物卡挂到这条回复上（meta.gift 随消息一起存档），礼物盒列表静默刷新
-        const known = ['flower', 'object', 'sticker', 'easter'] as const;
+        const known = ['flower', 'object', 'easter', 'keepsake'] as const;
         const t = (known as readonly string[]).includes(giftType) ? giftType : 'easter';
         updateMessage(assistantId, (prev) => ({
           gift: { giftId, giftType: t as (typeof known)[number], title },

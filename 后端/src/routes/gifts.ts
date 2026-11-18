@@ -11,7 +11,7 @@ import { newId, now } from '../utils/id.js';
  * 旧数据启动时已迁成 object；这里再兜一层 DTO 映射。
  */
 
-const GIFT_TYPES = ['flower', 'object', 'sticker', 'easter', 'keepsake'] as const;
+const GIFT_TYPES = ['flower', 'object', 'easter', 'keepsake'] as const;
 type GiftType = (typeof GIFT_TYPES)[number];
 
 /** 旧类型 → 新类型：letter/whisper 都当小摆件（标题和文字内容原样保留） */

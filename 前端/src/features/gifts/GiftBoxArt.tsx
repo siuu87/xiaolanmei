@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Flower2, Smile, Sparkles, Gift as GiftIcon, Orbit, type LucideIcon } from 'lucide-react';
+import { Flower2, Sparkles, Gift as GiftIcon, Orbit, type LucideIcon } from 'lucide-react';
 import type { GiftType } from './giftStore';
 
 /**
@@ -30,7 +30,6 @@ export const TINT: Record<
 > = {
   flower: { label: '花束', icon: Flower2, boxBody: '#F3DFC4', boxLid: '#FAEEDA', ribbon: '#B4736E', bowDark: '#96544F' },
   object: { label: '小摆件', icon: GiftIcon, boxBody: '#E6DFD3', boxLid: '#F1EBE1', ribbon: '#8A7B66', bowDark: '#6E6252' },
-  sticker: { label: '表情', icon: Smile, boxBody: '#F3E3B4', boxLid: '#FAF0CF', ribbon: '#C08A4A', bowDark: '#9C6B33' },
   easter: { label: '彩蛋', icon: Sparkles, boxBody: '#DCE5CE', boxLid: '#EAF0DF', ribbon: '#7D9270', bowDark: '#61755A' },
   keepsake: { label: '纪念品', icon: Orbit, boxBody: '#E4DEF0', boxLid: '#EFEBF8', ribbon: '#7C6BA8', bowDark: '#5D4F85' },
 };

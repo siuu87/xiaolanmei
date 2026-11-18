@@ -3,12 +3,13 @@ import { listGifts, createGift, patchGift, deleteGift } from '@/lib/api/gifts';
 import { newId } from '@/lib/id';
 
 /**
- * 礼物类型（2026-11-17 收敛；2026-11-18 加纪念品）：礼物盒只放「拿在手里的实物」——
- * 花束（赛博花店渲的）/ object（SVG 小摆件）/ 表情 / 彩蛋 / keepsake（纪念品工坊的
+ * 礼物类型（2026-11-17 收敛；2026-11-18 加纪念品、退表情）：礼物盒只放「拿在手里的实物」——
+ * 花束（赛博花店渲的）/ object（SVG 小摆件）/ 彩蛋 / keepsake（纪念品工坊的
  * 小小星球 / 记忆雪花球 / 护身符，AI 或面板送的，meta 存 { code } 花束码同款思路）。
- * letter（信）退役去信盒、whisper（悄悄话）退役去日记；旧数据后端启动时已迁成 object。
+ * letter（信）退役去信盒、whisper（悄悄话）退役去日记、sticker（表情）退役（用户：
+ * 「不要表情」）——旧数据后端启动时已分别迁成 object / easter。
  */
-export type GiftType = 'flower' | 'object' | 'sticker' | 'easter' | 'keepsake';
+export type GiftType = 'flower' | 'object' | 'easter' | 'keepsake';
 
 export interface Gift {
   id: string;
@@ -56,7 +57,6 @@ const DEMO_GIFTS: NewGift[] = [
     content: '折了一晚上，瓶子里的每一颗都有一个没说出口的「想你」。',
     meta: JSON.stringify({ model: 'star-jar' }),
   },
-  { giftType: 'sticker', title: '专属小表情', content: '🫐' },
   { giftType: 'easter', title: '藏起来的彩蛋', content: '如果你拆到了这一件，说明你把我翻了个遍——我喜欢你这样认真。' },
 ];
 

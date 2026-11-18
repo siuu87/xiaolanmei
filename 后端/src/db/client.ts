@@ -963,9 +963,14 @@ export function initDatabase(): void {
   /**
    * 幂等迁移（2026-11-17）：礼物只留「实物礼物」——信件去信盒（已有 notes）、
    * 悄悄话去日记，这两类旧礼物整体转成 object（SVG 小摆件），文字内容原样保留。
+   * 幂等迁移（2026-11-18 三十改）：表情（sticker）退役（用户「不要表情」），
+   * 旧表情礼物转成 easter（彩蛋），emoji 原样留在 content 里当彩蛋附言。
    */
   sqlite.exec(
     `UPDATE gifts SET gift_type='object' WHERE gift_type IN ('letter','whisper')`,
+  );
+  sqlite.exec(
+    `UPDATE gifts SET gift_type='easter' WHERE gift_type='sticker'`,
   );
   // 幂等迁移（2026-10-18）：信件（notes）补信封主题列 letter_theme
   const noteCols = sqlite.prepare(`PRAGMA table_info(notes)`).all() as { name: string }[];

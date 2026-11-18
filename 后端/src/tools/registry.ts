@@ -764,8 +764,7 @@ const sendGift: BuiltinTool = {
     '示例：[花束:玫瑰1×3,勿忘我1×2|包装纸2|丝带1|卡片:心形2|To:你|From:我|寄语:今天也很想你]。' +
     '挑花按 TA 的喜好和当下心情来，寄语写你自己的话，不要用 [ ] | 这三个符号。' +
     '② kind=object 送一件手工小摆件：model 选 starJar（一瓶星星）/ moonLamp（月亮小夜灯）/ snowGlobe（雪花球）/ cake（小蛋糕）。' +
-    '③ kind=sticker 送一枚专属小表情：emoji 传表情字符。' +
-    '④ kind=keepsake 送一件纪念品（纪念品工坊）：recipe 选 planet1（小小星球）/ globe1（记忆雪花球）/ talisman1（护身符），' +
+    '③ kind=keepsake 送一件纪念品（纪念品工坊）：recipe 选 planet1（小小星球）/ globe1（记忆雪花球）/ talisman1（护身符），' +
     'keepsakeCode 传一行纪念品码：ai~<recipe>~half=all~<槽位=编号>…~name=<作品名>~from=你的名字~for=这件关于什么。' +
     '槽位编号——planet1：land 1-11 地面 / water 1-9 水 / growth 1-10 生长 / dwelling 1-11 居所 / wonder 1-11 奇观（第二个写 wonder2）/' +
     'sky 1-9 天空 / moon 1-9 月亮 / air 1-10 空中 / visitor 1-10 来访者，两句话 line_ground= 与 line_sky=；' +
@@ -782,8 +781,8 @@ const sendGift: BuiltinTool = {
     properties: {
       kind: {
         type: 'string',
-        enum: ['flower', 'object', 'sticker', 'keepsake'],
-        description: '礼物类型：flower 花束 / object 小摆件 / sticker 小表情 / keepsake 纪念品（星球/雪花球/护身符）',
+        enum: ['flower', 'object', 'keepsake'],
+        description: '礼物类型：flower 花束 / object 小摆件 / keepsake 纪念品（星球/雪花球/护身符）',
       },
       title: { type: 'string', description: '礼物名，比如「一束温柔混搭」「一瓶星星」，12 字以内' },
       content: { type: 'string', description: '随礼物附的一句话（贺卡寄语），花束时建议写；空着也行' },
@@ -793,7 +792,6 @@ const sendGift: BuiltinTool = {
         enum: ['starJar', 'moonLamp', 'snowGlobe', 'cake'],
         description: 'kind=object 时选摆件',
       },
-      emoji: { type: 'string', description: 'kind=sticker 时的表情字符，如 🫐' },
       recipe: {
         type: 'string',
         enum: ['planet1', 'globe1', 'talisman1'],
@@ -808,7 +806,7 @@ const sendGift: BuiltinTool = {
     const kind = String(args.kind ?? '');
     const title = String(args.title ?? '').trim().slice(0, 24);
     const content = String(args.content ?? '').trim().slice(0, 300);
-    if (!['flower', 'object', 'sticker', 'keepsake'].includes(kind)) return '错误：kind 必须是 flower / object / sticker / keepsake';
+    if (!['flower', 'object', 'keepsake'].includes(kind)) return '错误：kind 必须是 flower / object / keepsake';
     if (!title) return '错误：title 不能为空';
 
     // 收花人 / 署名：AI 送出，所以收花人是用户（me）、署名是 AI（partner）
@@ -821,7 +819,6 @@ const sendGift: BuiltinTool = {
     let giftType = kind;
     let code = '';
     let model = '';
-    let emoji = '';
     let finalContent = content;
 
     if (kind === 'flower') {
@@ -868,10 +865,6 @@ const sendGift: BuiltinTool = {
       if (!/(^|~)for=/i.test(code) && content) code += `~for=${content.replace(/[~|[\]]/g, ' ')}`;
       giftType = 'keepsake';
       finalContent = content;
-    } else {
-      emoji = String(args.emoji ?? '').trim().slice(0, 8);
-      if (!emoji) return '错误：kind=sticker 时 emoji 不能为空';
-      finalContent = emoji;
     }
 
     const id = newId();
@@ -901,9 +894,7 @@ const sendGift: BuiltinTool = {
         ? '一束 3D 花束'
         : kind === 'object'
           ? '一件小摆件'
-          : kind === 'keepsake'
-            ? '一件纪念品（拆开后按住就能拆开它）'
-            : '一枚小表情';
+          : '一件纪念品（拆开后按住就能拆开它）';
     return `已把「${title}」放进礼物盒（未拆，TA 拆开会看到${what}）。回复里自然地提一句你送了礼物就好，别复述这段话。`;
   },
 };

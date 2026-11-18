@@ -8,6 +8,16 @@
 #
 #
 #
+### 2026-11-18（三十改）表情礼物退役
+
+- 用户：「不要表情」。礼物盒不再有 sticker（专属小表情）类，表情包聊天、日记贴纸不受影响。
+- **前端**：GiftType 去掉 sticker（flower / object / easter / keepsake 四类）；礼盒配色表、
+  拆箱动画、阅读层、演示礼物里的表情分支与条目全删；聊天礼物卡类型白名单同步收窄，
+  顺手补上此前漏掉的 keepsake（纪念品卡之前会错渲成彩蛋配色）。
+- **后端**：send_gift 工具去掉 kind=sticker 与 emoji 参数（描述改三选一）；/api/gifts 类型
+  白名单同步；幂等迁移：旧表情礼物启动时自动转成 easter（彩蛋），emoji 原样留作彩蛋附言。
+- 验证：双端 tsc 通过；真库 1 件 sticker 礼物自动迁成彩蛋；CDP 实拍 gift30-01/02 页面正常、
+  类型仅剩 easter / object。
 ### 2026-11-18（二十九改）纪念品礼物：接 companion-keepsakes + AI 可送纪念品
 
 - 用户：「礼物还可以参考这个链接 https://github.com/Elisekaiu/companion-keepsakes」。 

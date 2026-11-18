@@ -27,6 +27,7 @@ import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt
  * 点开走拆箱动画（盖子抖→飞走、礼物弹簧升起、星星迸开）。
  * 2026-11-18 二十八改：花束礼物的渲染换成**赛博花店**（自托管 public/flowershop/，
  * 花束码进 hash，见 flowerCode.ts）——花材/色号目录就是从这家店移植的，无缝接上。
+ * 2026-11-18 三十改：表情（sticker）退役（用户「不要表情」），旧数据后端迁成 easter。
  */
 
 /* ------------------------------------------------------------------ */
@@ -142,10 +143,6 @@ function UnboxOverlay({
     <KeepsakeFrame code={keepCode} className="h-[46vh] min-h-[280px] w-full" />
   ) : charm ? (
     <CharmView model={charm} className="h-[44vh] min-h-[260px] w-full" />
-  ) : gift.giftType === 'sticker' ? (
-    <div className="flex h-[36vh] min-h-[220px] items-center justify-center">
-      <span className="text-[88px] leading-none">{gift.content}</span>
-    </div>
   ) : (
     <div className="flex h-[36vh] min-h-[220px] items-center justify-center">
       <meta.icon className="h-[76px] w-[76px]" style={{ color: meta.ribbon }} />
@@ -243,7 +240,7 @@ function UnboxOverlay({
         <h2 className="mt-1 text-center font-letter text-[19px] text-[#4A3A2A] dark:text-[#EADFCF]">
           {gift.title}
         </h2>
-        {gift.content && gift.giftType !== 'sticker' && gift.giftType !== 'flower' && (
+        {gift.content && gift.giftType !== 'flower' && (
           <p className="mt-2 whitespace-pre-wrap text-center text-[13px] leading-7 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
             {gift.content}
           </p>
@@ -338,13 +335,9 @@ function GiftReaderLayer({ gift, onClose }: { gift: Gift; onClose: () => void })
         className="mx-auto mt-3 w-full max-w-[420px] rounded-2xl border border-[#E9DAC4] bg-white/70 p-5 dark:border-[#3A2F25] dark:bg-[#221C16]"
       >
         <h2 className="text-center text-[17px] text-[#4A3A2A] dark:text-[#EADFCF]">{gift.title}</h2>
-        {gift.giftType === 'sticker' ? (
-          <p className="mt-3 text-center text-5xl leading-none">{gift.content}</p>
-        ) : (
-          <p className="mt-2 whitespace-pre-wrap text-center text-[13.5px] leading-8 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
-            {gift.content}
-          </p>
-        )}
+        <p className="mt-2 whitespace-pre-wrap text-center text-[13.5px] leading-8 text-[#6B5340]/90 dark:text-[#C9B69C]/90">
+          {gift.content}
+        </p>
         <button
           type="button"
           onClick={onClose}

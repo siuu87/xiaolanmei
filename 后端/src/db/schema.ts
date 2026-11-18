@@ -344,8 +344,9 @@ export const todos = sqliteTable('todos', {
 
 /**
  * 礼物盒（2026-10-22 新增）：哥哥送来的礼物，拆开前是封着的盒子，拆开后变成纪念架上的摆件。
- * - giftType：flower（花束）/ object（SVG 小摆件）/ sticker（表情）/ easter（彩蛋）
- *   （2026-11-17：letter/whisper 退役——信去信盒、悄悄话去日记，旧数据迁移成 object）
+ * - giftType：flower（花束）/ object（SVG 小摆件）/ easter（彩蛋）/ keepsake（纪念品工坊）
+ *   （2026-11-17：letter/whisper 退役——信去信盒、悄悄话去日记，旧数据迁移成 object；
+ *    2026-11-18：sticker 退役——用户「不要表情」，旧数据迁移成 easter）
  * - isOpened：是否已拆
  */
 export const gifts = sqliteTable('gifts', {
