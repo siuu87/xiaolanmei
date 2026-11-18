@@ -14,6 +14,7 @@ import { FlowerShopFrame } from './FlowerShopFrame';
 import { keepsakeCodeOf, composeKeepsakeCode, KEEPSAKE_PRESETS, type KeepsakeRecipe } from './keepsakeCode';
 import { KeepsakeFrame } from './KeepsakeFrame';
 import { CHARM_PRESETS, CharmView, charmModelOf, type CharmModelId } from './CharmView';
+import { EggView } from './EggView';
 import { ClassicBoxArt, ClassicBoxBody, ClassicBoxLid, TINT } from './GiftBoxArt';
 
 /**
@@ -138,6 +139,9 @@ function ShelfItem({ gift, onOpen }: { gift: Gift; onOpen: (g: Gift) => void }) 
           )
         ) : isCharm && charm ? (
           <CharmView model={charm} className="h-24 w-24" />
+        ) : gift.giftType === 'easter' ? (
+          /* 三十三改：彩蛋不再用星芒图标，画一颗真蛋摆架上 */
+          <EggView className="h-24" />
         ) : (
           <Icon className="h-12 w-12" style={{ color: meta.ribbon }} />
         )}
@@ -193,6 +197,10 @@ function UnboxOverlay({
     <KeepsakeFrame code={keepCode} className="h-[46vh] min-h-[280px] w-full" />
   ) : charm ? (
     <CharmView model={charm} className="h-[44vh] min-h-[260px] w-full" />
+  ) : gift.giftType === 'easter' ? (
+    <div className="flex h-[36vh] min-h-[220px] items-center justify-center">
+      <EggView className="h-44" />
+    </div>
   ) : (
     <div className="flex h-[36vh] min-h-[220px] items-center justify-center">
       <meta.icon className="h-[76px] w-[76px]" style={{ color: meta.ribbon }} />
