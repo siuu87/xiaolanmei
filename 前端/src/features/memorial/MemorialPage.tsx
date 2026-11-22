@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Plus, X, Pin } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { cn } from '@/lib/utils';
+import { AnniversaryCard } from '../home/AnniversaryCard';
+import { MemorialRings } from '../home/MemorialRings';
 import {
   useMemorialStore,
   dayStatus,
@@ -187,6 +189,16 @@ export function MemorialPage() {
     return rank(sa) - rank(sb);
   });
 
+  // 「在一起」起始日（2026-11-18 用户定：这张卡放本页最上面）：
+  // 看的是**原始日期**（每年重复的纪念日原始日期都在过去，dayStatus 会算成
+  // 未来的下一次周年，不能用）——置顶优先，否则取最早的一个还没到来的日子。
+  const todayISO = todayDate();
+  const started = days.filter((d) => d.date <= todayISO);
+  const together =
+    started.find((d) => d.pinned) ??
+    [...started].sort((a, b) => a.date.localeCompare(b.date))[0] ??
+    null;
+
   return (
     <PageShell
       title="纪念日"
@@ -202,6 +214,12 @@ export function MemorialPage() {
         </button>
       }
     >
+      {/* 最上面：在一起天数（两人头像贴一起 + 已经 N 天了）
+          → 纪念日/倒数日圆环（首页同款，点圈回到本页管理）
+          → 再往下才是纪念日列表 */}
+      {together && <AnniversaryCard memorial={together} />}
+      <MemorialRings />
+
       <div className="space-y-3">
         {sorted.length === 0 && (
           <div className="py-10 text-center text-xs text-muted-foreground/60">

@@ -11,6 +11,7 @@ import { listMemories, type MemoryDTO } from '@/lib/api/memories';
 import { listNotes } from '@/lib/api/home';
 import {
   EditableCard,
+  EditableSubline,
   ExpandCard,
   useAvatarUploader,
   savePartnerRemark,
@@ -18,18 +19,24 @@ import {
 import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StyleRulesPanel } from '@/features/prompts/StyleRulesPanel';
 import { MemoSection } from '@/features/memo/MemoSection';
+import {
+  listPrompts,
+  createPrompt,
+  patchPrompt,
+  deletePrompt,
+} from '@/lib/api/prompts';
 
 /**
  * 他的资料页（/partner，对齐 2026-11-04 设计稿 97:4：封面 + 上叠白卡版式；
  * 口径与「我的资料」页 MePage 完全一致 —— 同样套 PageShell，2026-11-10 用户定）。
  *
  * **2026-11-10 改造**：编辑从「整页大编辑浮层」改成**区块就地编辑**——
- * 每个区块右上角一支小笔，点一下就在框里改；语音 / 语言风格 / 模块 / 备忘录
+ * 每个区块右上角一支小笔，点一下就在框里改；语音 / 世界书 / 模块 / 备忘录
  * 等复杂设置收进可展开的卡片，点 ▾ 才展开。旧「点头像进 ProfileEditor」的
  * 编辑页被这套取代（入口统一改到首页 / 抽屉点头像）。
  *
  * 结构：顶栏（返回 / 他的资料）→ 浅蓝小封面 + 白卡上叠
- * → 头像骑线 → 头部居中（备注大字 / 姓名·本名 / 在线小药丸）
+ * → 头像骑线 → 头部居中（本名大字 / 备注小字·可就地改 / 在线小药丸）
  * → 4 格统计（消息 / 通话 / 记忆 / 信件）→ 各就地编辑区块 → 最近印象。
  */
 export function CharacterPage() {
@@ -38,7 +45,6 @@ export function CharacterPage() {
   const partnerRemark = useProfileStore((s) => s.partnerRemark);
   const partnerAvatar = useProfileStore((s) => s.partnerAvatar);
   const persona = useProfileStore((s) => s.persona);
-  const setPartnerName = useProfileStore((s) => s.setPartnerName);
   const setPersona = useProfileStore((s) => s.setPersona);
   const conversation = useChatStore((s) => s.conversation);
 
@@ -46,6 +52,62 @@ export function CharacterPage() {
   const [calls, setCalls] = useState<number | null>(null);
   const [memories, setMemories] = useState<MemoryDTO[] | null>(null);
   const [letters, setLetters] = useState<number | null>(null);
+
+  // 内置人设模块：改成和「他是谁」一样的就地输入块（2026-11-19 用户定）。
+  // 值 = prompts 表里「内置人设模块」这条的正文；兼容旧的 模块一/三/五（合并显示）。
+  // 保存 = upsert 一条全局提示词，旧的分模块软删，避免重复注入。
+  const MODULE_NAME = '内置人设模块';
+  const MODULE_PREFIXES = ['模块一', '模块三', '模块五'];
+  const [moduleText, setModuleText] = useState('');
+  const [modulePromptId, setModulePromptId] = useState<string | null>(null);
+
+  const loadModule = async () => {
+    try {
+      const list = await listPrompts();
+      const named = list.find((p) => p.name === MODULE_NAME);
+      if (named) {
+        setModulePromptId(named.id);
+        setModuleText(named.content);
+      } else {
+        // 兼容旧的分模块：模块一/三/五 合并
+        const legacy = list
+          .filter((p) => MODULE_PREFIXES.some((pre) => p.name.startsWith(pre)))
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        setModulePromptId(null);
+        setModuleText(legacy.map((p) => p.content).join('\n\n'));
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    void loadModule();
+  }, []);
+
+  const saveModule = async (v: string) => {
+    const content = v.trim();
+    try {
+      if (!content) {
+        // 清空 = 删掉这条模块
+        if (modulePromptId) await deletePrompt(modulePromptId);
+      } else if (modulePromptId) {
+        await patchPrompt(modulePromptId, { content });
+      } else {
+        await createPrompt({ name: MODULE_NAME, content, type: 'global', enabled: true });
+      }
+      // 旧的分模块（模块一/三/五）软删，避免与新的「内置人设模块」重复注入
+      const list = await listPrompts();
+      for (const p of list) {
+        if (MODULE_PREFIXES.some((pre) => p.name.startsWith(pre))) {
+          await deletePrompt(p.id);
+        }
+      }
+      await loadModule();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -66,7 +128,8 @@ export function CharacterPage() {
 
   const messages = conversation?.messages ?? [];
   const remark = partnerRemark.trim();
-  const name = (remark || partnerName || conversation?.title || '小蓝莓').trim();
+  // 大字 = 本名（没填就退回备注 / 会话标题）；备注只做头像下那行小字
+  const displayName = partnerName.trim() || remark || conversation?.title || '小蓝莓';
 
   // 「认识 N 天」：取会话里最早一条消息的那天（没有消息就不写天数）
   const firstTs = messages.reduce<number | null>(
@@ -85,12 +148,6 @@ export function CharacterPage() {
   const memCount = memories?.length ?? 0;
   const recent = (memories ?? []).slice(0, 3);
 
-  // 头部第二行：有备注时展示「姓名 · 本名」，否则退回「认识 N 天」
-  const subName =
-    remark && partnerName.trim() && partnerName.trim() !== remark
-      ? `姓名 · ${partnerName.trim()}`
-      : null;
-
   const goCalls = () => navigate('/calls');
 
   return (
@@ -107,17 +164,29 @@ export function CharacterPage() {
         avatarLabel="换头像"
         coverPill=""
       >
-        {/* 头部居中：备注大字 / 姓名 · 本名（或认识天数）/ 在线药丸 */}
+        {/* 头部居中：本名大字 / 备注小字（可编辑）/ 认识天数 / 在线药丸。
+            2026-11-18 用户定（参考 Nid douillet）：名字和备注都在头像下面，
+            备注不再占一行大字；改完备注后下面那行认识天数一直在；
+            真正的身份靠下面的世界书和人设知道。 */}
         <div className="flex flex-col items-center px-4">
           <h2
             data-testid="character-name"
             className="max-w-[80%] truncate text-[24px] font-semibold leading-tight"
           >
-            {name}
+            {displayName}
           </h2>
-          <p className="mt-1.5 text-[12px] text-chat-meta">
-            {subName ?? (knownDays ? `认识 ${knownDays} 天` : '刚认识')}
-          </p>
+          <EditableSubline
+            testId="character-remark"
+            ariaLabel="编辑备注"
+            value={partnerRemark}
+            displayText={remark ? `备注 · ${remark}` : '还没写备注'}
+            placeholder="写个备注，比如「哥哥」"
+            maxLength={12}
+            onSave={(v) => savePartnerRemark(v)}
+          />
+          <span className="mt-1 text-[12px] leading-none text-chat-meta">
+            {knownDays ? `认识 ${knownDays} 天` : '刚认识'}
+          </span>
           <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-chat-pill px-3 py-1.5 text-[11px] text-chat-pill-fg">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
             {statusText}
@@ -135,43 +204,38 @@ export function CharacterPage() {
           />
         </div>
 
-        {/* 区块就地编辑：每个卡片右上角小笔，点一下在框里改 */}
+        {/* 区块就地编辑：备注/姓名已收进头像下那行小字（只备注可改），
+            身份资料只剩人设本身 + 世界书/模块/语音等展开卡（2026-11-18 用户定）。
+            每块标题下都写一句「这块是干什么的」，免得看不懂填什么（2026-11-18 晚） */}
         <div className="mt-5 space-y-3">
           <EditableCard
-            title="备注 · 叫什么"
-            value={partnerRemark}
-            placeholder="聊天里显示的名字，比如「哥哥」（最多 12 字）"
-            maxLength={12}
-            multiline={false}
-            onSave={(v) => savePartnerRemark(v)}
-          />
-          <EditableCard
-            title="姓名 · 本名"
-            value={partnerName}
-            placeholder="输入姓名，比如「陈默」"
-            maxLength={24}
-            multiline={false}
-            onSave={(v) => setPartnerName(v)}
-          />
-          <EditableCard
-            title="他是谁 · 角色背景资料"
+            title="他是谁"
+            hint="TA 的身份、性格、背景故事——这份就是 TA 的人设，AI 照着它说话做事"
             value={persona}
             placeholder="写一下 ta 是谁、性格、背景故事…"
             onSave={(v) => setPersona(v)}
           />
-          <ExpandCard title="语言风格" defaultOpen>
+          <ExpandCard
+            title="世界书"
+            hint="TA 的世界设定与说话方式，决定每句台词怎么讲；可按模块分组"
+            defaultOpen
+          >
             <StyleRulesPanel />
-            <div className="mt-3">
-              <PromptsPanel namePrefixes={['模块二']} heading="内置人设模块" showPreview={false} />
-            </div>
           </ExpandCard>
-          <ExpandCard title="语音与语言">
+          <ExpandCard title="语音与语言" hint="TA 的语音音色、语速与说话语言，通话和读白按这个来">
             <VoiceCard />
           </ExpandCard>
-          <ExpandCard title="内置人设模块">
-            <PromptsPanel namePrefixes={['模块一', '模块三', '模块五']} heading="内置人设模块" showPreview />
+          <EditableCard
+            title="内置人设模块"
+            hint="预置的人设提示模块，随聊天生效的补充设定"
+            value={moduleText}
+            placeholder="写补充的人设设定，随聊天注入 AI 的提示词…"
+            onSave={(v) => void saveModule(v)}
+          />
+          <ExpandCard title="语言风格模块" hint="预置的说话风格人设模块，随聊天生效">
+            <PromptsPanel namePrefixes={['模块二']} heading="内置人设模块" showPreview={false} />
           </ExpandCard>
-          <ExpandCard title="备忘录">
+          <ExpandCard title="备忘录" hint="平时随手记的备忘，AI 会读、也能往里写">
             <MemoSection />
           </ExpandCard>
         </div>

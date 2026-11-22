@@ -5,11 +5,14 @@ import { styleRules } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
 
 /**
- * 语言风格条目：「他的资料 → 语言风格与输出」里那个可以按 + 增删的列表。
+ * 世界书条目：「他的资料 → 世界书」里那个可以按 + 增删的列表。
  *
  * 交互：右上角 + 新增、可上下调序、每条带启用开关。
- * 原全局「世界书」已并入这里：世界设定与说话方式都写成条目，
+ * 原全局「世界书」就在这里：世界设定与说话方式都写成条目，
  * 由 `buildSystemPrompt()` 按 `position` **插进五模块拼成的角色设定正文里**。
+ *
+ * `module` 是**展示分组**：把条目归到不同模块（如「背景设定」「说话方式」），
+ * 只影响资料页里怎么归组展示，不影响注入顺序（注入仍按 position + sortOrder）。
  */
 
 /**
@@ -33,6 +36,7 @@ interface StyleRuleBody {
   position?: string;
   enabled?: boolean;
   sortOrder?: number;
+  module?: string;
 }
 
 /** 未删除的条目，按 sortOrder 升序（同序按创建时间兜底，与其它面板一致） */
@@ -67,6 +71,7 @@ export async function styleRuleRoutes(app: FastifyInstance): Promise<void> {
       position: r.position,
       enabled: r.enabled,
       sortOrder: r.sortOrder,
+      module: r.module,
       createdAt: r.createdAt,
     })),
   );
@@ -87,6 +92,7 @@ export async function styleRuleRoutes(app: FastifyInstance): Promise<void> {
         position: normPosition(body.position) ?? 'after',
         enabled: body.enabled ?? true,
         sortOrder: body.sortOrder ?? 0,
+        module: body.module?.trim() ?? '',
         createdAt: ts,
         updatedAt: ts,
       })
@@ -111,6 +117,7 @@ export async function styleRuleRoutes(app: FastifyInstance): Promise<void> {
     }
     if (body.enabled !== undefined) set.enabled = body.enabled;
     if (body.sortOrder !== undefined) set.sortOrder = body.sortOrder;
+    if (body.module !== undefined) set.module = body.module.trim();
 
     const result = db.update(styleRules).set(set).where(eq(styleRules.id, id)).run();
     if (result.changes === 0) {

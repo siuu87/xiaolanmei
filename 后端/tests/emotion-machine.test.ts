@@ -1,5 +1,5 @@
 /**
- * 情绪状态机 + 轻量分析器 + OB 工具的纯函数单测（零 IO，无网络）。
+ * 情绪状态机 + 轻量分析器的纯函数单测（零 IO，无网络）。
  *
  * 跑法（在 `后端/` 下）：
  *   node node_modules/tsx/dist/cli.mjs --test tests/emotion-machine.test.ts
@@ -24,11 +24,6 @@ import {
   normalizeDelta,
   parseDeltaJson,
 } from '../src/emotion/analyzer.js';
-import {
-  composeTurnSummary,
-  normalizeHits,
-  obConfigured,
-} from '../src/services/ombreBrain.js';
 
 /** 下午两点，避开深夜加成 */
 const NOW = new Date(2026, 9, 19, 14, 0, 0).getTime();
@@ -192,32 +187,4 @@ test('关键词兜底只认明确信号（同事 → 醋意）', () => {
   const d = heuristicDelta('刚跟同事吃完饭，在跟学长聊事情');
   assert.equal(d.jealousy, 0.3);
   assert.deepEqual(heuristicDelta('今天天气不错'), EMPTY_DELTA);
-});
-
-// ── OB 工具 ─────────────────────────────────────────────────
-
-test('OB 没配时整条链路静默（不抛、不请求）', () => {
-  assert.equal(obConfigured(), false);
-});
-
-test('OB 返回形状宽容：数组 / results / memories / data 都能归一', () => {
-  assert.equal(normalizeHits(['a', 'b']).length, 2);
-  assert.equal(normalizeHits({ results: [{ content: 'x' }, { text: 'y' }] }).length, 2);
-  assert.equal(normalizeHits({ memories: [{ memory: 'z' }] }).length, 1);
-  assert.equal(normalizeHits({ data: [{ summary: 'w' }] }).length, 1);
-  // 去重
-  assert.equal(normalizeHits([{ content: '同名' }, { content: '同名' }]).length, 1);
-});
-
-test('本轮摘要包含三方信息与情感波动', () => {
-  const s = composeTurnSummary({
-    userText: '刚跟同事吃饭',
-    replyText: '哦。',
-    moodLabel: '醋意狂跳',
-    delta: delta({ jealousy: 0.3 }),
-  });
-  assert.match(s, /TA：刚跟同事吃饭/);
-  assert.match(s, /白起：哦。/);
-  assert.match(s, /心绪：醋意狂跳/);
-  assert.match(s, /醋意\+0\.3/);
 });

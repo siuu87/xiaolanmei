@@ -68,10 +68,13 @@ export const prompts = sqliteTable('prompts', {
 });
 
 /**
- * 语言风格条目（「他的资料 → 语言风格与输出」里的可增删列表）。
+ * 世界书条目（「他的资料 → 世界书」里的可增删列表）。
  *
- * 原全局「世界书」已并入这里：世界设定与说话方式都写成条目，
+ * 原全局「世界书」就在这里：世界设定与说话方式都写成条目，
  * 由 `buildSystemPrompt()` 按 `position` 插进五模块拼成的角色设定正文里（前 / 中 / 后）。
+ *
+ * `module` 是**展示分组**：把条目归到不同模块（如「背景设定」「说话方式」），
+ * 只影响资料页里怎么归组展示，不影响注入顺序（注入仍按 position + sortOrder）。
  */
 export const styleRules = sqliteTable('style_rules', {
   id: text('id').primaryKey(),
@@ -80,6 +83,7 @@ export const styleRules = sqliteTable('style_rules', {
   position: text('position').notNull().default('after'), // before | middle | after
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
+  module: text('module').notNull().default(''), // 展示分组，空 = 默认分组
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),
@@ -511,6 +515,12 @@ export const notes = sqliteTable('notes', {
   id: text('id').primaryKey(),
   content: text('content').notNull(),
   letterTheme: text('letter_theme').notNull().default('default'),
+  /**
+   * 信封包装：`纸色:封口件:压纹`，如 `sage:sprig:dot`（见 mailScheduler `pickLetterLook`）。
+   * 空串 = 这道信没挑过包装，前端按 `letterTheme` 兜底成「火漆 + 光纸」。
+   * 必须带 `.default('')`，理由同 `letterTheme`（drizzle 会显式写 NULL）。
+   */
+  letterLook: text('letter_look').notNull().default(''),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   deletedAt: integer('deleted_at'),

@@ -77,9 +77,9 @@ CREATE TABLE IF NOT EXISTS prompts (
   deleted_at INTEGER
 );
 
--- 语言风格条目：「他的资料 → 语言风格与输出」里的可增删列表。
+-- 世界书条目：「他的资料 → 世界书」里的可增删列表。
 -- position 决定它插进角色设定正文的位置（before 前 / middle 中 / after 后）。
--- 原全局「世界书」已并入此处：世界设定与说话方式都写成条目。
+-- module 是展示分组（把条目归到不同模块），只影响资料页归组，不影响注入顺序。
 CREATE TABLE IF NOT EXISTS style_rules (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS style_rules (
   position TEXT NOT NULL DEFAULT 'after',
   enabled INTEGER NOT NULL DEFAULT 1,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  module TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -436,6 +437,7 @@ CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
   letter_theme TEXT NOT NULL DEFAULT 'default',
+  letter_look TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   deleted_at INTEGER
@@ -1000,6 +1002,24 @@ export function initDatabase(): void {
   const noteCols = sqlite.prepare(`PRAGMA table_info(notes)`).all() as { name: string }[];
   if (!noteCols.some((c) => c.name === 'letter_theme')) {
     sqlite.exec(`ALTER TABLE notes ADD COLUMN letter_theme TEXT NOT NULL DEFAULT 'default'`);
+  }
+  /**
+   * 幂等迁移（2026-11-18 晚）：信封「包装」列 letter_look。
+   * 形如 `sage:sprig:dot` = 纸色:封口件:压纹，空串表示「没挑过，按 letter_theme 兜底」。
+   * 单独一列而不是塞进 letter_theme：换纸色的 PATCH 不该把封口件一起冲掉。
+   */
+  if (!noteCols.some((c) => c.name === 'letter_look')) {
+    sqlite.exec(`ALTER TABLE notes ADD COLUMN letter_look TEXT NOT NULL DEFAULT ''`);
+  }
+
+  /**
+   * 幂等迁移（2026-11-19）：世界书条目（style_rules）补 `module` 展示分组列。
+   * 把条目归到不同模块（如「背景设定」「说话方式」），只影响资料页归组展示，
+   * 注入顺序仍按 position + sortOrder，不受影响。老条目 module 默认空串 = 默认分组。
+   */
+  const srCols = sqlite.prepare(`PRAGMA table_info(style_rules)`).all() as { name: string }[];
+  if (!srCols.some((c) => c.name === 'module')) {
+    sqlite.exec(`ALTER TABLE style_rules ADD COLUMN module TEXT NOT NULL DEFAULT ''`);
   }
 
   /**

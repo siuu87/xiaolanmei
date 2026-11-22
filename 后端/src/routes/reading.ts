@@ -3,7 +3,15 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { annotationNotes, annotations, books, readingLogs, readingProgress } from '../db/schema.js';
 import { newId, now } from '../utils/id.js';
-import { extractReadable, parseFanqiePage, parseFanqieUrl } from '../reading/sources.js';
+import {
+  extractReadable,
+  normWereadColor,
+  parseFanqiePage,
+  parseFanqieUrl,
+  parseWereadBookmarks,
+  parseWereadShelf,
+  parseWereadSyncBook,
+} from '../reading/sources.js';
 
 /**
  * 一起读 / 书房路由：书目、双人进度、划线批注与双人留言。
@@ -120,6 +128,50 @@ async function fetchHtml(url: string): Promise<string> {
   });
   if (!res.ok) throw new Error(`抓取失败 HTTP ${res.status}`);
   return res.text();
+}
+
+const WEREAD_BASE = 'https://weread.qq.com';
+
+/** 微信读书网页端请求头（模拟浏览器，带用户 Cookie） */
+function wereadHeaders(cookie: string, json = false): Record<string, string> {
+  const h: Record<string, string> = {
+    'User-Agent': FETCH_UA,
+    Cookie: cookie,
+    Referer: `${WEREAD_BASE}/`,
+    Origin: WEREAD_BASE,
+    'Accept-Language': 'zh-CN,zh;q=0.9',
+  };
+  if (json) {
+    h.Accept = 'application/json, text/plain, */*';
+    h['Content-Type'] = 'application/json;charset=UTF-8';
+  } else {
+    h.Accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+  }
+  return h;
+}
+
+/**
+ * 抓微信读书网页端（带用户 Cookie）。
+ * 返回 text；HTTP 非 2xx 抛错。errcode 由调用方在解析 JSON 时判断。
+ */
+async function wereadFetch(url: string, cookie: string, json = false): Promise<string> {
+  const res = await fetch(url, {
+    headers: wereadHeaders(cookie, json),
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) throw new Error(`微信读书请求失败 HTTP ${res.status}`);
+  return res.text();
+}
+
+/** 判断微信读书返回是否「Cookie 过期」（errcode -2012） */
+function isWereadCookieExpired(text: string): boolean {
+  try {
+    const data = JSON.parse(text);
+    return data?.errcode === -2012;
+  } catch {
+    return false;
+  }
 }
 
 export async function readingRoutes(app: FastifyInstance): Promise<void> {
@@ -461,8 +513,8 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
       {
         id: 'weread',
         label: '微信读书',
-        ready: false,
-        note: '需要微信读书凭证，官方没有稳定公开接口；暂未自动拉取',
+        ready: true,
+        note: '粘贴微信读书网页版登录后的 Cookie，导入书架（书名/作者/封面/进度）与划线；正文不开放，不抓取',
       },
     ],
   }));
@@ -614,10 +666,186 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * 微信读书导入（2026-11-19）：用户粘贴微信读书**网页版登录后的 Cookie**，
+   * 拉书架（书名/作者/封面/进度）落库 source='weread'，再逐本拉划线落 annotations。
+   *
+   * 边界：
+   - 官方没有稳定公开接口，走网页版内部端点，**随时可能失效**；
+   - Cookie 只在本次请求内存里用，**不落库、不写日志**，用完即弃；
+   - 正文不抓（微信读书不开放全文），只导入元数据 + 目录 + 划线；
+   - Cookie 过期（errcode -2012）返回 401 提示重新复制。
+   */
+  app.post('/reading/import/weread', async (req, reply) => {
+    const body = (req.body ?? {}) as { cookie?: string };
+    const cookie = body.cookie?.trim() ?? '';
+    if (!cookie) {
+      reply.code(400).send({ message: '请先粘贴微信读书登录后的 Cookie' });
+      return;
+    }
+
+    // 1) 拉书架 HTML
+    let html = '';
+    try {
+      html = await wereadFetch(`${WEREAD_BASE}/web/shelf`, cookie);
+    } catch (err) {
+      reply.code(502).send({ message: `微信读书书架拉取失败：${(err as Error).message}` });
+      return;
+    }
+    if (isWereadCookieExpired(html)) {
+      reply.code(401).send({ message: '微信读书 Cookie 已过期，请重新从网页版复制后粘贴' });
+      return;
+    }
+    const shelf = parseWereadShelf(html);
+    if (!shelf) {
+      reply.code(502).send({ message: '微信读书书架页面结构变了，没解析到书架数据（接口可能已变更）' });
+      return;
+    }
+    if (!shelf.loggedIn) {
+      reply.code(401).send({ message: '微信读书 Cookie 无效或已过期，请重新从网页版登录后复制粘贴' });
+      return;
+    }
+
+    // 2) 只有 ID 的书，用 syncBook 补详情（POST 带 bookIds，分批，避免单包过大）
+    const metas = [...shelf.books];
+    const seen = new Set(shelf.books.map((b) => b.bookId));
+    for (let i = 0; i < shelf.pendingIds.length; i += 50) {
+      const batch = shelf.pendingIds.slice(i, i + 50);
+      try {
+        const res = await fetch(`${WEREAD_BASE}/web/shelf/syncBook`, {
+          method: 'POST',
+          headers: wereadHeaders(cookie, true),
+          body: JSON.stringify({ bookIds: batch }),
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (!res.ok) continue;
+        const raw = await res.text();
+        if (isWereadCookieExpired(raw)) {
+          reply.code(401).send({ message: '微信读书 Cookie 已过期，请重新从网页版复制后粘贴' });
+          return;
+        }
+        const data: unknown = JSON.parse(raw);
+        for (const m of parseWereadSyncBook(data)) {
+          if (!seen.has(m.bookId)) {
+            seen.add(m.bookId);
+            metas.push(m);
+          }
+        }
+      } catch {
+        // 补详情失败不致命：这批书只留 ID 信息，跳过即可
+      }
+      if (i + 50 < shelf.pendingIds.length) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    const ts = now();
+    let imported = 0;
+    let updated = 0;
+    let bookmarks = 0;
+
+    for (const meta of metas) {
+      if (!meta.bookId || !meta.title) continue;
+      const existing = db
+        .select()
+        .from(books)
+        .all()
+        .find((b) => b.source === 'weread' && b.sourceId === meta.bookId && b.deletedAt == null);
+
+      let bookRowId: string;
+      if (existing) {
+        bookRowId = existing.id;
+        db.update(books)
+          .set({
+            title: meta.title,
+            author: meta.author || existing.author,
+            coverUrl: meta.coverUrl || existing.coverUrl,
+            desc: meta.desc || existing.desc,
+            sourceMeta: JSON.stringify({ ...parseSourceMeta(existing.sourceMeta), weread: meta }),
+            lastSyncedAt: ts,
+            updatedAt: ts,
+          })
+          .where(eq(books.id, existing.id))
+          .run();
+        updated += 1;
+      } else {
+        bookRowId = newId();
+        db.insert(books)
+          .values({
+            id: bookRowId,
+            title: meta.title,
+            author: meta.author || null,
+            coverUrl: meta.coverUrl,
+            totalChapters: 1,
+            content: null,
+            desc: meta.desc || null,
+            toc: null,
+            color: null,
+            band: null,
+            height: null,
+            source: 'weread',
+            sourceId: meta.bookId,
+            sourceMeta: JSON.stringify({ weread: meta }),
+            lastSyncedAt: ts,
+            createdAt: ts,
+            updatedAt: ts,
+          })
+          .run();
+        imported += 1;
+      }
+
+      // 3) 拉这本书的划线（逐本，间隔 300ms 防限流）
+      try {
+        const raw = await wereadFetch(
+          `${WEREAD_BASE}/web/book/bookmarklist?bookId=${encodeURIComponent(meta.bookId)}`,
+          cookie,
+        );
+        if (isWereadCookieExpired(raw)) {
+          reply.code(401).send({ message: '微信读书 Cookie 已过期，请重新从网页版复制后粘贴' });
+          return;
+        }
+        const marks = parseWereadBookmarks(JSON.parse(raw));
+        for (const m of marks) {
+          // 去重：同一本书同一句划线不重复插（重导时避免行堆积）
+          const dup = db
+            .select()
+            .from(annotations)
+            .all()
+            .some((a) => a.bookId === bookRowId && a.deletedAt == null && a.selectedText === m.text);
+          if (dup) continue;
+          db.insert(annotations)
+            .values({
+              id: newId(),
+              bookId: bookRowId,
+              chapter: 0,
+              startOffset: 0,
+              endOffset: m.text.length,
+              selectedText: m.text,
+              color: normWereadColor(m.color),
+              createdAt: m.createdAt ?? ts,
+              updatedAt: ts,
+            })
+            .run();
+          bookmarks += 1;
+        }
+      } catch {
+        // 单本划线拉取失败不阻断整体导入
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    reply.send({
+      ok: true,
+      imported,
+      updated,
+      bookmarks,
+      total: metas.length,
+      note: `导入 ${imported} 本、更新 ${updated} 本、划线 ${bookmarks} 条；正文未抓取（微信读书不开放全文）`,
+    });
+  });
+
+  /**
    * 进度同步（最小实现）：
    * - 本地书 → 没有远端，直接 `local`；
    * - 番茄/微信读书 → 记为 `pending`（待回传），并记 `lastSyncedAt`。
-   * 微信读书的回传需要凭证/接口，本版本只落「待回传」状态，不谎报已同步。
+   * 微信读书仅实现了**导入拉取**（书架+划线），进度回传未实现，不谎报已同步。
    */
   app.post('/reading/progress/sync', async (req, reply) => {
     const body = (req.body ?? {}) as { bookId?: string };
@@ -658,7 +886,7 @@ export async function readingRoutes(app: FastifyInstance): Promise<void> {
           ? '本地书只在本机，无需同步'
           : book.source === 'fanqie'
             ? '已记入待回传；番茄没有公开进度接口，回传需外部适配器'
-            : '已记入待回传；微信读书回传需要凭证/接口',
+            : '已记入待回传；微信读书仅支持导入拉取，回传未实现',
       progress: db
         .select()
         .from(readingProgress)

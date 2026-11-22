@@ -99,7 +99,7 @@ function InlineError({ text }: { text: string | null }) {
  * - 个人：只留「表情包」；档案/备忘录/待提醒移出设置（档案在「我的页/角色页」改，备忘录与待提醒进角色页）。
  * - AI 伴侣：去掉「对话风格」（进角色页）；「长期记忆」+「技能管理」合并为「记忆与技能」。
  * - 外观：合并为 深色模式 / 强调色 / 字体 / 高级外观 四项（AppearanceSection 内处理）。
- * - 提醒与健康：整段移除，经期/睡前归到首页「生活」。
+ * - 提醒与健康：整段移除（2026-11-18 晚起连首页「生活」卡也删了，睡前提醒彻底下线）。
  * - 数据与同步：保留 数据中枢 / 云同步。
  */
 export function SettingsPage() {
@@ -292,7 +292,7 @@ export function SettingsPage() {
       <IOSSettingGroup title="个人">
         <IOSSettingItem
           icon={<Smile className="h-4 w-4" />}
-          iconBg="bg-yellow-400"
+          iconBg="bg-amber-400"
           title="表情包"
           subtitle="聊天里常用的表情"
           showChevron
@@ -311,7 +311,7 @@ export function SettingsPage() {
       <IOSSettingGroup title="AI 伴侣">
         <IOSSettingItem
           icon={<SlidersHorizontal className="h-4 w-4" />}
-          iconBg="bg-gray-400"
+          iconBg="bg-sky-400"
           title="模型参数"
           subtitle="温度，对所有站子生效"
           showChevron
@@ -378,7 +378,7 @@ export function SettingsPage() {
 
         <IOSSettingItem
           icon={<Database className="h-4 w-4" />}
-          iconBg="bg-slate-400"
+          iconBg="bg-sky-400"
           title="API 站子"
           subtitle="可添加多个站子，各自配 Base URL、Key 与模型"
           value={stations.length ? String(stations.length) : undefined}
@@ -542,7 +542,7 @@ export function SettingsPage() {
 
         <IOSSettingItem
           icon={<Brain className="h-4 w-4" />}
-          iconBg="bg-teal-400"
+          iconBg="bg-sky-400"
           title="记忆与技能"
           subtitle="小蓝莓的长期记忆 + 聊天时可触发的技能"
           showChevron
@@ -559,7 +559,7 @@ export function SettingsPage() {
 
         <IOSSettingItem
           icon={<Bot className="h-4 w-4" />}
-          iconBg="bg-teal-400"
+          iconBg="bg-sky-400"
           title="OpenClaw 微信接入"
           subtitle="把龙虾接进微信，在微信里跟 AI 智能体聊天"
           showChevron
@@ -587,9 +587,9 @@ export function SettingsPage() {
         */}
         <IOSSettingItem
           icon={<HardDrive className="h-4 w-4" />}
-          iconBg="bg-indigo-400"
+          iconBg="bg-emerald-400"
           title="数据中枢"
-          subtitle="存储占用、主角可见上下文、记忆区、快照备份"
+          subtitle="存储占用、上下文注入、记忆区、快照备份"
           showChevron
           onClick={() => toggle('datacore')}
         />
@@ -601,7 +601,7 @@ export function SettingsPage() {
 
         <IOSSettingItem
           icon={<Globe className="h-4 w-4" />}
-          iconBg="bg-blue-400"
+          iconBg="bg-emerald-400"
           title="云同步"
           subtitle="本地 ↔ VPS 双向同步"
           showChevron

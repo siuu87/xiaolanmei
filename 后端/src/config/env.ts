@@ -32,14 +32,6 @@ export const env = {
   emotionAnalyzer: (process.env.EMOTION_ANALYZER ?? 'on').toLowerCase() !== 'off',
 
   /**
-   * Ombre Brain（OB）记忆专线（2026-10-19）：阿里云 VPS 上的独立服务。
-   * 没有配置就整条链路静默跳过，聊天行为与以前完全一致。
-   */
-  obBaseUrl: (process.env.OB_BASE_URL ?? '').trim(),
-  obApiToken: (process.env.OB_API_TOKEN ?? '').trim(),
-  obTimeoutMs: envNum(process.env.OB_TIMEOUT_MS, 3500, 500),
-
-  /**
    * 消息时间戳（2026-10-19）：送模型前给每条消息动态加 `[Tue … CST · +9h 44m]`。
    * `MESSAGE_TIMESTAMPS=off` 关闭，回到原生行为。存档永远不写时间戳。
    */

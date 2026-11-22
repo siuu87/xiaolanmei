@@ -117,11 +117,14 @@ export const createNote = (note: InspirationNote) =>
   request<{ id: string }>('/api/notes', { method: 'POST', body: JSON.stringify(note) });
 export const deleteNote = (id: string) =>
   request<{ ok: true }>(`/api/notes/${id}`, { method: 'DELETE' });
-/** 给某一封信换信封颜色（只改 letterTheme，正文不动） */
-export const patchNoteTheme = (id: string, letterTheme: string) =>
+/**
+ * 给某一封信换信封包装（`letterLook` = `纸色:封口件:压纹`，正文不动）。
+ * 2026-11-18 晚由 `patchNoteTheme` 扩成整套 look：换纸色不能把封口件一起冲掉。
+ */
+export const patchNoteLook = (id: string, letterLook: string) =>
   request<{ ok: true }>(`/api/notes/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ letterTheme }),
+    body: JSON.stringify({ letterLook }),
   });
 export const generateNote = () => request<{ content: string }>('/api/notes/generate', { method: 'POST' });
 

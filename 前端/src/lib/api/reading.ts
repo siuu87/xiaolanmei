@@ -174,6 +174,17 @@ export const importLinkBook = (url: string, title?: string) =>
     body: JSON.stringify({ url, title }),
   });
 
+/** 微信读书（2026-11-18）：用登录 Cookie 拉书架元数据与划线入库；正文不抓 */
+export const importWereadBook = (cookie: string) =>
+  request<{
+    ok: true;
+    imported: number;
+    updated: number;
+    bookmarks: number;
+    total: number;
+    note: string;
+  }>('/api/reading/import/weread', { method: 'POST', body: JSON.stringify({ cookie }) });
+
 /** 进度同步：本地书 local；外部来源记为 pending（不谎报已同步） */
 export const syncReadingProgress = (bookId: string) =>
   request<{

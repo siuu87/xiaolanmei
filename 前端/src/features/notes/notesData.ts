@@ -38,6 +38,88 @@ export function normalizeLetterTheme(v: unknown): LetterTheme {
     : 'default';
 }
 
+/* ---------------------- 信封「包装」look ---------------------- */
+
+/**
+ * 一封信的包装（2026-11-18 晚：用户要「每封都有点小惊喜，不一样一点」）
+ *
+ * 只有纸色的话，六套颜色转一圈就腻了。所以把包装拆成三个正交的维度：
+ *
+ *   纸色 `theme`    —— 6 套（米白 / 玫瑰 / 深蓝 / 牛皮 / 苔绿 / 丁香）
+ *   封口件 `charm`  —— 压在封盖尖端的那一件：火漆 / 干花枝 / 棉线 / 和纸胶带
+ *   纸面压纹 `texture` —— plain 光纸 / line 细竖纹 / dot 点阵
+ *
+ * 6 × 4 × 3 = 72 种。后端 `pickLetterLook` 按「写信的时辰 + 信里写的字 + 当天日期」
+ * 挑一组存进 `letter_look` 列 —— 同样的话换个时间收到，信封就不一样。
+ *
+ * 存库格式是一行字符串 `sage:sprig:dot`：加维度不用改表结构，只加一段解析。
+ */
+export type LetterCharm = 'wax' | 'sprig' | 'string' | 'tape';
+export const LETTER_CHARMS: LetterCharm[] = ['wax', 'sprig', 'string', 'tape'];
+
+/** 纸面压纹：极淡。远看只是「纸好像不是纯色的」，近看才认得出 */
+export type LetterTexture = 'plain' | 'line' | 'dot';
+export const LETTER_TEXTURES: LetterTexture[] = ['plain', 'line', 'dot'];
+
+export interface LetterLook {
+  theme: LetterTheme;
+  charm: LetterCharm;
+  texture: LetterTexture;
+}
+
+/** 老数据 / 没挑过 look 的信：沿用原来的「纸色 + 火漆 + 光纸」 */
+export function defaultLook(theme: LetterTheme): LetterLook {
+  return { theme, charm: 'wax', texture: 'plain' };
+}
+
+/** 存库：`sage:sprig:dot` */
+export function encodeLook(l: LetterLook): string {
+  return `${l.theme}:${l.charm}:${l.texture}`;
+}
+
+/** 跟后端 `hashSeed` 同一套 FNV-1a：只求「同样的输入永远同样的输出」 */
+function seedOf(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * 读库。任何一段坏了都只降级那一段，不至于整封信画不出来：
+ * 纸色坏 → 用传进来的 `themeFallback`；封口件/压纹坏 → 火漆 / 光纸。
+ *
+ * 第三个数 `seed`（一般传信件的 id）只在一件事上有用：
+ * `letterLook` 是空的（2026-11-18 之前写下的老信，那时候还没有这道字段）。
+ * 没有它，所有老信都会长成「火漆 + 光纸」一模一样的一摞；给了它，
+ * 每封按自己的 id 派生一套固定的包装 —— **不写库、不改历史**，
+ * 但下次打开还是这几套，不会每次刷新都换。
+ */
+export function parseLook(
+  raw: unknown,
+  themeFallback: LetterTheme,
+  seed?: string,
+): LetterLook {
+  const fallback = normalizeLetterTheme(themeFallback);
+  if (typeof raw !== 'string' || !raw.trim()) {
+    if (!seed) return defaultLook(fallback);
+    const h = seedOf(seed);
+    return {
+      theme: fallback,
+      charm: LETTER_CHARMS[h % LETTER_CHARMS.length],
+      texture: h % 5 === 0 ? 'line' : h % 7 === 0 ? 'dot' : 'plain',
+    };
+  }
+  const [t, c, x] = raw.split(':');
+  return {
+    theme: normalizeLetterTheme(t || fallback),
+    charm: (LETTER_CHARMS as string[]).includes(c) ? (c as LetterCharm) : 'wax',
+    texture: (LETTER_TEXTURES as string[]).includes(x) ? (x as LetterTexture) : 'plain',
+  };
+}
+
 /** 一条 AI 灵感便签 */
 export interface InspirationNote {
   id: string;
@@ -45,6 +127,8 @@ export interface InspirationNote {
   createdAt: number; // 生成时间戳（ms）
   /** 信封主题；老数据 / 手写补录没有这一列，渲染时按 default 兜底 */
   letterTheme?: LetterTheme;
+  /** 信封包装（`sage:sprig:dot`，见 `encodeLook`）；空 = 按 letterTheme 兜底成「火漆 + 光纸」 */
+  letterLook?: string;
 }
 
 /**

@@ -13,9 +13,15 @@ import {
 
 /**
  * Token 记录卡片（首页用，极简版）：
- * - 只显示「花了多少 / 还剩多少」——一个大圆环；
+ * - 只显示「花了多少 / 还剩多少」——一个圆环；
  * - 右上角切换站子（全部 / 某站子）；
  * - 整卡可点，进入 /token 详情页看每个模型的用量进度条。
+ *
+ * 2026-11-18 晚：用户说「token 那个要不也改小点」。
+ * 它跟右边那枚 112px 宽的信封并排时，80px 的圆环 + 三行字显得比信还重，
+ * 整排的重心全压在左边。所以环缩到 62、字号各降一档、内边距收到 2.5，
+ * 内容改成**垂直居中** —— 卡片高度仍由右列撑满（grid 拉伸），
+ * 但缩下来的空白均匀落在上下，不再是头顶一堆、底下空一片。
  */
 export function TokenCard() {
   const navigate = useNavigate();
@@ -78,12 +84,12 @@ export function TokenCard() {
 
   return (
     <div
-      className="glass relative z-10 flex cursor-pointer flex-col p-3"
+      className="glass relative z-10 flex cursor-pointer flex-col justify-center p-2.5"
       onClick={() => navigate('/token')}
     >
       {/* 头部：标题 + 右上角换站子 */}
       <div className="flex items-center justify-between">
-        <h2 className="font-serif text-xs text-muted-foreground">Token 记录</h2>
+        <h2 className="font-serif text-[11px] text-muted-foreground">Token 记录</h2>
         <div onClick={(e) => e.stopPropagation()}>
           <StationPicker
             stationList={stationList}
@@ -94,24 +100,24 @@ export function TokenCard() {
       </div>
 
       {/* 圆圈：花了多少 / 还剩多少 */}
-      <div className="mt-3 flex flex-col items-center gap-1.5">
-        <div className="relative h-20 w-20">
-          <BigRing share={share} strokeWidth={5} />
+      <div className="mt-2.5 flex flex-col items-center gap-1">
+        <div className="relative h-[62px] w-[62px]">
+          <BigRing share={share} strokeWidth={4} />
           <span className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="text-[13px] font-semibold tabular-nums text-foreground leading-none">
+            <span className="text-[12px] font-semibold tabular-nums text-foreground leading-none">
               {fmtCny(spentCny)}
             </span>
-            <span className="mt-0.5 text-[8px] text-muted-foreground leading-none">
+            <span className="mt-0.5 text-[7.5px] text-muted-foreground leading-none">
               {selectedName ?? '已花费'}
             </span>
           </span>
         </div>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-[9px] text-muted-foreground">
           {remaining == null ? '还剩 —' : `还剩 ${fmtCny(remaining)}`}
         </span>
       </div>
 
-      <div className="mt-2 text-center text-[10px] text-muted-foreground/70">查看明细 ›</div>
+      <div className="mt-1.5 text-center text-[9px] text-muted-foreground/70">查看明细 ›</div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { listMemories, type MemoryDTO } from '@/lib/api/memories';
 import { listNotes } from '@/lib/api/home';
 import {
   EditableCard,
+  EditableSubline,
   useAvatarUploader,
 } from '@/features/shell/ProfileInlineEdit';
 
@@ -29,7 +30,6 @@ export function MePage() {
   const avatar = useProfileStore((s) => s.avatar);
   const description = useProfileStore((s) => s.description);
   const signature = useProfileStore((s) => s.signature);
-  const setName = useProfileStore((s) => s.setName);
   const setDescription = useProfileStore((s) => s.setDescription);
   const setSignature = useProfileStore((s) => s.setSignature);
 
@@ -83,7 +83,9 @@ export function MePage() {
         avatarLabel="换头像"
         coverPill=""
       >
-        {/* 头部居中：名字 / 在线药丸 */}
+        {/* 头部居中：名字大字 / 签名小字（头像下唯一可编辑的一行）/ 在线药丸。
+            2026-11-18 用户定（与「他的资料」同口径）：名字和签名都在头像下面；
+            名字要去「设置 → 个人」改，这里不再放编辑卡。 */}
         <div className="flex flex-col items-center px-4">
           <h2
             data-testid="me-name"
@@ -91,6 +93,15 @@ export function MePage() {
           >
             {name.trim() || '我'}
           </h2>
+          <EditableSubline
+            testId="me-signature"
+            ariaLabel="编辑个性签名"
+            value={signature}
+            displayText={signature.trim() || '还没写签名'}
+            placeholder="一句话介绍此刻的自己…"
+            maxLength={60}
+            onSave={(v) => setSignature(v)}
+          />
           <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-chat-me px-3 py-1.5 text-[11px] text-chat-me-fg">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
             {statusText}
@@ -108,24 +119,12 @@ export function MePage() {
           />
         </div>
 
-        {/* 区块就地编辑：每个卡片右上角小笔，点一下在框里改 */}
+        {/* 区块就地编辑：名字/签名已收进头像下那行小字（只签名能就地改），
+            剩下「我是谁」——每块标题下写一句「这块是干什么的」（2026-11-18 晚） */}
         <div className="mt-5 space-y-3">
           <EditableCard
-            title="名字"
-            value={name}
-            placeholder="例如：小明、学生、工作者"
-            maxLength={24}
-            onSave={(v) => setName(v)}
-          />
-          <EditableCard
-            title="个性签名"
-            value={signature}
-            placeholder="一句话介绍此刻的自己…"
-            maxLength={60}
-            onSave={(v) => setSignature(v)}
-          />
-          <EditableCard
             title="我是谁"
+            hint="你的身份、喜好、近况——告诉 AI 你是谁，它的回应才会更贴近你"
             value={description}
             placeholder="介绍一下你是谁、喜欢什么、最近在忙什么…"
             onSave={(v) => setDescription(v)}

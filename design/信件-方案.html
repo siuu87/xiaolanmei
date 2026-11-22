@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>深夜来信 · 拆信方案</title>
+<style>
+  :root{
+    --page:#F7F3EA; --card:#FFFFFF; --line:#E6DCCA; --ink:#3F382C; --meta:#877962;
+    --env:#E9DFCA; --flap:#DCD0B9; --flapLine:#C9BCA2; --paper:#FBF7EF;
+    --seal:#B4554C; --sealD:#8D3B34; --hot:#E0574F; --shade:60 30% 20%;
+  }
+  html[data-theme="dark"]{
+    --page:#161310; --card:#211C17; --line:#3A3128; --ink:#EADFCF; --meta:#C6B49B;
+    --env:#3A2E22; --flap:#463829; --flapLine:#5C4A36; --paper:#42372A;
+    --seal:#C9827C; --sealD:#8F5550; --hot:#E8726A; --shade:0 0% 0%;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:28px 20px 64px;background:var(--page);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{max-width:1080px;margin:0 auto 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  h1{margin:0;font-size:26px;letter-spacing:.02em;font-weight:600}
+  .sub{margin:6px 0 0;font-size:12.5px;color:var(--meta);line-height:1.75}
+  .bar{display:flex;gap:8px}
+  .bar button{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:7px 13px;border-radius:999px;font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  section{max-width:1080px;margin:0 auto 36px}
+  h2{font-size:13px;letter-spacing:.16em;color:var(--meta);font-weight:500;margin:0 0 14px;text-transform:uppercase}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:16px 14px 14px;flex:1 1 240px;max-width:330px;
+  }
+  .card h3{margin:0 0 2px;font-size:13.5px;font-weight:600}
+  .card p{margin:0 0 8px;font-size:11.5px;color:var(--meta);line-height:1.65;min-height:52px}
+  .stage{height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .stage.sm{height:150px}
+  svg{display:block;overflow:visible}
+  .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--meta);margin-left:6px;vertical-align:1px}
+  .tag.warn{border-color:var(--seal);color:var(--seal)}
+  .tag.good{border-color:#8a9b78;color:#8a9b78}
+  ul{margin:6px 0 0;padding-left:15px}
+  li{font-size:11.5px;line-height:1.75;color:var(--meta)}
+  li b{color:var(--ink);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:500;color:var(--meta);font-size:10.5px;letter-spacing:.08em}
+  td:first-child{color:var(--ink);white-space:nowrap}
+  td{color:var(--meta)}
+  tr:last-child td{border-bottom:none}
+  td .no{color:var(--seal)}
+  td .yes{color:#8a9b78}
+  .note{
+    max-width:1080px;margin:0 auto;padding:14px 16px;border-left:2px solid var(--seal);
+    background:color-mix(in srgb,var(--seal) 7%,transparent);border-radius:0 10px 10px 0;
+    font-size:12px;line-height:1.85;color:var(--meta);
+  }
+  .note b{color:var(--ink)}
+  .note ol{margin:6px 0 0;padding-left:17px}
+  .note li{font-size:12px;line-height:1.85;color:var(--meta)}
+  .colors{display:flex;gap:14px;flex-wrap:wrap}
+  .colors figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .colors figcaption{font-size:10.5px;color:var(--meta)}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>深夜来信 · 拆信方案</h1>
+    <p class="sub">信这件事，问题不在画得丑 —— 信封本身已经画得挺像了。问题是<b>同一封信在三个地方长了三张脸</b>，<br>而且「撕」这个最有记忆点的动作，只在弹窗里存在一次。</p>
+  </div>
+  <div class="bar">
+    <button onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">切换深浅</button>
+  </div>
+</header>
+
+<!-- ============ 一 · 现状盘点 ============ -->
+<section>
+  <h2>一 · 现在这封信到底长什么样</h2>
+  <div class="row">
+
+    <div class="card">
+      <h3>首页 / 抽屉那一格<span class="tag warn">最不像信</span></h3>
+      <p>整张卡就是信封：两条折线从角上折到中心，中心压一个爱心按钮（有新信＝实心）。没有火漆、没有纸、没有撕口。</p>
+      <div class="stage">
+        <svg width="200" height="122" viewBox="0 0 200 122">
+          <rect x="24" y="15" width="152" height="92" rx="15" fill="var(--card)" stroke="var(--line)"/>
+          <path d="M24 15 L100 62 L176 15" fill="none" stroke="var(--flapLine)" stroke-width="1"/>
+          <circle cx="100" cy="62" r="16" fill="var(--card)" stroke="var(--flapLine)"/>
+          <path d="M100 70 C100 70 91.5 64.5 91.5 59.5 C91.5 56 94.2 53.8 97.4 53.8 C99.1 53.8 100 55 100 55 C100 55 100.9 53.8 102.6 53.8 C105.8 53.8 108.5 56 108.5 59.5 C108.5 64.5 100 70 100 70 Z"
+                fill="#E8546B"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>全部来信 /notes<span class="tag good">最完整</span></h3>
+      <p>横版 5:3 信封，V 形封盖 + 火漆 + 丝带 + 纸纹。拆过的信<i>上沿是被撕掉的一块</i>，留毛边和一小片残蜡。这套是全站唯一做对了的。</p>
+      <div class="stage">
+        <svg width="200" height="122" viewBox="0 0 200 122">
+          <defs>
+            <clipPath id="tornA">
+              <path d="M22 112 L22 18 L32 26 L44 30 L56 38 L68 46 L82 54 L100 58 L114 52 L128 44 L142 36 L154 28 L166 21 L178 18 L178 112 Z"/>
+            </clipPath>
+          </defs>
+          <!-- 背板 -->
+          <rect x="22" y="18" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+          <!-- 信纸（从缺口里露出来） -->
+          <rect x="34" y="22" width="132" height="46" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".6"/>
+          <g fill="var(--ink)" opacity=".13">
+            <rect x="44" y="34" width="96" height="2.4" rx="1.2"/>
+            <rect x="44" y="42" width="112" height="2.4" rx="1.2"/>
+            <rect x="44" y="50" width="72" height="2.4" rx="1.2"/>
+          </g>
+          <!-- 前面板（上沿＝撕口） -->
+          <g clip-path="url(#tornA)">
+            <rect x="22" y="18" width="156" height="94" fill="var(--env)"/>
+          </g>
+          <path d="M22 18 L32 26 L44 30 L56 38 L68 46 L82 54 L100 58 L114 52 L128 44 L142 36 L154 28 L166 21 L178 18"
+                fill="none" stroke="var(--flapLine)" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M22 112 L150 18" fill="none" stroke="var(--flapLine)" stroke-width=".7" opacity=".45"/>
+          <path d="M178 112 L50 18" fill="none" stroke="var(--flapLine)" stroke-width=".7" opacity=".45"/>
+          <!-- 残蜡 -->
+          <ellipse cx="86" cy="50" rx="6.5" ry="4" fill="var(--seal)" transform="rotate(-19 86 50)"/>
+          <ellipse cx="92" cy="54" rx="3.4" ry="2.2" fill="var(--seal)" opacity=".8" transform="rotate(-14 92 54)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>点开那一层（弹窗）<span class="tag">另一套构图</span></h3>
+      <p>竖版 420×560：上面是插在信封口的信纸，下面是信封前面板，中间一枚<i>裂成两半</i>的火漆。未拆过的先撕，撕完才给信纸。</p>
+      <div class="stage">
+        <svg width="138" height="184" viewBox="0 0 200 266">
+          <!-- 信纸 -->
+          <rect x="52" y="12" width="96" height="240" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".8"/>
+          <text x="66" y="52" font-size="30" fill="var(--flapLine)" font-family="Georgia,serif">“</text>
+          <g fill="var(--ink)" opacity=".16">
+            <rect x="68" y="72" width="62" height="2.6" rx="1.3"/>
+            <rect x="68" y="84" width="72" height="2.6" rx="1.3"/>
+            <rect x="68" y="96" width="54" height="2.6" rx="1.3"/>
+            <rect x="68" y="108" width="70" height="2.6" rx="1.3"/>
+            <rect x="68" y="120" width="46" height="2.6" rx="1.3"/>
+          </g>
+          <g fill="var(--ink)" opacity=".13">
+            <rect x="112" y="196" width="26" height="2" rx="1"/>
+            <rect x="118" y="203" width="20" height="2" rx="1"/>
+          </g>
+          <!-- 信封背板 + 后折翼 -->
+          <rect x="42" y="120" width="116" height="132" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".7"/>
+          <!-- 前面板：弧顶 -->
+          <path d="M46 152 Q100 136 154 152 L154 252 L46 252 Z" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".9"/>
+          <path d="M46 252 L100 152" fill="none" stroke="var(--flapLine)" stroke-width=".9" opacity=".7"/>
+          <path d="M154 252 L100 152" fill="none" stroke="var(--flapLine)" stroke-width=".9" opacity=".7"/>
+          <!-- 裂开的火漆：两半 -->
+          <g>
+            <path d="M100 148 a13 13 0 0 0 0 .1 Z" fill="none"/>
+            <path d="M100 136 C108 136 113 141 113 148 C113 155 107 159 100 159 L100 136 Z" fill="var(--seal)"/>
+            <path d="M100 136 C92 136 87 141 87 148 C87 155 93 159 100 159 L100 136 Z" fill="var(--sealD)"/>
+            <path d="M100 136 L100 159" stroke="var(--paper)" stroke-width="1"/>
+          </g>
+          <!-- 星星 -->
+          <g stroke="#B9C8DE" stroke-width="1.1" fill="none" opacity=".8">
+            <path d="M26 34 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 z"/>
+            <path d="M174 62 l2.4 5.6 l5.6 2.4 l-5.6 2.4 l-2.4 5.6 l-2.4 -5.6 l-5.6 -2.4 l5.6 -2.4 z"/>
+            <path d="M168 210 l2 4.6 l4.6 2 l-4.6 2 l-2 4.6 l-2 -4.6 l-4.6 -2 l4.6 -2 z"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>还有一张没人用的老卡<span class="tag warn">死代码</span></h3>
+      <p>圆角信息卡：红点 + 「第 7 封」+ 固定 84px 正文 + 翻页键。首页和抽屉都只传了 <code>compact</code>，这版已经没有任何调用方。</p>
+      <div class="stage">
+        <svg width="200" height="122" viewBox="0 0 200 122">
+          <rect x="20" y="10" width="160" height="102" rx="14" fill="var(--card)" stroke="var(--line)"/>
+          <circle cx="34" cy="27" r="3.2" fill="var(--hot)"/>
+          <text x="42" y="30" font-size="8" fill="var(--meta)" letter-spacing=".6">第 7 封</text>
+          <rect x="160" y="20" width="9" height="7" rx="1" fill="none" stroke="var(--meta)" stroke-width=".9"/>
+          <path d="M160 20 l4.5 3.4 l4.5 -3.4" fill="none" stroke="var(--meta)" stroke-width=".9"/>
+          <text x="26" y="46" font-size="7" fill="var(--meta)" opacity=".75">2026.11.14</text>
+          <g fill="var(--meta)" opacity=".28">
+            <rect x="26" y="54" width="146" height="3.4" rx="1.7"/>
+            <rect x="26" y="63" width="132" height="3.4" rx="1.7"/>
+            <rect x="26" y="72" width="140" height="3.4" rx="1.7"/>
+            <rect x="26" y="81" width="88" height="3.4" rx="1.7"/>
+          </g>
+          <g fill="var(--meta)" opacity=".5">
+            <path d="M142 100 l-3 -3 l3 -3" stroke="var(--meta)" stroke-width="1" fill="none"/>
+            <path d="M158 94 l3 3 l-3 3" stroke="var(--meta)" stroke-width="1" fill="none"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card" style="max-width:none;flex-basis:100%;margin-top:16px;padding:6px 14px 10px">
+    <table>
+      <thead>
+        <tr><th>位置</th><th>形状</th><th>火漆</th><th>撕开之后长什么样</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>首页 / 抽屉那一格</td>
+          <td>圆角卡 + 两条 V 折线 + 爱心按钮</td>
+          <td class="no">没有</td>
+          <td class="no">没有撕口，只有爱心实心 / 空心</td>
+        </tr>
+        <tr>
+          <td>全部来信 /notes</td>
+          <td>横版信封 5:3</td>
+          <td class="yes">整枚</td>
+          <td class="yes">上沿撕掉一块 + 毛边 + 一小片残蜡</td>
+        </tr>
+        <tr>
+          <td>点开那一层（弹窗）</td>
+          <td>竖版 420×560，信纸插在信封口</td>
+          <td class="yes">裂成两半</td>
+          <td class="no">火漆裂开，但信封口是<i>完好</i>的</td>
+        </tr>
+        <tr>
+          <td>老信息卡（无调用方）</td>
+          <td>圆角卡 + 红点 + 正文 + 翻页</td>
+          <td class="no">没有</td>
+          <td class="no">不是信封</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 二 · 三种统一方案 ============ -->
+<section>
+  <h2>二 · 怎么统一（三条路，选一条）</h2>
+  <div class="row">
+
+    <div class="card">
+      <h3>A · 一枚信封走到底</h3>
+      <p>三处全部换成同一个横版 5:3 信封模子。首页那一格把它缩小、火漆当「全部来信」入口；弹窗起手也是横版，撕开后<b>把信纸抽出来</b>才变竖版。</p>
+      <div class="stage sm">
+        <svg width="280" height="110" viewBox="0 0 280 110">
+          <!-- ① 一枚信封 -->
+          <g transform="translate(2 30) scale(.45)">
+            <rect x="0" y="0" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+            <path d="M0 0 L78 48 L156 0 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+            <circle cx="78" cy="48" r="14" fill="var(--seal)"/>
+          </g>
+          <path d="M76 50 l14 0 m-5 -4 l5 4 l-5 4" stroke="var(--meta)" stroke-width="1.2" fill="none"/>
+          <!-- ② 撕开的一枚（同一个模子） -->
+          <g transform="translate(94 30) scale(.45)">
+            <defs>
+              <clipPath id="planA">
+                <path d="M0 94 L0 0 L10 8 L22 12 L34 20 L46 28 L60 36 L78 40 L92 34 L106 26 L120 18 L132 10 L144 4 L156 0 L156 94 Z"/>
+              </clipPath>
+            </defs>
+            <rect x="0" y="0" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+            <rect x="12" y="4" width="132" height="46" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".7"/>
+            <g clip-path="url(#planA)"><rect x="0" y="0" width="156" height="94" fill="var(--env)"/></g>
+            <path d="M0 0 L10 8 L22 12 L34 20 L46 28 L60 36 L78 40 L92 34 L106 26 L120 18 L132 10 L144 4 L156 0"
+                  fill="none" stroke="var(--flapLine)" stroke-width="1.8" stroke-linejoin="round"/>
+            <ellipse cx="64" cy="32" rx="7" ry="4.2" fill="var(--seal)" transform="rotate(-19 64 32)"/>
+          </g>
+          <path d="M170 58 l14 0 m-5 -4 l5 4 l-5 4" stroke="var(--meta)" stroke-width="1.2" fill="none"/>
+          <!-- ③ 纸被抽出来 -->
+          <g transform="translate(188 40) scale(.45)">
+            <rect x="0" y="0" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+            <rect x="18" y="-46" width="120" height="90" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1"/>
+            <g fill="var(--ink)" opacity=".14">
+              <rect x="30" y="-36" width="72" height="2.6" rx="1.3"/>
+              <rect x="30" y="-26" width="88" height="2.6" rx="1.3"/>
+              <rect x="30" y="-16" width="58" height="2.6" rx="1.3"/>
+            </g>
+            <!-- 信封正面盖住纸的下缘，纸才像「插在里面」 -->
+            <path d="M0 0 L10 8 L22 12 L34 20 L46 28 L60 36 L78 40 L92 34 L106 26 L120 18 L132 10 L144 4 L156 0 L156 94 L0 94 Z"
+                  fill="var(--env)" stroke="var(--flapLine)" stroke-width="1.8" stroke-linejoin="round"/>
+            <ellipse cx="64" cy="32" rx="6" ry="3.6" fill="var(--seal)" transform="rotate(-19 64 32)"/>
+          </g>
+          <path d="M223 18 l0 -12 m-5 5 l5 -5 l5 5" stroke="var(--seal)" stroke-width="1.3" fill="none"/>
+        </svg>
+      </div>
+      <ul>
+        <li><b>好处</b>：只有一套零件，改一处三处同步；火漆终于能当入口。</li>
+        <li><b>代价</b>：首页那一格只有 100px 出头宽，火漆和撕口都要缩到看不清；而且「一封信」在首页会显得比现在更占地方。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>B · 一沓 → 一封 → 抽出来<span class="tag good">建议</span></h3>
+      <p>三个层级三种信息量：首页是<b>一沓信</b>（看有几封没拆），/notes 是<b>摊开的一册</b>（扫颜色），弹窗才是<b>那一枚</b>（撕它）。</p>
+      <div class="stage sm">
+        <svg width="280" height="110" viewBox="0 0 280 110">
+          <!-- ① 一沓：错位叠着的纸 -->
+          <g transform="translate(6 28)">
+            <rect x="6" y="12" width="76" height="60" rx="4" fill="var(--paper)" stroke="var(--flapLine)" transform="rotate(-5 44 42)" opacity=".5"/>
+            <rect x="4" y="8" width="78" height="62" rx="4" fill="var(--paper)" stroke="var(--flapLine)" transform="rotate(3.5 43 39)" opacity=".72"/>
+            <rect x="2" y="4" width="82" height="66" rx="4" fill="var(--env)" stroke="var(--flapLine)"/>
+            <path d="M2 4 L43 40 L84 4" fill="none" stroke="var(--flapLine)" stroke-width="1"/>
+            <circle cx="43" cy="40" r="11" fill="var(--seal)"/>
+            <circle cx="76" cy="12" r="3.4" fill="var(--hot)"/>
+          </g>
+          <path d="M94 60 l14 0 m-5 -4 l5 4 l-5 4" stroke="var(--meta)" stroke-width="1.2" fill="none"/>
+          <!-- ② 摊开成一册：四枚小信封（手画，不缩放，线宽才不糊） -->
+          <g>
+            <g transform="translate(114 38)">
+              <rect x="0" y="0" width="32" height="20" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".8"/>
+              <path d="M0 0 L16 10 L32 0" fill="none" stroke="var(--flapLine)" stroke-width=".8"/>
+              <circle cx="16" cy="10" r="3.2" fill="var(--seal)"/>
+            </g>
+            <g transform="translate(154 38)">
+              <rect x="0" y="0" width="32" height="20" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".8"/>
+              <path d="M0 0 L16 10 L32 0" fill="none" stroke="var(--flapLine)" stroke-width=".8"/>
+              <circle cx="16" cy="10" r="3.2" fill="#D9B53A"/>
+            </g>
+            <g transform="translate(114 66)">
+              <rect x="0" y="0" width="32" height="20" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".8"/>
+              <path d="M0 0 L16 10 L32 0" fill="none" stroke="var(--flapLine)" stroke-width=".8"/>
+              <circle cx="16" cy="10" r="3.2" fill="var(--seal)"/>
+            </g>
+            <g transform="translate(154 66)">
+              <rect x="0" y="0" width="32" height="20" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".8"/>
+              <path d="M0 0 L16 10 L32 0" fill="none" stroke="var(--flapLine)" stroke-width=".8"/>
+              <circle cx="16" cy="10" r="3.2" fill="var(--seal)"/>
+            </g>
+          </g>
+          <path d="M194 60 l14 0 m-5 -4 l5 4 l-5 4" stroke="var(--meta)" stroke-width="1.2" fill="none"/>
+          <!-- ③ 只剩要被拆的那一枚：纸已经抽出来 -->
+          <g transform="translate(212 42) scale(.27)">
+            <rect x="0" y="0" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)" stroke-width="3"/>
+            <rect x="18" y="-46" width="120" height="90" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="3"/>
+            <path d="M0 0 L10 8 L22 12 L34 20 L46 28 L60 36 L78 40 L92 34 L106 26 L120 18 L132 10 L144 4 L156 0 L156 94 L0 94 Z"
+                  fill="var(--env)" stroke="var(--flapLine)" stroke-width="3" stroke-linejoin="round"/>
+            <ellipse cx="60" cy="30" rx="7" ry="4" fill="var(--seal)"/>
+          </g>
+          <path d="M250 26 l0 -14 m-5 5 l5 -5 l5 5" stroke="var(--seal)" stroke-width="1.3" fill="none"/>
+        </svg>
+      </div>
+      <ul>
+        <li><b>好处</b>：首页那一格保持现在的大小，但「几封没看」一眼看出；撕口的细节留给弹窗，不会缩成一团。</li>
+        <li><b>代价</b>：首页那张「一沓」要新画（现在只是两条折线），而且它不再是信封 —— 你得接受首页看不到信封本体。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>C · 只补，不动结构</h3>
+      <p>四处保持原样，只做三件小事：把弹窗里「火漆裂两半但信封完好」改成和 /notes 一样的毛边 + 残蜡；首页爱心换成小枚火漆；删掉没人用的老卡。</p>
+      <div class="stage sm">
+        <svg width="280" height="110" viewBox="0 0 280 110">
+          <!-- 左：现在弹窗里的结果 —— 蜡裂了，信封口是完好的 -->
+          <g transform="translate(26 26)">
+            <rect x="0" y="0" width="90" height="56" fill="var(--env)" stroke="var(--flapLine)"/>
+            <path d="M0 0 L45 26 L90 0" fill="none" stroke="var(--flapLine)" stroke-width="1.1"/>
+            <path d="M45 14 C51 14 55 18 55 23 C55 28 50 32 44 30 Z" fill="var(--seal)"/>
+            <path d="M45 14 C39 14 35 18 35 23 C35 28 40 32 45 30 Z" fill="var(--sealD)"/>
+          </g>
+          <path d="M128 54 l16 0 m-5 -4 l5 4 l-5 4" stroke="var(--seal)" stroke-width="1.3" fill="none"/>
+          <!-- 右：改成和 /notes 一样 —— 撕掉一块 + 一小片残蜡 -->
+          <g transform="translate(156 26)">
+            <defs>
+              <clipPath id="planC">
+                <path d="M0 56 L0 0 L5 6 L14 9 L24 15 L34 21 L45 24 L56 20 L66 14 L76 8 L85 4 L90 0 L90 56 Z"/>
+              </clipPath>
+            </defs>
+            <rect x="0" y="0" width="90" height="56" fill="var(--env)" stroke="var(--flapLine)"/>
+            <rect x="6" y="2" width="78" height="26" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".5"/>
+            <g clip-path="url(#planC)"><rect x="0" y="0" width="90" height="56" fill="var(--env)"/></g>
+            <path d="M0 0 L5 6 L14 9 L24 15 L34 21 L45 24 L56 20 L66 14 L76 8 L85 4 L90 0"
+                  fill="none" stroke="var(--flapLine)" stroke-width="1.8" stroke-linejoin="round"/>
+            <ellipse cx="38" cy="21" rx="4" ry="2.6" fill="var(--seal)" transform="rotate(-19 38 21)"/>
+          </g>
+        </svg>
+      </div>
+      <ul>
+        <li><b>好处</b>：改动最小，不动现有手感。</li>
+        <li><b>代价</b>：三张脸还是三张脸。「撕」这件事仍然只属于 /notes，首页看不出来这几封信是拿来<b>拆</b>的。</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 三 · 撕开 ============ -->
+<section>
+  <h2>三 · 撕开这一下（现在的四帧）</h2>
+  <div class="row">
+
+    <div class="card" style="flex:0 0 176px;max-width:176px">
+      <h3 style="font-size:12px">① 封着</h3>
+      <div class="stage sm">
+        <svg width="140" height="112" viewBox="0 0 200 160">
+          <rect x="22" y="30" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M22 30 L100 78 L178 30 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="78" r="14" fill="var(--seal)"/>
+          <circle cx="95" cy="73" r="4.4" fill="#fff" opacity=".22"/>
+        </svg>
+      </div>
+      <p style="min-height:0;margin:0">外壳 + 一沓错位的纸边</p>
+    </div>
+
+    <div class="card" style="flex:0 0 176px;max-width:176px">
+      <h3 style="font-size:12px">② 按住往上拖</h3>
+      <div class="stage sm">
+        <svg width="140" height="112" viewBox="0 0 200 160">
+          <!-- 背板 -->
+          <rect x="22" y="30" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+          <!-- 信纸：藏在面板后面，只从 V 谷里露出 -->
+          <rect x="38" y="34" width="124" height="46" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".6"/>
+          <g fill="var(--ink)" opacity=".13">
+            <rect x="48" y="46" width="86" height="2.2" rx="1.1"/>
+            <rect x="48" y="54" width="70" height="2.2" rx="1.1"/>
+            <rect x="48" y="62" width="94" height="2.2" rx="1.1"/>
+          </g>
+          <!-- 正面面板（V 谷口） -->
+          <path d="M22 30 L100 78 L178 30 L178 124 L22 124 Z" fill="var(--env)" stroke="var(--flapLine)"/>
+          <!-- 撕口线：沿 V 谷长开 -->
+          <path d="M22 30 L34 40 L46 47 L58 55 L72 63 L86 71 L100 78" fill="none" stroke="var(--flapLine)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M100 78 L114 70 L128 62 L142 54 L154 46 L166 38 L178 30" fill="none" stroke="var(--flapLine)" stroke-width="1.5" stroke-linejoin="round"/>
+          <!-- 封盖抬起 -->
+          <g transform="translate(-5 -20) rotate(-2 100 78)">
+            <path d="M22 30 L100 78 L178 30 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+            <circle cx="100" cy="78" r="12" fill="var(--seal)"/>
+            <circle cx="95" cy="73" r="3.6" fill="#fff" opacity=".22"/>
+          </g>
+          <path d="M100 26 l0 -10 m-4 4 l4 -4 l4 4" stroke="var(--meta)" stroke-width="1.2" fill="none"/>
+        </svg>
+      </div>
+      <p style="min-height:0;margin:0">撕口跟着手指长开，纸先冒头</p>
+    </div>
+
+    <div class="card" style="flex:0 0 176px;max-width:176px">
+      <h3 style="font-size:12px">③ 过 42% 松手</h3>
+      <div class="stage sm">
+        <svg width="140" height="112" viewBox="0 0 200 160">
+          <defs>
+            <clipPath id="tornC">
+              <path d="M22 124 L22 30 L32 38 L44 42 L56 50 L68 58 L82 66 L100 70 L114 64 L128 56 L142 48 L154 40 L166 33 L178 30 L178 124 Z"/>
+            </clipPath>
+          </defs>
+          <rect x="22" y="30" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+          <rect x="34" y="34" width="132" height="42" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".6"/>
+          <g clip-path="url(#tornC)"><rect x="22" y="30" width="156" height="94" fill="var(--env)"/></g>
+          <path d="M22 30 L32 38 L44 42 L56 50 L68 58 L82 66 L100 70 L114 64 L128 56 L142 48 L154 40 L166 33 L178 30"
+                fill="none" stroke="var(--flapLine)" stroke-width="1.5" stroke-linejoin="round"/>
+          <ellipse cx="86" cy="62" rx="6.5" ry="4" fill="var(--seal)" transform="rotate(-19 86 62)"/>
+          <!-- 封盖残影：缩小、歪着往左上飞走 -->
+          <g opacity=".55" transform="translate(54 8) scale(.52) rotate(7 100 78)">
+            <path d="M22 30 L100 78 L178 30 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+            <circle cx="100" cy="78" r="12" fill="var(--seal)"/>
+          </g>
+          <!-- 速度线 -->
+          <g stroke="var(--flapLine)" stroke-width="2" stroke-linecap="round" opacity=".6">
+            <path d="M60 62 l-10 -8"/>
+            <path d="M76 68 l-9 -9"/>
+            <path d="M134 60 l10 -8"/>
+            <path d="M118 66 l9 -9"/>
+          </g>
+          <path d="M100 26 l0 -12 m-5 5 l5 -5 l5 5" stroke="var(--seal)" stroke-width="1.3" fill="none"/>
+        </svg>
+      </div>
+      <p style="min-height:0;margin:0">整片封盖带着火漆飞出去（0.47s）</p>
+    </div>
+
+    <div class="card" style="flex:0 0 176px;max-width:176px">
+      <h3 style="font-size:12px">④ 留下撕口</h3>
+      <div class="stage sm">
+        <svg width="140" height="112" viewBox="0 0 200 160">
+          <defs>
+            <clipPath id="tornB">
+              <path d="M22 124 L22 30 L32 38 L44 42 L56 50 L68 58 L82 66 L100 70 L114 64 L128 56 L142 48 L154 40 L166 33 L178 30 L178 124 Z"/>
+            </clipPath>
+          </defs>
+          <rect x="22" y="30" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+          <rect x="34" y="34" width="132" height="42" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".6"/>
+          <g clip-path="url(#tornB)"><rect x="22" y="30" width="156" height="94" fill="var(--env)"/></g>
+          <path d="M22 30 L32 38 L44 42 L56 50 L68 58 L82 66 L100 70 L114 64 L128 56 L142 48 L154 40 L166 33 L178 30"
+                fill="none" stroke="var(--flapLine)" stroke-width="1.5" stroke-linejoin="round"/>
+          <ellipse cx="86" cy="62" rx="6.5" ry="4" fill="var(--seal)" transform="rotate(-19 86 62)"/>
+          <ellipse cx="92" cy="66" rx="3.2" ry="2" fill="var(--seal)" opacity=".8"/>
+        </svg>
+      </div>
+      <p style="min-height:0;margin:0">毛边 + 半枚残蜡，永久保持</p>
+    </div>
+
+  </div>
+
+  <div class="card" style="max-width:none;flex-basis:100%;margin-top:16px">
+    <h3>但中间缺了两帧 —— 这就是「撕」看着不够狠的原因</h3>
+    <div class="row" style="margin-top:10px;gap:12px">
+      <div style="flex:1 1 200px;max-width:230px">
+        <div class="stage sm" style="height:120px">
+          <svg width="150" height="100" viewBox="0 0 200 140">
+            <rect x="22" y="26" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+            <path d="M22 26 L100 74 L178 26 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+            <!-- 蜡裂：封盖还没走，蜡先断 -->
+            <path d="M100 60 C108 60 113 65 113 72 C113 79 106 84 99 82 Z" fill="var(--seal)"/>
+            <path d="M100 60 C92 60 87 65 87 72 C87 79 94 84 100 82 Z" fill="var(--sealD)"/>
+            <path d="M100 60 l0 23" stroke="var(--paper)" stroke-width="1.4" opacity=".55"/>
+            <text x="100" y="128" font-size="10" fill="var(--seal)" text-anchor="middle">0.10s · 蜡先裂</text>
+          </svg>
+        </div>
+      </div>
+      <div style="flex:1 1 200px;max-width:230px">
+        <div class="stage sm" style="height:120px">
+          <svg width="150" height="100" viewBox="0 0 200 140">
+            <rect x="22" y="26" width="156" height="94" fill="var(--env)" stroke="var(--flapLine)"/>
+            <!-- 缝里露出纸 -->
+            <rect x="22" y="26" width="156" height="10" fill="var(--paper)"/>
+            <!-- 纸被抽出来 -->
+            <rect x="44" y="-30" width="112" height="70" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".8"/>
+            <g fill="var(--ink)" opacity=".14">
+              <rect x="56" y="-18" width="70" height="2.4" rx="1.2"/>
+              <rect x="56" y="-8" width="84" height="2.4" rx="1.2"/>
+              <rect x="56" y="2" width="56" height="2.4" rx="1.2"/>
+            </g>
+            <path d="M100 30 l0 -12 m-4 4 l4 -4 l4 4" stroke="var(--seal)" stroke-width="1.3" fill="none"/>
+            <text x="100" y="128" font-size="10" fill="var(--seal)" text-anchor="middle">0.47s · 纸往上抽</text>
+          </svg>
+        </div>
+      </div>
+      <div style="flex:2 1 300px">
+        <ul style="margin-top:0">
+          <li><b>现在</b>：封盖带着<i>整枚</i>完好的火漆一起飞走，落地后信封上却出现<i>半枚</i>残蜡 —— 中间没有「断」的那一瞬。所以看着像火漆被揭下来，不像被撕断。</li>
+          <li><b>补一帧</b>：封盖位移到 30% 时，蜡沿中线裂开（0.10s），一半跟着封盖走、一半留在信封口。</li>
+          <li><b>再补一帧</b>：撕完之后信纸是从信封里<b>被抽上去</b>的，不是淡入。现在那层纸是 opacity 淡出的，等于跳过了「拿出来」。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 四 · 纸和色 ============ -->
+<section>
+  <h2>四 · 六套信封纸（已经有了，只是首页没见过）</h2>
+  <div class="card" style="max-width:none;flex-basis:100%">
+    <div class="colors" style="justify-content:space-between">
+      <figure style="--env:#E9DFCA;--flap:#DCD0B9;--flapLine:#C9BCA2;--seal:#B4554C">
+        <svg width="104" height="66" viewBox="0 0 200 126">
+          <rect x="10" y="14" width="180" height="98" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M10 14 L100 66 L190 14 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="66" r="15" fill="var(--seal)"/>
+        </svg>
+        <figcaption>素雅</figcaption>
+      </figure>
+      <figure style="--env:#F2DCD2;--flap:#E9CABE;--flapLine:#D8AB9B;--seal:#D9B53A">
+        <svg width="104" height="66" viewBox="0 0 200 126">
+          <rect x="10" y="14" width="180" height="98" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M10 14 L100 66 L190 14 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="66" r="15" fill="var(--seal)"/>
+        </svg>
+        <figcaption>纪念日</figcaption>
+      </figure>
+      <figure style="--env:#232C48;--flap:#2C3550;--flapLine:#3D4767;--seal:#E3C07A">
+        <svg width="104" height="66" viewBox="0 0 200 126">
+          <rect x="10" y="14" width="180" height="98" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M10 14 L100 66 L190 14 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="66" r="15" fill="var(--seal)"/>
+        </svg>
+        <figcaption>夜色</figcaption>
+      </figure>
+      <figure style="--env:#CFAC7E;--flap:#C8A271;--flapLine:#AB8452;--seal:#A34E3E">
+        <svg width="104" height="66" viewBox="0 0 200 126">
+          <rect x="10" y="14" width="180" height="98" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M10 14 L100 66 L190 14 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="66" r="15" fill="var(--seal)"/>
+        </svg>
+        <figcaption>牛皮</figcaption>
+      </figure>
+      <figure style="--env:#C9D4BA;--flap:#C3CFB2;--flapLine:#A4B391;--seal:#B96B4E">
+        <svg width="104" height="66" viewBox="0 0 200 126">
+          <rect x="10" y="14" width="180" height="98" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M10 14 L100 66 L190 14 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="66" r="15" fill="var(--seal)"/>
+        </svg>
+        <figcaption>鼠尾草</figcaption>
+      </figure>
+      <figure style="--env:#DED2EE;--flap:#D9CDEA;--flapLine:#BCABD4;--seal:#9B5A86">
+        <svg width="104" height="66" viewBox="0 0 200 126">
+          <rect x="10" y="14" width="180" height="98" fill="var(--env)" stroke="var(--flapLine)"/>
+          <path d="M10 14 L100 66 L190 14 Z" fill="var(--flap)" stroke="var(--flapLine)"/>
+          <circle cx="100" cy="66" r="15" fill="var(--seal)"/>
+        </svg>
+        <figcaption>丁香</figcaption>
+      </figure>
+    </div>
+    <p style="min-height:0;margin:12px 0 0;font-size:11.5px;color:var(--meta);line-height:1.7">
+      六套纸是齐的，火漆跟着走。真正的问题是<b>首页那一格从来不显示信封</b>，所以用户到现在也没见过这几张纸 —— 换色入口只藏在 /notes 的调色板里。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 五 · 信纸那面 ============ -->
+<section>
+  <h2>五 · 点开之后那张纸</h2>
+  <div class="row">
+    <div class="card" style="flex:0 0 300px;max-width:300px">
+      <div class="stage" style="height:340px">
+        <svg width="238" height="324" viewBox="0 0 200 272">
+          <!-- 舞台 -->
+          <rect x="0" y="0" width="200" height="272" rx="8" fill="var(--page)" stroke="var(--line)"/>
+          <!-- 信纸 -->
+          <rect x="40" y="18" width="120" height="236" fill="var(--paper)" stroke="var(--flapLine)" stroke-width=".8"/>
+          <text x="52" y="48" font-size="24" fill="var(--flapLine)" font-family="Georgia,serif">“</text>
+          <g fill="var(--ink)" opacity=".2">
+            <rect x="54" y="62" width="72" height="2.4" rx="1.2"/>
+            <rect x="54" y="73" width="92" height="2.4" rx="1.2"/>
+            <rect x="54" y="84" width="64" height="2.4" rx="1.2"/>
+            <rect x="54" y="95" width="88" height="2.4" rx="1.2"/>
+            <rect x="54" y="106" width="50" height="2.4" rx="1.2"/>
+            <rect x="54" y="117" width="84" height="2.4" rx="1.2"/>
+            <rect x="54" y="128" width="66" height="2.4" rx="1.2"/>
+          </g>
+          <g fill="var(--ink)" opacity=".16">
+            <rect x="112" y="150" width="32" height="2" rx="1"/>
+            <rect x="120" y="157" width="24" height="2" rx="1"/>
+          </g>
+          <!-- 信封前面板 -->
+          <path d="M34 196 Q100 176 166 196 L166 272 L34 272 Z" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".9"/>
+          <path d="M34 272 L100 196" fill="none" stroke="var(--flapLine)" stroke-width=".9" opacity=".7"/>
+          <path d="M166 272 L100 196" fill="none" stroke="var(--flapLine)" stroke-width=".9" opacity=".7"/>
+          <!-- 裂蜡 -->
+          <path d="M100 178 C108 178 113 183 113 190 C113 197 106 202 99 200 Z" fill="var(--seal)"/>
+          <path d="M100 178 C92 178 87 183 87 190 C87 197 94 202 100 200 Z" fill="var(--sealD)"/>
+          <path d="M100 178 L99.4 200" stroke="var(--paper)" stroke-width="1.2"/>
+          <!-- 星星（只画 5 颗，现在画了 19 颗） -->
+          <g stroke="#B9C8DE" stroke-width="1" fill="none" opacity=".85">
+            <path d="M18 40 l2.6 6 l6 2.6 l-6 2.6 l-2.6 6 l-2.6 -6 l-6 -2.6 l6 -2.6 z"/>
+            <path d="M182 78 l2 4.8 l4.8 2 l-4.8 2 l-2 4.8 l-2 -4.8 l-4.8 -2 l4.8 -2 z"/>
+            <path d="M16 150 l2 4.8 l4.8 2 l-4.8 2 l-2 4.8 l-2 -4.8 l-4.8 -2 l4.8 -2 z"/>
+            <path d="M186 176 l2.4 5.6 l5.6 2.4 l-5.6 2.4 l-2.4 5.6 l-2.4 -5.6 l-5.6 -2.4 l5.6 -2.4 z"/>
+            <path d="M14 232 l2 4.8 l4.8 2 l-4.8 2 l-2 4.8 l-2 -4.8 l-4.8 -2 l4.8 -2 z"/>
+          </g>
+          <!-- 收起键 -->
+          <g>
+            <rect x="140" y="26" width="46" height="20" rx="10" fill="var(--card)" stroke="var(--flapLine)"/>
+            <text x="163" y="40" font-size="9" fill="var(--meta)" text-anchor="middle">收起</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card" style="flex:1 1 380px;max-width:520px">
+      <h3>三处该修的</h3>
+      <p style="min-height:0">信纸本身没毛病：固定尺寸、字数再多纸也不长高、超了在上半区滚。问题全在它周围。</p>
+      <ul>
+        <li><b>下面那层不像信封</b>。前面板只占 44%，两侧的折线又画得很淡，第一眼读成「一张纸压在木板上」。建议把前面板抬到 48%，两侧折线加粗一档，再补一道信封口的投影 —— 纸是<b>插在里面</b>的，得有厚度。</li>
+        <li><b>星星太多了</b>。舞台四周 12 颗 + 信封面板上 7 颗，一共 19 颗。信纸是安静的，星星大概 6 颗就够，而且只该落在四角，不该压在纸上。</li>
+        <li><b>「收起」像 App 按钮</b>。圆角药丸 + 描边，跟纸的气质不搭。改成一枚小圆角方片、只留一条细边，或者干脆用一枚<b>蜡封形状</b>的关闭键压在右上角。</li>
+      </ul>
+      <p style="min-height:0;margin-top:10px">
+        顺带一提：现在的信纸是<b>竖版</b>，而 /notes 的信封是<b>横版 5:3</b>。真实信封横着、纸竖着，这没错 —— 但撕开的动作发生在横版信封上，撕完却跳进一个竖版画面，中间那一跳是断的。方案 B 会在这一跳上加一次「把纸抽出来」，让它连上。
+      </p>
+    </div>
+  </div>
+</section>
+
+<p class="note">
+  <b>要你定的只有一件事：首页 / 抽屉那一格，走「一沓信」还是「一枚信封」。</b><br>
+  我建议 <b>B（一沓 → 一封 → 抽出来）</b>：那一格只有一百出头的宽度，把火漆和撕口缩到那个尺寸，细节会糊成一团，等于白画；而「一沓信 + 角上一颗红点」在这个尺寸上反而最有信息量 —— 一眼知道攒了几封、哪封没拆。撕的乐趣留给点开那一刻，那时候屏幕是满的。<br>
+  不管选哪条，下面这几件我都照做：
+  <ol>
+    <li>弹窗里「火漆裂两半但信封完好」改成和 /notes 一致的 <b>毛边 + 残蜡</b>，撕开只留一种结果；</li>
+    <li>补上 <b>蜡先裂</b>（0.10s）和 <b>纸往上抽</b>（0.47s）两帧；</li>
+    <li>删掉 <code>LetterInboxCard</code> 里已经没人调用的完整版分支；</li>
+    <li>信纸那面：前面板抬到 48%、星星减到 6 颗、「收起」改成方片。</li>
+  </ol>
+</p>
+
+</body>
+</html>

@@ -10,6 +10,7 @@ export interface StyleRuleDTO {
   position: string;
   enabled: boolean;
   sortOrder: number;
+  module: string;
   createdAt: number;
 }
 
@@ -19,6 +20,7 @@ export interface StyleRuleInput {
   position?: StylePosition;
   enabled?: boolean;
   sortOrder?: number;
+  module?: string;
 }
 
 /** 位置标签：UI 与验收都用这一份，别在别处再写一遍文案 */

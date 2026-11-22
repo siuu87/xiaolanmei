@@ -68,6 +68,8 @@ export function EditableCard({
   multiline = true,
   maxLength,
   rows = 4,
+  /** 这块是干什么的一句话说明（显示在标题下方），2026-11-18 用户定：填写块要写清楚是什么 */
+  hint,
   onSave,
 }: {
   title: string;
@@ -76,6 +78,7 @@ export function EditableCard({
   multiline?: boolean;
   maxLength?: number;
   rows?: number;
+  hint?: string;
   onSave: (v: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -102,7 +105,10 @@ export function EditableCard({
   return (
     <div className="mx-4 rounded-2xl bg-chat-ai p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[12px] text-chat-meta">{title}</span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-[12px] text-chat-meta">{title}</span>
+          {hint && <span className="text-[11px] leading-tight text-chat-meta/70">{hint}</span>}
+        </span>
         {editing ? (
           <div className="flex items-center gap-2">
             <button
@@ -166,15 +172,18 @@ export function EditableCard({
 }
 
 /**
- * 展开型卡片：用于嵌复杂面板（语言风格 / 语音与语言 / 内置模块 / 备忘录）。
+ * 展开型卡片：用于嵌复杂面板（世界书 / 语音与语言 / 内置模块 / 备忘录）。
  * 标题行右侧是 ▾ 开关，点开才显示面板；默认收起，避免一进来就被大块设置淹没。
  */
 export function ExpandCard({
   title,
+  /** 这块是干什么的一句话说明（显示在标题下方），2026-11-18 用户定 */
+  hint,
   defaultOpen = false,
   children,
 }: {
   title: string;
+  hint?: string;
   defaultOpen?: boolean;
   children: ReactNode;
 }) {
@@ -182,7 +191,10 @@ export function ExpandCard({
   return (
     <div className="mx-4 rounded-2xl bg-chat-ai p-4 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)]">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] text-chat-meta">{title}</span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-[12px] text-chat-meta">{title}</span>
+          {hint && <span className="text-[11px] leading-tight text-chat-meta/70">{hint}</span>}
+        </span>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -195,6 +207,92 @@ export function ExpandCard({
       </div>
       {open && <div className="mt-3">{children}</div>}
     </div>
+  );
+}
+
+/**
+ * 头像下方那行可编辑小字（备注 / 签名）：点一下就地变成小输入框。
+ *
+ * 2026-11-18 用户定（参考 Nid douillet）：资料页名字和备注都在头像下面，
+ * 名字是大字展示，头像下只有这行小字能改；✓ / Enter 保存，取消 / Esc 收回。
+ */
+export function EditableSubline({
+  value,
+  displayText,
+  placeholder,
+  maxLength = 12,
+  ariaLabel,
+  testId,
+  onSave,
+}: {
+  value: string;
+  /** 非编辑态显示的文字（可以是回退文案，如「认识 N 天」） */
+  displayText: string;
+  placeholder?: string;
+  maxLength?: number;
+  ariaLabel: string;
+  testId?: string;
+  onSave: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  const save = () => {
+    onSave(draft.trim());
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        data-testid={testId}
+        aria-label={ariaLabel}
+        onClick={() => {
+          setDraft(value);
+          setEditing(true);
+        }}
+        className="mt-1.5 inline-flex max-w-[80%] items-center gap-1 text-[12px] leading-none text-chat-meta transition hover:text-foreground"
+      >
+        <span className="truncate">{displayText}</span>
+        <Pencil className="h-3 w-3 shrink-0 opacity-50" aria-hidden />
+      </button>
+    );
+  }
+  return (
+    <span className="mt-1.5 inline-flex items-center gap-1.5">
+      <input
+        autoFocus
+        value={draft}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        className="w-[150px] rounded-full border border-chat-line bg-page-bg px-3 py-1.5 text-center text-[12px] leading-none text-foreground outline-none focus:border-chat-accent/60"
+      />
+      <button
+        type="button"
+        aria-label="保存"
+        onClick={save}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-chat-me text-chat-me-fg transition active:scale-90"
+      >
+        <Check className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        className="text-[12px] text-chat-meta transition hover:text-foreground"
+      >
+        取消
+      </button>
+    </span>
   );
 }
 

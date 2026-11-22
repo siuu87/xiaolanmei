@@ -19,9 +19,8 @@ function weekdayInitialOf(y: number, m: number, d: number): string {
   return WEEKDAYS[(new Date(y, m - 1, d).getDay() + 6) % 7][0];
 }
 
-/** 某天在日历上的标注（心情 / 经期 / 纪念日 / 节假日 / 节日节气 / 日程） */
+/** 某天在日历上的标注（经期 / 纪念日 / 节假日 / 节日节气 / 日程）—— 心情 2026-11-18 删 */
 export interface CalendarDayDecoration {
-  moodColors?: string[]; // 心情圆点颜色（我、TA）
   period?: 'solid' | 'predicted'; // 经期实心 / 预测虚环
   memorial?: boolean; // 纪念日：日期数字着琥珀色（不在下面标点）
   /** 手机日历那套右上角角标：休 = 休息/放假，班 = 调休补班（只标法定节假日和补班日，普通周末不标） */
@@ -60,17 +59,13 @@ function labelTextClass(kind?: 'holiday' | 'term' | 'festival'): string {
   }
 }
 
-/** 展开态网格里的标注：心情圆点 + 日程小方块（固定两行，保证行对齐；经期/纪念日已挪到数字上） */
+/** 展开态网格里的标注：日程小方块（固定两行，保证行对齐；经期/纪念日已挪到数字上）
+ *  第一行原本是心情圆点，2026-11-18 删掉后留成等高空行 —— 行高对齐不用重算。 */
 function DayMarkers({ dec }: { dec?: CalendarDayDecoration }) {
-  const moodColors = dec?.moodColors ?? [];
   const scheduleColors = (dec?.scheduleColors ?? []).slice(0, 3);
   return (
     <>
-      <span className="flex h-1.5 items-center gap-0.5">
-        {moodColors.map((c, i) => (
-          <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c }} />
-        ))}
-      </span>
+      <span className="flex h-1.5 items-center gap-0.5" />
       <span className="flex h-1 items-center gap-px">
         {scheduleColors.map((c, i) => (
           <span key={i} className="h-1 w-1 rounded-[1px]" style={{ backgroundColor: c }} />
@@ -80,13 +75,10 @@ function DayMarkers({ dec }: { dec?: CalendarDayDecoration }) {
   );
 }
 
-/** 收起态胶囊里的标注：全部缩成小圆点（经期/纪念日已挪到数字上）；日程用小块区分 */
+/** 收起态胶囊里的标注：日程缩成小方块（经期/纪念日已挪到数字上）；心情点已删 */
 function CompactDots({ dec }: { dec?: CalendarDayDecoration }) {
   return (
     <span className="flex h-1 items-center gap-0.5">
-      {dec?.moodColors?.map((c, i) => (
-        <span key={`m${i}`} className="h-1 w-1 rounded-full" style={{ backgroundColor: c }} />
-      ))}
       {(dec?.scheduleColors ?? []).slice(0, 3).map((c, i) => (
         <span key={`s${i}`} className="h-1 w-1 rounded-[1px]" style={{ backgroundColor: c }} />
       ))}

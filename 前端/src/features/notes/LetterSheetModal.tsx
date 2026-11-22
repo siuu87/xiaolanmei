@@ -3,25 +3,31 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useNotesStore } from './notesStore';
-import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme } from './notesData';
-import { letterParts, WaxSeal } from './LetterArt';
+import { NOTE_AUTHOR, formatNoteDate, normalizeLetterTheme, parseLook } from './notesData';
+import { letterParts } from './LetterArt';
 import { TearOpen } from './TearOpen';
 
 /**
- * 信件弹窗（2026-11-11 重做，替代旧的拆信动画层）
+ * 信件弹窗（2026-11-18 第五版：**没拆过的进来先撕**）
  *
- * 参考图是「一张插在开口信封里的信纸」：
- * - **信纸尺寸写死**（`min(420px,86vw) × min(560px,72vh)`），跟正文长短完全无关。
- *   正文只在信纸上半部的可见区里滚动，字数再多纸张也不长高、信封也不跟着往下跑。
- * - 信封后折翼在信纸后面，前面板盖住信纸下缘，蓝色空心星星画在前面板上。
- * - 舞台是**整屏纯色不透明**（项目硬规矩：叠层不许半透明，不透出底下的对话）。
- * - 三种关法：右上「收起」、点空白处、Esc（capture 阶段吃掉，别把抽屉一起关掉）。
- * - 打开即已读；直达 `/letter/:id` 刷新也能拿到信。
+ * 三版走过的弯路（别再来一遍）：
+ *   ① 「插在开口信封里的信纸」—— 舞台要摆背板、V 折、火漆，信纸只能塞在上半截里滚；
+ *   ② 「撕条 + 锯齿」整页 —— 一撕就得画毛边、画抽出来的半张纸，复杂度全砸在动画上；
+ *   ③ 「点开就是一张纸」—— 干净了，可「拆信」这件事整个消失了。
+ *
+ * 现在这样分工（用户定的）：
+ *   **外面**（卡片 / 列表）= 常规信封，合着 = 没拆，掀开 = 拆过；
+ *   **里面**（这里）= 没拆过的先给第一屏撕条（`TearOpen`：拖住往左一拉，信纸升出来），
+ *                撕开落地后才换成那张信纸；拆过的再点开直接就是信纸。
+ *
+ * 所以「已读」不再在打开弹窗时无脑标 —— **撕开落地** 才标（`onDone`），
+ * 中途退出去，这封信还是没拆的。
+ *
+ * 尺寸照旧写死（`min(420px,86vw) × min(560px,72vh)`）：跟正文长短无关。
+ * 舞台仍是**整屏纯色不透明**（项目硬规矩：叠层不许半透明，不透出底下的对话）。
+ * 三种关法：右上「收起」、点空白处、Esc（capture 阶段吃掉，别把抽屉一起关掉）。
  */
 
-/* 颜色不再写死：全部跟着这封信的信封主题走（见 LetterArt 的配色表）。
-   原来这里钉死米白，换了深蓝 / 牛皮信封后弹窗还是白的，一眼就串味。 */
-const BLUE = '#7EA3D1';
 /** 手写感用系统楷体，不引外部字体：断网也稳定，不需要改 tailwind 配置 */
 const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", serif';
 
@@ -31,7 +37,7 @@ type StarKind = 'five' | 'four' | 'cross';
 function Star({
   kind,
   size = 22,
-  color = BLUE,
+  color,
   opacity = 1,
   rotate = 0,
   className,
@@ -39,7 +45,7 @@ function Star({
 }: {
   kind: StarKind;
   size?: number;
-  color?: string;
+  color: string;
   opacity?: number;
   rotate?: number;
   className?: string;
@@ -101,30 +107,24 @@ const STAGE_STARS: StarSpec[] = [
   { kind: 'four', x: '84%', y: '85%', size: 18, opacity: 0.6 },
 ];
 
-/** 信封前面板上的蓝色空心星星 */
-const FRONT_STARS: StarSpec[] = [
-  { kind: 'five', x: '16%', y: '40%', size: 30, rotate: -10 },
-  { kind: 'five', x: '79%', y: '36%', size: 27, rotate: 12 },
-  { kind: 'four', x: '36%', y: '58%', size: 21 },
-  { kind: 'four', x: '61%', y: '48%', size: 19, rotate: 8 },
-  { kind: 'four', x: '69%', y: '72%', size: 27, rotate: -6 },
-  { kind: 'five', x: '48%', y: '83%', size: 20, rotate: 14 },
-  { kind: 'four', x: '24%', y: '80%', size: 17 },
-];
-
 export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => void }) {
   const notes = useNotesStore((s) => s.notes);
   const loaded = useNotesStore((s) => s.loaded);
   const load = useNotesStore((s) => s.load);
-  const markRead = useNotesStore((s) => s.markRead);
   const readIds = useNotesStore((s) => s.readIds);
+  const markRead = useNotesStore((s) => s.markRead);
 
+  const note = notes.find((n) => n.id === id) ?? null;
+
+  /** 本次弹窗里刚撕开（`markRead` 之外再兜一层：localStorage 写不进去也不至于退回去） */
+  const [torn, setTorn] = useState(false);
   /**
-   * 打开时这封信是不是还没拆过 —— **必须在 markRead 之前取**：
-   * markRead 的 effect 在首帧渲染之后才跑，所以首帧读到的 readIds 还是旧的。
-   * 用惰性 state 钉住这一次的判断，之后 readIds 变了也不影响。
+   * 这一封信「还封着」吗。
+   * - 拆过的（readIds 里有）→ 直接给信纸；
+   * - 没拆过的 → 先给撕条那一屏；
+   * - 信还没取回来（`loaded=false`）→ 先不当封着，免得深链刷新时先闪一下「封着的信封」。
    */
-  const [tearing, setTearing] = useState(() => !readIds.includes(id));
+  const sealed = loaded && !!note && !readIds.includes(id) && !torn;
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLParagraphElement>(null);
@@ -135,14 +135,6 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
   useEffect(() => {
     if (!loaded) void load();
   }, [loaded, load]);
-
-  /**
-   * 打开即已读 —— 但**撕开过程中先不标**：没撕完就关掉的信，下次进来还能再拆一次。
-   * 撕完（tearing 变 false）或者本来就已经拆过，才算读过。
-   */
-  useEffect(() => {
-    if (id && !tearing) markRead(id);
-  }, [id, tearing, markRead]);
 
   // Esc 关。抽屉里也可能点开这层，capture 阶段吃掉，别让抽屉跟着一起关
   useEffect(() => {
@@ -155,11 +147,10 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
-  const note = notes.find((n) => n.id === id) ?? null;
-  const theme = normalizeLetterTheme(note?.letterTheme);
+  /* 信纸跟着**信封那套包装的纸色**走，不是单独一个 theme ——
+     不然换过包装的信，信封是苔绿、抽出来的纸还是米白 */
+  const theme = parseLook(note?.letterLook, normalizeLetterTheme(note?.letterTheme), note?.id).theme;
   const parts = letterParts(theme);
-  // 深色纸上星星要亮一点，否则看不见
-  const starColor = theme === 'night' ? '#8FA6D8' : BLUE;
   // 长回信正文自带「—— 小蓝莓」落款，右下角就别再印一次名字
   const hasSignature = /^\s*[—–－-]{1,2}\s*.{1,12}\s*$/m.test(note?.content ?? '');
 
@@ -181,7 +172,7 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
       className="fixed inset-0 z-[1400] flex items-center justify-center px-4"
       data-testid="letter-page"
       data-letter-theme={theme}
-      data-opened="1"
+      data-opened={sealed ? '0' : '1'}
     >
       {/* 舞台：整屏纯色不透明，点空白收起 */}
       <div
@@ -204,7 +195,8 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
         ))}
       </div>
 
-      {/* 右上角关闭：整屏叠层必须有带文字的退出键，不能只靠 Esc */}
+      {/* 右上角关闭：整屏叠层必须有带文字的退出键，不能只靠 Esc。
+          z-20 在撕开层（z-15）之上 —— 不想撕的人可以随时跳过。 */}
       <button
         type="button"
         onClick={onClose}
@@ -217,43 +209,48 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
         收起
       </button>
 
-      {/* 信纸 + 信封：整块尺寸固定，正文长短不影响宽高 */}
+      {/* 第一屏：**还封着的信** —— 拖住撕条往左一拉（`TearOpen`）。
+          撕开落地才标已读、才换信纸；中途关掉，这封信还是没拆的。
+          撕条层 z-15 在「收起」按钮（z-20）之下：不想拆的随时能走。
+          `bare`：底色用弹窗这层舞台（同色 + 星点），别盖成一块黑板。 */}
+      {sealed && (
+        <TearOpen
+          theme={theme}
+          dateText={note ? formatNoteDate(note.createdAt) : undefined}
+          bare
+          onDone={() => {
+            setTorn(true);
+            markRead(id);
+          }}
+          onSkip={onClose}
+        />
+      )}
+
+      {/* 这张纸：尺寸写死，正文长短不影响宽高。拆过 / 刚撕开的才给。 */}
+      {!sealed && (
       <motion.div
         initial={{ opacity: 0, y: 18, scale: 0.985 }}
-        animate={tearing ? { opacity: 0, scale: 0.96 } : { opacity: 1, y: 0, scale: 1 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 18, scale: 0.985 }}
         transition={{ duration: 0.34, ease: 'easeOut' }}
         data-testid="letter-sheet"
         className="relative z-10 shrink-0"
         style={{ width: 'min(420px, 86vw)', height: 'min(560px, 72vh)' }}
       >
-        {/* 信封背板 + 后折翼（在信纸后面，露出两侧的 V 形折角） */}
-        <svg
-          aria-hidden
-          className="absolute inset-0 h-full w-full"
-          viewBox="0 0 420 560"
-          preserveAspectRatio="none"
-        >
-          <rect x="0" y="196" width="420" height="364" fill={parts.envSolid} />
-          <path
-            d="M0 196 L210 372 L420 196 Z"
-            fill={parts.flapFill}
-            stroke={parts.flapStroke}
-            strokeWidth="1.2"
-          />
-          <path d="M0 196 L210 372 L420 196" fill="none" stroke={parts.flapStroke} strokeWidth="1.2" />
-        </svg>
-
-        {/* 信纸：固定尺寸。正文只在上方可见区里滚动，纸不会随字数变长 */}
         <div
           data-testid="letter-paper"
-          className="absolute bottom-0 left-[8%] right-[8%] top-0 overflow-hidden"
-          style={{ backgroundColor: parts.paperSolid, border: `1px solid ${parts.flapStroke}66` }}
+          className="absolute inset-0 overflow-hidden rounded-[3px]"
+          style={{
+            backgroundColor: parts.paperSolid,
+            border: `1px solid ${parts.flapStroke}`,
+            boxShadow: '0 18px 48px -24px rgba(0,0,0,0.5)',
+          }}
         >
+          {/* 正文：整张纸都能滚（以前下半截被信封前面板挡着，只能在上半截里滚） */}
           <div
             ref={bodyRef}
-            className="absolute inset-x-0 top-0 flex flex-col overflow-y-auto overscroll-contain px-7 pt-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ bottom: '44%', paddingBottom: 22 }}
+            className="absolute inset-0 flex flex-col overflow-y-auto overscroll-contain px-7 pt-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ paddingBottom: 28 }}
           >
             <span
               aria-hidden
@@ -262,7 +259,8 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
                 fontFamily: 'Georgia, "Times New Roman", serif',
                 fontSize: 44,
                 lineHeight: '0.8',
-                color: '#B4D0EE',
+                color: parts.metaSolid,
+                opacity: 0.45,
               }}
             >
               “
@@ -302,69 +300,25 @@ export function LetterSheetModal({ id, onClose }: { id: string; onClose: () => v
 
           {scrollable && (
             <span
-              className="pointer-events-none absolute right-3 text-[10px]"
-              style={{ bottom: 'calc(44% + 8px)', color: '#A9BEDA', fontFamily: HAND_FONT }}
+              className="pointer-events-none absolute bottom-2.5 right-4 text-[10px]"
+              style={{ color: parts.metaSolid, fontFamily: HAND_FONT, opacity: 0.75 }}
             >
               继续往下读 ↓
             </span>
           )}
         </div>
-
-        {/* 信封前面板：盖住信纸下缘，蓝色空心星星画在这一层 */}
-        <div
-          data-testid="letter-page-envelope"
-          className="pointer-events-none absolute inset-x-0 bottom-0"
-          style={{ height: '44%' }}
-        >
-          <svg
-            aria-hidden
-            className="absolute inset-0 h-full w-full"
-            viewBox="0 0 420 246"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0 46 Q210 6 420 46 L420 246 L0 246 Z"
-              fill={parts.envSolid}
-              stroke={parts.flapStroke}
-              strokeWidth="1.2"
-            />
-            <path d="M0 246 L150 46" fill="none" stroke={parts.flapStroke} strokeWidth="1.2" opacity="0.7" />
-            <path d="M420 246 L270 46" fill="none" stroke={parts.flapStroke} strokeWidth="1.2" opacity="0.7" />
-          </svg>
-          {FRONT_STARS.map(({ x, y, ...spec }, i) => (
-            <Star key={i} {...spec} color={starColor} className="absolute" style={{ left: x, top: y }} />
-          ))}
-          {/* 撕开的火漆：蜡裂成两半，还黏在信封口上 —— 拆过的信该留这个痕迹 */}
-          <span
-            data-testid="letter-page-seal"
-            aria-hidden
-            className="absolute left-1/2 top-[-13px] -translate-x-1/2"
-          >
-            <WaxSeal parts={parts} size={46} cracked />
-          </span>
-        </div>
       </motion.div>
-
-      {/*
-        还没拆过的信：先给一层「拖住撕条往左一拉」（照界面之外的撕信封教程重做）。
-        撕完才把信纸交出来。
-        z-[15] —— 压在信纸(z-10)上面，但让右上角「收起」(z-20) 露在上面，
-        不想撕的人可以随时跳过。撕开层不铺满时正好接住整屏点击。
-      */}
-      {tearing && note && (
-        <TearOpen
-          theme={theme}
-          dateText={formatNoteDate(note.createdAt)}
-          onDone={() => setTearing(false)}
-        />
       )}
 
-      <span
-        className="pointer-events-none absolute bottom-5 left-0 right-0 text-center text-[10px]"
-        style={{ color: parts.metaSolid, fontFamily: HAND_FONT }}
-      >
-        轻点空白处收起
-      </span>
+      {/* 底部提示：封着的时候这行归 `TearOpen` 自己的引导，别两条打一架 */}
+      {!sealed && (
+        <span
+          className="pointer-events-none absolute bottom-5 left-0 right-0 text-center text-[10px]"
+          style={{ color: parts.metaSolid, fontFamily: HAND_FONT }}
+        >
+          轻点空白处收起
+        </span>
+      )}
     </div>,
     document.body,
   );

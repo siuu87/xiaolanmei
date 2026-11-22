@@ -671,7 +671,7 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     /**
      * ── 后置写回（2026-10-20）──────────────────────────────────
      * 前端在上一行已经收完整个流；这里**不 await**，心潮慢/挂都不影响界面。
-     * 取代原来的 OB `obAppend`：心潮按 `她说：… 他回：…` 自己判互动类型、推驱力。
+     * 取代原来的 OB 记忆专线归档：心潮按 `她说：… 他回：…` 自己判互动类型、推驱力。
      */
     if (convId && replyText.trim()) {
       void postXinchaoEvent({

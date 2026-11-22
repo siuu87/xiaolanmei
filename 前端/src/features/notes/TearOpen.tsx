@@ -19,6 +19,10 @@ import { letterParts, type LetterTheme } from './LetterArt';
  *
  * 为什么撕条不在信封的裁剪层里：拉出来之后它要**伸到信封左边界以外**，
  * 裁剪层会把它切掉；所以撕条挂在旋转容器上、跟信封一起歪，但不受裁剪。
+ *
+ * 2026-11-18：这一层从「拆信的整页」降级成**弹窗里的第一屏**。
+ * 卡片外面改回常规信封（火漆），撕只发生在点开之后 —— 所以多了 `onSkip`
+ * （Esc 关掉整个弹窗）和 `bare`（不要把弹窗的星点舞台盖掉）。
  */
 
 const HAND_FONT = '"Kaiti SC", "STKaiti", KaiTi, "楷体", "FangSong", serif';
@@ -27,11 +31,18 @@ export function TearOpen({
   theme,
   dateText,
   onDone,
+  onSkip,
+  bare = false,
 }: {
   theme: LetterTheme;
   /** 信封正面手写的日期（如「2026年11月17日」） */
   dateText?: string;
+  /** 撕开落地：这一刻才算「拆过」（调用方在这里标已读、换信纸） */
   onDone: () => void;
+  /** Esc：不想撕，直接跳过这一层。不传就等同 onDone（旧行为） */
+  onSkip?: () => void;
+  /** 不要自己的整屏底色 —— 弹窗里底下已经是同色舞台 + 星点，别盖掉 */
+  bare?: boolean;
 }) {
   const p = letterParts(theme);
   const myName = useProfileStore((s) => s.name);
@@ -44,6 +55,7 @@ export function TearOpen({
   const base = useRef(0);
   const fired = useRef(false);
   const timer = useRef<number | null>(null);
+  const skip = onSkip ?? onDone;
 
   const setPull = (v: number) => {
     pullRef.current = v;
@@ -62,16 +74,19 @@ export function TearOpen({
     timer.current = window.setTimeout(onDone, 1080);
   };
 
-  // Esc 直接跳过（别让这层把键盘用户关在门外）
+  // Esc 直接跳过（别让这层把键盘用户关在门外）。`skipRef` 是为了让监听只挂一次：
+  // onSkip / onDone 每次渲染都是新函数，直接进依赖会反复解绑重绑。
+  const skipRef = useRef(skip);
+  skipRef.current = skip;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       e.stopPropagation();
-      onDone();
+      skipRef.current();
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [onDone]);
+  }, []);
 
   const onDown = (e: React.PointerEvent) => {
     if (fired.current) return;
@@ -132,7 +147,7 @@ export function TearOpen({
     <div
       data-testid="tear-open"
       className="absolute inset-0 z-[15] flex flex-col items-center justify-center px-6 pb-[9vh]"
-      style={{ backgroundColor: p.stage }}
+      style={bare ? undefined : { backgroundColor: p.stage }}
     >
       <div className="w-full max-w-[340px]">
         <div

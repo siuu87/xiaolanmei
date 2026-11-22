@@ -561,17 +561,22 @@ function CallRecordCard({
 }
 
 /**
- * 礼物卡（2026-11-18）：聊天里送出的礼物。
- * 一张小卡：左边一枚经典方礼盒（按礼物类型换色），右边「礼物 · 标题 / 拆开看看 · 时间」。
+ * 礼物卡（2026-11-18 晚二版，参考抖音私信收礼物的样子）：
+ * 对方（AI）送给「我」时，聊天里出现一张**收到礼物卡** ——
+ * 整张卡按礼物类型上色（玫瑰粉/暖米/草绿/淡紫的渐变底 + 同色描边），
+ * 左边大礼物盒，右边礼物名大字 + 「TA 送给你 · 拆开看看 · 时间」，
  * 点一下进 /gifts 拆。礼物本体在送出时就落进礼物盒（未拆），这里只展示快照。
  */
 function GiftMessageCard({
   gift,
   ts,
+  mine,
   onClick,
 }: {
   gift: NonNullable<ChatMessage['gift']>;
   ts?: number;
+  /** true = 我方送出（文案改「送给 TA」），false = 对方送来（「TA 送给你」） */
+  mine?: boolean;
   onClick?: () => void;
 }) {
   const tint = TINT[gift.giftType] ?? TINT.flower;
@@ -583,18 +588,24 @@ function GiftMessageCard({
         onClick?.();
       }}
       data-testid="gift-message"
-      className="inline-flex min-w-[220px] items-center gap-3 rounded-[20px] bg-chat-ai px-3 py-2.5 text-left shadow-[0_1px_2px_hsl(var(--shadow-color)/0.05)] transition active:scale-[0.99]"
+      className="inline-flex min-w-[260px] items-center gap-3 rounded-[22px] border px-4 py-3.5 text-left transition active:scale-[0.99]"
+      style={{
+        borderColor: `${tint.ribbon}3D`,
+        backgroundColor: `${tint.boxLid}55`,
+        backgroundImage: `linear-gradient(135deg, ${tint.boxLid} 0%, ${tint.boxBody} 100%)`,
+        backgroundBlendMode: 'multiply',
+      }}
     >
       <span
-        className="flex h-11 w-14 shrink-0 items-center justify-center rounded-[12px]"
-        style={{ backgroundColor: `${tint.boxBody}` }}
+        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[16px] shadow-sm"
+        style={{ backgroundColor: `${tint.boxBody}E6` }}
       >
-        <ClassicBoxArt colors={tint} className="h-9 w-12" />
+        <ClassicBoxArt colors={tint} className="h-10 w-13" />
       </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-[14px] font-medium text-chat-ai-fg">礼物 · {gift.title}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="truncate text-[15px] font-semibold text-foreground">{gift.title}</span>
         <span className="truncate text-[12px] text-chat-meta">
-          拆开看看{ts ? ` · ${fmtTime(ts)}` : ''}
+          {mine ? '送给 TA · 已送出' : 'TA 送给你 · 拆开看看'}{ts ? ` · ${fmtTime(ts)}` : ''}
         </span>
       </span>
     </button>
@@ -1012,6 +1023,8 @@ export function ChatPage() {
   const [attachOpen, setAttachOpen] = useState(false);
   /** 送礼物面板（2026-11-18：聊天里直接赠送，礼物本体落礼物盒、消息流落礼物卡） */
   const [giftSheetOpen, setGiftSheetOpen] = useState(false);
+  /** 礼物面板 tab（2026-11-18 晚参考抖音聊天礼物面板：顶部分类 tab + 4 列格子） */
+  const [giftTab, setGiftTab] = useState<'flower' | 'object' | 'keepsake'>('flower');
 
   /** 语音识别（STT）：点麦克风说话，定稿直接发出去。不支持的浏览器点一下走降级提示。 */
   const stt = useSpeechRecognition({
@@ -1366,7 +1379,7 @@ export function ChatPage() {
     const convId = useChatStore.getState().conversation?.id;
     const trimmed = context.length > 16 ? context.slice(-16) : context;
     /**
-     * 主角 AI 看得见小手机里的记录：把「中枢 / 主角可见」那段上下文作为 system 消息拼在最前面。
+     * 主角 AI 看得见小手机里的记录：把「数据中枢 / 上下文注入」那段上下文作为 system 消息拼在最前面。
      * 哪些来源参与、每个来源取几条、总字符预算，都沿用中枢里那份配置（我页的数据中枢是同一份），
      * 所以开关在那一处改，这里立刻生效。构建失败也不影响正常聊天。
      */
@@ -2102,9 +2115,14 @@ export function ChatPage() {
                     above={m.quote ? <QuoteCard label={m.quote.label} /> : null}
                     below={m.inner ? <InnerNote text={m.inner} /> : null}
                   >
-                    {/* 礼物卡（2026-11-18）：不是气泡，是一张卡，点开去 /gifts 拆 */}
+                    {/* 礼物卡（2026-11-18 晚二版，抖音私信收礼物样式）：不是气泡，是一张按礼物配色上色的收到礼物卡，点开去 /gifts 拆 */}
                     {m.gift ? (
-                      <GiftMessageCard gift={m.gift} ts={m.createdAt} onClick={() => navigate('/gifts')} />
+                      <GiftMessageCard
+                        gift={m.gift}
+                        ts={m.createdAt}
+                        mine={m.role === 'user'}
+                        onClick={() => navigate('/gifts')}
+                      />
                     ) : m.task ? (
                       /* 任务卡（三十五改）：AI 布置的限时小任务，带倒计时和完成/取消 */
                       <TaskMessageCard task={m.task} />
@@ -2745,96 +2763,120 @@ export function ChatPage() {
         </div>
       )}
 
-      {/* 送礼物（2026-11-18）：挑花束 / 小摆件，送出去落进礼物盒（未拆）+ 聊天里一张礼物卡 */}
+      {/* 送礼物（2026-11-18 晚二版，参考抖音聊天礼物面板）：
+          顶部分类 tab（花束 / 小摆件 / 纪念品）+ 4 列礼物格子，
+          点一下直接送出——礼物落礼物盒（未拆）+ 聊天里一张礼物卡 */}
       <BottomSheet open={giftSheetOpen} onOpenChange={setGiftSheetOpen} title="送份礼物" testid="chat-gift-sheet">
-        <div className="px-4 pb-6 pt-1">
-          <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">
-            送出去会先躺在礼物盒的「未拆开的」里，聊天里也会有一张礼物卡，点开就能拆。
+        <div className="pb-4 pt-0">
+          {/* 分类 tab：下划线随选中走（抖音同款），不用一坨分组标题 */}
+          <div className="flex items-center gap-6 border-b border-border/60 px-4" data-testid="chat-gift-tabs">
+            {(
+              [
+                { key: 'flower', label: '花束' },
+                { key: 'object', label: '小摆件' },
+                { key: 'keepsake', label: '纪念品' },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                data-testid={`chat-gift-tab-${t.key}`}
+                onClick={() => setGiftTab(t.key)}
+                aria-pressed={giftTab === t.key}
+                className={cn(
+                  'relative pb-2 pt-1 text-[13px] transition',
+                  giftTab === t.key
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground hover:text-foreground/80',
+                )}
+              >
+                {t.label}
+                {giftTab === t.key && (
+                  <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-primary" aria-hidden />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* 礼物格子：4 列，缩略图 + 名字，点一下直接送出 */}
+          <div className="grid grid-cols-4 gap-x-1 gap-y-3 px-3 pb-1 pt-3">
+            {giftTab === 'flower' &&
+              BOUQUET_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  data-testid={`chat-gift-${p.id}`}
+                  title={p.desc}
+                  onClick={() => {
+                    setGiftSheetOpen(false);
+                    void sendGift({
+                      giftType: 'flower',
+                      title: p.name,
+                      content: '这一束是照着你的样子挑的。',
+                      meta: JSON.stringify({ bouquet: p.id }),
+                    });
+                  }}
+                  className="flex flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 transition hover:bg-muted/40 active:scale-95"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#B4736E]/12">
+                    <Flower2 className="h-5 w-5 text-[#B4736E]" />
+                  </span>
+                  <span className="w-full truncate text-center text-[11px] text-foreground">{p.name}</span>
+                </button>
+              ))}
+            {giftTab === 'object' &&
+              CHARM_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  data-testid={`chat-gift-charm-${p.id}`}
+                  title={p.desc}
+                  onClick={() => {
+                    setGiftSheetOpen(false);
+                    void sendGift({
+                      giftType: 'object',
+                      title: p.name,
+                      content: p.desc,
+                      meta: JSON.stringify({ model: p.id }),
+                    });
+                  }}
+                  className="flex flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 transition hover:bg-muted/40 active:scale-95"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#8A7B66]/12">
+                    <CharmView model={p.id} className="h-9 w-9" />
+                  </span>
+                  <span className="w-full truncate text-center text-[11px] text-foreground">{p.name}</span>
+                </button>
+              ))}
+            {giftTab === 'keepsake' &&
+              KEEPSAKE_PRESETS.map((p) => (
+                <button
+                  key={p.recipe}
+                  type="button"
+                  data-testid={`chat-gift-keepsake-${p.recipe}`}
+                  title={p.desc}
+                  onClick={() => {
+                    setGiftSheetOpen(false);
+                    void sendGift({
+                      giftType: 'keepsake',
+                      title: p.name,
+                      content: '每个部分都交给星星来决定，拆开才知道它长什么样。',
+                      meta: JSON.stringify({ code: composeKeepsakeCode(p.recipe as KeepsakeRecipe) }),
+                    });
+                  }}
+                  className="flex flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 transition hover:bg-muted/40 active:scale-95"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#7C6BA8]/12">
+                    <Orbit className="h-5 w-5 text-[#7C6BA8]" />
+                  </span>
+                  <span className="w-full truncate text-center text-[11px] text-foreground">{p.name}</span>
+                </button>
+              ))}
+          </div>
+
+          <p className="px-4 text-center text-[11px] text-chat-meta">
+            送出去先落在礼物盒「未拆开的」里，聊天里也会有一张礼物卡
           </p>
-          <p className="mb-1.5 text-[11px] tracking-[0.18em] text-muted-foreground/80">花束</p>
-          <div className="space-y-2">
-            {BOUQUET_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                data-testid={`chat-gift-${p.id}`}
-                onClick={() => {
-                  setGiftSheetOpen(false);
-                  void sendGift({
-                    giftType: 'flower',
-                    title: p.name,
-                    content: '这一束是照着你的样子挑的。',
-                    meta: JSON.stringify({ bouquet: p.id }),
-                  });
-                }}
-                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#B4736E]/12">
-                  <Flower2 className="h-4 w-4 text-[#B4736E]" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] text-foreground">{p.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="mb-1.5 mt-4 text-[11px] tracking-[0.18em] text-muted-foreground/80">小摆件</p>
-          <div className="space-y-2">
-            {CHARM_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                data-testid={`chat-gift-charm-${p.id}`}
-                onClick={() => {
-                  setGiftSheetOpen(false);
-                  void sendGift({
-                    giftType: 'object',
-                    title: p.name,
-                    content: p.desc,
-                    meta: JSON.stringify({ model: p.id }),
-                  });
-                }}
-                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8A7B66]/12">
-                  <CharmView model={p.id} className="h-8 w-8" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] text-foreground">{p.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="mb-1.5 mt-4 text-[11px] tracking-[0.18em] text-muted-foreground/80">纪念品</p>
-          <div className="space-y-2">
-            {KEEPSAKE_PRESETS.map((p) => (
-              <button
-                key={p.recipe}
-                type="button"
-                data-testid={`chat-gift-keepsake-${p.recipe}`}
-                onClick={() => {
-                  setGiftSheetOpen(false);
-                  void sendGift({
-                    giftType: 'keepsake',
-                    title: p.name,
-                    content: '每个部分都交给星星来决定，拆开才知道它长什么样。',
-                    meta: JSON.stringify({ code: composeKeepsakeCode(p.recipe as KeepsakeRecipe) }),
-                  });
-                }}
-                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition hover:border-primary/40 active:scale-[0.99]"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7C6BA8]/12">
-                  <Orbit className="h-4 w-4 text-[#7C6BA8]" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] text-foreground">{p.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{p.desc}</span>
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
       </BottomSheet>
 

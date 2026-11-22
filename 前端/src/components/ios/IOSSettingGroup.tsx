@@ -12,7 +12,7 @@ export function IOSSettingGroup({ title, children, className }: IOSSettingGroupP
   return (
     <div className={cn('mx-4', className)}>
       {title && (
-        <p className="mb-2 px-4 text-[13px] uppercase tracking-wide text-muted-foreground">
+        <p className="mb-2 px-4 text-[12px] font-medium tracking-wide text-muted-foreground/75">
           {title}
         </p>
       )}

@@ -15,7 +15,6 @@ export function NotesPage() {
   const readIds = useNotesStore((s) => s.readIds);
   const load = useNotesStore((s) => s.load);
   const openLetter = useNotesStore((s) => s.openLetter);
-  const setLetterTheme = useNotesStore((s) => s.setLetterTheme);
 
   // 信由后端不定时抓取，这里只保证进来时是最新的
   useEffect(() => {
@@ -25,13 +24,9 @@ export function NotesPage() {
 
   return (
     <PageShell title="深夜来信" eyebrow="MAILBOX">
-      <LetterGrid
-        notes={notes}
-        readIds={readIds}
-        onOpen={openLetter}
-        maxLetters={30}
-        onSetTheme={(id, theme) => void setLetterTheme(id, theme)}
-      />
+      {/* 不传 onSetTheme：信封颜色不由「我」改 —— 每封的纸色/封口件/压纹
+          由对方（后端 pickLetterLook）落下，2026-11-18 用户定 */}
+      <LetterGrid notes={notes} readIds={readIds} onOpen={openLetter} maxLetters={30} />
     </PageShell>
   );
 }

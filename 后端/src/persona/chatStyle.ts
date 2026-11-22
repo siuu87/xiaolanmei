@@ -12,7 +12,7 @@
  * 所以同一个后端进程里两个标签页可以用不同口吻，互不干扰。
  * `settings` 的 `chat.styleMode` 只作为「请求没带」时的兜底默认。
  *
- * **注入位置**：`buildSystemPrompt()` 把它排在**所有模块 + 语言风格条目（style_rules）之后**、
+ * **注入位置**：`buildSystemPrompt()` 把它排在**所有模块 + 世界书条目（style_rules）之后**、
  * 时间感之前，让它在优先级上压过前面任何关于「整段/分行」的表述。
  */
 export type ChatStyleMode = 'fragmented' | 'immersive';

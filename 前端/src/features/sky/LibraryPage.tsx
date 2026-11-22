@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBookStore, type Book } from './bookStore';
-import { getReadingTime, importFanqieBook, localDateString } from '@/lib/api/reading';
+import { getReadingTime, importFanqieBook, importWereadBook, localDateString } from '@/lib/api/reading';
 import { BookDetailModal } from './BookDetailModal';
 import { AiImportDialog } from './AiImportDialog';
 import { aiSummarizeToc } from './aiImport';
@@ -179,6 +179,11 @@ export function LibraryPage() {
   const [fanqieBusy, setFanqieBusy] = useState(false);
   const [fanqieMsg, setFanqieMsg] = useState('');
 
+  /** 微信读书导入（2026-11-18）：Cookie 仅本次请求使用，拉书架元数据+划线 */
+  const [wereadCookie, setWereadCookie] = useState('');
+  const [wereadBusy, setWereadBusy] = useState(false);
+  const [wereadMsg, setWereadMsg] = useState('');
+
   // 本周目标（分钟，可编辑，localStorage 持久化）
   const [goal, setGoal] = useState<number>(() => {
     const v = Number(localStorage.getItem(GOAL_KEY));
@@ -215,6 +220,30 @@ export function LibraryPage() {
       setFanqieMsg((e as Error).message);
     } finally {
       setFanqieBusy(false);
+    }
+  };
+
+  /** 从微信读书拉书架：后端落库（source='weread'），成功后刷新书架并关掉导入框 */
+  const doWereadImport = async () => {
+    const cookie = wereadCookie.trim();
+    if (!cookie || wereadBusy) return;
+    setWereadBusy(true);
+    setWereadMsg('');
+    try {
+      const r = await importWereadBook(cookie);
+      setWereadMsg(
+        `已导入 ${r.imported} 本、更新 ${r.updated} 本、划线 ${r.bookmarks} 条（共 ${r.total} 本）`,
+      );
+      await useBookStore.getState().reload();
+      window.setTimeout(() => {
+        setEditor(null);
+        setWereadCookie('');
+        setWereadMsg('');
+      }, 900);
+    } catch (e) {
+      setWereadMsg((e as Error).message);
+    } finally {
+      setWereadBusy(false);
     }
   };
 
@@ -692,6 +721,42 @@ export function LibraryPage() {
               {fanqieMsg && (
                 <p data-testid="fanqie-msg" className="mt-1 text-[10px] leading-4 text-gold">
                   {fanqieMsg}
+                </p>
+              )}
+            </div>
+
+            {/* 微信读书导入（2026-11-18）：书架元数据+划线；正文不开放不抓取 */}
+            <div data-testid="weread-import" className="mt-3 rounded-xl border border-border bg-surface-2 p-2.5">
+              <p className="text-[10px] leading-4 text-muted-foreground">
+                从微信读书导入书架与划线 · 正文不开放，仅拉取元数据和划线
+              </p>
+              <div className="mt-1.5 flex gap-2">
+                <input
+                  value={wereadCookie}
+                  onChange={(e) => setWereadCookie(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void doWereadImport();
+                  }}
+                  placeholder="粘贴微信读书网页版登录后的 Cookie"
+                  data-testid="weread-cookie"
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => void doWereadImport()}
+                  disabled={wereadBusy || !wereadCookie.trim()}
+                  data-testid="weread-import-btn"
+                  className="shrink-0 rounded-lg bg-primary px-3 text-[12px] font-medium text-primary-foreground transition active:scale-95 disabled:opacity-40"
+                >
+                  {wereadBusy ? '导入中…' : '导入'}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] leading-4 text-muted-foreground/80">
+                Cookie 仅本次请求使用，不落库不写日志；请从微信读书网页版（weread.qq.com）登录后从浏览器复制，过期需重新复制。
+              </p>
+              {wereadMsg && (
+                <p data-testid="weread-msg" className="mt-1 text-[10px] leading-4 text-gold">
+                  {wereadMsg}
                 </p>
               )}
             </div>

@@ -22,7 +22,6 @@ import {
   Cake,
   GraduationCap,
   Puzzle,
-  Gift,
   Star,
   Lightbulb,
   Heart,
@@ -35,9 +34,7 @@ import { useShellStore } from '@/stores/shellStore';
 import { AvatarContent } from '@/components/AvatarContent';
 import { CalendarCard } from '@/features/home/CalendarCard';
 import { TodoCard } from '@/features/home/TodoCard';
-import { GiftBoxCard } from '@/features/home/GiftBoxCard';
-import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
-import { TokenCard } from '@/features/home/TokenCard';
+import { WidgetRow } from '@/features/home/WidgetRow';
 import { LOVE_START, loveDays } from './loveDays';
 import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
@@ -45,12 +42,12 @@ import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
 /* ---------------------------- A. 伴侣档案卡 ---------------------------- */
 
 /**
- * 纪念日块（日历正上方）：两个人的头像挨着，下面一个更大的「在一起 N 天」数字。
- * 不要边框、不要名字——就放纪念日这一件事。
+ * 纪念日块（抽屉顶部）：2026-11-18 晚改成与 /memorial 在一起卡同款——
+ * 两个头像**居左贴在一起**（中间不放爱心，他在左、我在右），
+ * 「已经 N 天了」在中间、文字顶部约在头像一半的高度，下面一行起始日小字。
  *
- * 两个头像可点：左边改「我」，右边改「TA 的角色」（头像 + 称呼），
- * 改完主界面顶栏的称呼与挂件头像立刻跟着变——抽屉里这两张脸本来就是聊天角色的脸，
- * 顺手点一下就该能改，不用绕去设置页。设置页那张卡读写同一个 store，两边同步。
+ * 两个头像仍可点：左边改「TA 的角色」，右边改「我」（头像 + 称呼），
+ * 改完主界面顶栏的称呼与挂件头像立刻跟着变。
  */
 export function ProfileHeader() {
   const { avatar, partnerAvatar } = useProfileStore();
@@ -59,9 +56,9 @@ export function ProfileHeader() {
 
   return (
     <div className="shrink-0 px-4 pb-4 pt-3" data-testid="anniversary-block">
-      <div className="flex flex-col items-center">
-        {/* 两个人的头像挨着（可点）——按需求**他在左、我在右** */}
-        <div className="relative flex items-center gap-3">
+      <div className="flex w-full items-start gap-3">
+        {/* 左：两人头像贴在一起（第二个往左叠一点 + 页面底色描边分出前后），中间不放爱心 */}
+        <div className="flex shrink-0" data-testid="anniversary-avatars">
           <button
             type="button"
             onClick={() => navigate('/partner')}
@@ -70,50 +67,40 @@ export function ProfileHeader() {
             data-testid="avatar-partner"
             className="group relative rounded-full transition focus-visible:outline-none"
           >
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-serif text-[8px] uppercase tracking-[0.2em] text-muted-foreground/60">
-              TA
-            </span>
-            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white transition group-hover:border-primary/40">
-              <AvatarContent value={partnerAvatar} className="bg-white" />
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-[hsl(var(--page-bg))] transition group-hover:ring-primary/40">
+              <AvatarContent value={partnerAvatar} className="h-full w-full bg-white" />
             </span>
           </button>
-
-          <span className="relative -mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary/70">
-            <Heart className="h-3 w-3" />
-          </span>
-
           <button
             type="button"
             onClick={() => navigate('/me')}
             aria-label="我的资料"
             title="我的资料"
             data-testid="avatar-me"
-            className="group relative rounded-full transition focus-visible:outline-none"
+            className="group relative -ml-2.5 rounded-full transition focus-visible:outline-none"
           >
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 font-serif text-[8px] uppercase tracking-[0.2em] text-muted-foreground/60">
-              ME
-            </span>
-            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white transition group-hover:border-primary/40">
-              <AvatarContent value={avatar} className="bg-white" />
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white ring-2 ring-[hsl(var(--page-bg))] transition group-hover:ring-primary/40">
+              <AvatarContent value={avatar} className="h-full w-full bg-white" />
             </span>
           </button>
         </div>
 
-        {/* 在一起 N 天：数字给到 34px，一眼看到 */}
-        <div className="mt-4 flex items-baseline gap-1.5">
-          <span className="eyebrow leading-none">在一起</span>
-          <span
-            data-testid="love-days"
-            className="display text-[34px] font-semibold leading-none tracking-tight text-foreground"
-          >
-            {days}
+        {/* 中：「已经 N 天了」—— 顶部在头像一半（24px）的高度上，往下垂 */}
+        <div className="min-w-0 flex-1 text-center">
+          <div className="mt-6 flex items-baseline justify-center gap-1">
+            <span className="text-[13px] text-muted-foreground">已经</span>
+            <span
+              data-testid="love-days"
+              className="display text-[30px] font-semibold leading-none tracking-tight text-foreground"
+            >
+              {days}
+            </span>
+            <span className="text-[13px] text-muted-foreground">天了</span>
+          </div>
+          <span className="mt-1 block font-serif text-[10px] tracking-wide text-muted-foreground/80">
+            {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
           </span>
-          <span className="eyebrow leading-none">天</span>
         </div>
-
-        <span className="mt-1.5 font-serif text-[10px] tracking-wide text-muted-foreground/80">
-          {LOVE_START.y}.{LOVE_START.m}.{LOVE_START.d} 起
-        </span>
       </div>
     </div>
   );
@@ -129,22 +116,12 @@ export function DailyBoard() {
         <span className="h-px flex-1 bg-border/70" aria-hidden />
       </div>
       <div className="space-y-3">
-        {/* 日历：农历 / 休班 / 经期 / 心情点全在，点农历开黄历详情 */}
+        {/* 日历：农历 / 休班 / 经期都在，点农历开黄历详情（心情点已删） */}
         <CalendarCard />
         <TodoCard />
-        {/* Token 与信封平分空间（与首页一致，2026-11-04 用户定）：右列 信件卡(compact) 上 +
-            礼物盒 下（2026-11-16 换的：原来这里放心情三弧） */}
-        <div className="grid grid-cols-2 gap-3">
-          <div data-testid="token-capsule">
-            <TokenCard />
-          </div>
-          <div className="min-w-0">
-            <LetterInboxCard compact className="flex h-1/2 flex-col p-3" />
-            <div className="flex h-1/2 min-h-0 items-center justify-center">
-              <GiftBoxCard />
-            </div>
-          </div>
-        </div>
+        {/* 小组件一排：与首页共用 `WidgetRow`（2026-11-18）
+            —— Token ｜ 深夜来信（居中）+ 小挂件位，下面礼物盒（正方形）+ 小程序占位 */}
+        <WidgetRow />
       </div>
     </section>
   );
@@ -200,7 +177,6 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { to: '/moments', label: '心动收藏', hint: '聊天里收进来的句子', icon: Heart },
       { to: '/memorial', label: '纪念日', icon: Cake },
       { to: '/schedule', label: '课程表', icon: GraduationCap },
-      { to: '/gifts', label: '礼物盒', icon: Gift },
       { to: '/diary', label: '日记本', icon: NotebookPen },
       { to: '/games', label: '游戏屋', hint: '和 AI 一起玩', icon: Gamepad2 },
     ],
@@ -365,10 +341,12 @@ export function ToolboxCard({ open, onToggle }: { open: boolean; onToggle: () =>
                   type="button"
                   onClick={() => openDrawerSection(s.key)}
                   data-testid={`toolbox-entry-${s.key}`}
-                  className="flex flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.98] hover:bg-foreground/10"
+                  className="flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center transition active:scale-[0.98] hover:bg-foreground/5"
                 >
-                  <s.icon className="h-4 w-4 text-muted-foreground" />
-                  <span className="flex items-center gap-1.5 text-[12px] font-medium leading-tight text-foreground">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <s.icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className="flex items-center justify-center gap-1.5 text-[12px] font-medium leading-tight text-foreground">
                     {s.label}
                     {s.key === 'opensource' && openSourceUpdates > 0 && (
                       <span

@@ -1,14 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Settings2 } from 'lucide-react';
 import { AvatarContent } from '@/components/AvatarContent';
-import { GiftBoxCard } from './GiftBoxCard';
 import { CalendarCard } from './CalendarCard';
 import { TodoCard } from './TodoCard';
-import { TokenCard } from './TokenCard';
 import { useProfileStore } from '@/stores/profileStore';
 import { ModuleCards } from '@/features/shell/DrawerSections';
-import { LifeCard } from './LifeCard';
-import { LetterInboxCard } from '@/features/notes/LetterInboxCard';
+import { WidgetRow } from './WidgetRow';
 import { useNotesStore } from '@/features/notes/notesStore';
 import { loveDays, LOVE_START } from '@/features/shell/loveDays';
 import { MemorialRings } from './MemorialRings';
@@ -30,7 +27,7 @@ const APP_VERSION = '0.1.0';
 /**
  * 首页 · 完全对齐设计稿（首页稿 2:1 连续长页）：
  * 刊头 2:2 → DAILY 2:35 → 日历卡 2:38 → 待办卡 77:705 →
- * Token与信封 2:115（左 Token 卡 2:116｜右 信件卡 2:134 + 心情行 2:144 三弧38px）→
+ * 小组件一排（左 Token ｜ 右 信封居中 + 小挂件位、礼物盒 + 小程序占位）→
  * 课程卡 2:155 → 模块分隔 5:8 + 模块卡 → 页脚 2:183。
  *
  * 置顶纪念日不再展示（2026-11-04 用户定）；刊头下的一句话 = 他写的最新一封信念首行，
@@ -130,25 +127,13 @@ export function HomePage() {
           {/* 待办卡：独立一张卡（对齐设计稿 77:705，从日历右轨拆出） */}
           <TodoCard />
 
-          {/* Token 与信封：平分空间（2026-11-04 用户定：token 别太宽），右列 信件卡(compact) 上 +
-              礼物盒 下（2026-11-16 换的：原来这里放心情三弧），信件高度精确占 Token 卡 1/2 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div data-testid="token-capsule">
-              <TokenCard />
-            </div>
-            <div className="min-w-0">
-              <LetterInboxCard compact className="flex h-1/2 flex-col p-3" />
-              <div className="flex h-1/2 min-h-0 items-center justify-center">
-                <GiftBoxCard />
-              </div>
-            </div>
-          </div>
+          {/* 小组件一排：Token ｜ 深夜来信 + 礼物盒 + 小程序占位（2026-11-18 抽成
+              `WidgetRow`，与抽屉「日常生活」共用一份；礼物盒缩成正方形，
+              右边那格留给待填入的小程序） */}
+          <WidgetRow />
 
           {/* 模块区：together / 酒馆 / 生活小趣味，移动端与桌面端同一份入口 */}
           <ModuleCards />
-
-          {/* 生活：从设置页移出的经期预测 + 睡前提醒（2026-11-10） */}
-          <LifeCard />
 
           <footer className="flex items-center justify-between border-t border-border/70 pt-4 text-[11px] text-muted-foreground">
             <span className="tracking-wide">小蓝莓 · v{APP_VERSION}</span>

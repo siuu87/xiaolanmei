@@ -4,14 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Check, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { periodSummary } from '@/lib/cycle';
-import { useLocalSwitch } from '@/lib/useLocalSwitch';
 import { diaryDayKey, AUTHOR_LABEL } from '@/features/diary/diaryData';
 import { useDiaryStore } from '@/features/diary/diaryStore';
 import type { CalendarDayDecoration } from '@/features/calendar/CollapsibleCalendar';
 import { daySpecial, dayWorkFlag } from '@/features/calendar/chineseCalendar';
 import { lunarTextOf } from '@/features/calendar/almanac';
 import { AlmanacPage } from '@/features/calendar/AlmanacPage';
-import { useMoodStore, moodColor, moodInfo, type MoodKey } from './moodStore';
 import {
   usePeriodStore,
   periodDayIndexOf,
@@ -42,12 +40,12 @@ function monthMatrix(y: number, m: number): (number | null)[][] {
 const PANEL_TITLE = 'text-[13px] font-medium text-foreground';
 
 /**
- * 心情在这里**只读**：选心情的入口已经统一收到首页日历上方的 MOOD 卡片。
- * 三种心情（高兴·黄 / 平静·绿 / 难过·蓝）与首页用的是同一份定义、同一份存储。
- *
  * 版式完全对齐设计稿（首页可编辑稿 PDF）：
  * - 默认态 = 左「月份/星期/大字日期」+ 右月历小组件；
- * - 选中态 = 左栏切换成**日期详情面板**（心情/农历/日记/经期/提醒），月历保持右侧。
+ * - 选中态 = 左栏切换成**日期详情面板**（农历/纪念日/节日/日记/经期），月历保持右侧。
+ *
+ * 2026-11-18 晚：**心情整块从日历里删掉**（详情面板那一行 + 日期格上的心情色点），
+ * 睡前提醒那一行随之一起走（开关在「生活」卡里，那张卡也已删）。
  */
 export function CalendarCard() {
   const navigate = useNavigate();
@@ -58,15 +56,9 @@ export function CalendarCard() {
   const toggleDay = usePeriodStore((s) => s.toggleDay);
   const memorialDays = useMemorialStore((s) => s.days);
   const loadMemorials = useMemorialStore((s) => s.load);
-  const moodDays = useMoodStore((s) => s.days);
-  const loadMood = useMoodStore((s) => s.load);
-  // 睡前提醒开关（设置页「提醒与健康」）：开着才在详情面板显示提醒行
-  const [bedReminderOn] = useLocalSwitch('blueberry.bedReminder', false);
-
   useEffect(() => {
-    loadMood();
     loadMemorials();
-  }, [loadMood, loadMemorials]);
+  }, [loadMemorials]);
 
   // 选中的日期（yyyy-mm-dd），null = 未选中
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -90,12 +82,6 @@ export function CalendarCard() {
   // 非补零 key（与心情/日记查找、?date= 深链的 YYYY-M-D 一致）
   const selectedKey = selectedDate ? `${sy}-${sm}-${sd}` : null;
   const selectedISO = selectedDate; // 补零 ISO（经期用）
-  const selectedRec = selectedKey ? (moodDays[selectedKey] ?? {}) : {};
-  const selectedIsToday = selectedDate === todayISODate();
-  const selectedMeInfo = moodInfo(selectedRec.me);
-  const selectedAiInfo = moodInfo(selectedRec.ai);
-  // 是否显示心情区：今天或已填过心情；过去没填则不显示
-  const showMood = selectedIsToday || !!selectedMeInfo || !!selectedAiInfo;
   // 选中日期的农历月日（拓展页那一行）
   const lunarText = selectedDate ? lunarTextOf(sy, sm, sd) : null;
   // 选中日期的纪念日 / 特殊节日（拓展页里展示，2026-11-04 用户定）
@@ -127,15 +113,11 @@ export function CalendarCard() {
   })();
   const infoWeekLabel = `星期${'日一二三四五六'[new Date(infoDate.y, infoDate.m - 1, infoDate.d).getDay()]}`;
 
-  // 日历每天的标注：心情圆点 + 纪念日 + 放假日角标 + 节日/节气名称
+  // 日历每天的标注：纪念日 + 放假日角标 + 节日/节气名称（2026-11-18 晚：心情已删）
   const next = predictNextStart(records, settings);
   const periodSummaryText = periodSummary(records, settings);
   const dayDecoration = (iso: string): CalendarDayDecoration | undefined => {
     const [y, m, d] = iso.split('-').map(Number);
-    const key = `${y}-${m}-${d}`;
-    const rec = moodDays[key];
-    // 日历格上的心情颜色点：我 在前，AI 在后
-    const moodColors = [moodColor(rec?.me), moodColor(rec?.ai)].filter((c): c is string => !!c);
     const memorial = !!memorialOnDate(memorialDays, y, m, d);
     const sp = daySpecial(y, m, d);
     const workFlag = dayWorkFlag(y, m, d) ?? undefined;
@@ -146,9 +128,8 @@ export function CalendarCard() {
         : isPredictedDay(iso, next, settings.periodDays)
           ? ('predicted' as const)
           : undefined;
-    if (!moodColors.length && !period && !memorial && !workFlag && !sp?.label) return undefined;
+    if (!period && !memorial && !workFlag && !sp?.label) return undefined;
     return {
-      moodColors,
       period,
       memorial,
       workFlag,
@@ -183,11 +164,12 @@ export function CalendarCard() {
           <div className="flex w-[40%] shrink-0 flex-col">
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <div className="flex flex-col">
-                <span className="text-[19px] font-bold leading-none text-foreground">{infoWeekLabel}</span>
-                <span className="mt-1.5 self-center text-[60px] font-bold leading-none tracking-tight text-foreground">
+                {/* 2026-11-18 晚再放大一档（23 / 88 / 14）—— 用户要求「左边的日期再大点」 */}
+                <span className="text-[23px] font-bold leading-none text-foreground">{infoWeekLabel}</span>
+                <span className="mt-2 self-center text-[88px] font-bold leading-none tracking-tight text-foreground">
                   {infoDate.d}
                 </span>
-                <span className="mt-1.5 self-end text-[12px] leading-none text-muted-foreground">
+                <span className="mt-2 self-end text-[14px] leading-none text-muted-foreground">
                   {view.y}年{view.m}月
                 </span>
               </div>
@@ -199,17 +181,6 @@ export function CalendarCard() {
               面板内容超出就在内部滚动（2026-11-04 用户定：上下滑动，卡片别变大）。 */
           <div className="absolute inset-y-0 left-0 flex w-[40%] min-w-0 flex-col overflow-y-auto overscroll-contain px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="divide-y divide-border/60">
-              {/* 心情：只读展示两个人的心情弧 */}
-              {showMood && (
-                <div className="flex items-center justify-between py-2.5">
-                  <span className={PANEL_TITLE}>心情</span>
-                  <div className="flex items-center gap-3">
-                    <MoodChip who="我" mood={selectedRec.me} />
-                    <MoodChip who="AI" mood={selectedRec.ai} />
-                  </div>
-                </div>
-              )}
-
               {/* 农历：点开是小米日历风格的黄历详情页 */}
               {lunarText && (
                 <button
@@ -294,14 +265,6 @@ export function CalendarCard() {
                   </span>
                 </button>
               </div>
-
-              {/* 提醒：读设置页「睡前提醒」开关（提醒由系统/AI 侧触发，不由这里手写） */}
-              {bedReminderOn && (
-                <div className="flex items-center justify-between py-2.5">
-                  <span className={PANEL_TITLE}>提醒</span>
-                  <span className="text-[12px] text-muted-foreground">22:00 睡前提醒</span>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -310,7 +273,7 @@ export function CalendarCard() {
         {selectedDate != null && <div className="w-[40%] shrink-0" aria-hidden />}
 
         {/* 右：月历小组件 —— 顶部月份切换器（‹ 11月 ›）+ S M T W T F S 表头（周末蓝）+
-            38 高周行 + 选中蓝圆 + 节日标签 + 心情点；中央 ghost 月份水印 */}
+            38 高周行 + 选中蓝圆 + 节日标签；中央 ghost 月份水印 */}
         <div className="relative min-w-0 flex-1">
           <span
             aria-hidden
@@ -573,35 +536,6 @@ function PeriodSettingsModal({
       </div>
     </div>,
     document.body,
-  );
-}
-
-/**
- * 一个人的心情（只读）：图案沿用首页 MOOD 那套弧线，颜色即心情色。
- * 没填的日子画一个虚线空圈，不占颜色、也不假装"心情不错"。
- */
-function MoodChip({ who, mood }: { who: string; mood?: MoodKey }) {
-  const info = moodInfo(mood);
-  return (
-    <div className="flex items-center gap-1.5">
-      {info ? (
-        <svg
-          viewBox="0 0 32 32"
-          className="h-5 w-5"
-          fill="none"
-          stroke={info.color}
-          strokeWidth={2.6}
-          strokeLinecap="round"
-          role="img"
-          aria-label={`${who}的心情：${info.label}`}
-        >
-          <path d={info.path} />
-        </svg>
-      ) : (
-        <span className="h-5 w-5 rounded-full border border-dashed border-border" />
-      )}
-      <span className="text-[10px] text-muted-foreground">{who}</span>
-    </div>
   );
 }
 

@@ -118,6 +118,87 @@ export function pickLetterTheme(ts: number = now()): LetterTheme {
   return 'default';
 }
 
+/* --------------------------- 信封「包装」look --------------------------- */
+
+/**
+ * 一封信的包装（2026-11-18 晚）：`纸色:封口件:压纹`，如 `sage:sprig:dot`。
+ *
+ * 用户的要求原话是「信的包装可以让 AI 自己设计，每次可以给点小惊喜，不一样一点」。
+ * 真让模型吐 SVG 是不可控的（慢、贵、风格还容易飘），所以拆成三个正交维度：
+ *
+ *   纸色 6 × 封口件 4 × 压纹 3 = 72 种
+ *
+ * 挑法**不是纯随机**，分两层：
+ *   ① 纸色看**信里写了什么**（`THEME_HINTS`）—— 写到雨夜就是深蓝，写到花开就是苔绿，
+ *      提到纪念日就换玫瑰；一个字都没命中才退回「按时辰」的老规则；
+ *   ② 封口件和压纹看**语气 + 哈希**：郑重的信偏火漆，轻快的偏干花/胶带，
+ *      再用正文+时间的哈希在候选池里摇一个 —— 同一封信每次算出来都一样（不会闪），
+ *      不同的信各不一样。
+ *
+ * 所以「AI 设计」落在这儿：它写的字决定了信封长什么样，而它不知道这件事。
+ */
+
+type LetterCharm = 'wax' | 'sprig' | 'string' | 'tape';
+type LetterTexture = 'plain' | 'line' | 'dot';
+
+/** 纸色提示词：命中越靠前优先级越高（夜/纪念压过花/旧） */
+const THEME_HINTS: { theme: LetterTheme; words: string[] }[] = [
+  { theme: 'night', words: ['夜', '雨', '冷', '睡', '梦', '星', '累', '安静', '安静地'] },
+  { theme: 'memorial', words: ['喜欢', '想你', '纪念', '生日', '爱', '在一起', '礼物', '等你'] },
+  { theme: 'sage', words: ['花', '春', '树', '叶', '风', '散步', '阳光', '开'] },
+  { theme: 'kraft', words: ['旧', '从前', '以年', '信', '纸', '书', '老'] },
+  { theme: 'lilac', words: ['温柔', '晚霞', '云', '轻', '软'] },
+];
+
+/** FNV-1a：只求「同样的输入永远同样的输出」，不是密码学 */
+function hashSeed(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+export function pickLetterLook(content: string, ts: number = now()): {
+  theme: LetterTheme;
+  charm: LetterCharm;
+  texture: LetterTexture;
+} {
+  const text = content ?? '';
+
+  // ① 纸色：信里写的字优先，一个字都没命中才按时辰/纪念日
+  const hit = THEME_HINTS.find((h) => h.words.some((w) => text.includes(w)));
+  const theme: LetterTheme = hit ? hit.theme : pickLetterTheme(ts);
+
+  const seed = hashSeed(`${text}|${ts}`);
+
+  // ② 封口件：先看语气定候选池，再从池子里摇 —— 纯随机会让「想你」配一条胶带
+  const solemn = ['喜欢', '想你', '纪念', '生日', '爱', '等你', '谢谢'].some((w) => text.includes(w));
+  const light = ['花', '风', '阳光', '晚霞', '云', '笑', '开心'].some((w) => text.includes(w));
+  const charmPool: LetterCharm[] = solemn
+    ? ['wax', 'wax', 'sprig']
+    : light
+      ? ['sprig', 'string', 'tape']
+      : ['string', 'tape', 'wax'];
+  const charm = charmPool[seed % charmPool.length];
+
+  // ③ 压纹：大概率是光纸（纸本来就该是光纸），偶尔来一道细纹或点阵
+  const texPool: LetterTexture[] = ['plain', 'plain', 'plain', 'line', 'dot'];
+  const texture = texPool[(seed >>> 11) % texPool.length];
+
+  return { theme, charm, texture };
+}
+
+/** 落库格式：`sage:sprig:dot`（与前端 `encodeLook` 一致） */
+export function encodeLetterLook(l: {
+  theme: string;
+  charm: string;
+  texture: string;
+}): string {
+  return `${l.theme}:${l.charm}:${l.texture}`;
+}
+
 /** 最近若干封信的正文（用来去重，别连着寄一样的话） */
 function recentContents(limit = 20): string[] {
   try {
@@ -163,7 +244,9 @@ export async function fetchOneLetter(): Promise<{
   let model = '';
   let usage: { input?: number; output?: number } | undefined;
   const started = now();
-  const theme = pickLetterTheme(started);
+  /* 只影响**写什么语气**（纪念日可以更软一点）—— 跟信封长什么样无关，
+     信封的纸色由正文决定，见下面的 `pickLetterLook`。 */
+  const dayTheme = pickLetterTheme(started);
 
   try {
     const cfg = getModelConfig();
@@ -208,7 +291,7 @@ export async function fetchOneLetter(): Promise<{
       tooLittle
         ? '\n【特别注意】现在几乎还没有真实素材。请改写一封 80~120 字的「初识短笺」：诚实地写我们才刚认识、你还在慢慢听，不要假装记得任何具体的事，也不要编造共同经历。称呼与落款仍要保留。'
         : '',
-      theme === 'memorial'
+      dayTheme === 'memorial'
         ? '\n今天是个被记着的日子，语气可以更柔软一点，但不要说出纪念日的具体名字或日期。'
         : '',
     ]
@@ -258,9 +341,19 @@ export async function fetchOneLetter(): Promise<{
 
   const id = newId();
   const ts = now();
+  /* 包装在这儿定：正文已经出来了，`pickLetterLook` 要读它里面写了什么
+     （写到雨夜 → 深蓝纸，提到「想你」→ 偏火漆，等等）。 */
+  const look = pickLetterLook(content, ts);
   try {
     db.insert(notes)
-      .values({ id, content, letterTheme: theme, createdAt: ts, updatedAt: ts })
+      .values({
+        id,
+        content,
+        letterTheme: look.theme,
+        letterLook: encodeLetterLook(look),
+        createdAt: ts,
+        updatedAt: ts,
+      })
       .run();
     db.insert(tokenUsage)
       .values({

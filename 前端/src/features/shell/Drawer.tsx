@@ -17,7 +17,6 @@ import { useShellStore } from '@/stores/shellStore';
 import { cn } from '@/lib/utils';
 import { AppearanceSection } from '@/features/settings/AppearanceSection';
 import { ProfileHeader, DailyBoard, ModuleGroupCard, ToolboxCard, StickyFooter } from './DrawerSections';
-import { LifeCard } from '@/features/home/LifeCard';
 import { useSwipeToClose } from './useEdgeSwipe';
 import { TOOLBOX_SECTIONS } from '@/features/chat/toolboxSections';
 
@@ -99,10 +98,11 @@ export function Drawer() {
                 >
                   <ProfileHeader />
 
-                  {/* 2026-11-16 重排（用户：生活和 together 打乱一下，只调顺序样式不动）：
-                      together 提到最前 —— 它是「两个人的」入口，比日历更像这抽屉的主题；
-                      跟着才是日常看板，再把「生活」卡挪上来贴着它（两块都是过日子的事）；
-                      酒馆 / 生活小趣味 / 工具箱压到最后。 */}
+                  {/* 2026-11-19 晚重排（用户：together 的位置不对，都改到小组件之后）：
+                      日常看板（日历/待办/小组件）在前，together 挪到看板之后、
+                      「还有」区之前 —— 与首页「小组件 → together」的顺序对齐。 */}
+                  <DailyBoard />
+
                   <section className="px-4 pb-3">
                     <div className="mb-2.5 flex items-center gap-2 px-0.5">
                       <span className="eyebrow">一起 · Together</span>
@@ -110,13 +110,6 @@ export function Drawer() {
                     </div>
                     <ModuleGroupCard title="together" />
                   </section>
-
-                  <DailyBoard />
-                  {/* LifeCard 自己没有左右内边距（它原先是跟在首页的 px-4 容器里），
-                      放进抽屉得补一层，不然标题「生活」贴着抽屉边被切掉半个字 */}
-                  <div className="px-4">
-                    <LifeCard />
-                  </div>
 
                   {/* 剩下的模块 + 工具箱 */}
                   <section className="px-4 pb-3">

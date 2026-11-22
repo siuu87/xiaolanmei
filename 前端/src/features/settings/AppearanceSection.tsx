@@ -1,18 +1,15 @@
 /**
- * 「我」页 · 外观（2026-11-10 合并版）
+ * 「我」页 · 外观
  *
- * 从中枢里搬出来后，本轮按用户选择把原来 7 项合并成 4 项：
- * - 深色模式（内联展开）
- * - 强调色
- * - 字体：合并「数字字体」+「自定义字体」为一档
- * - 高级外观：合并「配色方案（小手机）」+「自定义 CSS」+「启用自定义外观」为一档
+ * 本区只管**全站外观**：深色模式 / 强调色 / 气泡颜色 / 字体。
  *
- * 数据仍然走 themeCore 的同一份 localStorage，所以这里改完，小手机里的配色同步变化。
+ * ~~高级外观（小手机配色方案 + 自定义 CSS + 启用开关）~~ 已移走：那套只作用于小手机，
+ * 与全站主题互不影响，归小手机自己的界面管——进小手机「中枢」Tab 的「外观」即可设置，
+ * 不在整体设置里改。数据仍走 themeCore 同一份 localStorage，两边共享。
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Braces,
   Check,
   MessageCircle,
   Moon,
@@ -37,10 +34,9 @@ import {
 } from '@/features/tavern/phone/datacore/themeCore';
 import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
-import { IOSSwitch } from '@/components/ios/IOSSwitch';
 import { BUBBLE_THEMES, useBubbleTheme } from '@/features/chat/bubbleTheme';
 
-type SheetKey = 'accent' | 'font' | 'advance' | 'bubble';
+type SheetKey = 'accent' | 'font' | 'bubble';
 
 /* 分组卡磨砂底由 IOSSettingGroup 组件自身处理（.glass + 16px 圆角） */
 
@@ -169,26 +165,22 @@ export function AppearanceSection() {
   const bubbleTheme = useBubbleTheme((s) => s.theme);
   const setBubbleTheme = useBubbleTheme((s) => s.setTheme);
 
-  const { cfg, patch, presets } = useThemeEngine();
+  const { cfg, patch } = useThemeEngine();
 
   const [sheet, setSheet] = useState<SheetKey | null>(null);
   const [expandMode, setExpandMode] = useState(false);
-  const [cssDraft, setCssDraft] = useState(cfg.customCss);
   const [fontDraft, setFontDraft] = useState({ family: '', href: '' });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const curPreset = presets.find((p) => p.id === cfg.presetId) ?? presets[0];
   const curAccent = ACCENT_PRESETS.find((p) => p.key === accent);
   const curNumFont = NUM_FONT_PRESETS.find((p) => p.key === numFont);
-
-  useEffect(() => setCssDraft(cfg.customCss), [cfg.customCss]);
 
   return (
     <>
       <IOSSettingGroup title="外观">
         <IOSSettingItem
           icon={<Moon className="h-4 w-4" />}
-          iconBg="bg-indigo-500"
+          iconBg="bg-violet-400"
           title="深色模式"
           subtitle="整站统一深色，夜间更护眼"
           value={theme === 'dark' ? '深色' : '浅色'}
@@ -235,7 +227,7 @@ export function AppearanceSection() {
 
         <IOSSettingItem
           icon={<Palette className="h-4 w-4" />}
-          iconBg="bg-amber-500"
+          iconBg="bg-violet-400"
           title="强调色"
           subtitle="按钮、选中态与高亮的颜色"
           value={curAccent?.name}
@@ -245,7 +237,7 @@ export function AppearanceSection() {
 
         <IOSSettingItem
           icon={<MessageCircle className="h-4 w-4" />}
-          iconBg="bg-rose-400"
+          iconBg="bg-violet-400"
           title="气泡颜色"
           subtitle="聊天里两边气泡的底色（2026-11-18 起开放）"
           value={BUBBLE_THEMES.find((t) => t.key === bubbleTheme)?.name}
@@ -255,22 +247,12 @@ export function AppearanceSection() {
 
         <IOSSettingItem
           icon={<Type className="h-4 w-4" />}
-          iconBg="bg-sky-500"
+          iconBg="bg-violet-400"
           title="字体"
           subtitle="数字字形 + 自定义字体"
           value={curNumFont?.name ?? (cfg.fonts.length ? `${cfg.fonts.length} 个自定义` : undefined)}
           showChevron
           onClick={() => setSheet('font')}
-        />
-
-        <IOSSettingItem
-          icon={<Braces className="h-4 w-4" />}
-          iconBg="bg-slate-500"
-          title="高级外观"
-          subtitle="小手机配色方案 + 自定义 CSS"
-          value={cfg.enabled ? (cfg.customCss.trim() ? '已自定义' : curPreset?.name) : '已关闭'}
-          showChevron
-          onClick={() => setSheet('advance')}
         />
       </IOSSettingGroup>
 
@@ -434,90 +416,6 @@ export function AppearanceSection() {
         />
       </Sheet>
 
-      {/* 高级外观：小手机配色方案 + 自定义 CSS + 启用开关 合并 */}
-      <Sheet
-        open={sheet === 'advance'}
-        title="高级外观"
-        subtitle="仅作用于小手机，与全站主题互不影响"
-        onClose={() => setSheet(null)}
-      >
-        <SheetHeading>小手机配色方案</SheetHeading>
-        <div className="space-y-1">
-          {presets.map((p) => (
-            <OptionRow
-              key={p.id}
-              label={p.name}
-              sub={p.desc}
-              on={cfg.presetId === p.id}
-              onClick={() => patch({ presetId: p.id })}
-              leading={
-                <span className="flex shrink-0 overflow-hidden rounded-md ring-1 ring-black/10">
-                  <span className="h-6 w-3" style={{ background: p.vars['--bb-bg'] }} />
-                  <span className="h-6 w-3" style={{ background: p.vars['--bb-card'] }} />
-                  <span className="h-6 w-3" style={{ background: p.vars['--bb-accent'] }} />
-                </span>
-              }
-            />
-          ))}
-        </div>
-
-        <SheetHeading>自定义 CSS</SheetHeading>
-        <textarea
-          value={cssDraft}
-          onChange={(e) => setCssDraft(e.target.value)}
-          rows={8}
-          placeholder={'例：\n.bg-white{ box-shadow: 0 1px 6px rgba(0,0,0,.08); }'}
-          aria-label="自定义 CSS"
-          className="w-full resize-y rounded-lg border border-border bg-surface-2 p-3 font-mono text-[11px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
-        />
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            aria-label="应用 CSS"
-            onClick={() => patch({ customCss: cssDraft })}
-            className="flex-1 rounded-xl bg-primary py-2 text-[13px] font-medium text-primary-foreground active:opacity-80"
-          >
-            应用
-          </button>
-          <button
-            type="button"
-            aria-label="清空 CSS"
-            onClick={() => {
-              setCssDraft('');
-              patch({ customCss: '' });
-            }}
-            className="rounded-xl bg-surface-2 px-4 py-2 text-[13px] text-destructive active:opacity-70"
-          >
-            清空
-          </button>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
-          <span className="text-[14px] text-foreground">启用自定义外观</span>
-          <IOSSwitch
-            checked={cfg.enabled}
-            onCheckedChange={(v) => patch({ enabled: v })}
-            aria-label="启用自定义外观"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() =>
-            patch({
-              presetId: 'midnight',
-              customCss: '',
-              fonts: [],
-              activeFontId: null,
-              enabled: true,
-            })
-          }
-          aria-label="恢复默认外观"
-          className="mt-4 w-full rounded-xl bg-surface-2 py-2 text-[13px] text-foreground active:opacity-70"
-        >
-          恢复默认（午夜深蓝）
-        </button>
-      </Sheet>
     </>
   );
 }

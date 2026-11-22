@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>深夜来信 · 换格式</title>
+<style>
+  :root{
+    --page:#F7F3EA; --card:#FFFFFF; --line:#E6DCCA; --ink:#3F382C; --meta:#877962;
+    --env:#E9DFCA; --flap:#DCD0B9; --flapLine:#C9BCA2; --paper:#FBF7EF;
+    --seal:#B4554C; --sealD:#8D3B34; --hot:#E0574F; --slot:#E4D8C0;
+    --stamp:#CFDCE8; --stampInk:#7EA3D1;
+  }
+  html[data-theme="dark"]{
+    --page:#161310; --card:#211C17; --line:#3A3128; --ink:#EADFCF; --meta:#C6B49B;
+    --env:#3A2E22; --flap:#463829; --flapLine:#5C4A36; --paper:#44392C;
+    --seal:#C9827C; --sealD:#8F5550; --hot:#E8726A; --slot:#2B241D;
+    --stamp:#2E3850; --stampInk:#8FA6D8;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:28px 20px 64px;background:var(--page);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{max-width:1080px;margin:0 auto 26px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  h1{margin:0;font-size:26px;letter-spacing:.02em;font-weight:600}
+  .sub{margin:6px 0 0;font-size:12.5px;color:var(--meta);line-height:1.75}
+  .bar{display:flex;gap:8px}
+  .bar button{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:7px 13px;border-radius:999px;font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  section{max-width:1080px;margin:0 auto 36px}
+  h2{font-size:13px;letter-spacing:.16em;color:var(--meta);font-weight:500;margin:0 0 14px;text-transform:uppercase}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:16px 14px 14px;flex:1 1 240px;max-width:330px;
+  }
+  .card.pick{border-color:var(--seal);box-shadow:0 0 0 1px color-mix(in srgb,var(--seal) 28%,transparent)}
+  .card h3{margin:0 0 2px;font-size:13.5px;font-weight:600}
+  .card p{margin:0 0 10px;font-size:11.5px;color:var(--meta);line-height:1.65;min-height:70px}
+  .stage{height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  svg{display:block;overflow:visible}
+  .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--meta);margin-left:6px;vertical-align:1px}
+  .tag.warn{border-color:var(--seal);color:var(--seal)}
+  .tag.good{border-color:#8a9b78;color:#8a9b78}
+  .tag.pick{border-color:var(--seal);color:var(--seal)}
+  ul{margin:6px 0 0;padding-left:15px}
+  li{font-size:11.5px;line-height:1.75;color:var(--meta)}
+  li b{color:var(--ink);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:500;color:var(--meta);font-size:10.5px;letter-spacing:.08em}
+  td:first-child{color:var(--ink);white-space:nowrap}
+  td{color:var(--meta)}
+  tr:last-child td{border-bottom:none}
+  .no{color:var(--seal)}
+  .yes{color:#8a9b78}
+  .note{
+    max-width:1080px;margin:0 auto;padding:14px 16px;border-left:2px solid var(--seal);
+    background:color-mix(in srgb,var(--seal) 7%,transparent);border-radius:0 10px 10px 0;
+    font-size:12px;line-height:1.85;color:var(--meta);
+  }
+  .note b{color:var(--ink)}
+  .note ol{margin:6px 0 0;padding-left:17px}
+  .note li{font-size:12px;line-height:1.85;color:var(--meta)}
+
+  /* 尺度对比：同一枚信封三个尺寸 */
+  .scale{display:flex;gap:34px;align-items:flex-end;justify-content:center;padding:6px 0 2px;flex-wrap:wrap}
+  .scale figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .scale figcaption{font-size:10.5px;color:var(--meta);text-align:center;line-height:1.6}
+  .scale figcaption b{display:block;color:var(--ink);font-size:11px;margin-bottom:2px}
+
+  /* 方案卡里：小格 + 整屏 两个尺度 */
+  .duo{display:flex;gap:16px;align-items:flex-end;justify-content:center;height:196px}
+  .duo figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:7px}
+  .duo figcaption{font-size:9.5px;color:var(--meta);letter-spacing:.04em}
+  .slot{width:92px;height:92px;border-radius:9px;background:var(--slot);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .full{width:124px;height:186px;border-radius:11px;background:var(--env);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+
+  .frames{display:flex;gap:14px;align-items:flex-end;justify-content:center;flex-wrap:wrap}
+  .frames figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .frames figcaption{font-size:10px;color:var(--meta)}
+  .frames .n{color:var(--seal);font-weight:600;margin-right:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>深夜来信 · 换格式</h1>
+    <p class="sub">信封画得不差，我认输的是<b>它只能在一个尺寸上成立</b>。<br>下面三个替代形态，都能在 100px 的格子和整屏里说同一句话。</p>
+  </div>
+  <div class="bar">
+    <button onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">切换深浅</button>
+  </div>
+</header>
+
+<!-- ============ 一 · 为什么放弃信封 ============ -->
+<section>
+  <h2>一 · 信封的识别信息全挤在中间</h2>
+  <div class="card" style="max-width:none">
+    <div class="scale">
+
+      <figure>
+        <svg width="64" height="40" viewBox="0 0 200 124">
+          <rect x="2" y="2" width="196" height="120" fill="var(--env)" stroke="var(--flapLine)" stroke-width="4"/>
+          <path d="M2 2 L100 62 L198 2" fill="none" stroke="var(--flapLine)" stroke-width="4"/>
+          <circle cx="100" cy="62" r="17" fill="var(--seal)"/>
+        </svg>
+        <figcaption><b>首页那格 ≈ 100px</b>折线、火漆、撕口<br>糊成一团深色</figcaption>
+      </figure>
+
+      <figure>
+        <svg width="124" height="77" viewBox="0 0 200 124">
+          <rect x="2" y="2" width="196" height="120" fill="var(--env)" stroke="var(--flapLine)" stroke-width="1.6"/>
+          <path d="M2 2 L100 62 L198 2" fill="var(--flap)" stroke="var(--flapLine)" stroke-width="1.6"/>
+          <circle cx="100" cy="62" r="17" fill="var(--seal)"/>
+          <circle cx="100" cy="62" r="9" fill="var(--sealD)" opacity=".35"/>
+        </svg>
+        <figcaption><b>两列卡 ≈ 150px</b>能认出是信封<br>但蜡里的印记没了</figcaption>
+      </figure>
+
+      <figure>
+        <svg width="212" height="131" viewBox="0 0 200 124">
+          <rect x="1" y="1" width="198" height="122" fill="var(--env)" stroke="var(--flapLine)" stroke-width=".9"/>
+          <path d="M1 1 L100 62 L199 1" fill="var(--flap)" stroke="var(--flapLine)" stroke-width=".9"/>
+          <path d="M1 123 L74 58" fill="none" stroke="var(--flapLine)" stroke-width=".7" opacity=".5"/>
+          <path d="M199 123 L126 58" fill="none" stroke="var(--flapLine)" stroke-width=".7" opacity=".5"/>
+          <circle cx="100" cy="62" r="17" fill="var(--seal)"/>
+          <circle cx="100" cy="62" r="10.5" fill="var(--sealD)" opacity=".22"/>
+          <circle cx="96.5" cy="64.5" r="3.1" fill="var(--sealD)" opacity=".6"/>
+          <circle cx="103.5" cy="64.8" r="3.1" fill="var(--sealD)" opacity=".6"/>
+          <circle cx="100" cy="59.5" r="3.3" fill="var(--sealD)" opacity=".64"/>
+        </svg>
+        <figcaption><b>点开整屏 420px</b>细节全在<br>所以只有这里像信</figcaption>
+      </figure>
+
+    </div>
+  </div>
+  <div class="note" style="margin-top:16px">
+    上一轮我在这三处都实拍过，结论是：<b>小格里的信封不能靠细节说话，只能靠轮廓</b>。而信封的轮廓恰好是个方块 ——
+    和旁边那张 Token 卡的形状没区别。这不是再调一版参数能解决的，是选型问题。
+    <br><br>
+    另外两件事也一起算了：<b>「撕」不可逆</b>，但「已读」其实需要能反复翻回去看；<b>「撕」要拖拽</b>，在小卡上做不了，
+    只能点开弹窗再撕，等于一次阅读两次进入。
+  </div>
+</section>
+
+<!-- ============ 二 · 三条路 ============ -->
+<section>
+  <h2>二 · 换成什么</h2>
+  <div class="row">
+
+    <!-- A 折叠信 -->
+    <div class="card pick" style="max-width:352px">
+      <h3>折叠信<span class="tag pick">推荐</span></h3>
+      <p>信纸对折、折边上贴一枚小封条，邮票邮戳照旧贴在封面 —— 真实里的「自封信」。
+        <b>折着＝没看，摊开＝看了。</b>掀开而非撕坏，可以反复折回去。</p>
+      <div class="duo">
+        <figure>
+          <div class="slot">
+            <svg width="58" height="82" viewBox="0 0 100 141">
+              <rect x="6" y="8" width="94" height="135" fill="var(--ink)" opacity=".1"/>
+              <rect x="3" y="3" width="94" height="135" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1.4"/>
+              <!-- 下半折页压上来：整体暗一档，折边下方一道影 -->
+              <rect x="3" y="78" width="94" height="60" fill="var(--ink)" opacity=".075"/>
+              <rect x="3" y="78" width="94" height="10" fill="var(--ink)" opacity=".15"/>
+              <path d="M3 78 h94" stroke="var(--flapLine)" stroke-width="1.4"/>
+              <rect x="3" y="134" width="94" height="4" fill="var(--ink)" opacity=".1"/>
+              <!-- 封面上的收件地址：两道淡痕，不写字 -->
+              <g fill="var(--ink)" opacity=".12">
+                <rect x="15" y="38" width="36" height="2.4" rx="1.2"/>
+                <rect x="15" y="45" width="26" height="2.4" rx="1.2"/>
+              </g>
+              <!-- 封条：跨在折边上 -->
+              <circle cx="50" cy="80.6" r="10.5" fill="var(--ink)" opacity=".14"/>
+              <circle cx="50" cy="78" r="10.5" fill="var(--seal)"/>
+              <circle cx="50" cy="78" r="10.5" fill="none" stroke="var(--sealD)" stroke-width="1" opacity=".45"/>
+              <circle cx="50" cy="78" r="6.4" fill="var(--sealD)" opacity=".24"/>
+              <circle cx="46.8" cy="80.6" r="1.8" fill="var(--sealD)" opacity=".5"/>
+              <circle cx="53.2" cy="80.8" r="1.8" fill="var(--sealD)" opacity=".5"/>
+              <circle cx="50" cy="75.9" r="2" fill="var(--sealD)" opacity=".55"/>
+              <!-- 邮票 + 邮戳 -->
+              <rect x="72" y="12" width="16" height="19" fill="var(--stamp)" stroke="var(--flapLine)" stroke-width="1"/>
+              <path d="M76 21 a3.4 3.4 0 1 0 3.4 -3.4" fill="none" stroke="var(--stampInk)" stroke-width="1.2"/>
+              <circle cx="66" cy="31" r="8.5" fill="none" stroke="var(--sealD)" stroke-width="1.1" opacity=".4"/>
+            </svg>
+          </div>
+          <figcaption>首页那格</figcaption>
+        </figure>
+        <figure>
+          <div class="full">
+            <svg width="96" height="136" viewBox="0 0 100 141">
+              <rect x="3" y="3" width="94" height="135" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1"/>
+              <path d="M3 70 h94" stroke="var(--flapLine)" stroke-width=".9" opacity=".5"/>
+              <g fill="var(--ink)" opacity=".16">
+                <rect x="14" y="16" width="52" height="2.8" rx="1.4"/>
+                <rect x="14" y="24" width="68" height="2.8" rx="1.4"/>
+                <rect x="14" y="32" width="44" height="2.8" rx="1.4"/>
+                <rect x="14" y="40" width="60" height="2.8" rx="1.4"/>
+                <rect x="14" y="48" width="36" height="2.8" rx="1.4"/>
+                <rect x="14" y="80" width="58" height="2.8" rx="1.4"/>
+                <rect x="14" y="88" width="70" height="2.8" rx="1.4"/>
+                <rect x="14" y="96" width="48" height="2.8" rx="1.4"/>
+                <rect x="14" y="104" width="62" height="2.8" rx="1.4"/>
+              </g>
+              <!-- 断开的封条：两片各歪一点 -->
+              <path d="M50 66 a5.4 5.4 0 0 0 0 8.6 L48.4 70 Z" fill="var(--seal)" transform="rotate(-7 49 70)"/>
+              <path d="M50 66 a5.4 5.4 0 0 1 0 8.6 L51.6 70 Z" fill="var(--seal)" transform="rotate(7 51 70)"/>
+            </svg>
+          </div>
+          <figcaption>点开之后</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <!-- B 明信片 -->
+    <div class="card" style="max-width:352px">
+      <h3>明信片<span class="tag warn">装不下长信</span></h3>
+      <p>正面是图，背面是字。<b>正面朝上＝没看，翻过来＝看了。</b>
+        翻面是个 3D 转体，最轻，也最像「寄来的」。但一张明信片写三百字就满了。</p>
+      <div class="duo">
+        <figure>
+          <div class="slot">
+            <svg width="76" height="52" viewBox="0 0 150 102">
+              <rect x="2" y="2" width="146" height="98" fill="var(--env)" stroke="var(--flapLine)" stroke-width="1.4"/>
+              <rect x="9" y="9" width="132" height="62" fill="var(--stamp)" opacity=".55"/>
+              <path d="M78 22 a13 13 0 1 0 0 26 a10 10 0 1 1 0 -26 Z" fill="var(--paper)" opacity=".92"/>
+              <circle cx="114" cy="28" r="1.7" fill="var(--paper)" opacity=".8"/>
+              <circle cx="122" cy="43" r="1.2" fill="var(--paper)" opacity=".7"/>
+              <circle cx="104" cy="52" r="1" fill="var(--paper)" opacity=".6"/>
+              <rect x="9" y="78" width="58" height="3" rx="1.5" fill="var(--ink)" opacity=".22"/>
+              <rect x="9" y="86" width="40" height="3" rx="1.5" fill="var(--ink)" opacity=".18"/>
+              <circle cx="127" cy="82" r="9" fill="none" stroke="var(--sealD)" stroke-width="1.2" opacity=".42"/>
+              <path d="M122 79 h9 M122 83 h9 M122 87 h6" stroke="var(--sealD)" stroke-width=".9" opacity=".34"/>
+            </svg>
+          </div>
+          <figcaption>首页那格</figcaption>
+        </figure>
+        <figure>
+          <div class="full">
+            <svg width="104" height="72" viewBox="0 0 150 102">
+              <rect x="2" y="2" width="146" height="98" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1.2"/>
+              <path d="M76 8 v86" stroke="var(--flapLine)" stroke-width=".9" opacity=".8"/>
+              <g fill="var(--ink)" opacity=".17">
+                <rect x="12" y="20" width="52" height="3.2" rx="1.6"/>
+                <rect x="12" y="30" width="44" height="3.2" rx="1.6"/>
+                <rect x="12" y="40" width="50" height="3.2" rx="1.6"/>
+                <rect x="12" y="50" width="34" height="3.2" rx="1.6"/>
+                <rect x="12" y="60" width="46" height="3.2" rx="1.6"/>
+              </g>
+              <rect x="112" y="14" width="24" height="28" fill="var(--stamp)" stroke="var(--flapLine)" stroke-width=".9"/>
+              <path d="M118 30 h12 M118 36 h9" stroke="var(--flapLine)" stroke-width=".8" opacity=".8"/>
+            </svg>
+          </div>
+          <figcaption>翻过来</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <!-- C 收件匣 -->
+    <div class="card" style="max-width:330px">
+      <h3>收件匣<span class="tag">最省</span></h3>
+      <p>不画实物，一行一条：日期、首句、未读小点。<b>加粗＝没看，变浅＝看了。</b>
+        永远不会难看，也永远不会让人想拆。仪式感归零，和灵感库列表一个调子。</p>
+      <div class="duo">
+        <figure>
+          <div class="slot" style="flex-direction:column;gap:7px;padding:8px">
+            <svg width="72" height="12" viewBox="0 0 100 16">
+              <rect x="0" y="3" width="34" height="9" rx="4.5" fill="var(--ink)" opacity=".55"/>
+              <rect x="40" y="5" width="44" height="5" rx="2.5" fill="var(--ink)" opacity=".22"/>
+              <circle cx="94" cy="8" r="4" fill="var(--hot)"/>
+            </svg>
+            <svg width="72" height="12" viewBox="0 0 100 16">
+              <rect x="0" y="3" width="26" height="9" rx="4.5" fill="var(--ink)" opacity=".18"/>
+              <rect x="32" y="5" width="52" height="5" rx="2.5" fill="var(--ink)" opacity=".14"/>
+            </svg>
+            <svg width="72" height="12" viewBox="0 0 100 16">
+              <rect x="0" y="3" width="30" height="9" rx="4.5" fill="var(--ink)" opacity=".18"/>
+              <rect x="36" y="5" width="40" height="5" rx="2.5" fill="var(--ink)" opacity=".14"/>
+            </svg>
+          </div>
+          <figcaption>首页那格</figcaption>
+        </figure>
+        <figure>
+          <div class="full" style="flex-direction:column;gap:11px;padding:14px 12px">
+            <svg width="86" height="30" viewBox="0 0 100 34">
+              <rect x="0" y="4" width="40" height="12" rx="6" fill="var(--ink)" opacity=".6"/>
+              <rect x="0" y="22" width="76" height="6" rx="3" fill="var(--ink)" opacity=".2"/>
+              <circle cx="94" cy="10" r="5" fill="var(--hot)"/>
+            </svg>
+            <svg width="86" height="30" viewBox="0 0 100 34">
+              <rect x="0" y="4" width="32" height="12" rx="6" fill="var(--ink)" opacity=".2"/>
+              <rect x="0" y="22" width="62" height="6" rx="3" fill="var(--ink)" opacity=".15"/>
+            </svg>
+            <svg width="86" height="30" viewBox="0 0 100 34">
+              <rect x="0" y="4" width="36" height="12" rx="6" fill="var(--ink)" opacity=".2"/>
+              <rect x="0" y="22" width="70" height="6" rx="3" fill="var(--ink)" opacity=".15"/>
+            </svg>
+          </div>
+          <figcaption>点开之后</figcaption>
+        </figure>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 三 · 折叠信的动作 ============ -->
+<section>
+  <h2>三 · 折信这一下（推荐方案的四个帧）</h2>
+  <div class="card" style="max-width:none">
+    <div class="frames">
+
+      <figure>
+        <svg width="78" height="110" viewBox="0 0 100 141">
+          <rect x="5" y="6" width="94" height="135" fill="var(--ink)" opacity=".09"/>
+          <rect x="3" y="3" width="94" height="135" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1.2"/>
+          <rect x="3" y="78" width="94" height="60" fill="var(--ink)" opacity=".05"/>
+          <rect x="3" y="78" width="94" height="5" fill="var(--ink)" opacity=".09"/>
+          <path d="M3 78 h94" stroke="var(--flapLine)" stroke-width="1.1"/>
+          <circle cx="50" cy="80.8" r="10" fill="var(--ink)" opacity=".14"/>
+          <circle cx="50" cy="78" r="10" fill="var(--seal)"/>
+          <circle cx="50" cy="78" r="10" fill="none" stroke="var(--sealD)" stroke-width=".9" opacity=".42"/>
+          <circle cx="50" cy="78" r="6" fill="var(--sealD)" opacity=".22"/>
+          <circle cx="47" cy="80.4" r="1.7" fill="var(--sealD)" opacity=".5"/>
+          <circle cx="53" cy="80.6" r="1.7" fill="var(--sealD)" opacity=".5"/>
+          <circle cx="50" cy="76" r="1.9" fill="var(--sealD)" opacity=".55"/>
+          <rect x="71" y="11" width="16" height="19" fill="var(--stamp)" stroke="var(--flapLine)" stroke-width=".9"/>
+          <path d="M75 20 a3.4 3.4 0 1 0 3.4 -3.4" fill="none" stroke="var(--stampInk)" stroke-width="1.2"/>
+          <circle cx="65" cy="30" r="8.5" fill="none" stroke="var(--sealD)" stroke-width="1.1" opacity=".38"/>
+        </svg>
+        <figcaption><span class="n">①</span>折着：封条完整</figcaption>
+      </figure>
+
+      <figure>
+        <svg width="78" height="110" viewBox="0 0 100 141">
+          <rect x="3" y="3" width="94" height="135" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1.2"/>
+          <rect x="3" y="78" width="94" height="60" fill="var(--ink)" opacity=".05"/>
+          <rect x="3" y="78" width="94" height="5" fill="var(--ink)" opacity=".09"/>
+          <path d="M3 78 h94" stroke="var(--flapLine)" stroke-width="1.1"/>
+          <!-- 裂开的两片蜡：各歪一点，中间一道细缝 -->
+          <g transform="rotate(-7 49 78)">
+            <path d="M50 68 a10 10 0 0 0 0 20 L49.2 88 L49.2 68 Z" fill="var(--seal)"/>
+            <path d="M50 68 a10 10 0 0 0 0 20 L49.2 88 L49.2 68 Z" fill="none" stroke="var(--sealD)" stroke-width=".8" opacity=".4"/>
+          </g>
+          <g transform="rotate(7 51 78)">
+            <path d="M50 68 a10 10 0 0 1 0 20 L50.8 88 L50.8 68 Z" fill="var(--seal)"/>
+            <path d="M50 68 a10 10 0 0 1 0 20 L50.8 88 L50.8 68 Z" fill="none" stroke="var(--sealD)" stroke-width=".8" opacity=".4"/>
+          </g>
+          <ellipse cx="61.5" cy="90.5" rx="2" ry="1.3" fill="var(--seal)" opacity=".7" transform="rotate(-20 61.5 90.5)"/>
+          <ellipse cx="62.6" cy="94" rx="1.2" ry=".8" fill="var(--seal)" opacity=".55"/>
+        </svg>
+        <figcaption><span class="n">②</span>封条从中间断开</figcaption>
+      </figure>
+
+      <figure>
+        <svg width="78" height="137" viewBox="0 0 100 175">
+          <rect x="5" y="6" width="94" height="135" fill="var(--ink)" opacity=".07"/>
+          <rect x="3" y="3" width="94" height="135" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1.2"/>
+          <g fill="var(--ink)" opacity=".15">
+            <rect x="14" y="13" width="54" height="2.8" rx="1.4"/>
+            <rect x="14" y="21" width="68" height="2.8" rx="1.4"/>
+            <rect x="14" y="29" width="46" height="2.8" rx="1.4"/>
+            <rect x="14" y="37" width="60" height="2.8" rx="1.4"/>
+            <rect x="14" y="45" width="42" height="2.8" rx="1.4"/>
+            <rect x="14" y="53" width="52" height="2.8" rx="1.4"/>
+            <rect x="14" y="82" width="58" height="2.8" rx="1.4"/>
+            <rect x="14" y="90" width="66" height="2.8" rx="1.4"/>
+            <rect x="14" y="98" width="44" height="2.8" rx="1.4"/>
+            <rect x="14" y="110" width="56" height="2.8" rx="1.4"/>
+            <rect x="14" y="118" width="48" height="2.8" rx="1.4"/>
+          </g>
+          <path d="M3 70 h94" stroke="var(--flapLine)" stroke-width=".8" opacity=".28"/>
+          <!-- 折页：从纸底垂下来，背面朝外 -->
+          <path d="M6 164 Q50 171 94 164 L97 140 L3 140 Z" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1.1"/>
+          <rect x="3" y="132" width="94" height="8" fill="var(--ink)" opacity=".14"/>
+          <path d="M3 138 h94" stroke="var(--flapLine)" stroke-width="1.3"/>
+          <path d="M6 164 Q50 171 94 164" fill="none" stroke="var(--ink)" stroke-width="4" opacity=".08"/>
+          <!-- 折页上残留的半枚蜡 -->
+          <path d="M24 140 a6.4 6.4 0 0 1 0 12 Z" fill="var(--seal)" opacity=".85"/>
+        </svg>
+        <figcaption><span class="n">③</span>折页翻下来，露出字</figcaption>
+      </figure>
+
+      <figure>
+        <svg width="110" height="156" viewBox="0 0 141 200">
+          <rect x="3" y="3" width="135" height="194" fill="var(--paper)" stroke="var(--flapLine)" stroke-width="1"/>
+          <path d="M3 100 h135" stroke="var(--flapLine)" stroke-width=".8" opacity=".3"/>
+          <g fill="var(--ink)" opacity=".14">
+            <rect x="18" y="18" width="76" height="3.2" rx="1.6"/>
+            <rect x="18" y="28" width="94" height="3.2" rx="1.6"/>
+            <rect x="18" y="38" width="64" height="3.2" rx="1.6"/>
+            <rect x="18" y="48" width="86" height="3.2" rx="1.6"/>
+            <rect x="18" y="58" width="58" height="3.2" rx="1.6"/>
+            <rect x="18" y="68" width="74" height="3.2" rx="1.6"/>
+            <rect x="18" y="114" width="88" height="3.2" rx="1.6"/>
+            <rect x="18" y="124" width="66" height="3.2" rx="1.6"/>
+            <rect x="18" y="134" width="92" height="3.2" rx="1.6"/>
+            <rect x="18" y="144" width="60" height="3.2" rx="1.6"/>
+            <rect x="18" y="154" width="80" height="3.2" rx="1.6"/>
+            <rect x="18" y="164" width="48" height="3.2" rx="1.6"/>
+          </g>
+          <!-- 折痕处残留的两片碎蜡 -->
+          <path d="M65 95.4 a5.4 5.4 0 0 1 1.9 8.4 L62.6 100.6 Z" fill="var(--seal)" opacity=".78"/>
+          <path d="M76 95.4 a5.4 5.4 0 0 0 -1.9 8.4 L78.4 100.6 Z" fill="var(--seal)" opacity=".78"/>
+        </svg>
+        <figcaption><span class="n">④</span>摊平，一张整纸</figcaption>
+      </figure>
+
+    </div>
+  </div>
+  <div class="note" style="margin-top:16px">
+    真实里有一种信就是这么寄的：信纸自己折成信封形状，正面写地址贴邮票，折边用一枚<b>小封条（wafer seal）</b>粘住 ——
+    英文叫 self-mailer。所以「折」并不比「撕」少一点邮递感，它反而更接近真的收信。
+    <br><br>
+    而且这一下比现在那套好做：现在的撕口是沿 V 线用 <code>clip-path</code> 啃掉一块，还要处理毛边、残蜡、封盖缩放脱节；
+    折信只是<b>一段高度过渡 + 一道折痕线 + 一枚会裂的小圆片</b>，全在 2D 里，不会有 3D 塌陷。
+  </div>
+</section>
+
+<!-- ============ 四 · 已读怎么读 ============ -->
+<section>
+  <h2>四 · 「看没看」改成这么读</h2>
+  <div class="card" style="max-width:none">
+    <table>
+      <tr>
+        <th>位置</th><th>现在（信封＋撕）</th><th>换之后（折叠信）</th>
+      </tr>
+      <tr>
+        <td>首页 / 抽屉那格</td>
+        <td class="no">一沓信封轮廓，100px 下分不清封没封</td>
+        <td class="yes">折边上的封条：整枚＝没看，裂成两片＝看了</td>
+      </tr>
+      <tr>
+        <td>全部来信 /notes</td>
+        <td>撕口 + 露一截纸 + 残蜡</td>
+        <td class="yes">折痕深、封条完整 vs 摊开、封条断开</td>
+      </tr>
+      <tr>
+        <td>点开之后</td>
+        <td>先拖拽撕开，再读；不可逆</td>
+        <td class="yes">先掀开（一划或一点），再读；可再折回去</td>
+      </tr>
+      <tr>
+        <td>新信的红点</td>
+        <td>未拆就亮，拆完灭</td>
+        <td class="yes">不变，仍然「没拆就亮」</td>
+      </tr>
+      <tr>
+        <td>邮递的记号</td>
+        <td>邮票 + 邮戳 + 邮资波浪线，压在封盖上</td>
+        <td class="yes">原样贴在封面（折好的正面），一处不改</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 五 · 落地 ============ -->
+<section>
+  <h2>五 · 要动的地方</h2>
+  <div class="row">
+    <div class="card" style="max-width:330px">
+      <h3>改写</h3>
+      <ul>
+        <li><b>TearOpen.tsx</b> → 换成 <b>UnfoldLetter.tsx</b>（掀开封条，约 160 行，比现在短一半）</li>
+        <li><b>LetterEnvelope.tsx</b> 的已读态：撕口 → 折痕 + 断封条</li>
+        <li><b>LetterInboxCard.tsx</b> 那一沓：换成一份折好的信</li>
+        <li><b>LetterSheetModal.tsx</b>：信封舞台 → 摊开的整张纸</li>
+      </ul>
+    </div>
+    <div class="card" style="max-width:330px">
+      <h3>不动</h3>
+      <ul>
+        <li><b>LetterArt.tsx</b> 六套配色表 —— 全部复用</li>
+        <li><b>WaxSeal</b> 火漆组件 —— 封条就是它缩小版</li>
+        <li>数据层：<code>readIds</code>、<code>markRead</code>、红点逻辑</li>
+        <li>六套信封纸、换色接口</li>
+      </ul>
+    </div>
+    <div class="card" style="max-width:330px">
+      <h3>取舍</h3>
+      <ul>
+        <li>「撕」的手感没了，换成「掀」。少一点解压，多一点可重复</li>
+        <li>小格里的信息从「一个信封轮廓」变成「一块有厚度的纸 + 一枚封条」，同尺寸下辨识度高得多</li>
+        <li>整屏从「往信封里插纸」的布景，变成一张纸本身 —— 阅读区能多出约 40px 宽</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

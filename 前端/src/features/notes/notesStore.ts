@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { listNotes, createNote, deleteNote, patchNoteTheme } from '@/lib/api/home';
+import { listNotes, createNote, deleteNote, patchNoteLook } from '@/lib/api/home';
 import { newId } from '@/lib/id';
+import { encodeLook, normalizeLetterTheme, parseLook } from './notesData';
 import type { InspirationNote, LetterTheme } from './notesData';
 
 interface NotesState {
@@ -93,17 +94,26 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   setLetterTheme: async (id, theme) => {
-    const prev = get().notes.find((n) => n.id === id)?.letterTheme;
-    if (prev === theme) return;
+    const cur = get().notes.find((n) => n.id === id);
+    if (!cur) return;
+    /* 只换纸色，**封口件和压纹留着** —— 换的是「换个信封」，不是「换一封信」。
+       look 的第一段才是纸色的权威，所以这里直接重建整串再落库。 */
+    const prevLook = parseLook(cur.letterLook, normalizeLetterTheme(cur.letterTheme), cur.id);
+    if (prevLook.theme === theme) return;
+    const nextRaw = encodeLook({ ...prevLook, theme });
     set((s) => ({
-      notes: s.notes.map((n) => (n.id === id ? { ...n, letterTheme: theme } : n)),
+      notes: s.notes.map((n) =>
+        n.id === id ? { ...n, letterLook: nextRaw, letterTheme: theme } : n,
+      ),
     }));
     try {
-      await patchNoteTheme(id, theme);
+      await patchNoteLook(id, nextRaw);
     } catch {
-      // 推不上去就退回原色，别让界面说谎
+      // 推不上去就退回原样，别让界面说谎
       set((s) => ({
-        notes: s.notes.map((n) => (n.id === id ? { ...n, letterTheme: prev } : n)),
+        notes: s.notes.map((n) =>
+          n.id === id ? { ...n, letterLook: cur.letterLook, letterTheme: cur.letterTheme } : n,
+        ),
       }));
     }
   },

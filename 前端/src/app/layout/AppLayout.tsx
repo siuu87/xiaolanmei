@@ -11,7 +11,6 @@ import { Drawer } from '@/features/shell/Drawer';
 import { LetterSheetModal } from '@/features/notes/LetterSheetModal';
 import { useNotesStore } from '@/features/notes/notesStore';
 import { useEdgeSwipe } from '@/features/shell/useEdgeSwipe';
-import { BedtimeNudge } from '@/features/shell/BedtimeNudge';
 import { CallRingingLayer } from '@/features/chat/CallRingingLayer';
 import { triggerIncomingCall } from '@/features/chat/callSession';
 import { useOpenSourceStore } from '@/features/openSource/openSourceStore';
@@ -178,7 +177,6 @@ export function AppLayout() {
       {!immersive && <Drawer />}
 
       {/* 睡前提醒（设置页「提醒与健康」里开启；22:00–02:59 每天最多一次） */}
-      <BedtimeNudge />
 
       {/* 呼叫中 / 来电弹窗：他会主动打过来，所以挂在布局层，任何页面都能弹 */}
       <CallRingingLayer />
