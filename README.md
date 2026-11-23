@@ -427,6 +427,9 @@ npm run dev
 - 后端 `/api/st/*` 代理 ST 的角色卡 / 世界书 / 聊天 / 头像等接口，ST 不通时旧 `/api/tavern/*`
   本地数据通道照常返回，不报错。
 - VPS 上部署 ST 时填**公网地址**（如 `http://<IP>:8000`），不要填 `127.0.0.1` —— 那是手机自己。
+  服务器 root 下贴一条即可一键装好（自动对外开放 8000、生成 Basic Auth 账号密码并打印要填的配置）：
+  `curl -fsSL https://gitee.com/siuu/xiaolanmei/raw/main/deploy/st-setup.sh | bash`
+  （云控制台安全组仍需手动放行 TCP 8000；首次要用浏览器直接开 ST 完成它自己的初始注册。）
 
 ### 其他
 - **日记**（`/diary`，2026-11-15 改成**单页翻页本**）：一屏一页纸，一页一天。

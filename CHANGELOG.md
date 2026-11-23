@@ -15,6 +15,7 @@
   连接配置存后端 `settings` 表（密码只后端保存），本机 `127.0.0.1` 归一为 `localhost`
   作 iframe 源以兼容 ST 的 lax cookie。后端新增 `/api/st/*` 代理（角色卡 / 世界书 / 聊天 /
   头像 / 配置自检，CSRF + cookie jar），ST 不通时旧 `/api/tavern/*` 照常返回不报错。
+- **VPS 一键装 ST**：新增 `deploy/st-setup.sh`（root 下 `curl -fsSL https://gitee.com/siuu/xiaolanmei/raw/main/deploy/st-setup.sh | bash`）：拉 ST release + npm 装依赖 + 改 `listen: true` / 8000 / 关白名单 / 开 Basic Auth + helmet `frameguard: false` + systemd 常驻 + 体检，最后打印小蓝莓连接设置要填的地址账号；安全组 8000 需用户自己在云控制台放行。
 - **交互清理**：抽屉工具箱删「手机感知 / 工作区」入口（组件保留、无点击口子）；
   他的资料页只留「他是谁」+「世界书」；设置外观可点开；数据中枢删「记忆」，只剩
   数据 / 上下文注入 / 备份（小手机中枢另留外观）；「主角可见」改为「上下文注入」，
