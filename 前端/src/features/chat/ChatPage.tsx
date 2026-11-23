@@ -92,6 +92,7 @@ import { Flower2, Orbit } from 'lucide-react';
 import { useTimetableStore } from '@/features/schedule/timetableStore';
 import { useShellStore } from '@/stores/shellStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { NotifyInstallBanner } from '@/features/settings/NotificationSection';
 import { useChatStyle, CHAT_STYLE_META, CHAT_STYLE_STORAGE_KEY } from '@/stores/chatStyleStore';
 import { useDietStore } from '@/features/diet/dietStore';
 import { useTasksStore } from './tasksStore';
@@ -1814,6 +1815,12 @@ export function ChatPage() {
         )}
       {/* 灵动岛（三十五改）：有未完成小任务时亮在顶栏正下方，点开展开操作 */}
       {isChatView && <TaskIsland />}
+      {/* 手机端一次性引导：装到主屏幕 + 开系统通知（可划掉，之后不再出现） */}
+      {isChatView && (
+        <div className="pointer-events-auto absolute inset-x-0 top-[100px] z-30">
+          <NotifyInstallBanner />
+        </div>
+      )}
       {/* 顶栏（2026-11-09）：**悬浮置顶在聊天消息之上**，自身不带任何底色 / 遮罩，
           消息滚动时会从按钮与头像后面透出来。用 absolute 脱离文档流，消息区靠等高 pt 让开首屏。
           pointer-events-none + 各按钮 pointer-events-auto：空白处的点击照样能落到底下的气泡上。
@@ -2542,8 +2549,8 @@ export function ChatPage() {
           </div>
         )}
         {confirming && (
-          <div className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-chat-pill-fg">
-            <span className="min-w-0 flex-1 truncate">⏸ 需要确认：{confirming.summary}</span>
+          <div className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-chat-pill-fg">
+            <span className="min-w-0 flex-1 leading-relaxed break-words">⏸ 需要确认：{confirming.summary}</span>
             <button
               type="button"
               onClick={() => void answerConfirm('allow')}

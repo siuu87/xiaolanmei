@@ -28,6 +28,7 @@ import {
   postXinchaoEvent,
   type XinchaoNow,
 } from '../services/xinchao.js';
+import { sendPush } from '../services/pushService.js';
 
 interface ChatStreamBody {
   messages?: ChatMessage[];
@@ -209,7 +210,20 @@ function summarizeTool(toolName: string, args: Record<string, unknown>): string 
   if (toolName === 'write_file') return `写入文件：${p}`;
   if (toolName === 'edit_file') return `修改文件：${p}`;
   if (toolName === 'git_commit') return `git 提交：${String(args.message ?? '').slice(0, 120)}`;
+  if (toolName === 'adjust_ui') return describeUiChange(args);
   return `调用工具：${toolName}`;
+}
+
+/** 把 adjust_ui 的白名单参数翻译成人话，让用户一眼看懂「他要改什么」再决定 */
+function describeUiChange(args: Record<string, unknown>): string {
+  const labels: string[] = [];
+  if (args.theme === 'dark' || args.theme === 'light') labels.push(`主题→${args.theme === 'dark' ? '深色' : '浅色'}`);
+  const accent: Record<string, string> = { blue: '蓝莓蓝', violet: '紫罗兰', rose: '玫瑰粉', teal: '薄荷绿', amber: '暖琥珀' };
+  if (typeof args.accent === 'string' && accent[args.accent]) labels.push(`强调色→${accent[args.accent]}`);
+  if (args.numFont === 'serif' || args.numFont === 'sans') labels.push(`字体→${args.numFont === 'serif' ? '衬线' : '无衬线'}`);
+  const bubble: Record<string, string> = { classic: '经典', rose: '玫瑰', peach: '蜜桃', mint: '薄荷', lavender: '薰衣草' };
+  if (typeof args.bubble === 'string' && bubble[args.bubble]) labels.push(`气泡→${bubble[args.bubble]}`);
+  return `改界面：${labels.join('、') || '外观设置'}`;
 }
 
 /**
@@ -546,11 +560,29 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
 
         const hit = listBuiltinTools().find((b) => b.name === name);
         if (!hit) return `未知工具：${name}`;
+
+        // 改界面这类「动到用户当前观感」的工具：先弹确认条，用户点了才真正写入。
+        // 复用现有的 needs_confirm 管道，前端无需新组件；超时/拒绝则不执行。
+        if (name === 'adjust_ui' && !isAllowed('builtin', name)) {
+          const req = requestConfirmation(name, summarizeTool(name, args));
+          write({ type: 'needs_confirm', confirmId: req.id, toolName: name, summary: req.summary });
+          const decision = await req.promise;
+          if (decision === 'deny') return '你拒绝了这次界面调整，外观保持不变。';
+        }
+
         const r = await runTool({ kind: 'builtin', name, arguments: args, conversationId: convId });
         if (r.status === 'ok') {
           if (name === 'incoming_call') {
             // 模型自己决定要打：把意图推给前端弹来电卡片，不做任何定时 / 重试
-            write({ type: 'incoming_call', reason: String(args.reason ?? '').trim().slice(0, 80) || undefined });
+            const callReason = String(args.reason ?? '').trim().slice(0, 80) || undefined;
+            write({ type: 'incoming_call', reason: callReason });
+            // 手机系统通知：切到后台 / 锁屏也能弹
+            void sendPush({
+              title: '小蓝莓来电',
+              body: callReason || '他想跟你说说话',
+              url: '/chat?incoming=1',
+              tag: 'incoming',
+            });
           }
           if (name === 'send_gift') {
             // 模型送了礼物：把刚落库的这件推给前端挂礼物卡（礼物本体已在工具里落 gifts 表）
@@ -559,6 +591,12 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
               write({
                 type: 'gift_sent',
                 gift: { giftId: g.id, giftType: String(g.giftType ?? 'object'), title: g.title },
+              });
+              void sendPush({
+                title: '收到一份礼物',
+                body: g.title || '他给你准备了一个小惊喜',
+                url: '/gifts',
+                tag: 'gift',
               });
             }
           }
@@ -569,6 +607,12 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
               write({
                 type: 'task_sent',
                 task: { taskId: t.id, title: t.title, note: t.note, dueAt: t.dueAt },
+              });
+              void sendPush({
+                title: '他布置了一个小任务',
+                body: t.title || '去看看灵动岛',
+                url: '/chat',
+                tag: 'task',
               });
             }
           }

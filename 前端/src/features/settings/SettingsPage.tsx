@@ -36,6 +36,7 @@ import { StickerSettings } from './StickerSettings';
 import { IOSSettingGroup } from '@/components/ios/IOSSettingGroup';
 import { IOSSettingItem } from '@/components/ios/IOSSettingItem';
 import { OpenClawSection } from './OpenClawSection';
+import { NotificationSection } from './NotificationSection';
 
 interface ModelFormState {
   temperature: string;
@@ -576,6 +577,11 @@ export function SettingsPage() {
 
       {/* ============ 3. 外观 ============ */}
       <AppearanceSection />
+
+      <div className="h-5" />
+
+      {/* ============ 3.5 手机通知 ============ */}
+      <NotificationSection />
 
       <div className="h-5" />
 

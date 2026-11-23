@@ -12,10 +12,16 @@ import { useTimetableStore } from './features/schedule/timetableStore';
 import { startAutoScanScheduler } from './features/sky/watchAutoScan';
 import { startAiMoodScheduler } from './features/home/aiMood';
 import { applyTheme, loadTheme } from './features/tavern/phone/datacore/themeCore';
+import { registerSw } from './lib/notifications';
 
 export default function App() {
   // 外观：开屏即套用上次选的配色，不必等进「我 → 外观」才生效
   useEffect(() => applyTheme(loadTheme()), []);
+
+  // 注册 Service Worker：手机系统通知（来电 / 礼物 / 任务）与离线外壳的前提
+  useEffect(() => {
+    void registerSw();
+  }, []);
 
   // 片单自动检索：后台定期扫聊天记录，提到新片就自动加进片单（与当前在哪个页面无关）
   useEffect(() => startAutoScanScheduler(), []);

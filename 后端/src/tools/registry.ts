@@ -1008,7 +1008,8 @@ const adjustUi: BuiltinTool = {
     '按用户的描述调整小蓝莓的界面外观（白名单，只能改已有开关，不能改代码）：' +
     'theme 深色/浅色（dark/light）；accent 强调色（blue/violet/rose/teal/amber）；' +
     'numFont 数字字体（sans/serif）；bubble 聊天气泡色（classic/rose/peach/mint/lavender）。' +
-    '只传用户明确想改的字段，别一次全改。改完前端会自动应用一次，用户之后手动改的设置仍会保留。',
+    '只传用户明确想改的字段，别一次全改。调用后界面会弹一条确认，用户点「允许」才真正生效，' +
+    '点「拒绝」外观不变。用户之后手动改的设置仍会保留。',
   parameters: {
     type: 'object',
     properties: {
@@ -1018,7 +1019,7 @@ const adjustUi: BuiltinTool = {
       bubble: { type: 'string', enum: [...BUBBLES], description: '聊天气泡配色' },
     },
   },
-  requiresConfirm: false,
+  requiresConfirm: true,
   async execute(args) {
     const before = readUiPreset();
     const next = patchUiPreset(args);
