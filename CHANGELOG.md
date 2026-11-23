@@ -32,6 +32,8 @@
 
 - **ST 账号模式适配**：ST 关 Basic Auth、开 `enableUserAccounts` 后默认管理员叫 `default-user`（不是 `user`）；`deploy/st-setup.sh` 自动用 `recover.js default-user` 设随机密码并在结尾打印。后端 `/api/st/*` 代理支持用同一组账号登录 ST 拿会话 cookie（Basic Auth 模式仍兼容），`/version` 403 时用公开的 `/csrf-token` 兜底判活；头像 / multipart / 流式生成都带上会话头。
 
+- **ST 账号改名脚本**：新增 `deploy/st-rename-user.sh`，停 ST 后改 node-persist 存储键（`user:default-user` → `user:<新名>`，头像键同理）并重命名 `data/default-user` 目录（角色卡/世界书/设置全保留），`recover.js` 设新密码，再按原公网 URL 同步小蓝莓连接配置；全程备份 data。ST 界面本身不支持改 handle。
+
 ### 2026-11-22（三十六改）信件重做 + 首页小组件 + 世界书分组 + 清理生活卡/OB
 
 - **信件重做**（硬规则 13）：小组件信封永远合着；列表里拆过的信=撕条整条抽走、顶上留翻下来的
