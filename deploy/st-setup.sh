@@ -115,6 +115,16 @@ systemctl daemon-reload
 systemctl enable sillytavern >/dev/null 2>&1
 systemctl restart sillytavern
 
+# ST 的默认管理员账号名是 default-user（不是 user）。首次开启账号系统时它没有密码，
+# 这里直接设一个随机密码，既让 ST 登录页可用，也让小蓝莓后端能用同一组账号读角色卡。
+ST_PASS=$(python3 -c 'import secrets,string; print("".join(secrets.choice(string.ascii_letters+string.digits) for _ in range(18)))')
+if ( cd "$ST_DIR" && node recover.js default-user "$ST_PASS" ); then
+  echo "已给 ST 默认账号 default-user 设置登录密码"
+  systemctl restart sillytavern
+else
+  echo "提醒：自动设密码失败，进 ST 网页后请手动给 default-user 设密码"
+fi
+
 say "6/6 防火墙提示 + 体检（ST 首次启动要编译前端，最多等 3 分钟）"
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi '^Status: active'; then
   ufw allow "$PORT/tcp" >/dev/null 2>&1 && echo "ufw 已放行 $PORT"
@@ -145,12 +155,14 @@ echo "ST 首页（200/302 正常）=$CODE"
 say "完成：小蓝莓里填这些"
 echo "酒馆 → 右上角连接设置："
 echo "  地址：http://${IP}:${PORT}"
-echo "  用户名 / 密码：留空（登录走 ST 自己的账号）"
+echo "  用户名：default-user"
+echo "  密码：${ST_PASS}"
+echo "  （iframe 里 ST 登录页也用这组；后端代理要用它读角色卡/世界书）"
 echo
 echo "还要做三件事："
 echo "  1. 云控制台安全组放行 TCP ${PORT}（脚本改不了）"
-echo "  2. 先用浏览器直接开 http://${IP}:${PORT} 完成 ST 自己的首次注册/设密码"
-echo "  3. 回小蓝莓酒馆页填上面的地址；进 ST 后用第 2 步注册的账号登录"
+echo "  2. 浏览器打开 http://${IP}:${PORT}，用 default-user + 上面的密码登录"
+echo "  3. 回小蓝莓酒馆页填上面的地址、账号、密码；iframe 里也是同一组账号"
 echo
 echo "ST 日志：tail -f /var/log/sillytavern.log"
 echo "重跑本脚本：curl -fsSL https://gitee.com/siuu/xiaolanmei/raw/main/deploy/st-setup.sh | bash"

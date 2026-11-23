@@ -43,6 +43,7 @@ import {
   readStConnConfigRaw,
   saveStConnConfig,
   probeStConfig,
+  stHeaders,
   type StCharacter,
   type StWorldEntry,
 } from '../services/sillytavern.js';
@@ -166,6 +167,7 @@ export async function sillytavernRoutes(app: FastifyInstance): Promise<void> {
       const avatarUrl = `${health.url}/thumbnail?file=${encodeURIComponent(file)}&type=avatar&animated=true`;
       const res = await fetch(avatarUrl, {
         signal: AbortSignal.timeout(10_000),
+        headers: await stHeaders(),
       });
       if (!res.ok || !res.body) {
         reply.code(404).send({ message: '头像不存在' });

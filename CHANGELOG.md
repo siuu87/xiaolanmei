@@ -30,6 +30,8 @@
   `tavern.support.import.raw.v1`。备份面板文案改「任意 JSON」，异步导入带识别摘要。
 - 验证：双端 `tsc --noEmit` 通过，本地 5173 / 3001 探活正常。
 
+- **ST 账号模式适配**：ST 关 Basic Auth、开 `enableUserAccounts` 后默认管理员叫 `default-user`（不是 `user`）；`deploy/st-setup.sh` 自动用 `recover.js default-user` 设随机密码并在结尾打印。后端 `/api/st/*` 代理支持用同一组账号登录 ST 拿会话 cookie（Basic Auth 模式仍兼容），`/version` 403 时用公开的 `/csrf-token` 兜底判活；头像 / multipart / 流式生成都带上会话头。
+
 ### 2026-11-22（三十六改）信件重做 + 首页小组件 + 世界书分组 + 清理生活卡/OB
 
 - **信件重做**（硬规则 13）：小组件信封永远合着；列表里拆过的信=撕条整条抽走、顶上留翻下来的

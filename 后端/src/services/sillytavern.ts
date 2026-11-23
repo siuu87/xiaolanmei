@@ -81,6 +81,13 @@ export async function probeStConfig(cfg: StConnConfig): Promise<StHealth> {
       signal: AbortSignal.timeout(Number(cfg.timeoutMs) || 5000),
       headers,
     });
+    // ST 账号模式下未登录访问 /version 会 403，但服务其实活着；/csrf-token 是公开的，
+    // 用它兜底判活（iframe 里走 ST 自己的登录页，后端代理另用账号会话）。
+    if (res.status === 401 || res.status === 403) {
+      const probe = await fetch(`${url}/csrf-token`, { signal: AbortSignal.timeout(Number(cfg.timeoutMs) || 5000) });
+      if (probe.ok) return { configured: true, up: true, url };
+      return { configured: true, up: false, url };
+    }
     if (!res.ok) return { configured: true, up: false, url };
     const j = (await res.json()) as { version?: string };
     return { configured: true, up: true, url, version: j.version };
@@ -174,6 +181,10 @@ export interface StHealth {
 /* --------------------------- CSRF 与请求 --------------------------- */
 
 let csrfToken: string | null = null;
+/** ST 1.19 账号模式：登录后拿到会话 cookie；false 表示还没登（Basic Auth 模式不需要） */
+let stLoggedIn = false;
+/** 登录失败后短暂冷却，避免每次请求都撞 ST 的登录限流 */
+let stLoginBlockedUntil = 0;
 
 /**
  * 极简 cookie jar（2026-11-22）：ST 新版把 CSRF token 和会话 cookie 绑定，
@@ -200,6 +211,7 @@ function cookieHeader(): Record<string, string> {
 function resetSession(): void {
   csrfToken = null;
   stCookies = {};
+  stLoggedIn = false;
 }
 
 function stConfigured(): boolean {
@@ -244,6 +256,55 @@ async function ensureCsrf(): Promise<string | null> {
   return csrfToken;
 }
 
+/**
+ * ST 账号模式（enableUserAccounts: true）下所有 /api/* 都要网页会话，Basic Auth 不管用。
+ * 用连接配置里的 handle/password 登一次，把会话 cookie 存进 jar。
+ * 老 ST（Basic Auth / 无账号）登录会失败，但不影响原路径继续走。
+ */
+async function ensureStLogin(): Promise<boolean> {
+  if (stLoggedIn) return true;
+  if (Date.now() < stLoginBlockedUntil) return false;
+  const { user, password } = connConfig();
+  if (!user || !password) return false;
+  const token = await ensureCsrf();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${baseUrl()}/api/users/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': token,
+        ...basicAuthHeader(),
+        ...cookieHeader(),
+      },
+      body: JSON.stringify({ handle: user, password }),
+      signal: AbortSignal.timeout(timeoutMs()),
+    });
+    saveCookies(res);
+    if (!res.ok) {
+      stLoginBlockedUntil = Date.now() + 30_000;
+      return false;
+    }
+    stLoggedIn = true;
+    return true;
+  } catch {
+    stLoginBlockedUntil = Date.now() + 30_000;
+    return false;
+  }
+}
+
+/** 统一的 ST 鉴权头：Basic Auth（老模式）+ 会话 cookie（账号模式）+ CSRF */
+export async function stHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  await ensureStLogin();
+  const token = await ensureCsrf();
+  return {
+    ...extra,
+    ...basicAuthHeader(),
+    ...cookieHeader(),
+    ...(token ? { 'X-CSRF-Token': token } : {}),
+  };
+}
+
 interface StRequestOptions {
   method?: 'GET' | 'POST';
   body?: unknown;
@@ -256,34 +317,24 @@ async function stRequest<T = unknown>(path: string, opts: StRequestOptions = {})
   if (!stConfigured()) return null;
   const { method = 'POST', body, retryOnCsrf = true } = opts;
 
-  const doFetch = async (token: string | null): Promise<Response> => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...basicAuthHeader(),
-      ...cookieHeader(),
-    };
-    if (token) headers['X-CSRF-Token'] = token;
-    return fetch(`${baseUrl()}${path}`, {
+  const doFetch = async (): Promise<Response> =>
+    fetch(`${baseUrl()}${path}`, {
       method,
-      headers,
+      headers: await stHeaders({ 'Content-Type': 'application/json' }),
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs()),
     });
-  };
 
   try {
-    const token = await ensureCsrf();
-    let res = await doFetch(token);
+    let res = await doFetch();
     saveCookies(res);
 
-    // CSRF 失效：清会话（token + cookie）重取一次
+    // 403 两种可能：CSRF 失效 / ST 账号模式没会话。都清掉重取，账号模式再补登一次。
     if (res.status === 403 && retryOnCsrf) {
       resetSession();
-      const fresh = await ensureCsrf();
-      if (fresh && fresh !== token) {
-        res = await doFetch(fresh);
-        saveCookies(res);
-      }
+      // stHeaders 会在重取 CSRF 后自动补一次 ST 账号登录（账号模式需要）
+      res = await doFetch();
+      saveCookies(res);
     }
 
     if (!res.ok) return null;
@@ -360,7 +411,6 @@ export async function createStCharacterMultipart(
 ): Promise<string | null> {
   if (!stConfigured()) return null;
   try {
-    const token = await ensureCsrf();
     const form = new FormData();
     form.set('ch_name', input.ch_name);
     if (input.description) form.set('description', input.description);
@@ -375,8 +425,7 @@ export async function createStCharacterMultipart(
     if (input.file_name) form.set('file_name', input.file_name);
     if (avatarImage) form.set('file', avatarImage, 'avatar.png');
 
-    const headers: Record<string, string> = { ...basicAuthHeader(), ...cookieHeader() };
-    if (token) headers['X-CSRF-Token'] = token;
+    const headers = await stHeaders();
 
     const res = await fetch(`${baseUrl()}/api/characters/create`, {
       method: 'POST',
@@ -423,7 +472,6 @@ export async function editStCharacterMultipart(
 ): Promise<boolean> {
   if (!stConfigured()) return false;
   try {
-    const token = await ensureCsrf();
     const form = new FormData();
     form.set('avatar_url', input.avatar_url);
     form.set('ch_name', input.ch_name);
@@ -438,8 +486,7 @@ export async function editStCharacterMultipart(
     if (input.creator_notes) form.set('creator_notes', input.creator_notes);
     if (avatarImage) form.set('file', avatarImage, 'avatar.png');
 
-    const headers: Record<string, string> = { ...basicAuthHeader(), ...cookieHeader() };
-    if (token) headers['X-CSRF-Token'] = token;
+    const headers = await stHeaders();
 
     const res = await fetch(`${baseUrl()}/api/characters/edit`, {
       method: 'POST',
@@ -546,13 +593,7 @@ export async function streamStChatCompletion(
 ): Promise<Response | null> {
   if (!stConfigured()) return null;
   try {
-    const token = await ensureCsrf();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...basicAuthHeader(),
-      ...cookieHeader(),
-    };
-    if (token) headers['X-CSRF-Token'] = token;
+    const headers = await stHeaders({ 'Content-Type': 'application/json' });
 
     const res = await fetch(`${baseUrl()}/api/backends/chat-completions/generate`, {
       method: 'POST',
