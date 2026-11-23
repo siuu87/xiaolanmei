@@ -588,7 +588,7 @@ npm run dev
 - 详见 `docs/phone-control.md`
 
 ### 内置 AI 工具（Operit 风格）
-- 线上共 25 个内置工具：联网（web_fetch / web_search）、备忘录 / 灵感库 / 开源清单、
+- 线上共 26 个内置工具：联网（web_fetch / web_search）、备忘录 / 灵感库 / 开源清单、
   送礼 / 任务 / 来电、`phone_*` 手机自动化，外加三组「能动手」的工具：
   - `create_game` / `list_games`：按描述现写小游戏，出现在游戏屋的 AI 小游戏区（sandbox 隔离）；
   - `adjust_ui`：白名单式调外观，只能改主题 / 强调色 / 数字字体 / 气泡色，不给模型源码或任意 CSS；
