@@ -66,6 +66,12 @@ s = re.sub(r'^whitelistMode:.*$', 'whitelistMode: false', s, flags=re.M)
 # HTTP Basic Auth 的凭据进不了第三方 iframe（浏览器会在 iframe 内直接显示 Unauthorized）。
 # 登录交给 ST 自己的账号体系：首次注册时设的密码会保存在 ST 的 data/ 里。
 s = re.sub(r'^basicAuthMode:.*$', 'basicAuthMode: false', s, flags=re.M)
+# 关键：ST 对外监听时若白名单/Basic Auth/账号系统三者全关，会 process.exit(1) 无限重启。
+# 这里打开 ST 自带账号系统，首次进入网页时会让你创建管理员账号（存 ST 的 data/）。
+if re.search(r'^enableUserAccounts:', s, flags=re.M):
+    s = re.sub(r'^enableUserAccounts:.*$', 'enableUserAccounts: true', s, flags=re.M)
+else:
+    s += '\nenableUserAccounts: true\n'
 # 服务器没有桌面，别让 ST 尝试打开浏览器
 i = s.find('browserLaunch:')
 if i >= 0:
