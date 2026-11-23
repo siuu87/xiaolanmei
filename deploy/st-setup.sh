@@ -50,11 +50,18 @@ say "3/6 装依赖（2~5 分钟，没输出正常）"
 [ -f "$ST_DIR/server.js" ] || die "依赖没装全：$ST_DIR/server.js 不存在"
 
 say "4/6 改配置：对外监听 / Basic Auth / 允许 iframe"
+# ST release 分支不跟踪根目录 config.yaml（首次启动才生成），模板在 default/config.yaml。
+# 直接改一个不存在的文件会静默失败，所以先按需从模板生成。
+if [ ! -f "$ST_DIR/config.yaml" ]; then
+  [ -f "$ST_DIR/default/config.yaml" ] || die "找不到 ST 默认配置模板 $ST_DIR/default/config.yaml"
+  cp "$ST_DIR/default/config.yaml" "$ST_DIR/config.yaml"
+  echo "已用 default/config.yaml 生成 config.yaml"
+fi
 PASS=$(python3 -c 'import secrets; print(secrets.token_urlsafe(12))')
-python3 - "$PASS" <<'PY'
+python3 - "$PASS" "$ST_DIR/config.yaml" <<'PY' || die "config.yaml 改写失败"
 import pathlib, re, sys
 pw = sys.argv[1]
-p = pathlib.Path('/opt/SillyTavern/config.yaml')
+p = pathlib.Path(sys.argv[2])
 s = p.read_text(encoding='utf-8')
 s = re.sub(r'^listen:.*$', 'listen: true', s, flags=re.M)
 s = re.sub(r'^port:.*$', 'port: 8000', s, flags=re.M)
@@ -68,9 +75,9 @@ if i >= 0:
     s = s[:i] + tail
 p.write_text(s, encoding='utf-8')
 PY
-python3 - <<'PY'
-import pathlib
-p = pathlib.Path('/opt/SillyTavern/src/server-main.js')
+python3 - "$ST_DIR/src/server-main.js" <<'PY' || die "server-main.js 的 iframe 允许配置改写失败"
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
 s = p.read_text(encoding='utf-8')
 if 'frameguard:' not in s:
     s = s.replace('app.use(helmet({\n', 'app.use(helmet({\n    frameguard: false,\n', 1)
@@ -116,7 +123,12 @@ else
   echo "本机 ufw 未启用；云厂商安全组仍需手动放行 TCP $PORT"
 fi
 curl -s -m 8 -o /dev/null -w "ST 未认证首页（401 正常）=%{http_code}\n" "http://127.0.0.1:$PORT/"
-curl -s -m 8 -u "$ST_USER:$PASS" -o /dev/null -w "ST 带认证首页（200 正常）=%{http_code}\n" "http://127.0.0.1:$PORT/"
+CODE=$(curl -s -m 8 -u "$ST_USER:$PASS" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/")
+echo "ST 带认证首页（200/302 正常）=$CODE"
+if ! echo "$CODE" | grep -qE '^(200|302)$'; then
+  tail -30 /var/log/sillytavern.log 2>/dev/null
+  die "ST 体检没过（HTTP ${CODE}，多半是配置或端口问题）"
+fi
 
 say "完成：小蓝莓里填这些"
 echo "酒馆 → 右上角连接设置："
