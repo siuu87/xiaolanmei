@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import {
   ArrowLeft,
   BookOpen,
@@ -148,6 +149,7 @@ function FlatCover({ book, onOpen, onEdit, onDelete }: { book: Book; onOpen: () 
 /** READ · 阅读仪表盘：每日一句 + 在读状态 + 统计 + 时间线；藏书/在读可点入对应视图 */
 export function LibraryPage() {
   const navigate = useNavigate();
+  const goBack = useBack();
   const books = useBookStore((s) => s.books);
   const load = useBookStore((s) => s.load);
   const addBook = useBookStore((s) => s.addBook);
@@ -387,7 +389,7 @@ export function LibraryPage() {
   };
 
   const title = view === 'home' ? 'READ' : view === 'shelf' ? '书架' : '正在读';
-  const back = () => (view === 'home' ? navigate('/chat') : setView('home'));
+  const back = () => (view === 'home' ? goBack() : setView('home'));
 
   return (
     <div className="relative min-h-full bg-page-bg pb-16 text-foreground">

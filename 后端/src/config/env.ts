@@ -58,6 +58,18 @@ export const env = {
   /** PaiVoice 实时语音层（2026-10-20）：前端 iframe 的 WebSocket 地址 */
   paivoiceWsUrl: (process.env.PAIVOICE_WS_URL ?? 'ws://127.0.0.1:8780').trim(),
 
+  /**
+   * SillyTavern（ST）接入（2026-11-20）：小蓝莓酒馆模块的数据源。
+   * 角色卡 / 世界书 / 聊天的 CRUD 走 ST REST API，生成走 ST 的
+   * /api/backends/chat-completions（ST 代持 LLM 凭据）。提示词组装由
+   * 小蓝莓后端做，人设卡 ST 无 REST API，保留本地。
+   * 地址留空则整条链路静默跳过，酒馆回退到本地数据。
+   */
+  sillytavernUrl: (process.env.SILLYTAVERN_URL ?? '').trim().replace(/\/+$/, ''),
+  sillytavernUser: (process.env.SILLYTAVERN_USER ?? '').trim(),
+  sillytavernPassword: (process.env.SILLYTAVERN_PASSWORD ?? '').trim(),
+  sillytavernTimeoutMs: envNum(process.env.SILLYTAVERN_TIMEOUT_MS, 5000, 500),
+
   // 智能编程工作区（阶段 10）：默认后端上一级 = 项目根 d:\小蓝莓
   workspacePath: process.env.WORKSPACE_PATH ?? path.resolve(process.cwd(), '..'),
 } as const;

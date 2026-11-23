@@ -8,6 +8,27 @@
 #
 #
 #
+### 2026-11-23（三十七改）酒馆 = SillyTavern 本体 + 交互清理 + 全适配导入
+
+- **酒馆改为 ST 本体**：`/tavern` 整页全屏 iframe 嵌入 SillyTavern，内置小手机
+  （联系人 / 朋友圈 / 卡片库 / 内置聊天）整块下线；右上角悬浮工具条＝返回 / 刷新 / 连接设置。
+  连接配置存后端 `settings` 表（密码只后端保存），本机 `127.0.0.1` 归一为 `localhost`
+  作 iframe 源以兼容 ST 的 lax cookie。后端新增 `/api/st/*` 代理（角色卡 / 世界书 / 聊天 /
+  头像 / 配置自检，CSRF + cookie jar），ST 不通时旧 `/api/tavern/*` 照常返回不报错。
+- **交互清理**：抽屉工具箱删「手机感知 / 工作区」入口（组件保留、无点击口子）；
+  他的资料页只留「他是谁」+「世界书」；设置外观可点开；数据中枢删「记忆」，只剩
+  数据 / 上下文注入 / 备份（小手机中枢另留外观）；「主角可见」改为「上下文注入」，
+  文案统一成「他」的主体表述。
+- **左半屏手势**：`useEdgeSwipe.ts` 起手区从固定 44px 改为按视口实时算的屏幕左半边，
+  横竖屏自动适配；输入框 / 横滚区 / `data-no-drawer-swipe` 仍排除，pointer + touch 双通道。
+- **统一返回**：新增 `useBack()`，`location.key !== 'default'` 就回上一级，深链才兜底 `/chat`；
+  `PageShell` 与主要二级页接入，通话落地 / 食物页业务跳转 / 读信回书库等例外保留。
+- **全适配导入**：新增 `smartImport.ts` —— `blueberry.backup` 原样恢复；localStorage 整包按 key
+  写回；任意结构记忆 JSON 递归提取正文写入 `/api/memories` + `tavern.support.memory.v1`
+  （按正文去重）；cards / contacts / sessions / moments 合并；认不出的原文存
+  `tavern.support.import.raw.v1`。备份面板文案改「任意 JSON」，异步导入带识别摘要。
+- 验证：双端 `tsc --noEmit` 通过，本地 5173 / 3001 探活正常。
+
 ### 2026-11-22（三十六改）信件重做 + 首页小组件 + 世界书分组 + 清理生活卡/OB
 
 - **信件重做**（硬规则 13）：小组件信封永远合着；列表里拆过的信=撕条整条抽走、顶上留翻下来的

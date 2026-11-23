@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBack } from '@/lib/navigateBack';
 
 /**
  * 覆盖层页面的统一外壳（夜航手账版）。
@@ -46,7 +47,7 @@ export interface PageShellProps {
 export function PageShell({
   title,
   eyebrow,
-  backTo = '/chat',
+  backTo,
   showBack = true,
   right,
   headerExtra,
@@ -58,6 +59,7 @@ export function PageShell({
   children,
 }: PageShellProps) {
   const navigate = useNavigate();
+  const goBack = useBack();
 
   return (
     <div
@@ -85,7 +87,7 @@ export function PageShell({
             {showBack && (
               <button
                 type="button"
-                onClick={() => navigate(backTo)}
+                onClick={() => (backTo ? navigate(backTo) : goBack())}
                 aria-label="返回"
                 className="icon-btn h-8 w-8 shrink-0"
               >

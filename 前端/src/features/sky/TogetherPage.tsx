@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import {
   Tv,
   BookOpen,
@@ -43,6 +44,7 @@ const BLOCKS: TogetherBlock[] = [
  */
 export function TogetherPage() {
   const navigate = useNavigate();
+  const goBack = useBack();
 
   return (
     <div className="relative min-h-full bg-page-bg text-foreground">
@@ -52,7 +54,7 @@ export function TogetherPage() {
           {/* 全站唯一一个原本没有返回键的二级页：没有它就只能靠浏览器后退 */}
           <button
             type="button"
-            onClick={() => navigate('/chat')}
+            onClick={goBack}
             aria-label="返回"
             className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >

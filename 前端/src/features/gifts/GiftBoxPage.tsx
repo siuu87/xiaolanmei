@@ -461,7 +461,6 @@ export function GiftBoxPage() {
       <PageShell
         title="礼物盒"
         eyebrow="GIFTS"
-        backTo="/chat"
         className="gift-page"
         right={
           <span className="rounded-full border border-[#E4D3BB] bg-white/60 px-2.5 py-1 text-[11px] text-[#8A7458] dark:border-[#3A2F25] dark:bg-[#221C16] dark:text-[#C9B69C]">

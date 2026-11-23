@@ -16,7 +16,18 @@
  */
 import { create } from 'zustand';
 import { newId } from '@/lib/id';
-import { listTavernCharacters, listTavernPersonas, streamTavernChat } from '@/lib/api/tavern';
+import {
+  listTavernCharacters,
+  listTavernPersonas,
+  streamTavernChat,
+  createTavernCharacter,
+  patchTavernCharacter,
+  deleteTavernCharacter,
+  createTavernPersona,
+  patchTavernPersona,
+  deleteTavernPersona,
+  probeStStatus,
+} from '@/lib/api/tavern';
 import { getPhoneSnapshot, putPhoneSnapshot, type PhoneSnapshot } from '@/lib/api/phone';
 import type { ChatMessage, Contact, Moment, MomentComment, PhoneCard, Session } from './types';
 import {
@@ -162,14 +173,18 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
     const persisted = loadPersisted();
 
     // 示例卡片 + 后端真实卡片合并；同时拉手机快照（联系人/会话/朋友圈的远端事实来源）
+    // ST 在线 = 小手机直接呈现 ST 数据：此时不注入内置示例卡（林墨/苏晚晴等），
+    // 让酒馆里只有 ST 的真实角色卡；ST 断开时才回退示例卡作兜底。
     let cards: PhoneCard[] = [...SAMPLE_CHARACTER_CARDS, ...SAMPLE_PERSONA_CARDS];
     let remote: PhoneSnapshot = { contacts: [], sessions: [], moments: [], activePersonaId: null };
+    let stOnline = false;
     try {
       const [chars, personas, snap] = await Promise.all([
         listTavernCharacters(),
         listTavernPersonas(),
         getPhoneSnapshot(),
       ]);
+      stOnline = await probeStStatus();
       remote = snap;
       const normChars: PhoneCard[] = chars.map((c) => ({
         id: c.id,
@@ -197,13 +212,19 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
         systemPrompt: null,
         tags: [],
       }));
-      // 后端优先；同名示例卡剔除，避免重复
-      const realNames = new Set([...normChars, ...normPersonas].map((c) => `${c.kind}:${c.name}`));
-      cards = [
-        ...normChars,
-        ...normPersonas,
-        ...cards.filter((c) => !realNames.has(`${c.kind}:${c.name}`)),
-      ];
+      // ST 在线：小手机只显示 ST 的真实卡（人设卡仍走本地，照常并入）
+      // ST 离线：后端真实卡优先 + 示例卡补齐（同名剔除），保持原有兜底行为
+      const realCards: PhoneCard[] = stOnline
+        ? [...normChars, ...normPersonas]
+        : (() => {
+            const realNames = new Set([...normChars, ...normPersonas].map((c) => `${c.kind}:${c.name}`));
+            return [
+              ...normChars,
+              ...normPersonas,
+              ...cards.filter((c) => !realNames.has(`${c.kind}:${c.name}`)),
+            ];
+          })();
+      cards = realCards;
     } catch {
       /* 后端不可用时用示例数据 + 本地影子兜底 */
     }
@@ -216,7 +237,8 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
       for (const c of contacts) byId.set(c.id, c);
       contacts = [...byId.values()];
     }
-    if (!contacts.length) contacts = [...SAMPLE_CONTACTS];
+    // ST 在线时不注入示例联系人（示例卡已移除，联系人由 ST 角色卡在下方循环补齐）
+    if (!contacts.length && !stOnline) contacts = [...SAMPLE_CONTACTS];
     const knownCharIds = new Set(cards.filter((c) => c.kind === 'character').map((c) => c.id));
     for (const card of cards) {
       if (card.kind !== 'character') continue;
@@ -239,11 +261,22 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
     const sessionById = new Map<string, Session>();
     for (const s of remote.sessions as Session[]) sessionById.set(s.id, s);
     for (const s of persisted.sessions ?? []) sessionById.set(s.id, s);
-    const sessions = [...sessionById.values()];
+    let sessions = [...sessionById.values()];
+    // ST 在线：剔除指向本地示例角色的旧会话（如林墨 sess-ui），只留 ST 角色的会话
+    if (stOnline) {
+      const stContactIds = new Set(contacts.map((c) => c.id));
+      sessions = sessions.filter((s) =>
+        s.kind === 'group'
+          ? s.memberIds.every((m) => stContactIds.has(m))
+          : stContactIds.has(s.targetId),
+      );
+    }
 
     const momentById = new Map<string, Moment>();
-    for (const m of remote.moments as Moment[]) momentById.set(m.id, m);
-    for (const m of persisted.moments ?? []) momentById.set(m.id, m);
+    if (!stOnline) {
+      for (const m of remote.moments as Moment[]) momentById.set(m.id, m);
+      for (const m of persisted.moments ?? []) momentById.set(m.id, m);
+    }
     const moments = [...momentById.values()];
 
     const activePersonaId =
@@ -255,7 +288,7 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
       cards,
       contacts,
       sessions,
-      moments: moments.length ? moments : SAMPLE_MOMENTS,
+      moments: moments.length ? moments : (stOnline ? [] : SAMPLE_MOMENTS),
       activePersonaId,
       loaded: true,
     });
@@ -284,8 +317,44 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
   /* ----------------------------- 卡片 ----------------------------- */
 
   addCard: (card) => {
-    set((s) => ({ cards: [...s.cards, { ...card, id: newId() }] }));
+    const id = newId();
+    set((s) => ({ cards: [...s.cards, { ...card, id }] }));
     scheduleSave(get);
+    // 异步写后端：ST 在线走 ST（角色卡），人设卡走本地；失败静默，下次 init 自愈
+    void (async () => {
+      try {
+        if (card.kind === 'character') {
+          const res = await createTavernCharacter({
+            name: card.name,
+            avatar: card.avatar ?? undefined,
+            description: card.description ?? undefined,
+            personality: card.personality ?? undefined,
+            scenario: card.scenario ?? undefined,
+            firstMessage: card.firstMessage ?? undefined,
+            systemPrompt: card.systemPrompt ?? undefined,
+            tags: card.tags,
+          });
+          // ST 返回的 id（PNG 文件名）替换本地临时 id，保持 characterId 一致
+          if (res.id && res.id !== id) {
+            set((s) => ({
+              cards: s.cards.map((c) => (c.id === id ? { ...c, id: res.id } : c)),
+              contacts: s.contacts.map((ct) =>
+                ct.characterId === id ? { ...ct, characterId: res.id, id: `c-${res.id}` } : ct,
+              ),
+            }));
+            scheduleSave(get);
+          }
+        } else {
+          await createTavernPersona({
+            name: card.name,
+            avatar: card.avatar ?? undefined,
+            description: card.description ?? undefined,
+          });
+        }
+      } catch {
+        /* 后端不可用：保留本地卡片，下次 init 自愈 */
+      }
+    })();
   },
 
   updateCard: (id, patch) => {
@@ -299,9 +368,37 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
       }),
     }));
     scheduleSave(get);
+    // 异步写后端；失败静默，下次 init 自愈
+    void (async () => {
+      try {
+        const card = get().cards.find((c) => c.id === id);
+        if (!card) return;
+        if (card.kind === 'character') {
+          await patchTavernCharacter(id, {
+            name: patch.name ?? card.name,
+            avatar: patch.avatar ?? undefined,
+            description: patch.description ?? card.description ?? undefined,
+            personality: patch.personality ?? card.personality ?? undefined,
+            scenario: patch.scenario ?? card.scenario ?? undefined,
+            firstMessage: patch.firstMessage ?? card.firstMessage ?? undefined,
+            systemPrompt: patch.systemPrompt ?? card.systemPrompt ?? undefined,
+            tags: patch.tags ?? card.tags,
+          });
+        } else {
+          await patchTavernPersona(id, {
+            name: patch.name ?? card.name,
+            avatar: patch.avatar ?? undefined,
+            description: patch.description ?? card.description ?? undefined,
+          });
+        }
+      } catch {
+        /* 后端不可用：保留本地修改，下次 init 自愈 */
+      }
+    })();
   },
 
   removeCard: (id) => {
+    const card = get().cards.find((c) => c.id === id);
     set((s) => {
       const cards = s.cards.filter((c) => c.id !== id);
       const contacts = s.contacts.filter((ct) => ct.characterId !== id);
@@ -319,6 +416,17 @@ export const usePhoneStore = create<PhoneState>((set, get) => ({
       };
     });
     scheduleSave(get);
+    // 异步删后端；失败静默，下次 init 自愈
+    if (card) {
+      void (async () => {
+        try {
+          if (card.kind === 'character') await deleteTavernCharacter(id);
+          else await deleteTavernPersona(id);
+        } catch {
+          /* 后端不可用：本地已删，下次 init 自愈 */
+        }
+      })();
+    }
   },
 
   setActivePersona: (id) => {

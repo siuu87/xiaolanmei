@@ -7,14 +7,14 @@
  */
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import { X } from 'lucide-react';
 import { WatchPlayer } from './WatchPlayer';
 import { WatchlistTV } from './WatchlistTV';
 import { WatchlistPage } from './WatchlistPage';
 
 export function WatchTogetherPage() {
-  const navigate = useNavigate();
+  const goBack = useBack();
   const [listOpen, setListOpen] = useState(false);
 
   // Esc 在 window capture 阶段截住，避免冒泡到常驻聊天底座的全局监听
@@ -32,7 +32,7 @@ export function WatchTogetherPage() {
 
   return (
     <>
-      <WatchPlayer onBack={() => navigate('/chat')} onOpenList={() => setListOpen(true)} />
+      <WatchPlayer onBack={goBack} onOpenList={() => setListOpen(true)} />
 
       {/* 片单：整屏纯色不透明浮层（不用半透明遮罩 / backdrop-blur） */}
       {listOpen &&

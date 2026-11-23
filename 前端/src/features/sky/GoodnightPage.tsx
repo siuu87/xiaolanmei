@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import {
   ArrowLeft,
   Play,
@@ -117,7 +117,7 @@ function loopSmooth(buffer: AudioBuffer): AudioBuffer {
 }
 
 export function GoodnightPage() {
-  const navigate = useNavigate();
+  const goBack = useBack();
 
   /* ── 模式：直播(他的话) / 回放(往期录音) ──────────────── */
   const [mode, setMode] = useState<'live' | 'replay'>('live');
@@ -584,7 +584,7 @@ export function GoodnightPage() {
       {/* ── 顶栏 ── */}
       <div className="flex items-center justify-between px-5 pt-4">
         <button
-          onClick={() => navigate('/chat')}
+          onClick={goBack}
           aria-label="返回"
           className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-black/[0.04] transition active:scale-95 dark:border-white/15 dark:bg-white/[0.06]"
         >

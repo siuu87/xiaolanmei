@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
-import { FolderTree, Github, Puzzle, Smartphone, Sparkles, type LucideIcon } from 'lucide-react';
+import { Github, Puzzle, Sparkles, type LucideIcon } from 'lucide-react';
 import { McpPage } from '@/features/mcp/McpPage';
-import { DevicePage } from '@/features/device/DevicePage';
-import { WorkspacePanel } from '@/features/code/WorkspacePanel';
 import { SkillsPanel } from '@/features/skills/SkillsPanel';
 import { OpenSourcePanel } from '@/features/openSource/OpenSourcePanel';
 
@@ -16,9 +14,12 @@ import { OpenSourcePanel } from '@/features/openSource/OpenSourcePanel';
  * **不要往这里加回来**：同一个编辑器只留一个入口。
  *
  * 2026-11-12 改版：原来这里是抽屉内两层手风琴（工具箱 → 子项 → 整页面板），
- * 五个整页组件各有自己的 h1 与内边距，卡中卡、九条相似行堆在一起，很难看。
+ * 整页组件各有自己的 h1 与内边距，卡中卡、九条相似行堆在一起，很难看。
  * 现在一律改成「图标格 + 下钻」，下钻层的标题由 Drawer 统一提供，
- * 所以 `McpPage` / `DevicePage` 传 `headless` 隐掉它们自带的那个 24px 大标题。
+ * 所以 `McpPage` 传 `headless` 隐掉它自带的那个 24px 大标题。
+ *
+ * 2026-11-23 起「手机感知」「工作区」已内置，不再放任何可点击入口；
+ * 这里只保留插件 / 技能 / 开源项目三项。
  */
 export interface ToolboxSection {
   key: string;
@@ -36,20 +37,6 @@ export const TOOLBOX_SECTIONS: ToolboxSection[] = [
     hint: '连接器 · 工具',
     icon: Puzzle,
     render: () => <McpPage headless />,
-  },
-  {
-    key: 'device',
-    label: '手机感知',
-    hint: '电量 · 步数',
-    icon: Smartphone,
-    render: () => <DevicePage headless />,
-  },
-  {
-    key: 'workspace',
-    label: '工作区',
-    hint: '文件 · 代码',
-    icon: FolderTree,
-    render: () => <WorkspacePanel />,
   },
   {
     key: 'skills',

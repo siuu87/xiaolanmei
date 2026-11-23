@@ -74,7 +74,6 @@ export function MePage() {
       title="我的资料"
       eyebrow="ME"
       testId="me-page"
-      backTo="/chat"
       bodyClassName="px-0 pb-6 pt-0"
     >
       <ProfileCoverSheet

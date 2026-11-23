@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import {
   AlertCircle,
   ArrowLeft,
@@ -103,7 +103,7 @@ function InlineError({ text }: { text: string | null }) {
  * - 数据与同步：保留 数据中枢 / 云同步。
  */
 export function SettingsPage() {
-  const navigate = useNavigate();
+  const goBack = useBack();
   const theme = useAppStore((s) => s.theme);
 
   const stations = useStationStore((s) => s.stations);
@@ -271,7 +271,7 @@ export function SettingsPage() {
         <div className="relative flex items-center gap-2.5 px-4 pb-2.5 pt-3">
           <button
             type="button"
-            onClick={() => navigate('/chat')}
+            onClick={goBack}
             aria-label="返回"
             className="icon-btn h-8 w-8 shrink-0"
           >
@@ -589,13 +589,13 @@ export function SettingsPage() {
           icon={<HardDrive className="h-4 w-4" />}
           iconBg="bg-emerald-400"
           title="数据中枢"
-          subtitle="存储占用、上下文注入、记忆区、快照备份"
+          subtitle="存储占用、上下文注入、快照备份"
           showChevron
           onClick={() => toggle('datacore')}
         />
         {expanded === 'datacore' && (
           <div className="bg-muted/60 px-3 py-3" style={theme === 'dark' ? BB_DARK : BB_LIGHT}>
-            <DataCorePage inline panels={['storage', 'bridge', 'memory', 'backup']} />
+            <DataCorePage inline panels={['storage', 'bridge', 'backup']} />
           </div>
         )}
 

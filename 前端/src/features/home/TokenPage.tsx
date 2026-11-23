@@ -89,7 +89,6 @@ export function TokenPage() {
     <PageShell
       title="Token 明细"
       eyebrow="TOKEN"
-      backTo="/chat"
       right={
         <StationPicker
           stationList={stationList}

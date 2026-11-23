@@ -16,15 +16,8 @@ import {
   useAvatarUploader,
   savePartnerRemark,
 } from '@/features/shell/ProfileInlineEdit';
-import { PromptsPanel } from '@/features/prompts/PromptsPanel';
 import { StyleRulesPanel } from '@/features/prompts/StyleRulesPanel';
 import { MemoSection } from '@/features/memo/MemoSection';
-import {
-  listPrompts,
-  createPrompt,
-  patchPrompt,
-  deletePrompt,
-} from '@/lib/api/prompts';
 
 /**
  * 他的资料页（/partner，对齐 2026-11-04 设计稿 97:4：封面 + 上叠白卡版式；
@@ -52,62 +45,6 @@ export function CharacterPage() {
   const [calls, setCalls] = useState<number | null>(null);
   const [memories, setMemories] = useState<MemoryDTO[] | null>(null);
   const [letters, setLetters] = useState<number | null>(null);
-
-  // 内置人设模块：改成和「他是谁」一样的就地输入块（2026-11-19 用户定）。
-  // 值 = prompts 表里「内置人设模块」这条的正文；兼容旧的 模块一/三/五（合并显示）。
-  // 保存 = upsert 一条全局提示词，旧的分模块软删，避免重复注入。
-  const MODULE_NAME = '内置人设模块';
-  const MODULE_PREFIXES = ['模块一', '模块三', '模块五'];
-  const [moduleText, setModuleText] = useState('');
-  const [modulePromptId, setModulePromptId] = useState<string | null>(null);
-
-  const loadModule = async () => {
-    try {
-      const list = await listPrompts();
-      const named = list.find((p) => p.name === MODULE_NAME);
-      if (named) {
-        setModulePromptId(named.id);
-        setModuleText(named.content);
-      } else {
-        // 兼容旧的分模块：模块一/三/五 合并
-        const legacy = list
-          .filter((p) => MODULE_PREFIXES.some((pre) => p.name.startsWith(pre)))
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-        setModulePromptId(null);
-        setModuleText(legacy.map((p) => p.content).join('\n\n'));
-      }
-    } catch {
-      /* ignore */
-    }
-  };
-
-  useEffect(() => {
-    void loadModule();
-  }, []);
-
-  const saveModule = async (v: string) => {
-    const content = v.trim();
-    try {
-      if (!content) {
-        // 清空 = 删掉这条模块
-        if (modulePromptId) await deletePrompt(modulePromptId);
-      } else if (modulePromptId) {
-        await patchPrompt(modulePromptId, { content });
-      } else {
-        await createPrompt({ name: MODULE_NAME, content, type: 'global', enabled: true });
-      }
-      // 旧的分模块（模块一/三/五）软删，避免与新的「内置人设模块」重复注入
-      const list = await listPrompts();
-      for (const p of list) {
-        if (MODULE_PREFIXES.some((pre) => p.name.startsWith(pre))) {
-          await deletePrompt(p.id);
-        }
-      }
-      await loadModule();
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   useEffect(() => {
     let alive = true;
@@ -155,7 +92,6 @@ export function CharacterPage() {
       title="他的资料"
       eyebrow="PARTNER"
       testId="character-page"
-      backTo="/chat"
       bodyClassName="px-0 pb-6 pt-0"
     >
       <ProfileCoverSheet
@@ -205,7 +141,7 @@ export function CharacterPage() {
         </div>
 
         {/* 区块就地编辑：备注/姓名已收进头像下那行小字（只备注可改），
-            身份资料只剩人设本身 + 世界书/模块/语音等展开卡（2026-11-18 用户定）。
+            身份资料只留「他是谁」+ 世界书（2026-11-23 用户定：内置人设和语言风格各并一处）。
             每块标题下都写一句「这块是干什么的」，免得看不懂填什么（2026-11-18 晚） */}
         <div className="mt-5 space-y-3">
           <EditableCard
@@ -224,16 +160,6 @@ export function CharacterPage() {
           </ExpandCard>
           <ExpandCard title="语音与语言" hint="TA 的语音音色、语速与说话语言，通话和读白按这个来">
             <VoiceCard />
-          </ExpandCard>
-          <EditableCard
-            title="内置人设模块"
-            hint="预置的人设提示模块，随聊天生效的补充设定"
-            value={moduleText}
-            placeholder="写补充的人设设定，随聊天注入 AI 的提示词…"
-            onSave={(v) => void saveModule(v)}
-          />
-          <ExpandCard title="语言风格模块" hint="预置的说话风格人设模块，随聊天生效">
-            <PromptsPanel namePrefixes={['模块二']} heading="内置人设模块" showPreview={false} />
           </ExpandCard>
           <ExpandCard title="备忘录" hint="平时随手记的备忘，AI 会读、也能往里写">
             <MemoSection />

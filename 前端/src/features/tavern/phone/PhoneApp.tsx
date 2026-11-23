@@ -17,6 +17,7 @@ import { ContactsPage } from './ContactsPage';
 import { DiscoverPage, PublishSheet } from './MomentsView';
 import { CardsPage } from './CardsView';
 import { DataCorePage } from './datacore/DataCorePage';
+import { StConfigPage } from './StConfigPage';
 import { useThemeEngine } from './datacore/themeCore';
 
 /** 二级页面栈条目 */
@@ -27,7 +28,9 @@ type StackEntry =
   /** 选人页（发起聊天：1 人私聊 / 2+ 建群） */
   | { name: 'picker' }
   /** 角色卡库（含配置台入口） */
-  | { name: 'cards' };
+  | { name: 'cards' }
+  /** 连接 SillyTavern 设置页 */
+  | { name: 'st-config' };
 
 const TAB_ORDER: PhoneTab[] = ['sessions', 'contacts', 'discover', 'core'];
 
@@ -137,7 +140,7 @@ export function PhoneApp({
     }
     if (tab === 'contacts') return <ContactsPage onOpen={openContactChat} />;
     if (tab === 'discover') return <DiscoverPage onPublish={() => setPublishing(true)} />;
-    return <DataCorePage />;
+    return <DataCorePage onOpenStConfig={() => push({ name: 'st-config' })} />;
   })();
 
   return (
@@ -194,6 +197,12 @@ export function PhoneApp({
               }}
               onBack={pop}
             />
+          </motion.div>
+        )}
+
+        {top?.name === 'st-config' && (
+          <motion.div key="st-config" className="absolute inset-0 z-20 bg-phone-bg" {...slide}>
+            <StConfigPage onBack={pop} />
           </motion.div>
         )}
 

@@ -1,7 +1,9 @@
 /**
  * 数据中枢 · 设置面板
  *
- * 四块：数据看板 / 主角可见 / 备份迁移 / 外观美化。
+ * 最多四块：数据看板 / 上下文注入 / 备份迁移 / 外观美化。
+ * 设置页只取前三块（外观在设置里有自己的分区）；小手机「中枢」保留外观这一块。
+ * 原来的「记忆」分块已删除，不再展示也不再作为可选 panels。
  *
  * 这里的配色统一走 `phone` 系列语义色（`bg-phone-*` / `text-phone-*`），
  * 由 tailwind 配置随整体深浅主题切换，不再使用固定的 iOS 硬编码色值。
@@ -22,12 +24,10 @@ import {
   Download,
   Upload,
   AlertTriangle,
-  Brain,
-  Scissors,
-  Pencil,
+  PlugZap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePhoneStore } from '../phoneStore';
+import { probeStStatus } from '@/lib/api/tavern';
 import { PhoneNavBar } from '../PhoneShell';
 import { BUCKET_META } from './registry';
 import {
@@ -40,10 +40,10 @@ import {
   restoreSnapshot,
   deleteSnapshot,
   downloadBackup,
-  importAll,
   type UsageReport,
   type ImportMode,
 } from './storageCore';
+import { smartImport } from './smartImport';
 import {
   buildSupportContext,
   loadBridge,
@@ -65,24 +65,12 @@ import {
   applySavedTheme,
   type ThemeScope,
 } from './themeCore';
-import {
-  loadWindowCfg,
-  saveWindowCfg,
-  composeContext,
-  archiveShorts,
-  editShort,
-  removeShort,
-  renameVolume,
-  removeVolume,
-  listSessionMemory,
-} from './windowEngine';
 
-type Panel = 'storage' | 'bridge' | 'memory' | 'backup' | 'theme';
+type Panel = 'storage' | 'bridge' | 'backup' | 'theme';
 
 const PANELS: { key: Panel; label: string; icon: typeof Database }[] = [
   { key: 'storage', label: '数据', icon: HardDrive },
-  { key: 'bridge', label: '主角可见', icon: ShieldCheck },
-  { key: 'memory', label: '记忆', icon: Brain },
+  { key: 'bridge', label: '上下文注入', icon: ShieldCheck },
   { key: 'backup', label: '备份', icon: Database },
   { key: 'theme', label: '外观', icon: Palette },
 ];
@@ -280,20 +268,28 @@ function Toast({ text, tone }: { text: string; tone: 'ok' | 'err' }) {
 /**
  * 数据中枢
  *
- * `panels` 用来裁剪显示哪些分块。「我」页里只放数据/主角可见/记忆/备份——
- * 外观已经搬到「我 → 外观」自己的分区了，不在这里重复一遍。
+ * `panels` 用来裁剪显示哪些分块。设置页里只放数据/上下文注入/备份——
+ * 外观已经搬到「设置 → 外观」自己的分区了，不在这里重复一遍。
  *
  * `inline` 给设置页用：**去掉 `h-full` 与内嵌滚动条**，内容跟着整页一起滚。
  * 之前设置页把它塞进一个固定 `h-[600px]` 的盒子里，手机上想往下滑整页时
  * 手指一进这块就被里面那层滚动容器吃掉——改成点开内联展开就没有这个夹层了。
  */
-export function DataCorePage({ panels, inline }: { panels?: Panel[]; inline?: boolean } = {}) {
+export function DataCorePage({
+  panels,
+  inline,
+  onOpenStConfig,
+}: { panels?: Panel[]; inline?: boolean; onOpenStConfig?: () => void } = {}) {
   const shown = panels && panels.length ? PANELS.filter((p) => panels.includes(p.key)) : PANELS;
   const [panel, setPanel] = useState<Panel>(shown[0]?.key ?? 'storage');
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'err' } | null>(null);
+  const [stUp, setStUp] = useState(false);
   const flash = useCallback((text: string, tone: 'ok' | 'err' = 'ok') => {
     setToast({ text, tone });
     window.setTimeout(() => setToast(null), 2200);
+  }, []);
+  useEffect(() => {
+    void probeStStatus().then(setStUp);
   }, []);
 
   return (
@@ -343,9 +339,37 @@ export function DataCorePage({ panels, inline }: { panels?: Panel[]; inline?: bo
         <AnimatePresence>
           {toast && <Toast key={toast.text + Date.now()} {...toast} />}
         </AnimatePresence>
+
+        {/* 连接 SillyTavern 入口（酒馆数据源切换） */}
+        {onOpenStConfig && (
+          <button
+            type="button"
+            onClick={onOpenStConfig}
+            className="mb-4 flex w-full items-center gap-3 rounded-[10px] bg-phone-surface px-4 py-3 text-left transition active:scale-[0.99]"
+          >
+            <span
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                stUp ? 'bg-phone-blue text-primary-foreground' : 'bg-phone-grouped text-phone-muted',
+              )}
+            >
+              <PlugZap className="h-[18px] w-[18px]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-medium text-phone-ink">连接 SillyTavern</span>
+              <span className="block text-[11px] text-phone-muted">
+                {stUp ? '已连接 · 酒馆数据存于 ST' : '未连接 · 当前使用本地数据'}
+              </span>
+            </span>
+            <span
+              className={cn('h-2.5 w-2.5 shrink-0 rounded-full', stUp ? 'bg-[#34C759]' : 'bg-phone-sep')}
+            />
+            <ChevronRight className="h-4 w-4 shrink-0 text-phone-muted" />
+          </button>
+        )}
+
         {panel === 'storage' && <StoragePanel flash={flash} />}
         {panel === 'bridge' && <BridgePanel />}
-        {panel === 'memory' && <MemoryPanel flash={flash} />}
         {panel === 'backup' && <BackupPanel flash={flash} />}
         {panel === 'theme' && <ThemePanel flash={flash} />}
       </div>
@@ -444,7 +468,7 @@ function StoragePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => vo
   );
 }
 
-/* ------------------------------ 主角可见 ------------------------------ */
+/* ------------------------------ 上下文注入 ------------------------------ */
 
 function BridgePanel() {
   const [cfg, setCfg] = useState<BridgeConfig>(() => loadBridge());
@@ -460,10 +484,10 @@ function BridgePanel() {
     <>
       <Group
         title="总开关"
-        hint="打开后，聊天发起时会把下面勾选的记录整理成一段上下文交给模型。关掉则完全不注入，模型只看到当前会话。"
+        hint="打开后，聊天发起时会把下面勾选的记录整理成一段上下文交给 TA。关掉则完全不注入，TA 只看到当前会话。"
       >
         <Row
-          label="让主角看到这些记录"
+          label="让他记住这些日常"
           sub={cfg.enabled ? '已启用' : '已停用'}
           onClick={() => setCfg((c) => ({ ...c, enabled: !c.enabled }))}
           right={<Toggle on={cfg.enabled} label="总开关" />}
@@ -539,246 +563,6 @@ function BridgePanel() {
   );
 }
 
-/* ------------------------------ 记忆区 ------------------------------ */
-
-const MODE_LABEL: Record<'online' | 'offline', string> = { online: '线上', offline: '线下' };
-
-function MemoryPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void }) {
-  const sessions = usePhoneStore((s) => s.sessions);
-  const setSessionMode = usePhoneStore((s) => s.setSessionMode);
-  const [sessionId, setSessionId] = useState<string>(() => sessions[0]?.id ?? '');
-  const [mode, setMode] = useState<'online' | 'offline'>('online');
-  const [cfg, setCfg] = useState(() => loadWindowCfg());
-  const [tick, setTick] = useState(0);
-  const [editing, setEditing] = useState<string | null>(null);
-
-  const session = sessions.find((s) => s.id === sessionId) ?? sessions[0] ?? null;
-  useEffect(() => {
-    if (!sessionId && session) setSessionId(session.id);
-  }, [session, sessionId]);
-
-  useEffect(() => saveWindowCfg(cfg), [cfg]);
-
-  const composed = useMemo(
-    () =>
-      session
-        ? composeContext({ sessionId: session.id, messages: session.messages, mode, cfg })
-        : null,
-    [session, mode, cfg, tick],
-  );
-  const memory = useMemo(
-    () => (session ? listSessionMemory(session.id, mode, cfg.modeSplit) : { shorts: [], volumes: [], splits: [] }),
-    [session, mode, cfg.modeSplit, tick],
-  );
-
-  const doManualSplit = () => {
-    if (!composed || !session) return;
-    if (composed.stats.pendingCount === 0) return flash('窗口内还没有可归档的内容', 'err');
-    const saved = archiveShorts({
-      sessionId: session.id,
-      mode,
-      pending: composed.stats.pending,
-      aiFields: null,
-      by: 'manual',
-    });
-    setTick((t) => t + 1);
-    flash(saved ? `已归档 ${composed.stats.pendingCount} 条` : '归档失败', saved ? 'ok' : 'err');
-  };
-
-  const patchCfg = (p: Partial<typeof cfg>) => setCfg((c) => ({ ...c, ...p }));
-
-  return (
-    <>
-      <Group
-        title="滑动窗口"
-        hint="不再整条会话全塞给模型。最近若干条留原文，溢出部分即时归档成短期记忆，短期攒够归纳成卷——上下文体积恒定，所以永远不用「换窗」。"
-      >
-        <Row
-          label={session ? session.title : '选择会话'}
-          sub={session ? `${session.messages.length} 条消息 · ${MODE_LABEL[mode]}模式` : '当前没有会话'}
-          onClick={() => {
-            if (sessions.length <= 1) return flash('目前只有一个会话', 'err');
-            const i = sessions.findIndex((s) => s.id === session?.id);
-            setSessionId(sessions[(i + 1) % sessions.length].id);
-          }}
-          right={<ChevronRight className="h-4 w-4 text-phone-blue" />}
-        />
-        <Divider />
-        <div className="flex gap-1 px-4 py-2.5">
-          {(['online', 'offline'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => { setMode(m); if (session) setSessionMode(session.id, m); }}
-              aria-pressed={mode === m}
-              className={cn(
-                'flex-1 rounded-lg py-1.5 text-[12px] transition',
-                mode === m ? 'bg-phone-blue text-primary-foreground' : 'bg-phone-grouped text-phone-muted',
-              )}
-            >
-              {MODE_LABEL[m]}记忆
-            </button>
-          ))}
-        </div>
-        <div className="px-4 pb-2.5">
-          <p className="text-[11px] leading-relaxed text-phone-muted">
-            切换会同时改变当前会话的相处模式，之后的发言记进对应那条线；
-            之前积累的记忆留在线上（或线下）那边，不会被带过来。
-          </p>
-        </div>
-      </Group>
-
-      <Group title="窗口参数">
-        <Slider label="滚动上下文（原文条数）" value={cfg.turns} min={6} max={120} step={2}
-          onChange={(v) => patchCfg({ turns: v })} format={(v) => `${v} 条`} />
-        <Divider />
-        <Slider label="自动归档阈值" value={cfg.autoTurns} min={0} max={80} step={2}
-          onChange={(v) => patchCfg({ autoTurns: v })} format={(v) => (v === 0 ? '关闭' : `满 ${v} 条`)} />
-        <Divider />
-        <Slider label="间隔多久算换话题" value={cfg.autoGapMin} min={0} max={1440} step={30}
-          onChange={(v) => patchCfg({ autoGapMin: v })}
-          format={(v) => (v === 0 ? '关闭' : v < 60 ? `${v} 分钟` : `${(v / 60).toFixed(1)} 小时`)} />
-        <Divider />
-        <Slider label="几条短期归纳成一卷" value={cfg.condenseEvery} min={0} max={20} step={1}
-          onChange={(v) => patchCfg({ condenseEvery: v })} format={(v) => (v === 0 ? '不归纳' : `${v} 条`)} />
-        <Divider />
-        <Slider label="上下文保留几卷" value={cfg.keepVolumes} min={0} max={10}
-          onChange={(v) => patchCfg({ keepVolumes: v })} format={(v) => `${v} 卷`} />
-        <Divider />
-        <Slider label="上下文保留几条短期" value={cfg.keepShorts} min={0} max={20}
-          onChange={(v) => patchCfg({ keepShorts: v })} format={(v) => `${v} 条`} />
-        <Divider />
-        <Row label="线上/线下记忆隔离" sub="同一角色的两种相处轨迹互不污染"
-          onClick={() => patchCfg({ modeSplit: !cfg.modeSplit })} right={<Toggle on={cfg.modeSplit} label="隔离" />} />
-        <Divider />
-        <Row label="用模型改写摘要" sub="关闭则只用本地抽取式摘要（离线可用、不花钱）"
-          onClick={() => patchCfg({ useAi: !cfg.useAi })} right={<Toggle on={cfg.useAi} label="AI摘要" />} />
-      </Group>
-
-      <Group title="当前状态" hint="「待归档」是已经滚出窗口、但还没变成摘要的条数。它涨到阈值就会自动归档；不想等就点手动切。">
-        <Row label="会话消息总数" sub="本地全量保存，一条都不会丢"
-          right={<span className="text-[13px] tabular-nums text-phone-muted">{composed?.stats.totalMsgs ?? 0}</span>} />
-        <Divider />
-        <Row label="滚动上下文（实际发送）" sub="原文直送，一字不动"
-          right={<span className="text-[13px] tabular-nums text-phone-muted">{composed?.stats.keptTurns ?? 0} 条</span>} />
-        <Divider />
-        <Row label="待归档" sub="溢出窗口但还没摘要"
-          right={<span className={cn('text-[13px] tabular-nums', (composed?.stats.pendingCount ?? 0) > 0 ? 'text-[#FF9500]' : 'text-phone-muted')}>{composed?.stats.pendingCount ?? 0} 条</span>} />
-        <Divider />
-        <Row label="本次请求体积" sub="摘要 + 原文，恒定可控"
-          right={<span className="text-[13px] tabular-nums text-phone-muted">{composed?.stats.chars ?? 0} 字</span>} />
-        <Divider />
-        <Row label="手动切一刀" sub="把当前待归档的部分立刻归档"
-          onClick={doManualSplit} right={<Scissors className="h-4 w-4 text-phone-blue" />} />
-      </Group>
-
-      <Group title={`长期记忆（${memory.volumes.length} 卷）`} hint="由多条短期归纳而来，卷名自动生成，也可以手改。">
-        {memory.volumes.length === 0 ? (
-          <Row label="还没有成卷" sub={`短期记忆攒到 ${cfg.condenseEvery} 条会自动归纳`} right={null} />
-        ) : (
-          memory.volumes.map((v, i) => (
-            <div key={v.id}>
-              {i > 0 && <Divider />}
-              <Row
-                label={v.name}
-                sub={`${v.shortIds.length} 个片段 · ${new Date(v.createdAt).toLocaleDateString('zh-CN')}`}
-                onClick={() => {
-                  const name = window.prompt('给这一卷起个名字', v.name);
-                  if (name !== null) { renameVolume(v.id, name); setTick((t) => t + 1); flash('已重命名'); }
-                }}
-                right={<Pencil className="h-4 w-4 text-phone-blue" />}
-                actions={
-                  <button type="button" aria-label="删除这一卷"
-                    onClick={() => { removeVolume(v.id); setTick((t) => t + 1); flash('已删除'); }}>
-                    <Trash2 className="h-4 w-4 text-[#FF3B30]" />
-                  </button>
-                }
-              />
-              <div className="px-4 pb-2.5">
-                <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-phone-muted">{v.summary}</p>
-              </div>
-            </div>
-          ))
-        )}
-      </Group>
-
-      <Group title={`短期记忆（${memory.shorts.length} 条）`} hint="点开可以直接改四个字段；改完立即写回，下次请求就用新版本。">
-        {memory.shorts.length === 0 ? (
-          <Row label="还没有短期记忆" sub="继续聊天，或点上方「手动切一刀」" right={null} />
-        ) : (
-          memory.shorts.map((s, i) => (
-            <div key={s.id}>
-              {i > 0 && <Divider />}
-              <Row
-                label={`${s.msgCount} 条 · ${s.source === 'heuristic' ? '本地摘要' : s.source === 'manual' ? '手动归档' : 'AI 摘要'}`}
-                sub={new Date(s.fromTs).toLocaleString('zh-CN')}
-                onClick={() => setEditing(editing === s.id ? null : s.id)}
-                right={
-                  <ChevronRight
-                    className={cn('h-4 w-4 text-phone-muted transition-transform', editing === s.id && 'rotate-90')}
-                  />
-                }
-                actions={
-                  <button type="button" aria-label="删除这条记忆"
-                    onClick={() => { removeShort(s.id); setTick((t) => t + 1); flash('已删除'); }}>
-                    <Trash2 className="h-4 w-4 text-[#FF3B30]" />
-                  </button>
-                }
-              />
-              {editing === s.id ? (
-                <ShortEditor chip={s} onDone={() => setTick((t) => t + 1)} />
-              ) : (
-                <div className="px-4 pb-2.5">
-                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-phone-muted">
-                    起因 {s.cause}
-                    {'\n'}经过 {s.process}
-                    {'\n'}结果 {s.result}
-                    {'\n'}关系 {s.relation}
-                  </p>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </Group>
-    </>
-  );
-}
-
-/** 短期记忆四字段编辑器 */
-function ShortEditor({ chip, onDone }: { chip: ReturnType<typeof listSessionMemory>['shorts'][number]; onDone: () => void }) {
-  const [v, setV] = useState({ cause: chip.cause, process: chip.process, result: chip.result, relation: chip.relation });
-  const fields: { k: keyof typeof v; label: string }[] = [
-    { k: 'cause', label: '起因' },
-    { k: 'process', label: '经过' },
-    { k: 'result', label: '结果' },
-    { k: 'relation', label: '关系进展' },
-  ];
-  return (
-    <div className="border-t border-phone-sep px-4 py-3">
-      {fields.map((f) => (
-        <div key={f.k} className="mb-2">
-          <label className="mb-1 block text-[11px] text-phone-muted">{f.label}</label>
-          <textarea
-            value={v[f.k]}
-            onChange={(e) => setV((x) => ({ ...x, [f.k]: e.target.value }))}
-            rows={2}
-            aria-label={f.label}
-            className="w-full resize-none rounded-lg bg-phone-grouped px-2.5 py-1.5 text-[12px] text-phone-ink outline-none"
-          />
-        </div>
-      ))}
-      <div className="flex gap-2">
-        <button type="button" aria-label="保存记忆修改"
-          onClick={() => { editShort(chip.id, v); onDone(); }}
-          className="flex-1 rounded-xl bg-phone-blue py-2 text-[13px] font-medium text-primary-foreground active:opacity-80">保存</button>
-        <button type="button" aria-label="放弃修改" onClick={onDone}
-          className="rounded-xl bg-phone-grouped px-4 py-2 text-[13px] text-phone-muted active:opacity-70">收起</button>
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------------ 备份迁移 ------------------------------ */
 
 function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void }) {
@@ -786,6 +570,7 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
   const [pending, setPending] = useState<{ kind: 'restore'; id: string; label: string } | null>(null);
   const [importText, setImportText] = useState('');
   const [importMode, setImportMode] = useState<ImportMode>('merge');
+  const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(() => setSnaps(listSnapshots()), []);
@@ -800,12 +585,22 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
     }
   };
 
-  const doImport = () => {
-    const r = importAll(importText, importMode);
-    if (!r.ok) return flash(r.error ?? '导入失败', 'err');
-    setImportText('');
-    refresh();
-    flash(`已导入 ${r.applied} 项${r.skipped ? `，跳过 ${r.skipped} 项` : ''}`);
+  const doImport = async () => {
+    if (importing || !importText.trim()) return;
+    setImporting(true);
+    try {
+      const r = await smartImport(importText, importMode);
+      if (!r.ok) {
+        flash(r.error ?? '导入失败', 'err');
+        return;
+      }
+      setImportText('');
+      refresh();
+      const tail = [r.skipped ? `跳过 ${r.skipped} 项` : '', r.note ?? ''].filter(Boolean).join('，');
+      flash(`已导入 ${r.applied} 项${tail ? `（${tail}）` : ''}`);
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -859,7 +654,10 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
         </Group>
       )}
 
-      <Group title="全量导出 / 导入" hint="导出为单个 JSON 文件，可在另一台设备或浏览器恢复。">
+      <Group
+        title="全量导出 / 导入"
+        hint="导入支持任意 JSON：本项目备份、旧记忆文件、零散记忆数组都能吃；认不出的内容也会原文留存，不再报格式不对。"
+      >
         <Row
           label="导出全部数据"
           sub="生成 .json 备份文件"
@@ -871,8 +669,8 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
         />
         <Divider />
         <Row
-          label="选择备份文件"
-          sub="读取本地 .json"
+          label="选择 JSON 文件"
+          sub="任意结构，识别后导入"
           onClick={() => fileRef.current?.click()}
           right={<Upload className="h-4 w-4 text-phone-blue" />}
         />
@@ -899,16 +697,17 @@ function BackupPanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => voi
               {importMode === 'replace' && (
                 <p className="mb-2 flex items-start gap-1 text-[11px] text-[#FF9500]">
                   <AlertTriangle className="mt-px h-3 w-3 shrink-0" />
-                  替换模式会清空现有数据再写入，开始前会自动存一份回滚快照。
+                  「整体替换」只对本项目全量备份生效；其他 JSON 一律按合并导入，并自动留一份回滚快照。
                 </p>
               )}
               <button
                 type="button"
-                onClick={doImport}
+                onClick={() => void doImport()}
+                disabled={importing}
                 aria-label="执行导入"
-                className="w-full rounded-xl bg-phone-blue py-2.5 text-[14px] font-medium text-primary-foreground active:opacity-80"
+                className="w-full rounded-xl bg-phone-blue py-2.5 text-[14px] font-medium text-primary-foreground active:opacity-80 disabled:opacity-60"
               >
-                执行导入
+                {importing ? '导入中…' : '执行导入'}
               </button>
             </div>
           </>
@@ -1111,6 +910,21 @@ function ThemePanel({ flash }: { flash: (t: string, tone?: 'ok' | 'err') => void
           sub={cfg.enabled ? '已启用' : '已停用，回到原生配色'}
           onClick={() => patch({ enabled: !cfg.enabled })}
           right={<Toggle on={cfg.enabled} label="启用" />}
+        />
+        <Divider />
+        <Row
+          label="恢复默认外观"
+          sub="清空自定义 CSS 与字体，回到午夜深蓝"
+          danger
+          onClick={() =>
+            patch({
+              presetId: 'midnight',
+              customCss: '',
+              fonts: [],
+              activeFontId: null,
+              enabled: true,
+            })
+          }
         />
       </Group>
 

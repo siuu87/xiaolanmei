@@ -22,7 +22,7 @@ export function GamesPage() {
   const go = (id: string) => navigate(`/games/${id}`);
 
   return (
-    <PageShell title="游戏屋" eyebrow="PLAYROOM" backTo="/chat" className="games-page">
+    <PageShell title="游戏屋" eyebrow="PLAYROOM" className="games-page">
       {/* 点阵纸底：儿童房的方格纸，铺在最下面一层 */}
       <div aria-hidden className="games-dots pointer-events-none absolute inset-0" />
 

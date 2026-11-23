@@ -1,8 +1,8 @@
 /**
  * 数据中枢 · 上下文注入桥接
  *
- * 回答需求里那句「里面的记录是主角 AI 可以看到的」：
- * 把散落在各个模块的记录收敛成一段**结构化上下文**，在发起对话时拼进 system prompt。
+ * 把散落在各个模块的记录收敛成一段**结构化上下文**，在发起对话时拼进 system prompt，
+ * 作为「他记得的关于你的日常」——让 TA 的回应更贴近你们的生活，而不是凭空发问。
  *
  * 三条硬约束：
  * 1. **可控**——每个来源都能单独开关、单独设条数上限，并有总字符预算做兜底截断。
@@ -57,7 +57,7 @@ export const SOURCE_META: { id: SourceId; label: string; desc: string; priority:
  * 现在按**归属**分组：对话一类、生活记录一类。没列进来的来源不出现（如朋友圈）。
  */
 export const SOURCE_GROUPS: { title: string; hint?: string; ids: SourceId[] }[] = [
-  { title: '对话', hint: '主角能回头看到的聊天内容。', ids: ['sessions'] },
+  { title: '对话', hint: '他记得的、你们聊过的内容。', ids: ['sessions'] },
   { title: '生活记录', hint: '记忆、书库、片单这些日常沉淀。', ids: ['memory', 'library', 'watchlist'] },
 ];
 

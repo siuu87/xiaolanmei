@@ -49,6 +49,7 @@ import { radioRoutes } from './routes/radio.js';
 import { dishRoutes } from './routes/dishes.js';
 import { dietRoutes } from './routes/diet.js';
 import { tavernRoutes } from './routes/tavern.js';
+import { sillytavernRoutes } from './routes/sillytavern.js';
 import { phoneRoutes } from './routes/phone.js';
 import { phoneControlRoutes } from './routes/phoneControl.js';
 import { callRoutes } from './routes/calls.js';
@@ -128,6 +129,7 @@ async function main(): Promise<void> {
   await app.register(dishRoutes, { prefix: '/api' });
   await app.register(dietRoutes, { prefix: '/api' });
   await app.register(tavernRoutes, { prefix: '/api' });
+  await app.register(sillytavernRoutes, { prefix: '/api' });
   await app.register(phoneRoutes, { prefix: '/api' });
   await app.register(phoneControlRoutes, { prefix: '/api' });
   await app.register(callRoutes, { prefix: '/api' });

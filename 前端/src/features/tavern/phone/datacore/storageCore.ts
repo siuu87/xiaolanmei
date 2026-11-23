@@ -304,6 +304,8 @@ export interface ImportResult {
   applied: number;
   skipped: number;
   error?: string;
+  /** 全适配导入器给出的识别摘要（如「记忆 12 条 · 原文已留存」） */
+  note?: string;
   /** 替换模式下自动生成的回滚点 */
   rolledBackTo?: string | null;
 }

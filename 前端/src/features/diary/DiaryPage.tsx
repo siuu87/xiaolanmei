@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import type { DiaryBook, DiaryEntry, DiarySlip } from './diaryData';
 import { dayKeyToDate, diaryDayKey, slipSpot } from './diaryData';
 import { useDiaryStore } from './diaryStore';
@@ -27,7 +28,7 @@ export function DiaryPage() {
   const stickers = useDiaryStore((s) => s.stickers);
   const pageLocks = useDiaryStore((s) => s.pageLocks);
   const load = useDiaryStore((s) => s.load);
-  const navigate = useNavigate();
+  const goBack = useBack();
 
   const [searchParams] = useSearchParams();
   const dateParam = searchParams.get('date');
@@ -167,7 +168,7 @@ export function DiaryPage() {
         onJump={() => setJump(true)}
         onSwitchBook={() => setSwitcher(true)}
         onSettings={() => setSheet({ book })}
-        onBack={() => navigate('/chat')}
+        onBack={goBack}
       />
 
       {jump && (

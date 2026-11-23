@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import {
   ArrowLeft,
   BookmarkPlus,
@@ -74,7 +74,7 @@ const LAYOUT_ICON: Record<Layout, typeof List> = {
 };
 
 export function WishlistPage() {
-  const navigate = useNavigate();
+  const goBack = useBack();
 
   const [clips, setClips] = useState<Clip[]>([]);
   const [wishes, setWishes] = useState<WishItem[]>([]);
@@ -256,7 +256,7 @@ export function WishlistPage() {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => navigate('/chat')}
+              onClick={goBack}
               aria-label="返回"
               className="icon-btn h-8 w-8 shrink-0"
             >

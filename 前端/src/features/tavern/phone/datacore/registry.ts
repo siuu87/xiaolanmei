@@ -73,6 +73,7 @@ export const KEY_REGISTRY: KeyEntry[] = [
 /** 规格里后续会落地的模块（提前登记，避免将来统计漏项） */
 export const PLANNED_KEYS: { key: string; bucket: DataBucket; label: string }[] = [
   { key: 'tavern.support.memory.v1', bucket: 'memory', label: '三层记忆库' },
+  { key: 'tavern.support.import.raw.v1', bucket: 'memory', label: '导入原文留存' },
   { key: 'tavern.support.library.v1', bucket: 'library', label: '成书与批注' },
   { key: 'tavern.support.masks.v1', bucket: 'cards', label: 'User 面具' },
   { key: 'tavern.support.theme.v1', bucket: 'settings', label: '主题与自定义样式' },

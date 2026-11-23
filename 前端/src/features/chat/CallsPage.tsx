@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import { ChevronRight } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
 import { AvatarContent } from '@/components/AvatarContent';
@@ -57,7 +58,7 @@ export function CallsPage() {
   const name = (partnerRemark || partnerName || '小蓝莓').trim();
 
   return (
-    <PageShell title="通话记录" eyebrow="CALLS" testId="calls-page" backTo="/chat">
+    <PageShell title="通话记录" eyebrow="CALLS" testId="calls-page">
       <p className="mb-2 px-1 text-[11px] text-chat-meta">最近通话</p>
       <div className="space-y-2.5">
         {calls === null && (
@@ -110,7 +111,7 @@ export function CallsPage() {
 
 /** ============ 详情页 ============ */
 export function CallDetailPage() {
-  const navigate = useNavigate();
+  const goBack = useBack();
   const { id } = useParams<{ id: string }>();
   const partnerName = useProfileStore((s) => s.partnerName);
   const partnerRemark = useProfileStore((s) => s.partnerRemark);
@@ -162,7 +163,7 @@ export function CallDetailPage() {
       <div className="pt-6">
         <button
           type="button"
-          onClick={() => navigate('/chat')}
+          onClick={goBack}
           data-testid="call-page-again"
           className="h-12 w-full rounded-full bg-chat-me text-[14px] font-medium text-chat-me-fg transition active:scale-[0.99]"
         >

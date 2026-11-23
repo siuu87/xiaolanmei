@@ -240,7 +240,6 @@ export function XinchaoPage() {
       title="心潮"
       eyebrow="XINCHAO"
       testId="xinchao-page"
-      backTo="/chat"
       className="bg-page-bg"
       bodyClassName="px-4 py-5 pb-16"
       right={

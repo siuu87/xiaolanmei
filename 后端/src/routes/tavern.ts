@@ -6,24 +6,24 @@ import { newId, now } from '../utils/id.js';
 import { openaiCompatibleAdapter } from '../adapters/openaiCompatible.js';
 import type { ChatMessage } from '../adapters/types.js';
 import { getModelConfig, getAdapterConfig, resolveStation, firstModel } from './stations.js';
+import {
+  parseKeywords,
+  matchWorldbook,
+  buildSystemPrompt,
+  type PromptWorldEntry,
+  type PromptCharacter,
+  type PromptPersona,
+} from '../services/tavernPrompt.js';
 
 /**
  * 酒馆（SillyTavern 风格 AI 角色扮演）路由：
  * 角色卡 / 世界书 / 人设卡的 CRUD + 流式角色扮演对话（拼接角色 + 人设 + 命中世界书为 system 提示词）。
+ * 提示词组装逻辑在 services/tavernPrompt.ts，与 ST 代理路由共用。
  */
 
 type CharRow = typeof tavernCharacters.$inferSelect;
 type WorldRow = typeof tavernWorldbook.$inferSelect;
 type PersonaRow = typeof tavernPersonas.$inferSelect;
-
-/** 把逗号 / 顿号 / 换行分隔的字符串解析成去重后的关键词数组 */
-function parseKeywords(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  return raw
-    .split(/[,，、\n]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 function parseTags(raw: string | null | undefined): string[] {
   if (!raw) return [];
@@ -106,63 +106,32 @@ function listPersonas(): PersonaRow[] {
     .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt);
 }
 
-/** 世界书命中：任一词出现在最近对话文本里即注入 */
-function matchWorldbook(rows: WorldRow[], messages: ChatMessage[]): WorldRow[] {
-  const text = messages
-    .slice(-12)
-    .map((m) => m.content)
-    .join('\n')
-    .toLowerCase();
-  if (!text) return [];
-  return rows
-    .filter((w) => w.enabled && w.deletedAt == null)
-    .filter((w) => {
-      const kw = parseKeywords(w.keywords);
-      if (kw.length === 0) return false;
-      return kw.some((k) => text.includes(k.toLowerCase()));
-    })
-    .sort((a, b) => b.priority - a.priority || a.sortOrder - b.sortOrder);
+/** 本地世界书行 → 中立结构 */
+function toPromptWorldEntry(w: WorldRow): PromptWorldEntry {
+  return {
+    content: w.content,
+    priority: w.priority,
+    position: w.position === 'after' ? 'after' : 'before',
+    enabled: w.enabled,
+    keywords: parseKeywords(w.keywords),
+    sortOrder: w.sortOrder,
+  };
 }
 
-/** 组装角色扮演 system 提示词：世界书(before) + 角色 + 世界书(after) + 用户人设 + 附加指令 */
-function buildSystemPrompt(
-  character: CharRow,
-  persona: PersonaRow | null,
-  matched: WorldRow[],
-): string {
-  const before = matched.filter((w) => w.position !== 'after');
-  const after = matched.filter((w) => w.position === 'after');
-  const parts: string[] = [];
+/** 本地角色卡行 → 中立结构 */
+function toPromptCharacter(c: CharRow): PromptCharacter {
+  return {
+    name: c.name,
+    description: c.description ?? '',
+    personality: c.personality ?? '',
+    scenario: c.scenario ?? '',
+    systemPrompt: c.systemPrompt ?? '',
+  };
+}
 
-  if (before.length) {
-    parts.push(`【世界书】以下是与当前剧情相关的世界观/设定，请自然地遵守：\n${before.map((w) => w.content).join('\n\n')}`);
-  }
-
-  const charParts: string[] = [];
-  if (character.description) charParts.push(character.description);
-  if (character.personality) charParts.push(character.personality);
-  if (character.scenario) charParts.push(`【当前场景】\n${character.scenario}`);
-  parts.push(
-    `你是「${character.name}」，正在和用户进行沉浸式角色扮演。请始终以该角色的身份、语气、立场说话，不要跳出角色，不要以“助手”或“AI”自居，也不要替用户发言或替用户做决定。\n\n【角色设定】\n${charParts.join('\n') || '（无更多设定）'}`,
-  );
-
-  if (after.length) {
-    parts.push(`【补充设定】\n${after.map((w) => w.content).join('\n\n')}`);
-  }
-
-  if (persona) {
-    parts.push(
-      `【用户角色】用户正在扮演「${persona.name}」${persona.description ? `：${persona.description}` : ''}。请称呼对方为「${persona.name}」，把对方当成剧情中的角色而非普通用户。`,
-    );
-  }
-
-  if (character.systemPrompt) {
-    parts.push(`【附加指令】\n${character.systemPrompt}`);
-  }
-
-  parts.push('【规则】用自然、贴合角色设定的语气回应，中文为主，篇幅适中。不要提到“模型”“系统提示词”等幕后概念。');
-
-  return parts.join('\n\n');
+/** 本地人设卡行 → 中立结构 */
+function toPromptPersona(p: PersonaRow): PromptPersona {
+  return { name: p.name, description: p.description ?? '' };
 }
 
 export async function tavernRoutes(app: FastifyInstance): Promise<void> {
@@ -388,8 +357,8 @@ export async function tavernRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
     const persona = body.personaId ? listPersonas().find((p) => p.id === body.personaId) ?? null : null;
-    const matched = matchWorldbook(listWorldbook(), messages);
-    const systemPrompt = buildSystemPrompt(character, persona, matched);
+    const matched = matchWorldbook(listWorldbook().map(toPromptWorldEntry), messages);
+    const systemPrompt = buildSystemPrompt(toPromptCharacter(character), persona ? toPromptPersona(persona) : null, matched);
     const finalMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
 
     const { model: defaultModel, temperature } = getModelConfig();

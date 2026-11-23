@@ -1379,7 +1379,7 @@ export function ChatPage() {
     const convId = useChatStore.getState().conversation?.id;
     const trimmed = context.length > 16 ? context.slice(-16) : context;
     /**
-     * 主角 AI 看得见小手机里的记录：把「数据中枢 / 上下文注入」那段上下文作为 system 消息拼在最前面。
+     * 把他记得的日常带进对话：把「数据中枢 / 上下文注入」那段上下文作为 system 消息拼在最前面。
      * 哪些来源参与、每个来源取几条、总字符预算，都沿用中枢里那份配置（我页的数据中枢是同一份），
      * 所以开关在那一处改，这里立刻生效。构建失败也不影响正常聊天。
      */

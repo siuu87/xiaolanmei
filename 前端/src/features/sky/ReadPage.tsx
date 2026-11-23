@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useBack } from '@/lib/navigateBack';
 import {
   ArrowLeft,
   BookOpen,
@@ -19,7 +19,7 @@ type Tab = 'read' | 'quotes';
 
 /** 一起读：逐段朗读 + 摘录笔记 */
 export function ReadPage() {
-  const navigate = useNavigate();
+  const goBack = useBack();
   const [tab, setTab] = useState<Tab>('read');
 
   return (
@@ -29,7 +29,7 @@ export function ReadPage() {
         <header className="mb-6 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate('/chat')}
+            onClick={goBack}
             aria-label="返回"
             className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
