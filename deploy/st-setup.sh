@@ -73,6 +73,12 @@ if i >= 0:
     tail = re.sub(r'(\n[ \t]+username:).*', r'\1 user', tail, count=1)
     tail = re.sub(r'(\n[ \t]+password:).*', lambda m: m.group(1) + ' ' + pw, tail, count=1)
     s = s[:i] + tail
+# 服务器没有桌面，别让 ST 尝试打开浏览器
+i = s.find('browserLaunch:')
+if i >= 0:
+    tail = s[i:]
+    tail = re.sub(r'(\n[ \t]+enabled:).*', r'\1 false', tail, count=1)
+    s = s[:i] + tail
 p.write_text(s, encoding='utf-8')
 PY
 python3 - "$ST_DIR/src/server-main.js" <<'PY' || die "server-main.js 的 iframe 允许配置改写失败"
@@ -109,26 +115,34 @@ UNIT
 systemctl daemon-reload
 systemctl enable sillytavern >/dev/null 2>&1
 systemctl restart sillytavern
-sleep 8
-if ! systemctl is-active --quiet sillytavern; then
-  echo "--- systemd 状态 ---"; systemctl status sillytavern --no-pager -l 2>&1 | tail -14
-  echo "--- 应用日志 ---"; tail -30 /var/log/sillytavern.log 2>/dev/null
-  die "ST 没起来（上面是真报错，整段发我）"
-fi
 
-say "6/6 防火墙提示 + 体检"
+say "6/6 防火墙提示 + 体检（ST 首次启动要编译前端，最多等 3 分钟）"
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi '^Status: active'; then
   ufw allow "$PORT/tcp" >/dev/null 2>&1 && echo "ufw 已放行 $PORT"
 else
   echo "本机 ufw 未启用；云厂商安全组仍需手动放行 TCP $PORT"
 fi
-curl -s -m 8 -o /dev/null -w "ST 未认证首页（401 正常）=%{http_code}\n" "http://127.0.0.1:$PORT/"
-CODE=$(curl -s -m 8 -u "$ST_USER:$PASS" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/")
-echo "ST 带认证首页（200/302 正常）=$CODE"
-if ! echo "$CODE" | grep -qE '^(200|302)$'; then
+CODE=000
+READY=0
+for i in $(seq 1 45); do
+  CODE=$(curl -s -m 5 -u "$ST_USER:$PASS" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/")
+  case "$CODE" in
+    200|302) READY=1; break ;;
+  esac
+  if ! systemctl is-active --quiet sillytavern; then
+    echo "--- systemd 状态 ---"; systemctl status sillytavern --no-pager -l 2>&1 | tail -14
+    echo "--- 应用日志 ---"; tail -30 /var/log/sillytavern.log 2>/dev/null
+    die "ST 进程退出了（上面是真报错）"
+  fi
+  echo "等待 ST 就绪… ${i}/45（HTTP ${CODE}）"
+  sleep 4
+done
+if [ "$READY" != "1" ]; then
   tail -30 /var/log/sillytavern.log 2>/dev/null
-  die "ST 体检没过（HTTP ${CODE}，多半是配置或端口问题）"
+  die "等了 3 分钟 ST 仍没响应（HTTP ${CODE}）"
 fi
+curl -s -m 8 -o /dev/null -w "ST 未认证首页（401 正常）=%{http_code}\n" "http://127.0.0.1:$PORT/"
+echo "ST 带认证首页（200/302 正常）=$CODE"
 
 say "完成：小蓝莓里填这些"
 echo "酒馆 → 右上角连接设置："
