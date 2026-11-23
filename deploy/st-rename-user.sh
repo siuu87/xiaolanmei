@@ -87,8 +87,8 @@ echo "ST 首页（200/302 正常）=$CODE"
 
 # 地址必须沿用原来的公网 URL（前端拿它当 iframe src）；只换账号密码。
 CFG_FILE=$(mktemp)
-curl -s --max-time 15 http://127.0.0.1:3001/api/st/config >"$CFG_FILE"
-python3 - "$CFG_FILE" "$NEW" "$PASS" >"$CFG_FILE.new" <<'PY' || die "生成连接配置失败"
+if curl -s --max-time 15 http://127.0.0.1:3001/api/st/config >"$CFG_FILE"; then
+  python3 - "$CFG_FILE" "$NEW" "$PASS" >"$CFG_FILE.new" <<'PY' || echo "提醒：生成连接配置失败，请到酒馆连接设置手动填"
 import json, sys
 cfg = json.load(open(sys.argv[1], encoding='utf-8'))
 print(json.dumps({
@@ -98,9 +98,12 @@ print(json.dumps({
     'timeoutMs': cfg.get('timeoutMs') or 10000,
 }))
 PY
-curl -s --max-time 15 -X PUT http://127.0.0.1:3001/api/st/config \
-  -H 'Content-Type: application/json' --data-binary "@$CFG_FILE.new" \
-  >/dev/null || echo "提醒：小蓝莓配置同步失败，请到酒馆连接设置手动填"
+  curl -s --max-time 15 -X PUT http://127.0.0.1:3001/api/st/config \
+    -H 'Content-Type: application/json' --data-binary "@$CFG_FILE.new" \
+    >/dev/null && echo "小蓝莓连接配置已同步" || echo "提醒：小蓝莓配置同步失败，请到酒馆连接设置手动填"
+else
+  echo "提醒：读不到小蓝莓连接配置，请到酒馆连接设置手动填"
+fi
 rm -f "$CFG_FILE" "$CFG_FILE.new"
 
 echo

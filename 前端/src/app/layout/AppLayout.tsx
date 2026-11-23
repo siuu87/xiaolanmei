@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { useAppStore, ACCENT_HSL } from '@/stores/appStore';
+import { useAppStore, ACCENT_HSL, type Accent, type NumFont, type Theme } from '@/stores/appStore';
+import { useBubbleTheme, type BubbleTheme } from '@/features/chat/bubbleTheme';
 import { useImmersiveStore } from '@/stores/immersiveStore';
 import { useShellStore } from '@/stores/shellStore';
 import { cn } from '@/lib/utils';
@@ -102,6 +103,29 @@ export function AppLayout() {
     root.style.setProperty('--primary', hsl);
     root.style.setProperty('--ring', hsl);
   }, [accent]);
+
+  /**
+   * 内置 AI 调外观：后端存带 version 的白名单预设，前端只在 version 变化时应用一次。
+   * 用户之后自己改的设置不会被每次刷新覆盖；AI 下次改了才会再应用。
+   */
+  useEffect(() => {
+    const APPLIED_KEY = 'blueberry.ai-ui-applied';
+    fetch('/api/ui/preset')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p: { version?: number; theme?: Theme; accent?: Accent; numFont?: NumFont; bubble?: BubbleTheme } | null) => {
+        if (!p || !p.version) return;
+        let applied = '';
+        try { applied = localStorage.getItem(APPLIED_KEY) ?? ''; } catch { /* ignore */ }
+        if (applied === String(p.version)) return;
+        const store = useAppStore.getState();
+        if (p.theme) store.setTheme(p.theme);
+        if (p.accent) store.setAccent(p.accent);
+        if (p.numFont) store.setNumFont(p.numFont);
+        if (p.bubble) useBubbleTheme.getState().setTheme(p.bubble);
+        try { localStorage.setItem(APPLIED_KEY, String(p.version)); } catch { /* ignore */ }
+      })
+      .catch(() => { /* 老后端没这个接口，静默跳过 */ });
+  }, []);
 
   // 开源项目红点：启动时读一次清单（只读库、不发网络请求），失败则红点回退到 localStorage 上次计数
   // 注意：这里**不自动检查更新** —— 只在用户点了面板上的「检查更新」时才去连 GitHub。

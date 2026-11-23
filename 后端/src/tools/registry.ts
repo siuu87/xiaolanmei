@@ -7,6 +7,8 @@ import { newId, now } from '../utils/id.js';
 import { addOpenSourceProject, refreshOpenSource } from '../routes/openSource.js';
 import { setSetting } from '../routes/settings.js';
 import { indexDocument, updateDocument } from '../services/ragService.js';
+import { listAiGames, saveAiGame } from '../services/gameStore.js';
+import { ACCENTS, BUBBLES, patchUiPreset, readUiPreset } from '../services/uiPreset.js';
 
 /**
  * 内置工具（阶段 9 自主联网）：读网页 / 联网搜索 / 保存课程表。
@@ -951,6 +953,87 @@ const assignTask: BuiltinTool = {
   },
 };
 
+/**
+ * 让 AI 自己「画」一个小游戏（2026-11-23）。
+ * 产出一个自包含 HTML，后端落盘 + sandbox iframe 托管；模型碰不到项目源码。
+ */
+const createGame: BuiltinTool = {
+  name: 'create_game',
+  description:
+    '按用户描述创作一个可以直接玩的小游戏，生成后会出现在「游戏屋」的 AI 小游戏区。' +
+    '**必须输出完整自包含的 HTML 文档**（<!doctype html><html>…），CSS 和 JS 都内联；' +
+    '不许引用外部图片/脚本/字体，不许 fetch/XHR/外链跳转，所有图形用 Canvas、CSS 或 emoji 现画。' +
+    '玩法要简单耐玩、一屏能上手，手机触屏可操作，界面用中文，别塞超过 200KB。' +
+    '如果是在已有游戏上改，先 list_games 看一眼。',
+  parameters: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: '游戏名，20 字以内，比如「接住小蓝莓」' },
+      description: { type: 'string', description: '一句话玩法说明，60 字以内' },
+      html: { type: 'string', description: '完整自包含 HTML 文档，含内联 CSS/JS，不要 Markdown 代码块包裹' },
+    },
+    required: ['title', 'html'],
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    try {
+      const game = await saveAiGame({
+        title: String(args.title ?? ''),
+        description: String(args.description ?? ''),
+        html: String(args.html ?? ''),
+      });
+      return `已生成小游戏「${game.title}」（id=${game.id}），已出现在游戏屋的 AI 小游戏区，点开就能玩。回复里自然地告诉 TA 你做了什么，别复述 HTML。`;
+    } catch (e) {
+      return `游戏生成失败：${(e as Error).message}`;
+    }
+  },
+};
+
+const listGames: BuiltinTool = {
+  name: 'list_games',
+  description: '列出已生成的 AI 小游戏（名字 + id），在修改/继续某个游戏前先查一下。',
+  parameters: { type: 'object', properties: {} },
+  requiresConfirm: false,
+  async execute() {
+    const games = await listAiGames();
+    if (!games.length) return '目前还没有 AI 生成的小游戏。';
+    return games.map((g) => `- ${g.id}：${g.title}${g.description ? `（${g.description}）` : ''}`).join('\n');
+  },
+};
+
+/** 调外观：只开放已有开关，绝不给模型源码或任意 CSS 的写入口 */
+const adjustUi: BuiltinTool = {
+  name: 'adjust_ui',
+  description:
+    '按用户的描述调整小蓝莓的界面外观（白名单，只能改已有开关，不能改代码）：' +
+    'theme 深色/浅色（dark/light）；accent 强调色（blue/violet/rose/teal/amber）；' +
+    'numFont 数字字体（sans/serif）；bubble 聊天气泡色（classic/rose/peach/mint/lavender）。' +
+    '只传用户明确想改的字段，别一次全改。改完前端会自动应用一次，用户之后手动改的设置仍会保留。',
+  parameters: {
+    type: 'object',
+    properties: {
+      theme: { type: 'string', enum: ['light', 'dark'], description: '整体浅色 / 深色' },
+      accent: { type: 'string', enum: [...ACCENTS], description: '强调色' },
+      numFont: { type: 'string', enum: ['sans', 'serif'], description: '数字与标题字体' },
+      bubble: { type: 'string', enum: [...BUBBLES], description: '聊天气泡配色' },
+    },
+  },
+  requiresConfirm: false,
+  async execute(args) {
+    const before = readUiPreset();
+    const next = patchUiPreset(args);
+    const changed = (['theme', 'accent', 'numFont', 'bubble'] as const)
+      .some((k) => args[k] !== undefined && args[k] !== before[k]);
+    if (!changed) return '外观没有变化（传的值不在白名单里或和当前一样）。';
+    const labels: string[] = [];
+    if (args.theme) labels.push(`主题=${String(args.theme)}`);
+    if (args.accent) labels.push(`强调色=${String(args.accent)}`);
+    if (args.numFont) labels.push(`字体=${String(args.numFont)}`);
+    if (args.bubble) labels.push(`气泡=${String(args.bubble)}`);
+    return `已调整界面：${labels.join('，') || '（无）'}。回复里自然地说一句「帮你换好了」就行。`;
+  },
+};
+
 const BUILTIN_TOOLS: BuiltinTool[] = [
   webFetch,
   webSearch,
@@ -966,6 +1049,9 @@ const BUILTIN_TOOLS: BuiltinTool[] = [
   incomingCall,
   sendGift,
   assignTask,
+  createGame,
+  listGames,
+  adjustUi,
   ...PHONE_TOOLS,
 ];
 const byName = new Map(BUILTIN_TOOLS.map((t) => [t.name, t]));

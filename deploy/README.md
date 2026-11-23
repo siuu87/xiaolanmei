@@ -11,6 +11,8 @@
 | `后端/Dockerfile` | 多阶段镜像：先构建前端 dist，再和 Fastify 后端打进同一个镜像 |
 | `deploy/docker-compose.yml` | 单容器编排 + 数据卷持久化（端口 3001） |
 | `deploy/nginx.conf` | **可选**：需要 HTTPS/多域名时，用它做反代（见下文） |
+| `deploy/sidecars-setup.sh` | **可选**：一键装心潮 / 记忆相册 / 小食谱 / PaiVoice 四个侧车（systemd 常驻） |
+| `deploy/st-setup.sh` | **可选**：一键装 SillyTavern 到 8000，供 `/tavern` 全屏嵌入 |
 | `前端/Dockerfile` | **可选**：旧的「前端独立 nginx」方案，compose 已不再使用，保留备用 |
 
 ## 一、本机跑（不用 Docker 也行）

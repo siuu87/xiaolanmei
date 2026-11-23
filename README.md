@@ -414,6 +414,9 @@ npm run dev
 - **对战页顶部有「他」**：头像框（`AvatarContent`，走 `partnerRemark > partnerName > 小蓝莓` 称呼）
   + 会时不时冒出来的本地对白气泡（开局 / 每 9~16 秒闲聊 / 切难度 / 胜负四种时机，4.2 秒自动收起）。
   三款游戏共用 `GameRoom` 这一层，一次覆盖。
+- **AI 小游戏区**（2026-11-23）：内置工具 `create_game` 让 AI 生成自包含 HTML 小游戏，落 `后端/data/games/`，
+  前端在游戏屋底部列出、点开用 `sandbox` iframe + CSP 隔离运行；`list_games` 可查已有游戏。
+  模型碰不到项目源码，也不许外链 / fetch。
 - **对白语气跟人设一样**（`features/games/gameVoice.ts`，纯本地）：跟随聊天顶栏 💕/🩷 说话风格药丸
   （`immersive` 沉稳温柔只写台词 / `fragmented` 一行一句口语碎片），并读用户写的人设与语言风格文本
   （`profileStore.persona` + 启用的 `/api/prompts`、`/api/style-rules`）识别温柔 / 活泼 / 傲娇 / 寡言四档口吻；
@@ -583,6 +586,17 @@ npm run dev
 - 9 个 `phone_*` 内置工具：读界面 / 截图 / home / back / scroll（免确认）；tap / swipe / input / open_app（需确认）
 - `android/`：Kotlin 原生桥（`PhoneAgentService` + `AccessibilityAgent` + `PhoneAccessibilityService`）
 - 详见 `docs/phone-control.md`
+
+### 内置 AI 工具（Operit 风格）
+- 线上共 25 个内置工具：联网（web_fetch / web_search）、备忘录 / 灵感库 / 开源清单、
+  送礼 / 任务 / 来电、`phone_*` 手机自动化，外加三组「能动手」的工具：
+  - `create_game` / `list_games`：按描述现写小游戏，出现在游戏屋的 AI 小游戏区（sandbox 隔离）；
+  - `adjust_ui`：白名单式调外观，只能改主题 / 强调色 / 数字字体 / 气泡色，不给模型源码或任意 CSS；
+    后端存带 `version` 的预设，前端只在版本变化时应用一次，用户之后手动改的设置不会被刷新覆盖。
+- VPS 侧车（心潮 18110 / 记忆相册 8787 / 小食谱 8790 / PaiVoice 8780）可一键装：
+  `curl -fsSL https://gitee.com/siuu/xiaolanmei/raw/main/deploy/sidecars-setup.sh | bash`
+  （systemd 常驻；小食谱与语音端口需在云安全组放行，内部两端口不要放行）。
+  ST 装法见「酒馆」段。
 
 ## 校验
 

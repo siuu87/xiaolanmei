@@ -34,6 +34,9 @@
 
 - **ST 账号改名脚本**：新增 `deploy/st-rename-user.sh`，停 ST 后改 node-persist 存储键（`user:default-user` → `user:<新名>`，头像键同理）并重命名 `data/default-user` 目录（角色卡/世界书/设置全保留），`recover.js` 设新密码，再按原公网 URL 同步小蓝莓连接配置；全程备份 data。ST 界面本身不支持改 handle。
 
+- **AI 能动手了（Operit 风格）**：新增内置工具 `create_game` / `list_games`——AI 按描述产出完整自包含 HTML，落 `后端/data/games/`，`/api/games/:id/file` 带 CSP 提供，游戏屋底部列出并 sandbox iframe 打开；另加 `adjust_ui` 白名单外观工具（theme/accent/numFont/bubble），后端 `ui.ai.preset` 带 version，前端按版本只应用一次，用户手动设置不被刷新覆盖。模型碰不到源码。
+- **VPS 侧车一键装**：新增 `deploy/sidecars-setup.sh`（心潮 18110 / 记忆相册 8787 / 小食谱 8790 / PaiVoice 8780），systemd 常驻（避开 update.sh 的 pm2 delete all），回填主后端 .env 并重启体检；浏览器侧车 8790/8780 需云安全组放行。
+
 ### 2026-11-22（三十六改）信件重做 + 首页小组件 + 世界书分组 + 清理生活卡/OB
 
 - **信件重做**（硬规则 13）：小组件信封永远合着；列表里拆过的信=撕条整条抽走、顶上留翻下来的

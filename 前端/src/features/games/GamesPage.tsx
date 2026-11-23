@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Sparkles, X } from 'lucide-react';
 import { PageShell } from '@/components/PageShell';
+import { aiGameFileUrl, listAiGames, type AiGame } from '@/lib/api/games';
 import { useGameScore } from './GameRoom';
 
 /**
@@ -20,6 +23,24 @@ import { useGameScore } from './GameRoom';
 export function GamesPage() {
   const navigate = useNavigate();
   const go = (id: string) => navigate(`/games/${id}`);
+  const [aiGames, setAiGames] = useState<AiGame[]>([]);
+  const [openGame, setOpenGame] = useState<AiGame | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void listAiGames().then((list) => { if (alive) setAiGames(list); });
+    return () => { alive = false; };
+  }, []);
+
+  // Esc 走 capture，别让游戏 iframe / 页面里的其他监听先吃掉
+  useEffect(() => {
+    if (!openGame) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setOpenGame(null); }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [openGame]);
 
   return (
     <PageShell title="游戏屋" eyebrow="PLAYROOM" className="games-page">
@@ -150,15 +171,68 @@ export function GamesPage() {
           </motion.button>
         </div>
 
-        {/* 更多游戏：一张还没画的空位 */}
-        <div className="mt-4 flex items-center gap-2.5 rounded-[18px] border border-dashed border-border px-4 py-3">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-2 text-[13px] text-muted-foreground">
-            ＋
-          </span>
-          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-            还想玩什么？斗兽棋、连线、找不同……说一声就画上去
-          </p>
+        {/* AI 现画的小游戏：他说一声就会多一个 */}
+        <div className="mt-4 rounded-[18px] border border-dashed border-border px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              还想玩什么？在聊天里说一声，他就现画一个放这儿
+            </p>
+          </div>
+          {aiGames.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {aiGames.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  data-testid={`ai-game-${g.id}`}
+                  onClick={() => setOpenGame(g)}
+                  className="rounded-[14px] border border-border bg-surface-2 px-3 py-2.5 text-left transition hover:-translate-y-0.5"
+                >
+                  <span className="block truncate text-[12.5px] font-medium text-foreground">{g.title}</span>
+                  <span className="mt-0.5 block truncate text-[10.5px] text-muted-foreground">
+                    {g.description || '点开就能玩'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {openGame && createPortal(
+          <div
+            className="fixed inset-0 z-[1500] flex flex-col bg-black/85"
+            role="dialog"
+            aria-modal="true"
+            aria-label={openGame.title}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setOpenGame(null); }}
+          >
+            <div className="flex items-center justify-between px-4 pb-2 pt-[max(env(safe-area-inset-top),12px)]">
+              <div className="min-w-0">
+                <p className="truncate text-[14px] font-medium text-white">{openGame.title}</p>
+                <p className="truncate text-[10.5px] text-white/60">他现画的小游戏</p>
+              </div>
+              <button
+                type="button"
+                aria-label="关闭游戏"
+                onClick={() => setOpenGame(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <iframe
+              title={openGame.title}
+              src={aiGameFileUrl(openGame.id)}
+              sandbox="allow-scripts"
+              referrerPolicy="no-referrer"
+              className="min-h-0 w-full flex-1 border-0 bg-white"
+            />
+          </div>,
+          document.body,
+        )}
 
         {/* 页脚：一句铅笔写的悄悄话 */}
         <p className="mt-7 text-center">

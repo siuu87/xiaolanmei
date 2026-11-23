@@ -58,6 +58,8 @@ import { galleryRoutes } from './routes/gallery.js';
 import { openSourceRoutes } from './routes/openSource.js';
 import { sleepAudioRoutes } from './routes/sleepAudio.js';
 import { characterRoutes } from './routes/character.js';
+import { gameRoutes } from './routes/games.js';
+import { uiPresetRoutes } from './routes/uiPreset.js';
 import { thoughtRoutes } from './routes/thoughts.js';
 import { xinchaoRoutes } from './routes/xinchao.js';
 import { ombreDashboardRoutes } from './routes/ombreDashboard.js';
@@ -138,6 +140,8 @@ async function main(): Promise<void> {
   await app.register(openSourceRoutes, { prefix: '/api' });
   await app.register(sleepAudioRoutes, { prefix: '/api' });
   await app.register(characterRoutes, { prefix: '/api' });
+  await app.register(gameRoutes, { prefix: '/api' });
+  await app.register(uiPresetRoutes, { prefix: '/api' });
   await app.register(thoughtRoutes, { prefix: '/api' });
   await app.register(xinchaoRoutes, { prefix: '/api' });
   await app.register(ombreDashboardRoutes, { prefix: '/api' });
